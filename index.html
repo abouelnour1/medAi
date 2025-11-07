@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>دليل الدواء السعودي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@400;500;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body.lang-ar {
+        font-family: 'Cairo', 'Tajawal', 'Poppins', sans-serif;
+      }
+      body.lang-en {
+        font-family: 'Poppins', 'Inter', sans-serif;
+      }
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+      /* Hide scrollbar for webkit-based browsers */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+      }
+      /* Style for Insurance AI Guide results */
+      .insurance-ai-response strong {
+        color: #0d9488; /* A darker teal for better readability */
+      }
+      .dark .insurance-ai-response strong {
+        color: #2dd4bf; /* A lighter teal for dark mode */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@0.15.0"
+  }
+}
+</script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#14b8a6', // teal-500
+              light: '#5eead4', // teal-300
+              dark: '#0f766e', // teal-700
+            },
+            secondary: {
+              DEFAULT: '#22c55e', // green-500
+            },
+            accent: {
+              DEFAULT: '#f59e0b', // amber-500
+            },
+            'light-bg': '#f8fafc', // slate-50
+            'dark-bg': '#020617',  // slate-950
+            'light-card': '#ffffff',
+            'dark-card': '#0f172a', // slate-900
+            'light-text': '#0f172a', // slate-900
+            'dark-text': '#f1f5f9',   // slate-100
+            'light-text-secondary': '#64748b', // slate-500
+            'dark-text-secondary': '#94a3b8', // slate-400
+          },
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+            cairo: ['Cairo', 'sans-serif'],
+            tajawal: ['Tajawal', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

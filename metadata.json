@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Saudi Drug Directory",
+  "description": "An application to search for medicines and supplements available in Saudi Arabia by trade name or active ingredient, and view their prices. It also allows for adding new medication data in JSON format.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
