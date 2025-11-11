@@ -211,6 +211,7 @@ export const translations = {
     jsonErrorHintQuotes: 'تأكد من استخدام علامات الاقتباس المزدوجة (") حول جميع المفاتيح والنصوص، وليس علامات الاقتباس المفردة (\').',
     appInstallation: 'تثبيت التطبيق',
     installApp: 'تثبيت التطبيق على جهازك',
+    installNotAvailable: 'التثبيت غير متاح حالياً. استمر في استخدام التطبيق لتفعيله.',
   },
   en: {
     appTitle: 'Saudi Drug Directory',
@@ -424,6 +425,7 @@ export const translations = {
     jsonErrorHintQuotes: 'Please ensure you are using double quotes (") for all keys and string values, not single quotes (\').',
     appInstallation: 'App Installation',
     installApp: 'Install App on Your Device',
+    installNotAvailable: 'Installation not available yet. Keep using the app to enable it.',
   }
 };
 

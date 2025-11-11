@@ -39,16 +39,19 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         </h1>
 
         <div className="flex-1 flex justify-end items-center gap-1">
-          {showInstallButton && (
-            <button
-              onClick={onInstallClick}
-              className="p-2 text-white/80 hover:text-white transition-colors rounded-full hover:bg-white/10"
-              aria-label={t('installApp')}
-              title={t('installApp')}
-            >
-              <InstallIcon />
-            </button>
-          )}
+           <button
+            onClick={onInstallClick}
+            disabled={!showInstallButton}
+            className={`p-2 text-white/80 transition-all rounded-full ${
+              showInstallButton
+                ? 'hover:text-white hover:bg-white/10 cursor-pointer'
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            aria-label={showInstallButton ? t('installApp') : t('installNotAvailable')}
+            title={showInstallButton ? t('installApp') : t('installNotAvailable')}
+          >
+            <InstallIcon />
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2 text-white/80 hover:text-white transition-colors rounded-full hover:bg-white/10"
