@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, InsuranceSearchMode } from './types';
 import Header from './components/Header';
@@ -403,149 +402,343 @@ const App: React.FC = () => {
     let newConversations: Conversation[];
     if (selectedConversation) {
         const updatedConversation = { ...selectedConversation, messages: historyToSave, timestamp: Date.now() };
-        newConversations = conversations.map(c => c.id === selectedConversation.id ? updatedConversation : c);
+        newConversations = conversations.map(c => c.id === updatedConversation.id ? updatedConversation : c);
     } else {
-        const userMessage = historyToSave.find(m => m.role === 'user');
-        const title = userMessage?.parts.find(p => 'text' in p && p.text)?.text?.substring(0, 40) || t('newConversation');
-        const newConversation: Conversation = { id: Date.now().toString(), title, messages: historyToSave, timestamp: Date.now() };
+        const firstUserMessage = historyToSave.find(m => m.role === 'user');
+        // Find the text part within the parts array
+        const textPart = firstUserMessage?.parts.find(p => 'text' in p);
+        const titleText = textPart && 'text' in textPart ? textPart.text : '';
+
+        const newConversation: Conversation = {
+            id: `convo-${Date.now()}`,
+            title: titleText.substring(0, 40) || t('newConversation'),
+            messages: historyToSave,
+            timestamp: Date.now()
+        };
         newConversations = [newConversation, ...conversations];
     }
-    newConversations.sort((a, b) => b.timestamp - a.timestamp);
-    setConversations(newConversations); localStorage.setItem('chatHistory', JSON.stringify(newConversations));
-    setIsAssistantModalOpen(false); setSelectedConversation(null); setAssistantContextMedicine(null);
+    setConversations(newConversations);
+    localStorage.setItem('chatHistory', JSON.stringify(newConversations));
+    setIsAssistantModalOpen(false);
+    setSelectedConversation(null);
+    setAssistantContextMedicine(null);
   };
   
-  const handleSavePrescription = useCallback((prescription: PrescriptionData) => setPrescriptions(prev => [prescription, ...prev]), []);
-  const handleSelectPrescription = useCallback((p: PrescriptionData) => setSelectedPrescription(p), []);
+  const uniqueManufactureNames = useMemo(() => {
+    const names = new Set(medicines.map(m => m['Manufacture Name']));
+    return Array.from(names).sort();
+  }, [medicines]);
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    requestAIAccess(() => {
-      setAssistantContextMedicine(null); setAssistantInitialPrompt(''); setSelectedConversation(conversation); setIsAssistantModalOpen(true);
-    });
-  };
+  const uniquePharmaceuticalForms = useMemo(() => {
+    const forms = new Set(medicines.map(m => m.PharmaceuticalForm));
+    return Array.from(forms).sort();
+  }, [medicines]);
 
-  const handleDeleteConversation = (conversationId: string) => { const updatedConversations = conversations.filter(c => c.id !== conversationId); setConversations(updatedConversations); localStorage.setItem('chatHistory', JSON.stringify(updatedConversations)); };
-  const handleClearHistory = () => { setConversations([]); localStorage.removeItem('chatHistory'); };
+  const groupedPharmaceuticalForms = useMemo(() => groupPharmaceuticalForms(uniquePharmaceuticalForms, t), [uniquePharmaceuticalForms, t]);
 
-  const handleBarcodeDetected = useCallback((barcode: string) => {
-    setIsBarcodeScannerOpen(false);
-    requestAIAccess(() => {
-      setAssistantContextMedicine(null);
-      const prompt = language === 'ar' ? `تم مسح باركود: ${barcode}` : `Scanned barcode: ${barcode}`;
-      setAssistantInitialPrompt(prompt); setSelectedConversation(null); setIsAssistantModalOpen(true);
-    });
-  }, [language, isPasswordProtectionEnabled, isAIAuthenticated]);
+  const uniqueLegalStatuses = useMemo(() => {
+    const statuses = new Set(medicines.map(m => m['Legal Status']));
+    return Array.from(statuses).filter(Boolean).sort();
+  }, [medicines]);
 
-  const uniqueManufactureNames = useMemo(() => { const names = new Set<string>(medicines.map(m => m['Manufacture Name'])); return Array.from(names).filter(Boolean).sort(); }, [medicines]);
-  const uniqueLegalStatuses = useMemo(() => { const statuses = new Set<string>(medicines.map(m => m['Legal Status'])); return Array.from(statuses).filter(Boolean).sort(); }, [medicines]);
-  const groupedPharmaceuticalForms = useMemo(() => { const forms = Array.from(new Set<string>(medicines.map(m => m.PharmaceuticalForm))); return groupPharmaceuticalForms(forms, t); }, [medicines, t]);
-  const headerRef = useRef<HTMLElement>(null);
-
-  const getHeaderTitle = () => {
-    if (activeTab === 'search') {
-      if (view === 'details' && selectedMedicine) return selectedMedicine['Trade Name'];
-      if (view === 'alternatives' && sourceMedicine) return t('alternativesFor', { name: sourceMedicine['Trade Name'] });
-      return t('appTitle');
+  const headerTitle = useMemo(() => {
+    switch (view) {
+      case 'details': return selectedMedicine ? selectedMedicine['Trade Name'] : t('appTitle');
+      case 'alternatives': return t('alternativesFor', { name: sourceMedicine ? sourceMedicine['Trade Name'] : '' });
+      case 'settings':
+      case 'addData':
+      case 'addInsuranceData':
+      case 'addGuidelinesData':
+        return t('navSettings');
+      case 'chatHistory': return t('chatHistoryTitle');
+      case 'insuranceSearch': return t('insuranceSearchTitle');
+      case 'insuranceDetails': return t('insuranceCoverageDetails');
+      case 'prescriptions': return selectedPrescription ? t('patientName') + ': ' + (selectedPrescription.patientName || '') : t('prescriptionsListTitle');
+      case 'clinicalAssistant': return t('navAssistant');
+      default:
+        if (activeTab === 'search') return t('appTitle');
+        if (activeTab === 'insurance') return t('insuranceSearchTitle');
+        if (activeTab === 'prescriptions') return t('prescriptionsListTitle');
+        if (activeTab === 'assistant') return t('navAssistant');
+        if (activeTab === 'settings') return t('navSettings');
+        return t('appTitle');
     }
-    if (activeTab === 'insurance') {
-      if (view === 'insuranceDetails' && selectedInsuranceData) return selectedInsuranceData.scientificGroup.scientificName;
-      return t('insuranceSearchTitle');
-    }
-    if (activeTab === 'prescriptions') return selectedPrescription ? t('viewPrescription') : t('navPrescriptions');
-    if (activeTab === 'assistant') return t('navAssistant');
-    if (activeTab === 'settings') {
-      if (view === 'addData') return t('addDataTitle');
-      if (view === 'addInsuranceData') return t('addInsuranceDataTitle');
-      if (view === 'addGuidelinesData') return t('addGuidelinesDataTitle');
-      if (view === 'chatHistory') return t('chatHistoryTitle');
-      return t('navSettings');
-    }
-    return t('appTitle');
-  };
+  }, [view, activeTab, selectedMedicine, sourceMedicine, t, selectedPrescription]);
 
   const showBackButton = useMemo(() => {
     if (activeTab === 'prescriptions' && selectedPrescription) return true;
-    return ['details', 'alternatives', 'addData', 'addInsuranceData', 'addGuidelinesData', 'chatHistory', 'insuranceDetails'].includes(view);
+    
+    const mainTabViews: {[key in Tab]?: View[]} = {
+        search: ['search', 'results'],
+        insurance: ['insuranceSearch'],
+        prescriptions: ['prescriptions'],
+        assistant: ['clinicalAssistant'],
+        settings: ['settings']
+    };
+    const currentTabMainViews = mainTabViews[activeTab];
+    if (currentTabMainViews && currentTabMainViews.includes(view)) return false;
+
+    return true;
   }, [view, activeTab, selectedPrescription]);
 
-  const handleTabChange = (tab: Tab) => {
-    const changeView = () => {
-        setActiveTab(tab);
-        if (tab === 'search') setView(isSearchActive ? 'results' : 'search');
-        else if (tab === 'insurance') setView('insuranceSearch');
-        else if (tab === 'prescriptions') { setSelectedPrescription(null); setView('prescriptions'); }
-        else if (tab === 'assistant') setView('clinicalAssistant');
-        else if (tab === 'settings') setView('settings');
-    };
-
-    if (tab === 'assistant') {
-        requestAIAccess(changeView);
-    } else {
-        changeView();
-    }
-  };
 
   const renderContent = () => {
     if (activeTab === 'search') {
       switch (view) {
-        case 'search': return <div className="flex flex-col justify-center items-center h-full text-center p-4"><h1 className="text-2xl font-bold text-light-text dark:text-dark-text">{t('welcomeTitle')}</h1><p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">{t('welcomeSubtitle')}</p></div>;
-        case 'results': return <ResultsList medicines={searchResults} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleOpenContextualAssistant} onFindAlternative={handleFindAlternative} t={t} language={language} resultsState={searchResults.length > 0 ? 'loaded' : 'empty'} />;
-        case 'details': return selectedMedicine ? <MedicineDetail medicine={selectedMedicine} t={t} language={language} /> : null;
-        case 'alternatives': return sourceMedicine && alternativesResults ? <AlternativesView sourceMedicine={sourceMedicine} alternatives={alternativesResults} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleOpenContextualAssistant} onFindAlternative={handleFindAlternative} t={t} language={language} /> : null;
-        default: return null;
+        case 'search':
+        case 'results':
+          return (
+            <>
+              <SearchBar
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                textSearchMode={textSearchMode}
+                setTextSearchMode={setTextSearchMode}
+                isSearchActive={isSearchActive}
+                onClearSearch={handleClearSearch}
+                onForceSearch={handleForceSearch}
+                onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)}
+                t={t}
+              />
+              <div className="flex items-center justify-between gap-2">
+                  <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFilterCount} t={t} />
+                  <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
+              </div>
+
+              {view === 'search' && !isSearchActive && (
+                 <div className="text-center py-10">
+                    <h2 className="text-xl font-bold text-light-text dark:text-dark-text">{t('welcomeTitle')}</h2>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">{t('welcomeSubtitle')}</p>
+                 </div>
+              )}
+
+              {view === 'results' && (
+                <ResultsList
+                  medicines={searchResults}
+                  onMedicineSelect={handleMedicineSelect}
+                  onMedicineLongPress={handleOpenContextualAssistant}
+                  onFindAlternative={handleFindAlternative}
+                  t={t}
+                  language={language}
+                  resultsState={isSearchActive ? (searchResults.length > 0 ? 'loaded' : 'empty') : 'loading'}
+                />
+              )}
+            </>
+          );
+        case 'details':
+          return selectedMedicine && <MedicineDetail medicine={selectedMedicine} t={t} language={language} />;
+        case 'alternatives':
+          return sourceMedicine && alternativesResults && (
+            <AlternativesView
+              sourceMedicine={sourceMedicine}
+              alternatives={alternativesResults}
+              onMedicineSelect={handleMedicineSelect}
+              onMedicineLongPress={handleOpenContextualAssistant}
+              onFindAlternative={handleFindAlternative}
+              t={t}
+              language={language}
+            />
+          );
+        default:
+          return null;
       }
     }
-
+    
     if (activeTab === 'insurance') {
-        const insuranceProps = { 
-            t, language, allMedicines: medicines, insuranceData, 
-            onSelectInsuranceData: (data: SelectedInsuranceData) => { setSelectedInsuranceData(data); setView('insuranceDetails'); },
-            insuranceSearchTerm, setInsuranceSearchTerm, insuranceSearchMode, setInsuranceSearchMode,
-            requestAIAccess
-        };
         switch (view) {
-            case 'insuranceSearch': return <InsuranceSearchView {...insuranceProps} />;
-            case 'insuranceDetails': return selectedInsuranceData ? <InsuranceDetailsView data={selectedInsuranceData} t={t} /> : null;
-            default: return <InsuranceSearchView {...insuranceProps} />;
+            case 'insuranceSearch':
+                return <InsuranceSearchView 
+                    t={t} 
+                    language={language} 
+                    allMedicines={medicines}
+                    insuranceData={insuranceData}
+                    onSelectInsuranceData={(data) => {
+                        setSelectedInsuranceData(data);
+                        setView('insuranceDetails');
+                    }}
+                    insuranceSearchTerm={insuranceSearchTerm}
+                    setInsuranceSearchTerm={setInsuranceSearchTerm}
+                    insuranceSearchMode={insuranceSearchMode}
+                    setInsuranceSearchMode={setInsuranceSearchMode}
+                    requestAIAccess={requestAIAccess}
+                />;
+            case 'insuranceDetails':
+                return selectedInsuranceData && <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
+            default:
+                setTimeout(() => setView('insuranceSearch'), 0);
+                return null;
         }
     }
 
-    if (activeTab === 'prescriptions') return selectedPrescription ? <PrescriptionView prescriptionData={selectedPrescription} t={t} /> : <PrescriptionListView prescriptions={prescriptions} onSelectPrescription={handleSelectPrescription} t={t} />;
-    if (activeTab === 'assistant') return <ClinicalAssistantView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} clinicalGuidelines={clinicalGuidelines} onSavePrescription={handleSavePrescription} chatHistory={clinicalAssistantChatHistory} setChatHistory={setClinicalAssistantChatHistory} />;
-    if (activeTab === 'settings') {
-        switch (view) {
-            case 'addData': return <AddDataView onImport={handleImportData} t={t} />;
-            case 'addInsuranceData': return <AddInsuranceDataView onImport={handleImportInsuranceData} t={t} />;
-            case 'addGuidelinesData': return <AddGuidelinesDataView onImport={handleImportGuidelinesData} t={t} />;
-            case 'chatHistory': return <ChatHistoryView conversations={conversations} onSelectConversation={handleSelectConversation} onDeleteConversation={handleDeleteConversation} onClearHistory={handleClearHistory} t={t} language={language} />;
-            default: return <div className="space-y-4"><div className="bg-light-card dark:bg-dark-card rounded-xl p-2 shadow-sm"><h3 className="font-bold text-lg mb-1 px-2">{t('generalSettings')}</h3><div className='divide-y divide-gray-100 dark:divide-slate-800'><button onClick={() => setLanguage(lang => lang === 'ar' ? 'en' : 'ar')} className="w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 flex justify-between items-center transition-colors"><span>{t('languageSwitcher')}</span><span className="font-semibold text-primary">{t('langShortOpposite')}</span></button></div></div><div className="bg-light-card dark:bg-dark-card rounded-xl p-2 shadow-sm"><h3 className="font-bold text-lg mb-1 px-2">{t('dataManagement')}</h3><div className='divide-y divide-gray-100 dark:divide-slate-800'><button onClick={() => setView('addData')} className="w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-3 transition-colors"><DatabaseIcon /><span>{t('addData')}</span></button><button onClick={() => setView('addInsuranceData')} className="w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-3 transition-colors"><DatabaseIcon /><span>{t('addInsuranceData')}</span></button><button onClick={() => setView('addGuidelinesData')} className="w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-3 transition-colors"><DatabaseIcon /><span>{t('addGuidelinesData')}</span></button><button onClick={() => setView('chatHistory')} className="w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-3 transition-colors"><HistoryIcon /><span>{t('chatHistoryTitle')}</span></button></div></div></div>;
+    if (activeTab === 'prescriptions') {
+        if (selectedPrescription) {
+            return <PrescriptionView prescriptionData={selectedPrescription} t={t} />
         }
+        return <PrescriptionListView 
+            prescriptions={prescriptions}
+            onSelectPrescription={setSelectedPrescription}
+            t={t}
+        />
+    }
+
+    if (activeTab === 'assistant') {
+      return <ClinicalAssistantView 
+        t={t} 
+        language={language} 
+        allMedicines={medicines}
+        insuranceData={insuranceData}
+        clinicalGuidelines={clinicalGuidelines}
+        onSavePrescription={(p) => setPrescriptions(prev => [p, ...prev])}
+        chatHistory={clinicalAssistantChatHistory}
+        setChatHistory={setClinicalAssistantChatHistory}
+      />;
+    }
+
+    if (activeTab === 'settings') {
+      switch (view) {
+        case 'settings':
+          return (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">
+                <h3 className="text-lg font-bold mb-4">{t('generalSettings')}</h3>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{t('darkMode')} / {t('lightMode')}</span>
+                  <button onClick={toggleTheme} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{theme === 'light' ? t('darkMode') : t('lightMode')}</button>
+                </div>
+                 <div className="flex justify-between items-center mt-4">
+                  <span className="font-medium">{t('languageSwitcher')}</span>
+                  <button onClick={() => setLanguage(lang => lang === 'ar' ? 'en' : 'ar')} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{t('langShortOpposite')}</button>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">
+                <h3 className="text-lg font-bold mb-4">{t('dataManagement')}</h3>
+                <div className="space-y-3">
+                    <button onClick={() => setView('addData')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><DatabaseIcon /><span>{t('addData')}</span></button>
+                    <button onClick={() => setView('addInsuranceData')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><DatabaseIcon /><span>{t('addInsuranceData')}</span></button>
+                    <button onClick={() => setView('addGuidelinesData')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><DatabaseIcon /><span>{t('addGuidelinesData')}</span></button>
+                    <button onClick={() => setView('chatHistory')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><HistoryIcon /><span>{t('chatHistory')}</span></button>
+                </div>
+              </div>
+            </div>
+          );
+        case 'addData':
+          return <AddDataView onImport={handleImportData} t={t} />;
+        case 'addInsuranceData':
+          return <AddInsuranceDataView onImport={handleImportInsuranceData} t={t} />;
+        case 'addGuidelinesData':
+            return <AddGuidelinesDataView onImport={handleImportGuidelinesData} t={t} />;
+        case 'chatHistory':
+          return <ChatHistoryView
+            conversations={conversations}
+            onSelectConversation={(convo) => {
+              setSelectedConversation(convo);
+              setAssistantContextMedicine(null);
+              setAssistantInitialPrompt('');
+              setIsAssistantModalOpen(true);
+            }}
+            onDeleteConversation={(id) => {
+              const newConvos = conversations.filter(c => c.id !== id);
+              setConversations(newConvos);
+              localStorage.setItem('chatHistory', JSON.stringify(newConvos));
+            }}
+            onClearHistory={() => {
+              setConversations([]);
+              localStorage.removeItem('chatHistory');
+            }}
+            t={t}
+            language={language}
+          />;
+        default: return null;
+      }
     }
     return null;
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-light-bg dark:bg-dark-bg">
-      <Header ref={headerRef} title={getHeaderTitle()} showBack={showBackButton} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} showInstallButton={!!installPromptEvent} onInstallClick={handleInstallClick} t={t} />
-      <main className="flex-grow overflow-y-auto no-scrollbar pb-24">
-        {activeTab === 'search' && (
-            <div className="p-4 pt-3 space-y-3 sticky top-0 bg-light-bg dark:bg-dark-bg z-10">
-                <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={handleClearSearch} onForceSearch={handleForceSearch} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
-                {isSearchActive && ( <div className="flex justify-between items-center pt-1"><FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFilterCount} t={t} /><SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} /></div> )}
-            </div>
-        )}
-        <div className={activeTab !== 'search' && activeTab !== 'assistant' ? 'p-4' : activeTab === 'search' ? 'px-4' : ''}>
-            {renderContent()}
-        </div>
+    <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text min-h-screen flex flex-col">
+      <Header
+        title={headerTitle}
+        showBack={showBackButton}
+        onBack={handleBack}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        showInstallButton={!!installPromptEvent}
+        onInstallClick={handleInstallClick}
+        t={t}
+      />
+
+      <main className="flex-grow container mx-auto p-4 max-w-2xl space-y-4 pb-24">
+        {renderContent()}
       </main>
 
-      {view !== 'details' && view !== 'alternatives' && <div className="fixed bottom-20 right-4 z-20"><FloatingAssistantButton onClick={handleOpenGeneralAssistant} onLongPress={() => {}} t={t} language={language} /></div>}
-      <BottomNavBar activeTab={activeTab} setActiveTab={handleTabChange} t={t} onPrescriptionLongPress={handleOpenPrescriptionAssistant} />
+      {!isAssistantModalOpen && (
+        <div className="fixed bottom-24 right-4 z-30">
+            <FloatingAssistantButton onClick={handleOpenGeneralAssistant} onLongPress={handleOpenPrescriptionAssistant} t={t} language={language} />
+        </div>
+      )}
 
-      {isAssistantModalOpen && <AssistantModal isOpen={isAssistantModalOpen} onSaveAndClose={handleCloseAssistant} contextMedicine={assistantContextMedicine} allMedicines={medicines} initialPrompt={assistantInitialPrompt} initialHistory={selectedConversation?.messages} t={t} language={language} />}
-      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={handleFilterChange} onClearFilters={handleClearFilters} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
-      <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={handleBarcodeDetected} t={t} />
-      <AIPasswordModal isOpen={isAIPasswordModalOpen} onClose={() => { setIsAIPasswordModalOpen(false); pendingAICallback.current = null; }} onSuccess={handleSuccessfulAIAuth} t={t} />
+      <BottomNavBar 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => {
+            setActiveTab(tab);
+            const mainViews: Record<Tab, View> = {
+                search: isSearchActive ? 'results' : 'search',
+                insurance: 'insuranceSearch',
+                prescriptions: 'prescriptions',
+                assistant: 'clinicalAssistant',
+                settings: 'settings',
+            };
+            setView(mainViews[tab]);
+        }} 
+        t={t} 
+        onPrescriptionLongPress={handleOpenPrescriptionAssistant} 
+      />
+      
+      <AssistantModal
+        isOpen={isAssistantModalOpen}
+        onSaveAndClose={handleCloseAssistant}
+        contextMedicine={assistantContextMedicine}
+        allMedicines={medicines}
+        initialPrompt={assistantInitialPrompt}
+        initialHistory={selectedConversation?.messages}
+        t={t}
+        language={language}
+      />
+      
+      <FilterModal 
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+        groupedPharmaceuticalForms={groupedPharmaceuticalForms}
+        uniqueManufactureNames={uniqueManufactureNames}
+        uniqueLegalStatuses={uniqueLegalStatuses}
+        t={t}
+      />
+      
+      <BarcodeScannerModal 
+        isOpen={isBarcodeScannerOpen}
+        onClose={() => setIsBarcodeScannerOpen(false)}
+        onBarcodeDetected={(barcode) => {
+            setSearchTerm(barcode);
+            setIsBarcodeScannerOpen(false);
+            setForceSearch(true);
+            setActiveTab('search');
+            setView('results');
+        }}
+        t={t}
+      />
+
+      <AIPasswordModal
+        isOpen={isAIPasswordModalOpen}
+        onClose={() => {
+            setIsAIPasswordModalOpen(false);
+            pendingAICallback.current = null;
+        }}
+        onSuccess={handleSuccessfulAIAuth}
+        t={t}
+      />
     </div>
   );
 };
