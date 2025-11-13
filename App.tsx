@@ -33,8 +33,6 @@ import ClearIcon from './components/icons/ClearIcon';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import AIPasswordModal from './components/AIPasswordModal';
-import InteractionCheckerView from './components/InteractionCheckerView';
-import ReceiptIcon from './components/icons/ReceiptIcon';
 
 const normalizeProduct = (product: any): Medicine => {
   let productType = product['Product type'];
@@ -152,7 +150,6 @@ const App: React.FC = () => {
   });
   const pendingAICallback = useRef<(() => void) | null>(null);
   // Password protection is enabled ONLY if a secret key is explicitly set in the environment.
-  // FIX: Reverted to `process.env` as `import.meta.env` causes a runtime error in this environment.
   const isPasswordProtectionEnabled = !!process.env.VITE_APP_SECRET_KEY;
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -337,9 +334,9 @@ const App: React.FC = () => {
   const handleForceSearch = useCallback(() => { if (searchTerm.trim().length > 0) setForceSearch(true); }, [searchTerm]);
 
   const handleBack = useCallback(() => {
-    if (selectedPrescription) { setSelectedPrescription(null); return; }
+    if (activeTab === 'prescriptions' && selectedPrescription) { setSelectedPrescription(null); return; }
     const targetView = (isSearchActive && activeTab === 'search') ? 'results' : 'search';
-    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails', 'savedPrescriptions'].includes(view)) {
+    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails'].includes(view)) {
        if (activeTab === 'insurance') setView('insuranceSearch');
        else if (activeTab === 'settings') setView('settings');
        else setView(targetView);
@@ -445,7 +442,6 @@ const App: React.FC = () => {
   }, [medicines]);
 
   const headerTitle = useMemo(() => {
-    if (selectedPrescription) return t('patientName') + ': ' + (selectedPrescription.patientName || '');
     switch (view) {
       case 'details': return selectedMedicine ? selectedMedicine['Trade Name'] : t('appTitle');
       case 'alternatives': return t('alternativesFor', { name: sourceMedicine ? sourceMedicine['Trade Name'] : '' });
@@ -455,15 +451,14 @@ const App: React.FC = () => {
       case 'addGuidelinesData':
         return t('navSettings');
       case 'chatHistory': return t('chatHistoryTitle');
-      case 'savedPrescriptions': return t('prescriptionsListTitle');
       case 'insuranceSearch': return t('insuranceSearchTitle');
       case 'insuranceDetails': return t('insuranceCoverageDetails');
-      case 'interactionChecker': return t('interactionCheckerTitle');
+      case 'prescriptions': return selectedPrescription ? t('patientName') + ': ' + (selectedPrescription.patientName || '') : t('prescriptionsListTitle');
       case 'clinicalAssistant': return t('navAssistant');
       default:
         if (activeTab === 'search') return t('appTitle');
         if (activeTab === 'insurance') return t('insuranceSearchTitle');
-        if (activeTab === 'interactions') return t('interactionCheckerTitle');
+        if (activeTab === 'prescriptions') return t('prescriptionsListTitle');
         if (activeTab === 'assistant') return t('navAssistant');
         if (activeTab === 'settings') return t('navSettings');
         return t('appTitle');
@@ -471,12 +466,12 @@ const App: React.FC = () => {
   }, [view, activeTab, selectedMedicine, sourceMedicine, t, selectedPrescription]);
 
   const showBackButton = useMemo(() => {
-    if (selectedPrescription) return true;
+    if (activeTab === 'prescriptions' && selectedPrescription) return true;
     
     const mainTabViews: {[key in Tab]?: View[]} = {
         search: ['search', 'results'],
         insurance: ['insuranceSearch'],
-        interactions: ['interactionChecker'],
+        prescriptions: ['prescriptions'],
         assistant: ['clinicalAssistant'],
         settings: ['settings']
     };
@@ -575,13 +570,15 @@ const App: React.FC = () => {
         }
     }
 
-    if (activeTab === 'interactions') {
-      return <InteractionCheckerView 
-        t={t}
-        language={language}
-        allMedicines={medicines}
-        requestAIAccess={requestAIAccess}
-      />
+    if (activeTab === 'prescriptions') {
+        if (selectedPrescription) {
+            return <PrescriptionView prescriptionData={selectedPrescription} t={t} />
+        }
+        return <PrescriptionListView 
+            prescriptions={prescriptions}
+            onSelectPrescription={setSelectedPrescription}
+            t={t}
+        />
     }
 
     if (activeTab === 'assistant') {
@@ -620,7 +617,6 @@ const App: React.FC = () => {
                     <button onClick={() => setView('addInsuranceData')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><DatabaseIcon /><span>{t('addInsuranceData')}</span></button>
                     <button onClick={() => setView('addGuidelinesData')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><DatabaseIcon /><span>{t('addGuidelinesData')}</span></button>
                     <button onClick={() => setView('chatHistory')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><HistoryIcon /><span>{t('chatHistory')}</span></button>
-                    <button onClick={() => setView('savedPrescriptions')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><ReceiptIcon /><span>{t('savedPrescriptions')}</span></button>
                 </div>
               </div>
             </div>
@@ -652,15 +648,6 @@ const App: React.FC = () => {
             t={t}
             language={language}
           />;
-        case 'savedPrescriptions':
-            if (selectedPrescription) {
-                return <PrescriptionView prescriptionData={selectedPrescription} t={t} />
-            }
-            return <PrescriptionListView 
-                prescriptions={prescriptions}
-                onSelectPrescription={setSelectedPrescription}
-                t={t}
-            />
         default: return null;
       }
     }
@@ -693,17 +680,25 @@ const App: React.FC = () => {
       <BottomNavBar 
         activeTab={activeTab} 
         setActiveTab={(tab) => {
-            setActiveTab(tab);
-            const mainViews: Record<Tab, View> = {
-                search: isSearchActive ? 'results' : 'search',
-                insurance: 'insuranceSearch',
-                interactions: 'interactionChecker',
-                assistant: 'clinicalAssistant',
-                settings: 'settings',
-            };
-            setView(mainViews[tab]);
+            if (tab === 'assistant') {
+                requestAIAccess(() => {
+                    setActiveTab('assistant');
+                    setView('clinicalAssistant');
+                });
+            } else {
+                setActiveTab(tab);
+                const mainViews: Record<Tab, View> = {
+                    search: isSearchActive ? 'results' : 'search',
+                    insurance: 'insuranceSearch',
+                    prescriptions: 'prescriptions',
+                    assistant: 'clinicalAssistant',
+                    settings: 'settings',
+                };
+                setView(mainViews[tab]);
+            }
         }} 
         t={t} 
+        onPrescriptionLongPress={handleOpenPrescriptionAssistant} 
       />
       
       <AssistantModal

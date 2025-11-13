@@ -17,7 +17,8 @@ const AIPasswordModal: React.FC<AIPasswordModalProps> = ({ isOpen, onClose, onSu
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // FIX: Reverted to `process.env` as `import.meta.env` causes a runtime error in this environment.
+    // The modal will only be triggered if VITE_APP_SECRET_KEY is set,
+    // so we only need to validate against that specific environment variable.
     const correctPassword = process.env.VITE_APP_SECRET_KEY;
 
     if (password === correctPassword) {
