@@ -111,6 +111,69 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
     },
   };
 
+  const searchDatabase = useCallback((args: {
+    tradeName?: string;
+    scientificName?: string;
+    pharmaceuticalForm?: string;
+    manufacturer?: string;
+    marketingCompany?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    legalStatus?: 'OTC' | 'Prescription';
+    productType?: 'medicine' | 'supplement';
+  }) => {
+    let results = [...allMedicines];
+
+    if (args.tradeName) {
+        results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
+    }
+    if (args.scientificName) {
+        results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(args.scientificName!.toLowerCase()));
+    }
+    if (args.pharmaceuticalForm) {
+        results = results.filter(med => String(med.PharmaceuticalForm).toLowerCase().includes(args.pharmaceuticalForm!.toLowerCase()));
+    }
+    if (args.manufacturer) {
+        results = results.filter(med => String(med['Manufacture Name']).toLowerCase().includes(args.manufacturer!.toLowerCase()));
+    }
+    if (args.marketingCompany) {
+        results = results.filter(med => String(med['Main Agent']).toLowerCase().includes(args.marketingCompany!.toLowerCase()));
+    }
+    if (args.minPrice !== undefined) {
+        results = results.filter(med => {
+            const price = parseFloat(med['Public price']);
+            return !isNaN(price) && price >= args.minPrice!;
+        });
+    }
+    if (args.maxPrice !== undefined) {
+        results = results.filter(med => {
+            const price = parseFloat(med['Public price']);
+            return !isNaN(price) && price <= args.maxPrice!;
+        });
+    }
+    if (args.legalStatus) {
+        results = results.filter(med => String(med['Legal Status']) === args.legalStatus);
+    }
+    if (args.productType) {
+        const type = args.productType === 'medicine' ? 'Human' : 'Supplement';
+        results = results.filter(med => String(med['Product type']) === type);
+    }
+    
+    // Return a summary for the model to process
+    return {
+        count: results.length,
+        results: results.slice(0, 15).map(r => ({
+            tradeName: r['Trade Name'],
+            scientificName: r['Scientific Name'],
+            price: r['Public price'],
+            form: r.PharmaceuticalForm,
+            strength: `${r.Strength} ${r.StrengthUnit}`.trim(),
+            manufacturer: r['Manufacture Name'],
+            productType: r['Product type'],
+            legalStatus: r['Legal Status'],
+        }))
+    };
+  }, [allMedicines]);
   
   const findMedicinesByName = useCallback((name: string): Medicine[] => {
     if (!name || name.trim().length < 3) return [];
@@ -326,7 +389,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
 
 **منطق التفاعل والأدوات:**
 -   **\`googleSearch\`:** استخدمها كأداتك الأساسية للبحث في الأسئلة السريرية والعثور على أدلة من المصادر المعتمدة.
--   **قاعدة بيانات الأدوية السعودية:** استفسارات المستخدم قد تتضمن أدوية متوفرة في السوق السعودي. استخدم معرفتك العامة والمعلومات من بحث Google للإجابة على الأسئلة المتعلقة بها. لا تملك أداة للبحث عن أسعار محددة أو توفرها في قاعدة بيانات محلية.
+-   **قاعدة بيانات الأدوية السعودية (\`searchDatabase\`):** لديك أداة للبحث في قاعدة بيانات محلية للأدوية والمكملات المتوفرة في السعودية. استخدمها للرد على الأسئلة المتعلقة بالتوفر، الأسعار، الشركات المصنعة، إلخ.
 -   **قائمة المفضلة:** قدم المستخدم قائمة بأدويته المفضلة. عند تقديم توصيات لمنتجات معينة، أعطِ الأولوية لهذه القائمة إذا كانت مناسبة سريريًا، ولكن واجبك الأساسي هو تقديم أفضل توصية قائمة على الأدلة، بغض النظر عن هذه القائمة.
     - **قائمة الأدوية المفضلة للمستخدم:**
       ${favoriteMedicinesListAr}
@@ -353,7 +416,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
 
 **Interaction Logic & Tools:**
 -   **\`googleSearch\`:** Use this as your primary tool to research clinical questions and find evidence from the approved sources.
--   **Saudi Drug Database Context:** The user's query may involve drugs available in the Saudi market. Use your general knowledge and information from Google Search to answer questions about them. You do not have a tool to look up specific prices or availability in a local database.
+-   **Saudi Drug Database (\`searchDatabase\`):** You have a tool to search a local database of medicines and supplements available in Saudi Arabia. Use this to answer questions about availability, prices, manufacturers, etc.
 -   **Favorites List:** The user has provided a list of their favorite medicines. When making recommendations for specific products, prioritize these if clinically appropriate, but your primary duty is to provide the best evidence-based recommendation, regardless of this list.
     - **User's Favorite Medicines:**
       ${favoriteMedicinesListEn}
@@ -468,10 +531,10 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
     }
 
     try {
-        const toolImplementations = { };
+        const toolImplementations = { searchDatabase };
         const tools: Tool[] = isPrescriptionMode 
             ? [{ functionDeclarations: [searchDatabaseTool] }] 
-            : [{ googleSearch: {} }];
+            : [{ googleSearch: {} }, { functionDeclarations: [searchDatabaseTool] }];
         const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations);
         const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
@@ -514,7 +577,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, contextMedicine, isPrescriptionMode, language, t, tryLocalAnswer, allMedicines, uploadedImage, favoriteMedicines]);
+  }, [userInput, isLoading, chatHistory, contextMedicine, isPrescriptionMode, language, t, tryLocalAnswer, allMedicines, uploadedImage, favoriteMedicines, searchDatabase]);
   
   // This effect keeps the ref pointing to the latest version of the function.
   useEffect(() => {
@@ -748,7 +811,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
             <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} className="flex items-center gap-2">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-light-text-secondary hover:text-primary dark:text-dark-text-secondary dark:hover:text-primary rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors" aria-label={t('uploadPrescription')} disabled={!aiAvailable}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <svg xmlns="http://www.w.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </button>
                 <textarea
                     value={userInput}

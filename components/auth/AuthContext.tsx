@@ -60,33 +60,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = useCallback(async (username: string, password: string): Promise<void> => {
-    // Use import.meta.env for custom environment variables in Vite-like environments.
+  const login = useCallback(async (username: string, password: string, sessionAdminPassword?: string): Promise<void> => {
     // @ts-ignore
-    const adminPassword = import.meta.env.VITE_APP_ADMIN_PASSWORD;
-    if (username.toLowerCase() === 'admin' && adminPassword && password === adminPassword) {
-      const adminUser: User = {
-        id: 'admin-user',
-        username: 'admin',
-        role: 'admin',
-        aiRequestCount: 0,
-        lastRequestDate: new Date().toISOString().split('T')[0],
-        status: 'active',
-      };
-      updateUserSession(adminUser);
-      return;
-    }
+    const adminPassword = process.env.VITE_APP_ADMIN_PASSWORD;
 
+    if (username.toLowerCase() === 'admin') {
+      // New: Handle session-based admin login for preview environments
+      if (!adminPassword && sessionAdminPassword) {
+        if (sessionAdminPassword.trim().length > 0) {
+            const adminUser: User = {
+              id: 'admin-session-user',
+              username: 'admin',
+              role: 'admin',
+              aiRequestCount: 0,
+              lastRequestDate: new Date().toISOString().split('T')[0],
+              status: 'active',
+            };
+            updateUserSession(adminUser);
+            return;
+        }
+      }
+      
+      // Original logic for production admin login
+      if (adminPassword && password === adminPassword) {
+        const adminUser: User = {
+          id: 'admin-user',
+          username: 'admin',
+          role: 'admin',
+          aiRequestCount: 0,
+          lastRequestDate: new Date().toISOString().split('T')[0],
+          status: 'active',
+        };
+        updateUserSession(adminUser);
+        return;
+      }
+    }
+    
     const users = getMockUsers();
     const foundUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
     
-    // In a real app, you would compare hashed passwords.
     if (foundUser && foundUser.password === password) {
       const { password, ...userToSave } = foundUser;
       updateUserSession(userToSave);
-    } else {
-      throw new Error('Invalid credentials');
+      return;
     }
+    
+    throw new Error('Invalid credentials');
   }, []);
 
   const register = useCallback(async (username: string, password: string): Promise<void> => {

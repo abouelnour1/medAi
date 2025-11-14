@@ -54,6 +54,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   useEffect(() => {
     setUsers(getAllUsers());
   }, [getAllUsers, activePanel]);
+
+  useEffect(() => {
+    const isModalOpen = isMedicineModalOpen || isInsuranceModalOpen;
+    if (isModalOpen) {
+      document.body.classList.add('no-scroll');
+    } else {
+      document.body.classList.remove('no-scroll');
+    }
+  }, [isMedicineModalOpen, isInsuranceModalOpen]);
   
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm) return users;
