@@ -107,25 +107,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       <div className="p-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-grow min-w-0">
-            {medicine['Product type'] === 'Supplement' ? (
-              <>
-                <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                  <FactoryIcon />
-                  <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
-                </div>
-                <h2 className="text-base font-bold text-light-text dark:text-dark-text truncate" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-base font-bold text-light-text dark:text-dark-text truncate" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate mb-1" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
-                 <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                    <FactoryIcon />
-                    <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
-                </div>
-              </>
-            )}
+              <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                <FactoryIcon />
+                <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
+              </div>
+              <h2 className="text-base font-bold text-light-text dark:text-dark-text truncate" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
           </div>
           <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
             {!isNaN(price) && (

@@ -92,20 +92,58 @@ const normalizeProduct = (product: any): Medicine => {
   };
 };
 
+const MEDICINES_STORAGE_KEY = 'saudi_drug_directory_medicines';
+const INSURANCE_STORAGE_KEY = 'saudi_drug_directory_insurance';
+
 const App: React.FC = () => {
   const { user, requestAIAccess, isLoading: isAuthLoading } = useAuth();
 
-  const [medicines, setMedicines] = useState<Medicine[]>(() => {
-    const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-    return [...MEDICINE_DATA, ...initialSupplements];
-  });
-  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>(() => {
-    // Add a unique ID to each insurance item for easier management in the admin panel
-    return [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({
-        ...item,
-        id: `ins-item-${Date.now()}-${index}`
-    }));
-  });
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
+  
+  useEffect(() => {
+    try {
+        const stored = localStorage.getItem(MEDICINES_STORAGE_KEY);
+        if (stored) {
+            setMedicines(JSON.parse(stored));
+        } else {
+            const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
+            const initialData = [...MEDICINE_DATA, ...initialSupplements];
+            setMedicines(initialData);
+        }
+    } catch(e) {
+        console.error("Failed to load medicines from localStorage, falling back to static data.", e);
+        const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
+        setMedicines([...MEDICINE_DATA, ...initialSupplements]);
+    }
+    
+    try {
+        const storedIns = localStorage.getItem(INSURANCE_STORAGE_KEY);
+        if (storedIns) {
+            setInsuranceData(JSON.parse(storedIns));
+        } else {
+            const initialData = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
+            setInsuranceData(initialData);
+        }
+    } catch(e) {
+        console.error("Failed to load insurance data from localStorage, falling back to static data.", e);
+        const initialData = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
+        setInsuranceData(initialData);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (medicines.length > 0) {
+        localStorage.setItem(MEDICINES_STORAGE_KEY, JSON.stringify(medicines));
+    }
+  }, [medicines]);
+
+  useEffect(() => {
+    if (insuranceData.length > 0) {
+        localStorage.setItem(INSURANCE_STORAGE_KEY, JSON.stringify(insuranceData));
+    }
+  }, [insuranceData]);
+  
   const [clinicalGuidelines, setClinicalGuidelines] = useState<any>(INITIAL_GUIDELINES_DATA);
   
   const [activeTab, setActiveTab] = useState<Tab>('search');
@@ -150,6 +188,8 @@ const App: React.FC = () => {
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  
+  const scrollPositionRef = useRef(0);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (localStorage.getItem('theme') === 'dark') {
@@ -327,7 +367,7 @@ const App: React.FC = () => {
   };
   
   const handleImportGuidelinesData = (data: object): void => { setClinicalGuidelines((prev: object) => ({ ...prev, ...data })); setView('settings'); };
-  const handleMedicineSelect = (medicine: Medicine) => { setSelectedMedicine(medicine); setView('details'); };
+  const handleMedicineSelect = (medicine: Medicine) => { scrollPositionRef.current = window.scrollY; setSelectedMedicine(medicine); setView('details'); };
   const handleFilterChange = <K extends keyof Filters>(filterName: K, value: Filters[K]) => setFilters(prevFilters => ({ ...prevFilters, [filterName]: value }));
   const handleClearFilters = useCallback(() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' }), []);
   const handleClearSearch = useCallback(() => { setSearchTerm(''); setTextSearchMode('tradeName'); handleClearFilters(); setSortBy('alphabetical'); setSearchResults([]); setView('search'); setForceSearch(false); }, [handleClearFilters]);
@@ -341,11 +381,21 @@ const App: React.FC = () => {
     const targetView = (isSearchActive && activeTab === 'search') ? 'results' : 'search';
 
     if (['details', 'alternatives', 'chatHistory', 'insuranceDetails'].includes(view)) {
-       if (activeTab === 'insurance') setView('insuranceSearch');
-       else if (activeTab === 'settings') setView('settings');
-       else setView(targetView);
-    } else if (['addData', 'addInsuranceData', 'addGuidelinesData'].includes(view)) setView('settings');
-    else setView(targetView);
+       if (activeTab === 'insurance') {
+           setView('insuranceSearch');
+       } else if (activeTab === 'settings') {
+           setView('settings');
+       } else {
+           setView(targetView);
+           if (targetView === 'results') {
+                setTimeout(() => window.scrollTo({ top: scrollPositionRef.current, behavior: 'auto' }), 10);
+           }
+       }
+    } else if (['addData', 'addInsuranceData', 'addGuidelinesData'].includes(view)) {
+        setView('settings');
+    } else {
+        setView(targetView);
+    }
     setSourceMedicine(null); setAlternativesResults(null); setSelectedMedicine(null); setSelectedInsuranceData(null);
   }, [view, isSearchActive, activeTab, selectedPrescription]);
 
@@ -687,13 +737,13 @@ const App: React.FC = () => {
         view={view}
       />
 
-      <main className="flex-grow container mx-auto p-4 space-y-4 pb-24 transition-all duration-300 max-w-7xl">
+      <main className="flex-grow container mx-auto p-4 space-y-4 pb-[calc(6rem+env(safe-area-inset-bottom))] transition-all duration-300 max-w-7xl">
         {renderContent()}
       </main>
 
       {/* FIX: Corrected user role check. A guest is represented by a null user object, so the check should be for `user`'s existence. */}
       {user && !isAssistantModalOpen && (
-        <div className="fixed bottom-24 right-4 z-30">
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30">
             <FloatingAssistantButton onClick={handleOpenGeneralAssistant} onLongPress={handleOpenPrescriptionAssistant} t={t} language={language} />
         </div>
       )}

@@ -77,7 +77,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-800/50 z-30 max-w-2xl mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 h-[calc(4rem+env(safe-area-inset-bottom))] bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-800/50 z-30 max-w-2xl mx-auto">
       <div className="flex justify-around h-full">
         {navItems.map(item => (
           <NavItem
