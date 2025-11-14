@@ -350,7 +350,6 @@ const App: React.FC = () => {
                 const priceB = parseFloat(b['Public price']);
                  if (isNaN(priceA) && !isNaN(priceB)) return 1;
                  if (!isNaN(priceA) && isNaN(priceB)) return -1;
-                // FIX: Corrected a typo in the sorting logic. Changed `a['Public price']` to `priceA` to ensure a numeric comparison.
                 return priceB - priceA;
             }
             case 'alphabetical':
@@ -763,7 +762,6 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
 
-      {/* FIX: Corrected user role check. A guest is represented by a null user object, so the check should be for `user`'s existence. */}
       {user && !isAssistantModalOpen && (
         <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30">
             <FloatingAssistantButton onClick={handleOpenGeneralAssistant} onLongPress={handleOpenPrescriptionAssistant} t={t} language={language} />

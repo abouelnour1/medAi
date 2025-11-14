@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FunctionDeclaration, Type, Part } from '@google/genai';
-// FIX: Imported the InsuranceDrug type to resolve the 'Cannot find name' error.
 import { Medicine, TFunction, Language, ChatMessage, PrescriptionData, InsuranceDrug } from '../types';
 import StethoscopeIcon from './icons/StethoscopeIcon';
 import MarkdownRenderer from './MarkdownRenderer';

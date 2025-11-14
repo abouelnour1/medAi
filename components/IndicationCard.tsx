@@ -44,7 +44,7 @@ const IndicationCard: React.FC<IndicationCardProps> = ({ group, t, onSelectInsur
              <div className="border-b pb-3 border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                     <span className="w-6 h-6 flex-shrink-0 text-secondary dark:text-green-400"><HealthInsuranceIcon /></span>
-                    <h2 className="text-xl font-bold text-secondary dark:text-green-400">{group.indication}</h2>
+                    <h2 className="text-lg font-bold text-secondary dark:text-green-400">{group.indication}</h2>
                 </div>
                 {group.icd10Codes.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">

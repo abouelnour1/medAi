@@ -13,7 +13,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   };
 
   const lines = content.split('\n');
-  // FIX: Changed JSX.Element to React.ReactElement to resolve "Cannot find namespace 'JSX'" error.
   const elements: React.ReactElement[] = [];
   let listItems: string[] = [];
   let listType: 'ul' | 'ol' | null = null;

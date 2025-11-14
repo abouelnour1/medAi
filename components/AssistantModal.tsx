@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type, Part } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage } from '../types';
-// FIX: Changed import for TranslationKeys to import from '../translations' instead of '../types' to resolve module export error.
 import { TranslationKeys } from '../translations';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';

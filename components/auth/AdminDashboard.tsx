@@ -158,7 +158,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
     if (item) {
         setEditingInsuranceItem(item);
     } else {
-        // FIX: Added the missing 'drugSubclass' property to match the 'InsuranceDrug' type.
         setEditingInsuranceItem({ indication: '', icd10Code: '', drugClass: '', drugSubclass: '', scientificName: '', atcCode: '', form: '', strength: '', strengthUnit: '', notes: '' });
     }
     setIsInsuranceModalOpen(true);
@@ -274,8 +273,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                         <tbody>
                             {filteredMedicines.map(med => (
                                 <tr key={med.RegisterNumber} className="border-b dark:border-slate-700">
-                                    <td className="px-3 py-2 font-medium">{med['Trade Name']}</td>
-                                    <td className="px-3 py-2">{med['Scientific Name']}</td>
+                                    <td className="px-3 py-2 font-medium whitespace-normal break-words max-w-[150px] sm:max-w-xs">{med['Trade Name']}</td>
+                                    <td className="px-3 py-2 whitespace-normal break-words max-w-[150px] sm:max-w-xs">{med['Scientific Name']}</td>
                                     <td className="px-3 py-2">{med['Public price']}</td>
                                     <td className="px-3 py-2 text-right">
                                         <div className="flex gap-2 justify-end">
@@ -313,8 +312,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                         <tbody>
                             {filteredInsuranceData.map(item => (
                                 <tr key={item.id} className="border-b dark:border-slate-700">
-                                    <td className="px-3 py-2 font-medium">{item.indication}</td>
-                                    <td className="px-3 py-2">{item.scientificName}</td>
+                                    <td className="px-3 py-2 font-medium whitespace-normal break-words max-w-[150px] sm:max-w-xs">{item.indication}</td>
+                                    <td className="px-3 py-2 whitespace-normal break-words max-w-[150px] sm:max-w-xs">{item.scientificName}</td>
                                     <td className="px-3 py-2">{item.icd10Code}</td>
                                     <td className="px-3 py-2 text-right">
                                         <div className="flex gap-2 justify-end">
@@ -341,7 +340,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     <h3 className="font-bold text-lg">{t('apiKey')}</h3>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-2">{t('apiKeyDescription')}</p>
                     <div className="p-2 bg-white dark:bg-slate-700 rounded font-mono text-sm">
-                        {/* FIX: Changed from import.meta.env.VITE_API_KEY to process.env.API_KEY as per Gemini API guidelines to resolve TypeScript error. */}
                         {process.env.API_KEY ? '****************' + process.env.API_KEY.slice(-4) : 'Not Set'}
                     </div>
                 </div>
@@ -380,34 +378,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
       </main>
 
        {isMedicineModalOpen && editingMedicine && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setIsMedicineModalOpen(false)}>
-                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsMedicineModalOpen(false)}>
+                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mt-8 sm:mt-0" onClick={e => e.stopPropagation()}>
                     <h3 className="text-xl font-bold mb-4 flex-shrink-0">{editingMedicine.RegisterNumber.startsWith('new-') ? t('addMedicine') : t('editMedicine')}</h3>
-                    <form onSubmit={handleMedicineFormSubmit} className="space-y-3 overflow-y-auto pr-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                           <div><label className="text-sm font-medium">{t('tradeName')}</label><input type="text" value={editingMedicine['Trade Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Trade Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
-                           <div><label className="text-sm font-medium">{t('scientificName')}</label><input type="text" value={editingMedicine['Scientific Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Scientific Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required/></div>
-                           <div><label className="text-sm font-medium">{t('price')}</label><input type="text" value={editingMedicine['Public price']} onChange={e => setEditingMedicine({...editingMedicine, 'Public price': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('pharmaceuticalForm')}</label><input type="text" value={editingMedicine.PharmaceuticalForm} onChange={e => setEditingMedicine({...editingMedicine, PharmaceuticalForm: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('strength')}</label><input type="text" value={editingMedicine.Strength} onChange={e => setEditingMedicine({...editingMedicine, Strength: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('strengthUnit')}</label><input type="text" value={editingMedicine.StrengthUnit} onChange={e => setEditingMedicine({...editingMedicine, StrengthUnit: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('packageSize')}</label><input type="text" value={editingMedicine.PackageSize} onChange={e => setEditingMedicine({...editingMedicine, PackageSize: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('packageType')}</label><input type="text" value={editingMedicine.PackageTypes} onChange={e => setEditingMedicine({...editingMedicine, PackageTypes: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div><label className="text-sm font-medium">{t('manufacturer')}</label><input type="text" value={editingMedicine['Manufacture Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Manufacture Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                           <div>
-                                <label className="text-sm font-medium">{t('legalStatus')}</label>
-                                <select value={editingMedicine['Legal Status']} onChange={e => setEditingMedicine({...editingMedicine, 'Legal Status': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                    <option value="Prescription">{t('prescription')}</option>
-                                    <option value="OTC">{t('otc')}</option>
-                                </select>
-                           </div>
-                           <div>
-                                <label className="text-sm font-medium">{t('productType')}</label>
-                                <select value={editingMedicine['Product type']} onChange={e => setEditingMedicine({...editingMedicine, 'Product type': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                    <option value="Human">{t('humanProduct')}</option>
-                                    <option value="Supplement">{t('supplementProduct')}</option>
-                                </select>
-                           </div>
+                    <form onSubmit={handleMedicineFormSubmit} className="flex-grow flex flex-col overflow-hidden">
+                        <div className="space-y-3 overflow-y-auto pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                               <div><label className="text-sm font-medium">{t('tradeName')}</label><input type="text" value={editingMedicine['Trade Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Trade Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
+                               <div><label className="text-sm font-medium">{t('scientificName')}</label><input type="text" value={editingMedicine['Scientific Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Scientific Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required/></div>
+                               <div><label className="text-sm font-medium">{t('price')}</label><input type="text" value={editingMedicine['Public price']} onChange={e => setEditingMedicine({...editingMedicine, 'Public price': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('pharmaceuticalForm')}</label><input type="text" value={editingMedicine.PharmaceuticalForm} onChange={e => setEditingMedicine({...editingMedicine, PharmaceuticalForm: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('strength')}</label><input type="text" value={editingMedicine.Strength} onChange={e => setEditingMedicine({...editingMedicine, Strength: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('strengthUnit')}</label><input type="text" value={editingMedicine.StrengthUnit} onChange={e => setEditingMedicine({...editingMedicine, StrengthUnit: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('packageSize')}</label><input type="text" value={editingMedicine.PackageSize} onChange={e => setEditingMedicine({...editingMedicine, PackageSize: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('packageType')}</label><input type="text" value={editingMedicine.PackageTypes} onChange={e => setEditingMedicine({...editingMedicine, PackageTypes: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div><label className="text-sm font-medium">{t('manufacturer')}</label><input type="text" value={editingMedicine['Manufacture Name']} onChange={e => setEditingMedicine({...editingMedicine, 'Manufacture Name': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                               <div>
+                                    <label className="text-sm font-medium">{t('legalStatus')}</label>
+                                    <select value={editingMedicine['Legal Status']} onChange={e => setEditingMedicine({...editingMedicine, 'Legal Status': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                                        <option value="Prescription">{t('prescription')}</option>
+                                        <option value="OTC">{t('otc')}</option>
+                                    </select>
+                               </div>
+                               <div>
+                                    <label className="text-sm font-medium">{t('productType')}</label>
+                                    <select value={editingMedicine['Product type']} onChange={e => setEditingMedicine({...editingMedicine, 'Product type': e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                                        <option value="Human">{t('humanProduct')}</option>
+                                        <option value="Supplement">{t('supplementProduct')}</option>
+                                    </select>
+                               </div>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
                             <button type="button" onClick={() => setIsMedicineModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{t('cancel')}</button>
@@ -419,20 +419,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
         )}
 
        {isInsuranceModalOpen && editingInsuranceItem && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setIsInsuranceModalOpen(false)}>
-                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsInsuranceModalOpen(false)}>
+                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mt-8 sm:mt-0" onClick={e => e.stopPropagation()}>
                     <h3 className="text-xl font-bold mb-4 flex-shrink-0">{editingInsuranceItem.id ? t('editInsuranceItem') : t('addInsuranceItem')}</h3>
-                    <form onSubmit={handleInsuranceFormSubmit} className="space-y-2 overflow-y-auto pr-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                            <div className="sm:col-span-2"><label className="text-sm font-medium">{t('indication')}</label><input type="text" value={editingInsuranceItem.indication} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, indication: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
-                            <div><label className="text-sm font-medium">{t('scientificName')}</label><input type="text" value={editingInsuranceItem.scientificName} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, scientificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
-                            <div><label className="text-sm font-medium">{t('icd10Code')}</label><input type="text" value={editingInsuranceItem.icd10Code} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, icd10Code: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div className="sm:col-span-2"><label className="text-sm font-medium">{t('drugClass')}</label><input type="text" value={editingInsuranceItem.drugClass} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, drugClass: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div><label className="text-sm font-medium">{t('pharmaceuticalForm')}</label><input type="text" value={editingInsuranceItem.form} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, form: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div><label className="text-sm font-medium">{t('atcCode')}</label><input type="text" value={editingInsuranceItem.atcCode} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, atcCode: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div><label className="text-sm font-medium">{t('strength')}</label><input type="text" value={editingInsuranceItem.strength} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strength: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div><label className="text-sm font-medium">{t('strengthUnit')}</label><input type="text" value={editingInsuranceItem.strengthUnit} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strengthUnit: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                            <div className="sm:col-span-2"><label className="text-sm font-medium">{t('notes')}</label><textarea value={editingInsuranceItem.notes} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, notes: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" rows={3}></textarea></div>
+                    <form onSubmit={handleInsuranceFormSubmit} className="flex-grow flex flex-col overflow-hidden">
+                       <div className="space-y-2 overflow-y-auto pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('indication')}</label><input type="text" value={editingInsuranceItem.indication} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, indication: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
+                                <div><label className="text-sm font-medium">{t('scientificName')}</label><input type="text" value={editingInsuranceItem.scientificName} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, scientificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
+                                <div><label className="text-sm font-medium">{t('icd10Code')}</label><input type="text" value={editingInsuranceItem.icd10Code} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, icd10Code: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('drugClass')}</label><input type="text" value={editingInsuranceItem.drugClass} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, drugClass: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">{t('pharmaceuticalForm')}</label><input type="text" value={editingInsuranceItem.form} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, form: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">{t('atcCode')}</label><input type="text" value={editingInsuranceItem.atcCode} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, atcCode: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">{t('strength')}</label><input type="text" value={editingInsuranceItem.strength} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strength: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">{t('strengthUnit')}</label><input type="text" value={editingInsuranceItem.strengthUnit} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strengthUnit: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('notes')}</label><textarea value={editingInsuranceItem.notes} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, notes: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" rows={3}></textarea></div>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
                             <button type="button" onClick={() => setIsInsuranceModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{t('cancel')}</button>

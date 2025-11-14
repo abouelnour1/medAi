@@ -122,7 +122,6 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                  </div>
                  <div className="space-y-1">
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('doctorName')}:</strong> <span>{data.doctorName}</span></div>
-                    {/* FIX: Corrected a typo in the property name from `data.specialty` to `data.doctorSpecialty` to match the `PrescriptionData` interface and resolve the "Property 'specialty' does not exist" error. */}
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('specialty')}:</strong> <span>{data.doctorSpecialty}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('policy')}:</strong> <span>{data.policy}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('insurCompany')}:</strong> <span>{data.insuranceCompany}</span></div>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { TFunction } from '../types';
 
-// FIX: Added missing AddDataViewProps interface.
 interface AddDataViewProps {
   onImport: (data: any[]) => void;
   t: TFunction;
