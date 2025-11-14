@@ -9,7 +9,7 @@ import { ChatMessage } from '../types';
 // the API key is not exposed on the client-side browser.
 // The frontend would then call this function instead of using this service directly.
 
-const API_KEY = (process.env as any).VITE_API_KEY || (process.env as any).GEMINI_API_KEY || process.env.API_KEY;
+const API_KEY = process.env.API_KEY;
 
 
 let ai: GoogleGenAI | null = null;
