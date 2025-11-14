@@ -345,6 +345,12 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
 - أحدث المراجع والـ guidelines العالمية مثل (WHO, FDA, EMA, NICE, UpToDate, PubMed, Medscape, DynaMedex).
 - البحث في الإنترنت والمصادر الموثوقة عند الحاجة لتحديث المعلومات أو التحقق منها.
 
+**خبرة المبيعات والمقارنات:** عند طلب مقارنات أو بدائل أو نقاط بيع، يجب أن تتصرف كخبير مبيعات صيدلانية ذي معرفة علمية عميقة.
+- **نقاط البيع:** حدد المزايا الفريدة للدواء. قد تكون تركيبته (امتصاص أسرع، آثار جانبية أقل)، استطبابات معتمدة خاصة، سمعة العلامة التجارية، راحة المريض (جرعة يومية واحدة)، أو سعر أفضل.
+- **البيع الأعلى (Upselling):** اقترح بديلاً أكثر تميزًا أو فعالية (من نفس الفئة أو فئة مختلفة) وقدم مبررًا واضحًا ومبنيًا على الأدلة لسبب كون الترقية مفيدة لحالة مريض معينة.
+- **البيع المتقاطع (Cross-selling):** أوصِ بمنتجات تكميلية يمكن بيعها مع الدواء الأساسي. على سبيل المثال، بروبيوتيك مع مضاد حيوي، أو واقي شمسي مع دواء يسبب حساسية للضوء.
+- **التحليل المقارن:** عند المقارنة مع البدائل، لا تسرد الحقائق فقط. قم بتوليف المعلومات. اشرح *لماذا* قد يختار الطبيب الدواء "أ" بدلاً من "ب" لمريض معين. سلط الضوء على الفروقات الرئيسية بطريقة مقنعة. ادمج الحقائق العلمية مع الحجج البيعية العملية.
+
 دورك:
 - تعمل كمستشار خبير في علم الأدوية السريري والمعلومات الدوائية والمكملات الغذائية.
 - بناءً على سؤال المستخدم، تحدد ما إذا كانت الإجابة تتطلب معلومات عن الأدوية، أو المكملات الغذائية، أو كليهما.
@@ -390,6 +396,12 @@ Your goal is to provide accurate and professional answers based on:
 1. The Saudi Drug Index database, which contains both medicines and supplements, available to you via the 'searchDatabase' tool.
 2. The latest international references and guidelines such as (WHO, FDA, EMA, NICE, UpToDate, PubMed, Medscape, DynaMedex).
 3. Searching the internet and reliable sources when needed to update or verify information.
+
+**Sales & Comparison Expertise:** When asked for comparisons, alternatives, or selling points, you must act as an expert pharmaceutical sales representative with deep scientific knowledge.
+- **Selling Points:** Identify unique advantages of a drug. This could be its formulation (e.g., faster absorption, fewer side effects), specific approved indications, brand reputation, patient convenience (e.g., once-daily dosing), or a better price point.
+- **Upselling:** Suggest a more premium or effective alternative (from the same or different class) and provide a clear, evidence-based rationale for why the upgrade is beneficial for a specific patient profile.
+- **Cross-selling:** Recommend complementary products that can be sold alongside the primary drug. For example, a probiotic with an antibiotic, or a sunscreen with a photosensitizing drug.
+- **Comparative Analysis:** When comparing with alternatives, don't just list facts. Synthesize the information. Explain *why* a doctor might choose drug A over drug B for a particular patient. Highlight the key differentiators in a compelling way. Combine scientific facts with practical sales arguments.
 
 Your Role:
 - Act as an expert consultant in Clinical Pharmacology, Drug Information, and Nutritional Supplements.
@@ -563,7 +575,21 @@ Always answer in the style of an expert, not a general assistant.`;
             setIsPrescriptionMode(false);
             const initialParts: Part[] = [];
             if (contextMedicine) {
-                initialParts.push({ text: `The user is asking about ${contextMedicine['Trade Name']} (${contextMedicine['Scientific Name']}). Start the conversation by asking how you can help with this specific medicine.` });
+                const ingredients = contextMedicine['Scientific Name'].split(',').map(s => s.trim());
+                const strengths = String(contextMedicine.Strength).split(',').map(s => s.trim());
+                const units = String(contextMedicine.StrengthUnit).split(',').map(s => s.trim());
+
+                let formattedIngredients = ingredients.map((ing, index) => {
+                    const s = strengths[index] || strengths[0] || '';
+                    const u = units[index] || units[0] || '';
+                    return `- ${ing}: ${s} ${u}`.trim();
+                }).join('\n');
+                
+                const contextText = language === 'ar' ? 
+                  `السياق: استعلام المستخدم بخصوص الدواء التالي:\n**${contextMedicine['Trade Name']}**\n**المواد الفعالة:**\n${formattedIngredients}\n\nابدأ المحادثة بسؤال كيف يمكنك المساعدة بخصوص هذا الدواء المحدد.` :
+                  `Context: The user is querying about the following drug:\n**${contextMedicine['Trade Name']}**\n**Active Ingredients:**\n${formattedIngredients}\n\nStart the conversation by asking how you can help with this specific medicine.`;
+
+                initialParts.push({ text: contextText });
             } else {
                 initialParts.push({ text: t('assistantWelcomeMessage')});
             }
@@ -608,7 +634,7 @@ Always answer in the style of an expert, not a general assistant.`;
     onSaveAndClose(chatHistory);
   };
   
-  const handleQuickActionClick = (action: 'price' | 'ingredient' | 'alternatives' | 'usage') => {
+  const handleQuickActionClick = (action: 'price' | 'ingredient' | 'alternatives' | 'usage' | 'sellingPoint' | 'howToSell' | 'upselling' | 'crossSelling') => {
     if (!contextMedicine) return;
 
     let promptText = '';
@@ -624,6 +650,18 @@ Always answer in the style of an expert, not a general assistant.`;
             break;
         case 'usage':
             promptText = t('promptUsage');
+            break;
+        case 'sellingPoint':
+            promptText = t('quickActionSellingPoint');
+            break;
+        case 'howToSell':
+            promptText = t('quickActionHowToSell');
+            break;
+        case 'upselling':
+            promptText = t('quickActionUpselling');
+            break;
+        case 'crossSelling':
+            promptText = t('quickActionCrossSelling');
             break;
     }
     setUserInput(promptText); // Visually update the input
@@ -727,6 +765,10 @@ Always answer in the style of an expert, not a general assistant.`;
                 <QuickActionButton onClick={() => handleQuickActionClick('ingredient')}>{t('quickActionIngredient')}</QuickActionButton>
                 <QuickActionButton onClick={() => handleQuickActionClick('alternatives')}>{t('quickActionAlternatives')}</QuickActionButton>
                 <QuickActionButton onClick={() => handleQuickActionClick('usage')}>{t('promptUsage')}</QuickActionButton>
+                <QuickActionButton onClick={() => handleQuickActionClick('sellingPoint')}>{t('quickActionSellingPoint')}</QuickActionButton>
+                <QuickActionButton onClick={() => handleQuickActionClick('howToSell')}>{t('quickActionHowToSell')}</QuickActionButton>
+                <QuickActionButton onClick={() => handleQuickActionClick('upselling')}>{t('quickActionUpselling')}</QuickActionButton>
+                <QuickActionButton onClick={() => handleQuickActionClick('crossSelling')}>{t('quickActionCrossSelling')}</QuickActionButton>
               </div>
             )}
             {uploadedImage && (
