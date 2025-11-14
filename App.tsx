@@ -102,31 +102,45 @@ const App: React.FC = () => {
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   
   useEffect(() => {
+    // Load medicines with robust validation
     try {
         const stored = localStorage.getItem(MEDICINES_STORAGE_KEY);
         if (stored) {
-            setMedicines(JSON.parse(stored));
+            const parsedData = JSON.parse(stored);
+            if (Array.isArray(parsedData)) {
+                setMedicines(parsedData);
+            } else {
+                throw new Error("Stored medicine data is not an array.");
+            }
         } else {
             const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
             const initialData = [...MEDICINE_DATA, ...initialSupplements];
             setMedicines(initialData);
         }
     } catch(e) {
-        console.error("Failed to load medicines from localStorage, falling back to static data.", e);
+        console.error("Failed to load or parse medicines from localStorage, falling back to static data.", e);
+        localStorage.removeItem(MEDICINES_STORAGE_KEY); // Clear corrupted data
         const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
         setMedicines([...MEDICINE_DATA, ...initialSupplements]);
     }
     
+    // Load insurance data with robust validation
     try {
         const storedIns = localStorage.getItem(INSURANCE_STORAGE_KEY);
         if (storedIns) {
-            setInsuranceData(JSON.parse(storedIns));
+            const parsedData = JSON.parse(storedIns);
+            if (Array.isArray(parsedData)) {
+                setInsuranceData(parsedData);
+            } else {
+                throw new Error("Stored insurance data is not an array.");
+            }
         } else {
             const initialData = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
             setInsuranceData(initialData);
         }
     } catch(e) {
-        console.error("Failed to load insurance data from localStorage, falling back to static data.", e);
+        console.error("Failed to load or parse insurance data from localStorage, falling back to static data.", e);
+        localStorage.removeItem(INSURANCE_STORAGE_KEY); // Clear corrupted data
         const initialData = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
         setInsuranceData(initialData);
     }
@@ -134,13 +148,21 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (medicines.length > 0) {
-        localStorage.setItem(MEDICINES_STORAGE_KEY, JSON.stringify(medicines));
+        try {
+            localStorage.setItem(MEDICINES_STORAGE_KEY, JSON.stringify(medicines));
+        } catch (e) {
+            console.error("Failed to save medicines to localStorage", e);
+        }
     }
   }, [medicines]);
 
   useEffect(() => {
     if (insuranceData.length > 0) {
-        localStorage.setItem(INSURANCE_STORAGE_KEY, JSON.stringify(insuranceData));
+        try {
+            localStorage.setItem(INSURANCE_STORAGE_KEY, JSON.stringify(insuranceData));
+        } catch (e) {
+            console.error("Failed to save insurance data to localStorage", e);
+        }
     }
   }, [insuranceData]);
   
