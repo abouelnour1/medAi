@@ -60,28 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = useCallback(async (username: string, password: string, sessionAdminPassword?: string): Promise<void> => {
+  const login = useCallback(async (username: string, password: string): Promise<void> => {
     // @ts-ignore
     const adminPassword = process.env.VITE_APP_ADMIN_PASSWORD;
 
     if (username.toLowerCase() === 'admin') {
-      // New: Handle session-based admin login for preview environments
-      if (!adminPassword && sessionAdminPassword) {
-        if (sessionAdminPassword.trim().length > 0) {
-            const adminUser: User = {
-              id: 'admin-session-user',
-              username: 'admin',
-              role: 'admin',
-              aiRequestCount: 0,
-              lastRequestDate: new Date().toISOString().split('T')[0],
-              status: 'active',
-            };
-            updateUserSession(adminUser);
-            return;
-        }
-      }
-      
-      // Original logic for production admin login
       if (adminPassword && password === adminPassword) {
         const adminUser: User = {
           id: 'admin-user',
@@ -100,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
     
     if (foundUser && foundUser.password === password) {
-      const { password, ...userToSave } = foundUser;
+      const { password: _password, ...userToSave } = foundUser;
       updateUserSession(userToSave);
       return;
     }
@@ -157,11 +140,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currentUserState.aiRequestCount = 0;
             currentUserState.lastRequestDate = today;
         }
-
+        
+        // The user has requested to remove the AI usage limit.
+        // The check is commented out, but we continue to count requests for admin tracking purposes.
+        /*
         if (currentUserState.aiRequestCount >= settings.aiRequestLimit) {
             alert(t('usageLimitReached', { limit: settings.aiRequestLimit }));
             return;
         }
+        */
 
         currentUserState.aiRequestCount += 1;
         updateUserSession(currentUserState);

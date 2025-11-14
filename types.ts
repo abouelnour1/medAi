@@ -166,7 +166,7 @@ export interface AppSettings {
 
 export type AuthContextType = {
   user: User | null;
-  login: (username: string, password: string, sessionAdminPassword?: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   requestAIAccess: (callback: () => void, t: TFunction) => void;
