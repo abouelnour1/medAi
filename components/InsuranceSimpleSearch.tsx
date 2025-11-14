@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
@@ -30,7 +31,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     searchTerm,
     setSearchTerm,
     searchMode,
-    setSearchMode
+    setSearchMode,
 }) => {
   
   const searchResults = useMemo((): SearchResult[] => {

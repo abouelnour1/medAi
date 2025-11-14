@@ -43,6 +43,7 @@ export interface Medicine {
 }
 
 export interface InsuranceDrug {
+  id?: string;
   indication: string;
   icd10Code: string;
   drugClass: string;
@@ -66,7 +67,7 @@ export interface InsuranceDrug {
 
 export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
 
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addGuidelinesData' | 'clinicalAssistant' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin';
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addGuidelinesData' | 'clinicalAssistant' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites';
 
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 
@@ -165,7 +166,7 @@ export interface AppSettings {
 
 export type AuthContextType = {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, sessionAdminPassword?: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   requestAIAccess: (callback: () => void, t: TFunction) => void;
@@ -177,3 +178,16 @@ export type AuthContextType = {
   getSettings: () => AppSettings;
   updateSettings: (settings: AppSettings) => void;
 };
+
+export interface ProductSuggestion {
+  name: string;
+  concentration: string;
+  price: string;
+  selling_point: string;
+}
+
+export interface Recommendation {
+  category: string;
+  rationale: string;
+  products: ProductSuggestion[];
+}

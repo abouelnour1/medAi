@@ -1,5 +1,6 @@
 import React from 'react';
 import { Medicine, TFunction, Language } from '../types';
+import StarIcon from './icons/StarIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '') return null;
@@ -35,7 +36,7 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 };
 
 
-const MedicineDetail: React.FC<{ medicine: Medicine; t: TFunction; language: Language }> = ({ medicine, t, language }) => {
+const MedicineDetail: React.FC<{ medicine: Medicine; t: TFunction; language: Language; isFavorite: boolean; onToggleFavorite: (medicineId: string) => void; }> = ({ medicine, t, language, isFavorite, onToggleFavorite }) => {
   const price = parseFloat(medicine['Public price']);
   const scientificName = medicine['Scientific Name'];
   const strengths = medicine.Strength;
@@ -51,7 +52,18 @@ const MedicineDetail: React.FC<{ medicine: Medicine; t: TFunction; language: Lan
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-8">
       <div>
         <div className="px-2 sm:px-0">
-          <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name']}</h2>
+          <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name']}</h2>
+              <button
+                onClick={() => onToggleFavorite(medicine.RegisterNumber)}
+                className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}
+                title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+              >
+                  <div className="h-6 w-6">
+                    <StarIcon isFilled={isFavorite} />
+                  </div>
+              </button>
+          </div>
           
           {hasMultipleIngredients ? (
             <div className="mt-3">

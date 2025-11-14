@@ -8,6 +8,8 @@ interface AlternativesViewProps {
     onMedicineSelect: (medicine: Medicine) => void;
     onMedicineLongPress: (medicine: Medicine) => void;
     onFindAlternative: (medicine: Medicine) => void;
+    favorites: string[];
+    onToggleFavorite: (medicineId: string) => void;
     t: TFunction;
     language: Language;
 }
@@ -19,9 +21,11 @@ const Section: React.FC<{
     onMedicineSelect: (medicine: Medicine) => void, 
     onMedicineLongPress: (medicine: Medicine) => void, 
     onFindAlternative: (medicine: Medicine) => void, 
+    favorites: string[],
+    onToggleFavorite: (medicineId: string) => void,
     t: TFunction, 
     language: Language 
-}> = ({ title, medicines, emptyMessage, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language }) => {
+}> = ({ title, medicines, emptyMessage, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language, favorites, onToggleFavorite }) => {
     return (
         <div>
             <h2 className="text-xl font-bold text-light-text dark:text-dark-text mb-4 px-2">{title}</h2>
@@ -34,6 +38,8 @@ const Section: React.FC<{
                             onShortPress={() => onMedicineSelect(med)}
                             onLongPress={onMedicineLongPress}
                             onFindAlternative={onFindAlternative}
+                            isFavorite={favorites.includes(med.RegisterNumber)}
+                            onToggleFavorite={onToggleFavorite}
                             t={t}
                             language={language}
                         />
@@ -55,6 +61,8 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
     onMedicineSelect,
     onMedicineLongPress,
     onFindAlternative,
+    favorites,
+    onToggleFavorite,
     t,
     language
 }) => {
@@ -83,6 +91,8 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}
                 onFindAlternative={onFindAlternative}
+                favorites={favorites}
+                onToggleFavorite={onToggleFavorite}
                 t={t}
                 language={language}
             />
@@ -94,6 +104,8 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}
                 onFindAlternative={onFindAlternative}
+                favorites={favorites}
+                onToggleFavorite={onToggleFavorite}
                 t={t}
                 language={language}
             />

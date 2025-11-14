@@ -36,6 +36,8 @@ import { LoginView } from './components/auth/LoginView';
 import { RegisterView } from './components/auth/RegisterView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import AdminIcon from './components/icons/AdminIcon';
+import StarIcon from './components/icons/StarIcon';
+import FavoritesView from './components/FavoritesView';
 
 const normalizeProduct = (product: any): Medicine => {
   let productType = product['Product type'];
@@ -92,8 +94,8 @@ const normalizeProduct = (product: any): Medicine => {
   };
 };
 
-const MEDICINES_STORAGE_KEY = 'saudi_drug_directory_medicines';
 const INSURANCE_STORAGE_KEY = 'saudi_drug_directory_insurance';
+const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 
 const App: React.FC = () => {
   const { user, requestAIAccess, isLoading: isAuthLoading } = useAuth();
@@ -102,27 +104,10 @@ const App: React.FC = () => {
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   
   useEffect(() => {
-    // Load medicines with robust validation
-    try {
-        const stored = localStorage.getItem(MEDICINES_STORAGE_KEY);
-        if (stored) {
-            const parsedData = JSON.parse(stored);
-            if (Array.isArray(parsedData)) {
-                setMedicines(parsedData);
-            } else {
-                throw new Error("Stored medicine data is not an array.");
-            }
-        } else {
-            const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-            const initialData = [...MEDICINE_DATA, ...initialSupplements];
-            setMedicines(initialData);
-        }
-    } catch(e) {
-        console.error("Failed to load or parse medicines from localStorage, falling back to static data.", e);
-        localStorage.removeItem(MEDICINES_STORAGE_KEY); // Clear corrupted data
-        const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-        setMedicines([...MEDICINE_DATA, ...initialSupplements]);
-    }
+    // Load medicines from static data. User-added data will be session-only to avoid localStorage quota issues.
+    const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
+    const initialData = [...MEDICINE_DATA, ...initialSupplements];
+    setMedicines(initialData);
     
     // Load insurance data with robust validation
     try {
@@ -145,16 +130,6 @@ const App: React.FC = () => {
         setInsuranceData(initialData);
     }
   }, []);
-
-  useEffect(() => {
-    if (medicines.length > 0) {
-        try {
-            localStorage.setItem(MEDICINES_STORAGE_KEY, JSON.stringify(medicines));
-        } catch (e) {
-            console.error("Failed to save medicines to localStorage", e);
-        }
-    }
-  }, [medicines]);
 
   useEffect(() => {
     if (insuranceData.length > 0) {
@@ -219,6 +194,39 @@ const App: React.FC = () => {
     }
     return 'light';
   });
+  
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const storedFavorites = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (storedFavorites) {
+        setFavorites(JSON.parse(storedFavorites));
+      }
+    } catch (e) {
+      console.error("Failed to load favorites from localStorage", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+    } catch (e) {
+      console.error("Failed to save favorites to localStorage", e);
+    }
+  }, [favorites]);
+
+  const toggleFavorite = (medicineId: string) => {
+    setFavorites(prev => 
+      prev.includes(medicineId) 
+        ? prev.filter(id => id !== medicineId)
+        : [...prev, medicineId]
+    );
+  };
+  
+  const favoriteMedicines = useMemo(() => 
+    medicines.filter(m => favorites.includes(m.RegisterNumber)), 
+  [medicines, favorites]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -229,6 +237,16 @@ const App: React.FC = () => {
       localStorage.setItem('theme', 'light');
     }
   }, [theme]);
+
+  // Lock body scroll when a modal is open
+  useEffect(() => {
+    const isModalOpen = isAssistantModalOpen || isFilterModalOpen || isBarcodeScannerOpen;
+    if (isModalOpen) {
+        document.body.classList.add('no-scroll');
+    } else {
+        document.body.classList.remove('no-scroll');
+    }
+  }, [isAssistantModalOpen, isFilterModalOpen, isBarcodeScannerOpen]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -401,7 +419,7 @@ const App: React.FC = () => {
     
     const targetView = (isSearchActive && activeTab === 'search') ? 'results' : 'search';
 
-    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails'].includes(view)) {
+    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails', 'favorites'].includes(view)) {
        if (activeTab === 'insurance') {
            setView('insuranceSearch');
        } else if (activeTab === 'settings') {
@@ -514,6 +532,7 @@ const App: React.FC = () => {
       case 'register': return t('register');
       case 'admin': return t('adminDashboard');
       case 'chatHistory': return t('chatHistoryTitle');
+      case 'favorites': return t('favoriteProducts');
       case 'insuranceSearch': return t('insuranceSearchTitle');
       case 'insuranceDetails': return t('insuranceCoverageDetails');
       case 'prescriptions': return selectedPrescription ? t('patientName') + ': ' + (selectedPrescription.patientName || '') : t('prescriptionsListTitle');
@@ -592,6 +611,8 @@ const App: React.FC = () => {
                   onMedicineSelect={handleMedicineSelect}
                   onMedicineLongPress={handleOpenContextualAssistant}
                   onFindAlternative={handleFindAlternative}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
                   t={t}
                   language={language}
                   resultsState={isSearchActive ? (searchResults.length > 0 ? 'loaded' : 'empty') : 'loading'}
@@ -600,7 +621,7 @@ const App: React.FC = () => {
             </>
           );
         case 'details':
-          return selectedMedicine && <MedicineDetail medicine={selectedMedicine} t={t} language={language} />;
+          return selectedMedicine && <MedicineDetail medicine={selectedMedicine} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} />;
         case 'alternatives':
           return sourceMedicine && alternativesResults && (
             <AlternativesView
@@ -609,6 +630,8 @@ const App: React.FC = () => {
               onMedicineSelect={handleMedicineSelect}
               onMedicineLongPress={handleOpenContextualAssistant}
               onFindAlternative={handleFindAlternative}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
               t={t}
               language={language}
             />
@@ -695,6 +718,8 @@ const App: React.FC = () => {
                         </>
                     )}
                     <button onClick={() => setView('chatHistory')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><HistoryIcon /><span>{t('chatHistory')}</span></button>
+                    <button onClick={() => setView('favorites')} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><div className="h-6 w-6 text-accent"><StarIcon isFilled /></div><span>{t('favorites')}</span></button>
+
                     {user?.role === 'admin' && (
                         <button onClick={handleAdminClick} className="w-full text-left flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><AdminIcon /><span>{t('adminDashboard')}</span></button>
                     )}
@@ -710,6 +735,17 @@ const App: React.FC = () => {
             return <AddGuidelinesDataView onImport={handleImportGuidelinesData} t={t} />;
         case 'admin':
             return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} /> : null;
+        case 'favorites':
+          return <FavoritesView
+              favoriteIds={favorites}
+              allMedicines={medicines}
+              onMedicineSelect={handleMedicineSelect}
+              onMedicineLongPress={handleOpenContextualAssistant}
+              onFindAlternative={handleFindAlternative}
+              toggleFavorite={toggleFavorite}
+              t={t}
+              language={language}
+            />;
         case 'chatHistory':
           return <ChatHistoryView
             conversations={conversations}
@@ -797,6 +833,7 @@ const App: React.FC = () => {
         onSaveAndClose={handleCloseAssistant}
         contextMedicine={assistantContextMedicine}
         allMedicines={medicines}
+        favoriteMedicines={favoriteMedicines}
         initialPrompt={assistantInitialPrompt}
         initialHistory={selectedConversation?.messages}
         t={t}

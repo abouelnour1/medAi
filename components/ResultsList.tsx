@@ -7,12 +7,14 @@ interface ResultsListProps {
   onMedicineSelect: (medicine: Medicine) => void;
   onMedicineLongPress: (medicine: Medicine) => void;
   onFindAlternative: (medicine: Medicine) => void;
+  favorites: string[];
+  onToggleFavorite: (medicineId: string) => void;
   t: TFunction;
   language: Language;
   resultsState: 'loading' | 'loaded' | 'empty';
 }
 
-const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language, resultsState }) => {
+const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language, resultsState, favorites, onToggleFavorite }) => {
   if (resultsState === 'empty') {
     return (
       <div className="text-center py-10 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm animate-fade-in" role="status">
@@ -31,6 +33,8 @@ const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, 
           onShortPress={() => onMedicineSelect(med)} 
           onLongPress={onMedicineLongPress}
           onFindAlternative={onFindAlternative}
+          isFavorite={favorites.includes(med.RegisterNumber)}
+          onToggleFavorite={onToggleFavorite}
           t={t} 
           language={language} 
         />

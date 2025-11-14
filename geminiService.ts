@@ -1,17 +1,14 @@
 import { GoogleGenAI, FunctionDeclaration, Part, GenerateContentResponse, Tool } from '@google/genai';
-// FIX: The ChatMessage type is defined locally in `../types` and is not exported from the `@google/genai` package.
 import { ChatMessage } from '../types';
 
-// --- ملاحظة أمنية ---
-// هذا الملف يتعامل مع جميع التفاعلات مع Google Gemini API.
-// يتم الحصول على مفتاح API من متغيرات البيئة.
-// في بيئة الإنتاج (مثل Vercel, Netlify, etc.)، يجب تحويل هذا الملف
-// إلى دالة serverless (API route) لضمان
-// عدم كشف مفتاح API للمتصفح من جانب العميل.
-// سيقوم الواجهة الأمامية بعد ذلك باستدعاء هذه الدالة بدلاً من استخدام هذه الخدمة مباشرة.
+// --- Security Note ---
+// This file handles all interactions with the Google Gemini API.
+// The API key is sourced from environment variables.
+// In a production environment (like Vercel, Netlify, etc.), this file
+// should be converted into a serverless function (API route) to ensure
+// the API key is not exposed on the client-side browser.
+// The frontend would then call this function instead of using this service directly.
 
-// هذا هو مفتاح API الذي ستحتاج إلى إضافته في إعدادات Vercel
-// FIX: Changed from import.meta.env.VITE_API_KEY to process.env.API_KEY as per Gemini API guidelines to resolve TypeScript error.
 const API_KEY = process.env.API_KEY;
 
 let ai: GoogleGenAI | null = null;
@@ -23,7 +20,7 @@ export const isAIAvailable = (): boolean => {
   return !!ai;
 };
 
-// دالة عامة لجميع محادثات الذكاء الاصطناعي
+// General-purpose AI chat function
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
@@ -56,11 +53,11 @@ export const runAIChat = async (
         { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult } }] }
       ];
 
-      // استدعاء النموذج مرة أخرى مع استجابة الأداة
+      // Call the model again with the tool response
       const secondResponse = await ai.models.generateContent({
         model: 'gemini-2.5-pro',
         contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: msg.parts })),
-        config: { systemInstruction }, // ملاحظة: الاستدعاء الثاني لا يحتاج إلى أدوات
+        config: { systemInstruction }, // Note: second call doesn't need tools
       });
 
       return secondResponse;

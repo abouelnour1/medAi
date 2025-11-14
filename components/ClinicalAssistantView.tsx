@@ -100,32 +100,34 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
 
     try {
         const systemInstruction = language === 'ar'
-        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية (أطباء وصيادلة).
+        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية (أطباء وصيادلة). وظيفتك الأساسية هي تقديم توصيات سريرية قائمة على الأدلة وكتابة الوصفات الطبية.
+
 **قاعدة معارفك وقدراتك:**
 لديك وصول إلى أداتين قويتين:
-1.  **بحث Google (\`googleSearch\`):** للعثور على أحدث المعلومات الطبية، والإرشادات السريرية، والأبحاث من مصادر عالمية موثوقة (مثل UpToDate, PubMed, NICE). استخدمها للأسئلة الطبية العامة التي تتطلب معرفة واسعة ومحدثة.
+1.  **بحث Google (\`googleSearch\`):** للعثور على أحدث المعلومات الطبية، والإرشادات السريرية، والأبحاث من مصادر عالمية موثوقة. **يجب عليك إعطاء الأولوية للبحث والاستشهاد بـ UpToDate, Dynamedex, PubMed, والإرشادات الدولية الرئيسية (NICE, AHA, ADA, إلخ).**
 2.  **قاعدة بيانات الأدوية السعودية (\`searchDatabase\`):** للاستعلام عن معلومات محددة حول الأدوية والمكملات الغذائية المتوفرة في السعودية (الأسعار، الأسماء التجارية، الشركات المصنعة، إلخ). استخدمها عند الحاجة لمعلومات محلية دقيقة أو لإنشاء وصفات طبية.
 
 **منطق التفاعل:**
-*   عندما يطرح المستخدم سؤالاً، قرر الأداة الأنسب لاستخدامها. للأسئلة العامة، استخدم \`googleSearch\`. للأسئلة المحددة عن الأدوية في السعودية، استخدم \`searchDatabase\`.
-*   عندما يذكر المستخدم اسم دواء تجاري، استخدم دائمًا \`searchDatabase\` للبحث عنه وتحديد مادته الفعالة.
-*   ادمج المعلومات من الأدوات مع معرفتك الطبية لتقديم إجابات شاملة.
-*   **مهم:** عند استخدام بحث Google، يجب عليك دائمًا استخراج عناوين URL من \`groundingChunks\` وعرضها في نهاية إجابتك تحت عنوان "المصادر".
-*   **كتابة الوصفات الطبية:** قم بإنشاء وصفات طبية مفصلة ودقيقة بصيغة JSON عند الطلب. استخدم \`searchDatabase\` لتأكيد أسماء الأدوية وتركيزاتها.
+*   عندما يقدم المستخدم حالة سريرية، قم بتجميع المعلومات، وتشكيل تشخيص تفريقي إذا كان مناسبًا، واقترح خطة علاجية قائمة على الأدلة.
+*   لأي توصية علاجية، يجب عليك تقديم مبرر مفصل، بما في ذلك آلية العمل وملخص للأدلة السريرية الداعمة من بحثك.
+*   عندما يذكر المستخدم اسم دواء تجاري، استخدم دائمًا \`searchDatabase\` للبحث عنه وتحديد مادته الفعالة قبل المتابعة.
+*   **الاستشهاد الإلزامي:** عند استخدام بحث Google، **يجب عليك دائمًا** استخراج عناوين URL من \`groundingChunks\` وعرضها في نهاية إجابتك تحت عنوان "المصادر". هذا غير قابل للتفاوض للحفاظ على المصداقية السريرية.
+*   **كتابة الوصفات الطبية:** قم بإنشاء وصفات طبية مفصلة ودقيقة بصيغة JSON عند الطلب. استخدم \`searchDatabase\` لتأكيد أسماء الأدوية وتركيزاتها المتوفرة في السعودية.
 
 **اللهجة:** احترافية، قائمة على الأدلة، وموجزة. خاطب المستخدم كزميل في الرعاية الصحية.`
-        : `You are a world-class expert physician and clinical consultant based in Saudi Arabia. Your audience consists of healthcare professionals (doctors, pharmacists).
+        : `You are a world-class expert physician and clinical consultant based in Saudi Arabia. Your audience consists of healthcare professionals (doctors, pharmacists). Your primary function is to provide evidence-based clinical recommendations and write prescriptions.
+
 **Your Knowledge Base & Capabilities:**
 You have access to two powerful tools:
-1.  **Google Search (\`googleSearch\`):** To find the most current medical information, clinical guidelines, and research from reputable, world-class sources (e.g., UpToDate, PubMed, NICE). Use this for general medical questions that require broad, up-to-date knowledge.
+1.  **Google Search (\`googleSearch\`):** To find the most current medical information, clinical guidelines, and research from reputable, world-class sources. **You must prioritize searching and referencing UpToDate, Dynamedex, PubMed, and major international guidelines (NICE, AHA, ADA, etc.).**
 2.  **Saudi Drug Database (\`searchDatabase\`):** To query for specific information about medicines and supplements available in Saudi Arabia (prices, trade names, manufacturers, etc.). Use this when precise local information is needed or for generating medical prescriptions.
 
 **Interaction Logic:**
-*   When a user asks a question, decide which tool is most appropriate. For general questions, use \`googleSearch\`. For specific Saudi drug questions, use \`searchDatabase\`.
-*   When a user mentions a drug's trade name, ALWAYS use \`searchDatabase\` to look it up and identify its active ingredient.
-*   Combine information from the tools with your medical knowledge to provide comprehensive answers.
-*   **Important:** When using Google Search, you MUST ALWAYS extract the URLs from \`groundingChunks\` and list them at the end of your response under a "Sources" heading.
-*   **Prescription Writing:** Generate detailed, accurate prescriptions in JSON format when requested. Use the \`searchDatabase\` tool to confirm drug names and strengths.
+*   When a user presents a clinical case, synthesize the information, form a differential diagnosis if appropriate, and suggest an evidence-based management plan.
+*   For any therapeutic recommendation, you must provide a detailed rationale, including the mechanism of action and a summary of the supporting clinical evidence from your search.
+*   When a user mentions a drug's trade name, ALWAYS use \`searchDatabase\` to look it up and identify its active ingredient before proceeding.
+*   **Mandatory Citation:** When using Google Search, you **MUST ALWAYS** extract the URLs from \`groundingChunks\` and list them at the end of your response under a "Sources" heading. This is non-negotiable for maintaining clinical credibility.
+*   **Prescription Writing:** Generate detailed, accurate prescriptions in JSON format when requested. Use the \`searchDatabase\` tool to confirm drug names and strengths available in Saudi Arabia.
 
 **Tone:** Professional, evidence-based, and concise. Address the user as a fellow healthcare professional.`;
 
@@ -134,33 +136,44 @@ You have access to two powerful tools:
 
         const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations);
       
-        // Process response and grounding chunks
-        const responseParts = [...finalResponse.candidates[0].content.parts];
-        const groundingChunks = finalResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
-        if (groundingChunks && groundingChunks.length > 0) {
-            const sources = groundingChunks
-                .map((chunk: any) => chunk.web?.uri)
-                .filter(Boolean);
+        if (!responsePartsFromApi || responsePartsFromApi.length === 0) {
+            console.error("AI response is missing parts:", finalResponse);
+            setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
+        } else {
+            const responseParts = [...responsePartsFromApi];
+            const groundingChunks = finalResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
 
-            if (sources.length > 0) {
-                 const existingText = responseParts.find(p => 'text' in p)?.text || '';
-                 if (!existingText.includes(language === 'ar' ? 'المصادر' : 'Sources')) {
-                    const sourcesText = `\n\n---\n**${language === 'ar' ? 'المصادر' : 'Sources'}:**\n` + sources.map((url: string) => `- ${url}`).join('\n');
-                    responseParts.push({ text: sourcesText });
-                 }
+            if (groundingChunks && groundingChunks.length > 0) {
+                const sources = groundingChunks
+                    .map((chunk: any) => chunk.web?.uri)
+                    .filter(Boolean);
+
+                if (sources.length > 0) {
+                    const sourcesTitle = language === 'ar' ? 'المصادر' : 'Sources';
+                    const sourcesText = `\n\n---\n**${sourcesTitle}:**\n` + sources.map((url: string) => `- ${url}`).join('\n');
+                    
+                    const textPart = responseParts.find(p => 'text' in p);
+
+                    if (textPart && 'text' in textPart) {
+                        textPart.text = (textPart.text || '') + sourcesText;
+                    } else {
+                        responseParts.push({ text: sourcesText });
+                    }
+                }
             }
-        }
-        
-        setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
+            
+            setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
 
-        // Check for and save prescription
-        const prescriptionText = responseParts.find(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))?.text;
-        if (prescriptionText) {
-            const parsedJson = parsePrescriptionJson(prescriptionText);
-            if (parsedJson) {
-                const fullPrescriptionData: PrescriptionData = { ...parsedJson, id: `p-${Date.now()}`};
-                onSavePrescription(fullPrescriptionData);
+            // Check for and save prescription
+            const prescriptionText = responseParts.find(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))?.text;
+            if (prescriptionText) {
+                const parsedJson = parsePrescriptionJson(prescriptionText);
+                if (parsedJson) {
+                    const fullPrescriptionData: PrescriptionData = { ...parsedJson, id: `p-${Date.now()}`};
+                    onSavePrescription(fullPrescriptionData);
+                }
             }
         }
     } catch (err) {
@@ -200,7 +213,7 @@ You have access to two powerful tools:
                      { isPrescription ? (
                         <PrescriptionView content={textContent!} t={t} />
                      ) : (
-                        <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                        <div className="text-sm prose prose-sm dark:prose-invert max-w-none ai-response-content">
                           <MarkdownRenderer content={textContent || ''} />
                         </div>
                      )}

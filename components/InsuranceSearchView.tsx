@@ -65,6 +65,7 @@ const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
             searchTerm={props.insuranceSearchTerm}
             setSearchTerm={props.setInsuranceSearchTerm}
             searchMode={props.insuranceSearchMode}
+            // FIX: The prop received by this component is `setInsuranceSearchMode`, but the child component expects `setSearchMode`.
             setSearchMode={props.setInsuranceSearchMode}
         />
       ) : (

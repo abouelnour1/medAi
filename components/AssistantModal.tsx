@@ -1,20 +1,22 @@
 
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FunctionDeclaration, Type, Part } from '@google/genai';
-import { Medicine, TFunction, Language, ChatMessage } from '../types';
+import { FunctionDeclaration, Type, Part, Tool } from '@google/genai';
+import { Medicine, TFunction, Language, ChatMessage, Recommendation, ProductSuggestion } from '../types';
 import { TranslationKeys } from '../translations';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';
 import MarkdownRenderer from './MarkdownRenderer';
 import PrescriptionView from './PrescriptionView';
 import { runAIChat, isAIAvailable } from '../geminiService';
+import RecommendationCard from './RecommendationCard';
 
 interface AssistantModalProps {
   isOpen: boolean;
   onSaveAndClose: (history: ChatMessage[]) => void;
   contextMedicine: Medicine | null;
   allMedicines: Medicine[];
+  favoriteMedicines: Medicine[];
   initialPrompt: string;
   initialHistory?: ChatMessage[];
   t: TFunction;
@@ -34,7 +36,49 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
   });
 };
 
-const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose, contextMedicine, allMedicines, initialPrompt, initialHistory, t, language }) => {
+const parseRecommendations = (text: string): { recommendations: Recommendation[], remainingText: string } => {
+  const recommendations: Recommendation[] = [];
+  const recommendationRegex = /<recommendation>([\s\S]*?)<\/recommendation>/g;
+  
+  const extractField = (content: string, field: string): string => {
+    const regex = new RegExp(`<${field}>([\\s\\S]*?)<\\/${field}>`);
+    const match = content.match(regex);
+    return match ? match[1].trim() : '';
+  };
+
+  let remainingText = text.replace(recommendationRegex, (match, recommendationContent) => {
+    const productsRegex = /<products>([\s\S]*?)<\/products>/g;
+    const productsContentMatch = recommendationContent.match(productsRegex);
+    const products: ProductSuggestion[] = [];
+
+    if (productsContentMatch) {
+      const productsContent = productsContentMatch[0];
+      const productRegex = /<product>([\s\S]*?)<\/product>/g;
+      productsContent.replace(productRegex, (productMatch, productContent) => {
+        products.push({
+          name: extractField(productContent, 'name'),
+          concentration: extractField(productContent, 'concentration'),
+          price: extractField(productContent, 'price'),
+          selling_point: extractField(productContent, 'selling_point'),
+        });
+        return ''; // remove from string
+      });
+    }
+
+    recommendations.push({
+      category: extractField(recommendationContent, 'category'),
+      rationale: extractField(recommendationContent, 'rationale'),
+      products: products,
+    });
+
+    return ''; // Remove the parsed recommendation from the text
+  }).trim();
+
+  return { recommendations, remainingText };
+};
+
+
+const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose, contextMedicine, allMedicines, favoriteMedicines, initialPrompt, initialHistory, t, language }) => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState('');
   const [uploadedImage, setUploadedImage] = useState<{ blob: Blob, preview: string, mimeType: string } | null>(null);
@@ -66,8 +110,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
       },
     },
   };
-
-  const tools: FunctionDeclaration[] = [searchDatabaseTool];
 
   const searchDatabase = useCallback((args: {
     tradeName?: string;
@@ -339,109 +381,68 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
     
     setIsLoading(true);
     
-    const systemInstructionAr = `أنت مساعد طبي خبير ومحترف، متخصص في الأدوية والمكملات الغذائية، وموجّه للأطباء والصيادلة في المملكة العربية السعودية.
-هدفك هو تقديم إجابات دقيقة واحترافية مبنية على:
-- قاعدة بيانات دليل الدواء السعودي التي تحتوي على الأدوية والمكملات الغذائية، والمتاحة لك عبر أداة البحث 'searchDatabase'.
-- أحدث المراجع والـ guidelines العالمية مثل (WHO, FDA, EMA, NICE, UpToDate, PubMed, Medscape, DynaMedex).
-- البحث في الإنترنت والمصادر الموثوقة عند الحاجة لتحديث المعلومات أو التحقق منها.
+    const favoriteMedicinesListAr = favoriteMedicines.length > 0
+        ? favoriteMedicines.map(med => `- ${med['Trade Name']} (${med['Scientific Name']})`).join('\n')
+        : 'لا توجد أدوية في المفضلة حالياً.';
+        
+    const favoriteMedicinesListEn = favoriteMedicines.length > 0
+        ? favoriteMedicines.map(med => `- ${med['Trade Name']} (${med['Scientific Name']})`).join('\n')
+        : 'No favorite medicines currently.';
 
-**خبرة المبيعات والمقارنات:** عند طلب مقارنات أو بدائل أو نقاط بيع، يجب أن تتصرف كخبير مبيعات صيدلانية ذي معرفة علمية عميقة.
-- **نقاط البيع:** حدد المزايا الفريدة للدواء. قد تكون تركيبته (امتصاص أسرع، آثار جانبية أقل)، استطبابات معتمدة خاصة، سمعة العلامة التجارية، راحة المريض (جرعة يومية واحدة)، أو سعر أفضل.
-- **البيع الأعلى (Upselling):** اقترح بديلاً أكثر تميزًا أو فعالية (من نفس الفئة أو فئة مختلفة) وقدم مبررًا واضحًا ومبنيًا على الأدلة لسبب كون الترقية مفيدة لحالة مريض معينة.
-- **البيع المتقاطع (Cross-selling):** أوصِ بمنتجات تكميلية يمكن بيعها مع الدواء الأساسي. على سبيل المثال، بروبيوتيك مع مضاد حيوي، أو واقي شمسي مع دواء يسبب حساسية للضوء.
-- **التحليل المقارن:** عند المقارنة مع البدائل، لا تسرد الحقائق فقط. قم بتوليف المعلومات. اشرح *لماذا* قد يختار الطبيب الدواء "أ" بدلاً من "ب" لمريض معين. سلط الضوء على الفروقات الرئيسية بطريقة مقنعة. ادمج الحقائق العلمية مع الحجج البيعية العملية.
+    let systemInstructionAr = `أنت صيدلي سريري وخبير معلومات طبية على أعلى مستوى. جمهورك حصرياً من متخصصي الرعاية الصحية (أطباء وصيادلة) في المملكة العربية السعودية. يجب أن تكون إجاباتك دائمًا قائمة على الأدلة، احترافية، مفصلة، وموضوعية.
 
-دورك:
-- تعمل كمستشار خبير في علم الأدوية السريري والمعلومات الدوائية والمكملات الغذائية.
-- بناءً على سؤال المستخدم، تحدد ما إذا كانت الإجابة تتطلب معلومات عن الأدوية، أو المكملات الغذائية، أو كليهما.
-- إذا كانت الإجابة تتطلب كليهما، يجب عليك دائمًا تقديم معلومات الأدوية أولاً، تليها معلومات المكملات الغذائية في قسم منفصل وواضح.
-- تشرح بطريقة علمية دقيقة، مختصرة، ومنظمة للأطباء والصيادلة.
-- تفرّق بين الاسم التجاري والاسم العلمي والـ generic substitution المتاح داخل السعودية.
-- توضّح الاستطبابات، الجرعات، الموانع، التداخلات الدوائية، الآثار الجانبية، والتحذيرات الخاصة حسب الفئة العمرية أو المرضية.
+**التوجيهات الأساسية:**
+1.  **الأدلة أولاً:** لأي معلومة سريرية، توصيات، آليات عمل، أو نصيحة علاجية، **يجب** عليك البحث والاستشهاد بمراجع طبية عالية الجودة ومعترف بها دوليًا.
+2.  **المصادر المعتمدة:** أعطِ الأولوية للمعلومات من: UpToDate, Dynamedex, PubMed, NIH, NICE guidelines, وأدلة الممارسة السريرية الرئيسية (مثل من AHA, ADA, ESC). استخدم أداة \`googleSearch\` للعثور على هذه المعلومات.
+3.  **الاستشهاد الإلزامي:** بعد كل إجابة تحتوي على معلومات سريرية، **يجب** عليك تضمين قسم "المراجع" في النهاية، يسرد عناوين URL للمصادر التي استخدمتها. يتم تزويدك بعناوين URL هذه في بيانات \`groundingChunks\` الوصفية من استدعاءات أداة \`googleSearch\`.
 
-أداة البحث 'searchDatabase':
-لديك أداة قوية جداً اسمها 'searchDatabase'. هذه الأداة تمكنك من البحث في قاعدة البيانات عن الأدوية والمكملات الغذائية باستخدام معايير متعددة في نفس الوقت. يمكنك البحث بالاسم التجاري، المادة الفعالة، الشكل الصيدلاني، الشركة المصنّعة، السعر (أدنى وأقصى)، الحالة القانونية، ونوع المنتج ('medicine' أو 'supplement'). استخدم هذه الأداة للإجابة على أسئلة معقدة مثل "ابحث عن كل الأقراص التي تحتوي على مادة الباراسيتامول وسعرها أقل من 10 ريال سعودي" أو "ما هي المكملات الغذائية التي تصنعها شركة جلفار؟".
-عندما يطلب المستخدم "بديل أرخص"، عليك أولاً البحث عن الدواء الأصلي لمعرفة مادته الفعالة وسعره، ثم استخدام أداة 'searchDatabase' مرة أخرى للبحث عن منتجات بنفس المادة الفعالة وبسعر أقصى يكون أقل من سعر المنتج الأصلي.
+**منطق التفاعل والأدوات:**
+-   **\`googleSearch\`:** استخدمها كأداتك الأساسية للبحث في الأسئلة السريرية والعثور على أدلة من المصادر المعتمدة.
+-   **\`searchDatabase\`:** استخدم هذه الأداة خصيصًا عندما تحتاج إلى معلومات حول الأدوية المتوفرة في السوق السعودي (مثل الأسماء التجارية والأسعار) أو لتأكيد التفاصيل لوصفة طبية.
+-   **قائمة المفضلة:** قدم المستخدم قائمة بأدويته المفضلة. عند تقديم توصيات لمنتجات معينة، أعطِ الأولوية لهذه القائمة إذا كانت مناسبة سريريًا، ولكن واجبك الأساسي هو تقديم أفضل توصية قائمة على الأدلة، بغض النظر عن هذه القائمة.
+    - **قائمة الأدوية المفضلة للمستخدم:**
+      ${favoriteMedicinesListAr}
 
-**المرونة في البحث:** عند استخدام أداة 'searchDatabase'، كن مرنًا مع أسماء الأدوية التي يدخلها المستخدم. قد يكتب المستخدم اسمًا غير كامل، أو يحتوي على أخطاء إملائية، أو يستخدم اختصارًا. مهمتك هي تفسير قصده بأفضل شكل ممكن. على سبيل المثال، إذا كتب المستخدم "بنادول اكستر"، يجب أن تفهم أنه يقصد "Panadol Extra" وتبحث عنه. إذا لم تكن متأكدًا، يمكنك البحث عن الجزء الذي يبدو صحيحًا من الاسم.
+**البيع المتقاطع والبيع الأعلى (يتطلب مبررًا سريريًا احترافيًا):**
+-   عندما يُطلب منك البيع المتقاطع أو الأعلى، قدم مبررًا سريريًا عميقًا لكل اقتراح.
+-   **اشرح الآلية:** فصل آلية العمل الدوائية أو الفسيولوجية للتوصية.
+-   **قدم الأدلة:** لخص الأدلة السريرية التي تدعم استخدامه في السياق المحدد.
+-   **مثال:** لمريض يتناول ستاتين، لا تقل فقط "اقترح CoQ10". اشرح: "تثبط الستاتينات إنزيم HMG-CoA reductase، والذي يمكن أن يقلل أيضًا من التخليق الداخلي لـ Coenzyme Q10. تشير بعض الدراسات القائمة على الملاحظة والتجارب الصغيرة إلى أن مكملات CoQ10 قد تساعد في تخفيف أعراض العضلات المرتبطة بالستاتين (SAMS)، على الرغم من أن بيانات التجارب العشوائية الكبيرة مختلطة. الجرعة المعتادة هي 100-200 مجم يوميًا. [اذكر المصادر]".
+-   **قاعدة:** إذا كان المنتج الأساسي دواءً، فيجب أن تكون جميع الاقتراحات من المكملات الغذائية/الأعشاب.
 
-**طلبات المقارنة:**
-عندما يُطلب منك مقارنة بين منتجين (دواء أو مكمل)، يجب أن تتبع الخطوات التالية:
-1.  استخدم أداة \`searchDatabase\` مرتين، مرة لكل منتج، للحصول على المعلومات المتوفرة في قاعدة البيانات.
-2.  أنشئ جدول مقارنة بصيغة Markdown.
-3.  املأ الجدول بالمعلومات التي حصلت عليها من قاعدة البيانات أولاً (الاسم التجاري، المادة الفعالة، السعر، الشكل الصيدلاني، نوع المنتج).
-4.  أكمل الجدول بمعلومات من معرفتك العامة (الاستخدامات، الآثار الجانبية).
-5.  **حالة خاصة:** إذا كان للمنتجين نفس المادة الفعالة، أضف قسماً بعنوان "الفروقات الرئيسية" تحت الجدول وركز فيه على الفروقات في الشكل الصيدلANI أو التركيزات المتاحة.
+**تنسيق الإجابة:**
+-   استخدم لغة واضحة واحترافية.
+-   نظم إجاباتك باستخدام عناوين markdown (مثل \`### آلية العمل\`، \`### الأدلة السريرية\`، \`### الجرعات\`).
+-   لا تستخدم الرموز التعبيرية أو نبرة محادثة بشكل مفرط.
+-   **دائمًا** اختتم بقسم "المراجع" إذا استخدمت \`googleSearch\`.`;
 
-القواعد الأساسية:
-- أجب على سؤال المستخدم مباشرة أولاً وبشكل مختصر في بداية ردك، ثم قدم تفاصيل إضافية واستفاضة بعد ذلك.
-- كن دقيقًا جدًا في كل معلومة دوائية أو عن المكملات.
-- استخدم دائمًا المصادر العلمية الحديثة أو الأدلة الإرشادية الرسمية.
-- لا تقدّم أي نصيحة علاجية موجهة للمريض مباشرة، بل المعلومات موجهة فقط لمتخصصين.
-- استخدم اللغة العربية الطبية الاحترافية، مع ذكر المصطلحات الإنجليزية بين قوسين عند الحاجة.
+    let systemInstructionEn = `You are an expert-level clinical pharmacist and medical information specialist. Your audience is exclusively healthcare professionals (physicians, pharmacists) in Saudi Arabia. Your responses must always be evidence-based, professional, detailed, and objective.
 
-نمط الإجابة المطلوب:
-🧩 اسم المنتج العلمي (التجاري)
-💊 التصنيف: (دوائي أو مكمل غذائي)
-🩺 الاستخدامات المعتمدة:
-⚖️ الجرعات المعتادة:
-⚠️ التحذيرات والموانع:
-🔄 التداخلات:
-🌍 المراجع: (اذكر المرجع العلمي أو الجايد المستخدم)
+**Core Directives:**
+1.  **Evidence is Paramount:** For any clinical information, recommendations, mechanisms of action, or therapeutic advice, you **must** find and cite high-quality, internationally recognized medical references.
+2.  **Approved Sources:** Prioritize information from: UpToDate, Dynamedex, PubMed, NIH, NICE guidelines, and major clinical practice guidelines (e.g., from AHA, ADA, ESC). Use the \`googleSearch\` tool to find this information.
+3.  **Mandatory Citation:** After every response containing clinical information, you **must** include a "References" section at the end, listing the URLs of the sources you used. These URLs are provided to you in the \`groundingChunks\` metadata from your \`googleSearch\` tool calls.
 
-أجب دائمًا بأسلوب الخبير، وليس كمساعد عام.`;
+**Interaction Logic & Tools:**
+-   **\`googleSearch\`:** Use this as your primary tool to research clinical questions and find evidence from the approved sources.
+-   **\`searchDatabase\`:** Use this tool specifically when you need information about drugs available in the Saudi market (e.g., trade names, prices) or to confirm details for a prescription.
+-   **Favorites List:** The user has provided a list of their favorite medicines. When making recommendations for specific products, prioritize these if clinically appropriate, but your primary duty is to provide the best evidence-based recommendation, regardless of this list.
+    - **User's Favorite Medicines:**
+      ${favoriteMedicinesListEn}
 
-    const systemInstructionEn = `You are an expert and professional medical assistant, specializing in pharmaceuticals and nutritional supplements, targeted at doctors and pharmacists in Saudi Arabia.
-Your goal is to provide accurate and professional answers based on:
-1. The Saudi Drug Index database, which contains both medicines and supplements, available to you via the 'searchDatabase' tool.
-2. The latest international references and guidelines such as (WHO, FDA, EMA, NICE, UpToDate, PubMed, Medscape, DynaMedex).
-3. Searching the internet and reliable sources when needed to update or verify information.
+**Cross-Selling & Upselling (Professional Rationale Required):**
+-   When asked for cross-selling or upselling, provide a deep clinical rationale for each suggestion.
+-   **Explain the Mechanism:** Detail the pharmacological or physiological reason for the recommendation.
+-   **Provide the Evidence:** Summarize the clinical evidence supporting its use in the given context.
+-   **Example:** For a patient on a statin, don't just say "suggest CoQ10". Explain: "Statins inhibit HMG-CoA reductase, which can also reduce the endogenous synthesis of Coenzyme Q10. Some observational studies and small trials suggest that CoQ10 supplementation may help mitigate statin-associated muscle symptoms (SAMS), although large RCT data is mixed. A typical dose is 100-200mg daily. [Cite sources]".
+-   **Rule:** If the primary product is a medicine, all suggestions must be supplements/herbals.
 
-**Sales & Comparison Expertise:** When asked for comparisons, alternatives, or selling points, you must act as an expert pharmaceutical sales representative with deep scientific knowledge.
-- **Selling Points:** Identify unique advantages of a drug. This could be its formulation (e.g., faster absorption, fewer side effects), specific approved indications, brand reputation, patient convenience (e.g., once-daily dosing), or a better price point.
-- **Upselling:** Suggest a more premium or effective alternative (from the same or different class) and provide a clear, evidence-based rationale for why the upgrade is beneficial for a specific patient profile.
-- **Cross-selling:** Recommend complementary products that can be sold alongside the primary drug. For example, a probiotic with an antibiotic, or a sunscreen with a photosensitizing drug.
-- **Comparative Analysis:** When comparing with alternatives, don't just list facts. Synthesize the information. Explain *why* a doctor might choose drug A over drug B for a particular patient. Highlight the key differentiators in a compelling way. Combine scientific facts with practical sales arguments.
+**Response Format:**
+-   Use clear, professional language.
+-   Structure your answers with markdown headings (e.g., \`### Mechanism of Action\`, \`### Clinical Evidence\`, \`### Dosing\`).
+-   Do not use emojis or an overly conversational tone.
+-   **Always** end with the "References" section if you used \`googleSearch\`.`;
 
-Your Role:
-- Act as an expert consultant in Clinical Pharmacology, Drug Information, and Nutritional Supplements.
-- Based on the user's query, you determine whether the answer requires information about medicines, supplements, or both.
-- If the answer requires both, you must always present information about medicines first, followed by information about supplements in a separate, clearly marked section.
-- Explain in a scientifically accurate, concise, and organized manner for doctors and pharmacists.
-- Differentiate between trade names, scientific names, and generic substitutions available within Saudi Arabia.
-- Clarify indications, dosages, contraindications, drug interactions, side effects, and special warnings according to age or patient group.
-
-'searchDatabase' Tool:
-You have a very powerful tool called 'searchDatabase'. This tool allows you to search the database for both medicines and supplements using multiple criteria at the same time. You can search by trade name, active ingredient, pharmaceutical form, manufacturer, price (min and max), legal status, and product type ('medicine' or 'supplement'). Use this tool to answer complex questions like "Find all tablets containing paracetamol that cost less than 10 SAR" or "What supplements are manufactured by Julphar?".
-When the user asks for a "cheaper alternative", you must first find the original product to get its active ingredient and price, then use the 'searchDatabase' tool again to search for products with the same active ingredient and a 'maxPrice' lower than the original product's price.
-
-**Search Flexibility:** When using the 'searchDatabase' tool, be flexible with the drug names provided by the user. The user might type an incomplete name, have spelling mistakes, or use an abbreviation. Your task is to interpret their intent as best as possible. For example, if a user types "panadol xtra", you should search for "Panadol Extra". If they type "augmntin", you should recognize it as "Augmentin". If you are unsure, you can search for the part of the name that seems correct.
-
-**Comparison Requests:**
-When asked to compare two products (drug or supplement), you must follow these steps:
-1.  Use the \`searchDatabase\` tool twice, once for each product, to get available information from the database.
-2.  Create a comparison table in Markdown format.
-3.  Populate the table with information obtained from the database first (Trade Name, Active Ingredient, Price, Pharmaceutical Form, Product Type).
-4.  Complete the table with information from your general knowledge (Indications, Side Effects).
-5.  **Special Case:** If both products have the same Active Ingredient, add a "Key Differences" section below the table and focus on the differences in their dosage forms or available strengths.
-
-Core Rules:
-- Answer the user's question directly and concisely at the very beginning of your response, then provide additional details and elaboration.
-- Be extremely precise with all drug and supplement information.
-- Always use modern scientific sources or official guidelines.
-- Do not provide any therapeutic advice directly to patients; the information is for professionals only.
-- Use professional medical English.
-
-Required Response Format:
-🧩 Scientific Name (Trade Name)
-💊 Classification: (Pharmaceutical or Supplement)
-🩺 Approved Uses:
-⚖️ Usual Dosages:
-⚠️ Warnings & Contraindications:
-🔄 Interactions:
-🌍 References: (Cite the scientific reference or guideline used)
-
-Always answer in the style of an expert, not a general assistant.`;
 
     const prescriptionSystemInstructionAr = `أنت مساعد ذكاء اصطناعي تقوم بدور طبيب في المملكة العربية السعودية، ومهمتك هي إنشاء وصفة طبية رسمية بتنسيق JSON.
 - عند طلب المستخدم لوصفة، قم **فوراً** بإنشاء كائن JSON للوصفة، بدون أي خطوات تأكيد مسبقة.
@@ -540,8 +541,39 @@ Always answer in the style of an expert, not a general assistant.`;
 
     try {
         const toolImplementations = { searchDatabase: searchDatabase };
-        const finalResponse = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: tools}], toolImplementations);
-        setChatHistory(prev => [...prev, { role: 'model', parts: finalResponse.candidates[0].content.parts }]);
+        const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }, { googleSearch: {} }];
+        const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations);
+        const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
+
+        if (responsePartsFromApi && responsePartsFromApi.length > 0) {
+            const responseParts = [...responsePartsFromApi];
+            const groundingChunks = finalResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
+
+            if (groundingChunks && groundingChunks.length > 0) {
+                const sources = groundingChunks
+                    .map((chunk: any) => chunk.web?.uri)
+                    .filter(Boolean);
+
+                if (sources.length > 0) {
+                    const sourcesTitle = language === 'ar' ? 'المراجع' : 'References';
+                    const sourcesText = `\n\n---\n**${sourcesTitle}:**\n` + sources.map((url: string) => `- ${url}`).join('\n');
+                    
+                    const textPart = responseParts.find(p => 'text' in p);
+
+                    if (textPart && 'text' in textPart) {
+                        // Append to existing text part
+                        textPart.text = (textPart.text || '') + sourcesText;
+                    } else {
+                        // Or create a new part if none exists
+                        responseParts.push({ text: sourcesText });
+                    }
+                }
+            }
+            setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
+        } else {
+            console.error("AI response is missing parts:", finalResponse);
+            setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
+        }
     } catch (err) {
       console.error("AI service error:", err);
       if (err instanceof Error && err.message.includes('API_KEY is missing')) {
@@ -552,7 +584,7 @@ Always answer in the style of an expert, not a general assistant.`;
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, contextMedicine, isPrescriptionMode, language, t, searchDatabase, tryLocalAnswer, allMedicines, uploadedImage, tools]);
+  }, [userInput, isLoading, chatHistory, contextMedicine, isPrescriptionMode, language, t, searchDatabase, tryLocalAnswer, allMedicines, uploadedImage, favoriteMedicines]);
   
   // This effect keeps the ref pointing to the latest version of the function.
   useEffect(() => {
@@ -702,40 +734,43 @@ Always answer in the style of an expert, not a general assistant.`;
             </div>
           )}
           {aiAvailable && chatHistory.map((msg, index) => {
-             const textContent = msg.parts.find(p => 'text' in p && p.text)?.text;
+             const textContent = msg.parts.find(p => 'text' in p && p.text)?.text || '';
              const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
+             const { recommendations, remainingText } = isPrescription ? { recommendations: [], remainingText: '' } : parseRecommendations(textContent);
 
             return (
                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'model' && <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary"><AssistantIcon /></div>}
-                  <div className={`max-w-md rounded-2xl shadow-sm flex flex-col gap-2 ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none p-3' : `bg-gray-100 dark:bg-slate-700 text-light-text dark:text-dark-text rounded-bl-none ${isPrescription ? 'p-0' : 'p-3'}`}`}>
+                  <div className={`max-w-md rounded-2xl shadow-sm flex flex-col gap-2 ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none p-3 w-fit' : `bg-gray-100 dark:bg-slate-700 text-light-text dark:text-dark-text rounded-bl-none ${isPrescription || recommendations.length > 0 ? 'p-0' : 'p-3'}`}`}>
                      { isPrescription ? (
-                        <PrescriptionView content={textContent!} t={t} />
+                        <PrescriptionView content={textContent} t={t} />
                      ) : (
-                         msg.parts.map((part, pIndex) => {
-                            if ('text' in part && part.text) {
-                                return (
-                                     <div 
-                                        key={pIndex} 
-                                        className="text-sm prose prose-sm dark:prose-invert max-w-none"
-                                        style={{
-                                            '--tw-prose-body': 'inherit',
-                                            '--tw-prose-headings': 'inherit',
-                                            '--tw-prose-bold': 'inherit',
-                                            '--tw-prose-bullets': 'inherit',
-                                            '--tw-prose-counters': 'inherit',
-                                        } as React.CSSProperties}
-                                    >
-                                        <MarkdownRenderer content={part.text} />
-                                    </div>
-                                );
-                            }
+                        <>
+                          {remainingText && (
+                             <div 
+                                className="text-sm prose prose-sm dark:prose-invert max-w-none p-3 ai-response-content"
+                                style={{
+                                    '--tw-prose-body': 'inherit',
+                                    '--tw-prose-headings': 'inherit',
+                                    '--tw-prose-bold': 'inherit',
+                                    '--tw-prose-bullets': 'inherit',
+                                    '--tw-prose-counters': 'inherit',
+                                } as React.CSSProperties}
+                            >
+                                <MarkdownRenderer content={remainingText} />
+                            </div>
+                          )}
+                          {recommendations.map((rec, recIndex) => (
+                              <RecommendationCard key={recIndex} recommendation={rec} t={t} />
+                          ))}
+                         {msg.parts.filter(p => 'inlineData' in p).map((part, pIndex) => {
                             if ('inlineData' in part && part.inlineData) {
                                 const src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
                                 return <img key={pIndex} src={src} alt="User upload" className="max-w-xs rounded-lg" />
                             }
                             return null;
-                         })
+                         })}
+                        </>
                      )}
                   </div>
                 </div>

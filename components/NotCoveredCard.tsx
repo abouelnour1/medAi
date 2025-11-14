@@ -1,7 +1,7 @@
 
+
 import React from 'react';
 import { TFunction, Medicine } from '../types';
-import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
 
 const NotCoveredCard: React.FC<{ medicine: Medicine, t: TFunction }> = ({ medicine, t }) => {
     const price = parseFloat(medicine['Public price']);

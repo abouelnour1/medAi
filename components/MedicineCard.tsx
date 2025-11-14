@@ -3,12 +3,15 @@ import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
 import FactoryIcon from './icons/FactoryIcon';
+import StarIcon from './icons/StarIcon';
 
 interface MedicineCardProps {
   medicine: Medicine;
   onShortPress: () => void;
   onLongPress: (medicine: Medicine) => void;
   onFindAlternative: (medicine: Medicine) => void;
+  isFavorite: boolean;
+  onToggleFavorite: (medicineId: string) => void;
   t: TFunction;
   language: Language;
 }
@@ -37,7 +40,7 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 };
 
 
-const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, t, language }) => {
+const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, isFavorite, onToggleFavorite, t, language }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = useRef<number | undefined>(undefined);
   const startCoords = useRef({ x: 0, y: 0 });
@@ -133,11 +136,22 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                     {medicine.Strength} {medicine.StrengthUnit}
                 </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
                 <div className="flex items-center gap-1.5 min-w-0 text-light-text-secondary dark:text-dark-text-secondary">
                     <PillIcon />
                     <span className="truncate" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
                 </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(medicine.RegisterNumber);
+                    }}
+                    className={`p-1.5 transition-colors rounded-full ${isFavorite ? 'text-accent hover:text-amber-500' : 'text-gray-400 hover:text-accent'}`}
+                    title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                    aria-label={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                >
+                   <div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div>
+                </button>
                 <button
                     onClick={(e) => {
                         e.stopPropagation();

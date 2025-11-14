@@ -120,7 +120,7 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
 3.  **الأهم**، إذا كان استعلام المستخدم يتضمن أدوية، استخدم أداة \`searchDrugDatabase\` للعثور على منتجات محددة متوفرة في السوق السعودي تطابق المواد الفعالة المغطاة. هذا يجعل إجابتك عملية.
 4.  قدم المعلومات بتنسيق markdown واضح ومنظم. **اجعل التشخيص (Indication) ورمز ICD-10 بالخط العريض** لتسهيل القراءة. استخدم العناوين والقوائم والنص العريض.
 5.  إذا وجدت أدوية ذات صلة باستخدام الأداة، اذكر أسماءها التجارية، وأسماءها العلمية، وأسعارها.
-6.  إذا لم تتمكن من العثور على معلومات، وضح ذلك بصراحة.
+6.  إذا لم يتم العثور على دواء معين في قواعد التغطية، يجب أن تذكر أنه غير مغطى. **لا تقترح أدوية بديلة.** إذا لم تتمكن من العثور على معلومات حول حالة ما، وضح ذلك بصراحة.
 7.  أجب دائمًا بلغة استعلام المستخدم (العربية/الإنجليزية).`
 :
 `You are a specialized AI assistant acting as a Saudi Arabian Medical Insurance Guide. Your role is to help healthcare professionals understand drug coverage based on medical indications and ICD-10 codes.
@@ -152,7 +152,7 @@ Answer the user's question clearly and comprehensively. The user might ask about
 3.  **Crucially**, if the user's query involves drugs, use the \`searchDrugDatabase\` tool to find specific products available in the Saudi market that match the covered active ingredients. This makes your answer practical.
 4.  Present the information in a clear, structured markdown format. **Bold the Indication/Diagnosis and the ICD-10 Code** for readability. Use headings, lists, and bold text.
 5.  If you find relevant drugs using the tool, list their trade names, scientific names, and prices.
-6.  If you can't find information, state that clearly.
+6.  If a specific drug is not found in the coverage rules, you should state that it is not covered. **Do not suggest alternative medications.** If you can't find information about a condition, state that clearly.
 7.  Always respond in the language of the user's query (Arabic/English).`;
 
     try {
@@ -163,8 +163,14 @@ Answer the user's question clearly and comprehensively. The user might ask about
         [{ functionDeclarations: [searchDrugDatabaseTool] }], 
         toolImplementations
       );
-      setChatHistory(prev => [...prev, { role: 'model', parts: finalResponse.candidates[0].content.parts }]);
-
+      const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
+      if (responseParts && responseParts.length > 0) {
+          setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
+      } else {
+          console.error("AI response is missing parts:", finalResponse);
+          const errorMsg = { role: 'model', parts: [{ text: t('geminiError') }] } as ChatMessage;
+          setChatHistory(prev => [...prev, errorMsg]);
+      }
     } catch (err) {
       console.error("AI service error:", err);
       if (err instanceof Error && err.message.includes('API_KEY is missing')) {
@@ -202,7 +208,7 @@ Answer the user's question clearly and comprehensively. The user might ask about
                   {msg.role === 'model' && <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary"><AssistantIcon /></div>}
                   <div className={`max-w-md rounded-2xl shadow-sm p-3 ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-gray-100 dark:bg-slate-700 text-light-text dark:text-dark-text rounded-bl-none'}`}>
                       <div 
-                          className="text-sm prose prose-sm dark:prose-invert max-w-none insurance-ai-response"
+                          className="text-sm prose prose-sm dark:prose-invert max-w-none ai-response-content"
                           style={{
                               '--tw-prose-body': 'inherit',
                               '--tw-prose-headings': 'inherit',
