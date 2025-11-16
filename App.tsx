@@ -300,8 +300,6 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-    document.body.classList.remove('lang-ar', 'lang-en');
-    document.body.classList.add(`lang-${language}`);
   }, [language]);
 
   const activeFilterCount = useMemo(() => {

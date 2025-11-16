@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@400;500;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#14b8a6">
@@ -16,13 +16,8 @@
     <meta name="apple-mobile-web-app-status-bar" content="#14b8a6">
 
     <style>
-      body.lang-ar {
-        font-family: 'Cairo', 'Tajawal', 'Poppins', sans-serif;
-      }
-      body.lang-en {
-        font-family: 'Poppins', 'Inter', sans-serif;
-      }
       body {
+        font-family: 'Cairo', 'Poppins', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
@@ -53,6 +48,14 @@
       }
       .dark .ai-response-content strong {
         color: #2dd4bf; /* A lighter teal for dark mode */
+      }
+      .ai-response-content a {
+        color: #0d9488;
+        text-decoration: underline;
+        word-break: break-all; /* Prevents long URLs from overflowing */
+      }
+      .dark .ai-response-content a {
+        color: #2dd4bf;
       }
       body.no-scroll {
         overflow: hidden;
@@ -95,15 +98,12 @@
             'dark-text-secondary': '#94a3b8', // slate-400
           },
           fontFamily: {
-            sans: ['Poppins', 'sans-serif'],
-            cairo: ['Cairo', 'sans-serif'],
-            tajawal: ['Tajawal', 'sans-serif'],
+            sans: ['Cairo', 'Poppins', 'sans-serif'],
           }
         }
       }
     }
   </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
     <div id="root"></div>
