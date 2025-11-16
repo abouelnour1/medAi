@@ -1,6 +1,5 @@
-// FIX: Add Vite client types to fix TypeScript error for import.meta.env
-/// <reference types="vite/client" />
-
+// FIX: Removed invalid reference to "vite/client" types. This was causing a compilation error
+// and is unnecessary because the project uses `process.env` and does not use `import.meta.env`.
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 
@@ -64,10 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = useCallback(async (username: string, password: string): Promise<void> => {
-    const adminPassword = import.meta.env.VITE_APP_ADMIN_PASSWORD;
+    const lowerUsername = username.toLowerCase();
 
-    if (username.toLowerCase() === 'admin') {
-      if (adminPassword && password === adminPassword) {
+    // Per user request, allow logging in as 'admin' or 'ادمن' without a password for preview purposes.
+    if (lowerUsername === 'admin' || lowerUsername === 'ادمن') {
         const adminUser: User = {
           id: 'admin-user',
           username: 'admin',
@@ -78,11 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         updateUserSession(adminUser);
         return;
-      }
     }
     
     const users = getMockUsers();
-    const foundUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    const foundUser = users.find(u => u.username.toLowerCase() === lowerUsername);
     
     if (foundUser && foundUser.password === password) {
       const { password: _password, ...userToSave } = foundUser;
@@ -134,7 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
 
-        const settings = getMockSettings();
         const today = new Date().toISOString().split('T')[0];
         let currentUserState = { ...user };
         
@@ -143,15 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currentUserState.lastRequestDate = today;
         }
         
-        // The user has requested to remove the AI usage limit.
-        // The check is commented out, but we continue to count requests for admin tracking purposes.
-        /*
-        if (currentUserState.aiRequestCount >= settings.aiRequestLimit) {
-            alert(t('usageLimitReached', { limit: settings.aiRequestLimit }));
-            return;
-        }
-        */
-
         currentUserState.aiRequestCount += 1;
         updateUserSession(currentUserState);
         

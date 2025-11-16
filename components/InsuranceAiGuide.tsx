@@ -161,7 +161,8 @@ Answer the user's question clearly and comprehensively. The user might ask about
         newHistory, 
         systemInstruction, 
         [{ functionDeclarations: [searchDrugDatabaseTool] }], 
-        toolImplementations
+        toolImplementations,
+        'gemini-2.5-flash'
       );
       const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
       if (responseParts && responseParts.length > 0) {
@@ -173,12 +174,17 @@ Answer the user's question clearly and comprehensively. The user might ask about
       }
     } catch (err) {
       console.error("AI service error:", err);
-      if (err instanceof Error && err.message.includes('API_KEY is missing')) {
-          setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('aiUnavailableMessage')}] }]);
-      } else {
-          const errorMsg = { role: 'model', parts: [{ text: t('geminiError') }] } as ChatMessage;
-          setChatHistory(prev => [...prev, errorMsg]);
+      let errorMessage = t('geminiError'); // Default generic error
+      if (err instanceof Error) {
+        if (err.message.includes('API_KEY is missing')) {
+          errorMessage = t('aiUnavailableMessage');
+        } else {
+          // Provide more specific feedback from the API error
+          errorMessage = `${t('geminiError')} \n\n**Details:** ${err.message}`;
+        }
       }
+      const errorMsg = { role: 'model', parts: [{ text: errorMessage }] } as ChatMessage;
+      setChatHistory(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
