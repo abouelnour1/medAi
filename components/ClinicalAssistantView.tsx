@@ -110,14 +110,12 @@ ${guidelinesString}
 </guidelines_data>
 
 **قاعدة معارفك وقدراتك:**
-لديك وصول إلى أداتين قويتين:
-1.  **بحث Google (\`googleSearch\`):** للعثور على أحدث المعلومات الطبية، والإرشادات السريرية، والأبحاث من مصادر عالمية موثوقة. **يجب عليك إعطاء الأولوية للبحث والاستشهاد بـ UpToDate, Dynamedex, PubMed, SFDA, مجلس الضمان الصحي (CCHI), والإرشادات الدولية الرئيسية (NICE, AHA, ADA, إلخ).**
-2.  **البحث في قاعدة البيانات المحلية (\`searchDatabase\`):** للبحث عن الأدوية المتوفرة في السوق السعودي بالاسم التجاري أو العلمي. استخدم هذه الأداة للتحقق من توفر الأدوية وتفاصيلها عند كتابة الوصفات.
+لديك وصول إلى أداة واحدة قوية:
+1.  **البحث في قاعدة البيانات المحلية (\`searchDatabase\`):** للبحث عن الأدوية المتوفرة في السوق السعودي بالاسم التجاري أو العلمي. استخدم هذه الأداة للتحقق من توفر الأدوية وتفاصيلها عند كتابة الوصفات.
 
 **منطق التفاعل:**
-*   عندما يقدم المستخدم حالة سريرية، قم بتجميع المعلومات، وتشكيل تشخيص تفريقي، واقترح خطة علاجية. استخدم \`googleSearch\` والإرشادات المدمجة لدعم توصياتك بالأدلة.
+*   عندما يقدم المستخدم حالة سريرية، قم بتجميع المعلومات، وتشكيل تشخيص تفريقي، واقترح خطة علاجية بناءً على معرفتك الداخلية والإرشادات المضمنة.
 *   لأي توصية علاجية، قدم مبررًا مفصلاً، بما في ذلك آلية العمل وملخص للأدلة السريرية.
-*   **الاستشهاد الإلزامي:** عند استخدام بحث Google، **يجب عليك دائمًا** استخراج عناوين URL من \`groundingChunks\` وعرض أهم 1-3 مصادر فقط في نهاية إجابتك تحت عنوان "المصادر".
 *   **كتابة الوصفات الطبية:** عند كتابة وصفة، استخدم \`searchDatabase\` للتأكد من أن الدواء والتركيز صحيحان ومتاحان في السعودية قبل إدراجهما في الوصفة بصيغة JSON.
 
 **اللهجة:** احترافية، قائمة على الأدلة، وموجزة. خاطب المستخدم كزميل في الرعاية الصحية.`
@@ -129,19 +127,17 @@ ${guidelinesString}
 </guidelines_data>
 
 **Your Knowledge Base & Capabilities:**
-You have access to two powerful tools:
-1.  **Google Search (\`googleSearch\`):** To find the most current medical information, clinical guidelines, and research from reputable, world-class sources. **You must prioritize searching and referencing UpToDate, Dynamedex, PubMed, SFDA, Council of Cooperative Health Insurance (CCHI), and major international guidelines (NICE, AHA, ADA, etc.).**
-2.  **Local Database Search (\`searchDatabase\`):** To look up drugs available in the Saudi market by trade or scientific name. Use this to verify drug availability and details when writing prescriptions.
+You have access to one powerful tool:
+1.  **Local Database Search (\`searchDatabase\`):** To look up drugs available in the Saudi market by trade or scientific name. Use this to verify drug availability and details when writing prescriptions.
 
 **Interaction Logic:**
-*   When a user presents a clinical case, synthesize the information, form a differential diagnosis, and suggest a management plan. Use \`googleSearch\` and the embedded guidelines to back your recommendations with evidence.
+*   When a user presents a clinical case, synthesize the information, form a differential diagnosis, and suggest a management plan based on your internal knowledge and the provided clinical guidelines.
 *   For any therapeutic recommendation, provide a detailed rationale, including mechanism of action and a summary of clinical evidence.
-*   **Mandatory Citation:** When using Google Search, you **MUST** extract the URLs from \`groundingChunks\` and list the top 1-3 most relevant sources at the end of your response under a "Sources" heading. Do not list more than 3.
 *   **Prescription Writing:** When writing a prescription, use \`searchDatabase\` to confirm the drug name and strength are correct and available in Saudi Arabia before including them in the JSON prescription.
 
 **Tone:** Professional, evidence-based, and concise. Address the user as a fellow healthcare professional.`;
 
-        const tools: Tool[] = [{ googleSearch: {}, functionDeclarations: [searchDatabaseTool] }];
+        const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
         const toolImplementations = { searchDatabase };
 
         const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations, 'gemini-2.5-pro');
@@ -153,27 +149,6 @@ You have access to two powerful tools:
             setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
         } else {
             const responseParts = [...responsePartsFromApi];
-            const groundingChunks = finalResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
-
-            if (groundingChunks && groundingChunks.length > 0) {
-                const sources = groundingChunks
-                    .map((chunk: any) => chunk.web?.uri)
-                    .filter(Boolean);
-
-                if (sources.length > 0) {
-                    const sourcesTitle = language === 'ar' ? 'المصادر' : 'Sources';
-                    const sourcesText = `\n\n---\n**${sourcesTitle}:**\n` + sources.map((url: string) => `- ${url}`).join('\n');
-                    
-                    const textPart = responseParts.find(p => 'text' in p);
-
-                    if (textPart && 'text' in textPart) {
-                        textPart.text = (textPart.text || '') + sourcesText;
-                    } else {
-                        responseParts.push({ text: sourcesText });
-                    }
-                }
-            }
-            
             setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
 
             // Check for and save prescription

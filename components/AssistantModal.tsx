@@ -389,7 +389,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
 2.  **إعطاء الأولوية للمفضلة:** لدى المستخدم قائمة بالأدوية المفضلة. عند اقتراح اسم تجاري، **يجب** عليك إعطاء الأولوية للمنتجات من هذه القائمة إذا كانت مناسبة سريريًا.
     -   **قائمة الأدوية المفضلة للمستخدم:**\n${favoriteMedicinesListAr}
 3.  **المصطلحات العلمية:** استخدم دائمًا المصطلحات الطبية والصيدلانية الإنجليزية (Medical/Pharmacological Terminology) لضمان الدقة والاحترافية، حتى عند الإجابة باللغة العربية.
-4.  **المراجع:** عند استخدام \`googleSearch\` للمعلومات السريرية، **يجب** عليك ذكر أهم 1-3 مصادر فقط في نهاية إجابتك.
+4.  **حدود المعرفة:** ليس لديك وصول مباشر إلى الإنترنت. أجب على الأسئلة السريرية بناءً على معرفتك التدريبية الواسعة. ركز على تقديم معلومات دقيقة وعملية.
 
 **هيكل الإجابة الموجه نحو المبيعات (إلزامي):**
 عندما تُسأل عن دواء لحالة معينة (مثل الكوليسترول)، يجب أن تفصل بوضوح بين النص العام والتوصيات المهيكلة.
@@ -426,7 +426,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
 2.  **Prioritize Favorites:** The user has a list of preferred/favorite medicines. When suggesting a trade name, you **MUST** prioritize products from this list if they are clinically suitable.
     -   **User's Favorite Medicines List:**\n${favoriteMedicinesListEn}
 3.  **Scientific Terminology:** Always use English medical and pharmacological terminology to ensure accuracy and professionalism.
-4.  **References:** When using \`googleSearch\` for clinical information, you **MUST** list only the top 1-3 most relevant sources at the end of your response.
+4.  **Knowledge Limitation:** You do not have live access to the internet. Answer clinical questions based on your extensive training knowledge. Focus on providing accurate and practical information.
 
 **Sales-Oriented Response Structure (Mandatory):**
 When asked about a drug for a specific condition (e.g., cholesterol), you must clearly separate general text from structured recommendations.
@@ -552,36 +552,12 @@ When asked about a drug for a specific condition (e.g., cholesterol), you must c
 
     try {
         const toolImplementations = { searchDatabase };
-        const tools: Tool[] = isPrescriptionMode 
-            ? [{ functionDeclarations: [searchDatabaseTool] }] 
-            : [{ googleSearch: {}, functionDeclarations: [searchDatabaseTool] }];
+        const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
         const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations, 'gemini-2.5-flash');
         const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
         if (responsePartsFromApi && responsePartsFromApi.length > 0) {
             const responseParts = [...responsePartsFromApi];
-            const groundingChunks = finalResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
-
-            if (groundingChunks && groundingChunks.length > 0) {
-                const sources = groundingChunks
-                    .map((chunk: any) => chunk.web?.uri)
-                    .filter(Boolean);
-
-                if (sources.length > 0) {
-                    const sourcesTitle = language === 'ar' ? 'المراجع' : 'References';
-                    const sourcesText = `\n\n---\n**${sourcesTitle}:**\n` + sources.map((url: string) => `- ${url}`).join('\n');
-                    
-                    const textPart = responseParts.find(p => 'text' in p);
-
-                    if (textPart && 'text' in textPart) {
-                        // Append to existing text part
-                        textPart.text = (textPart.text || '') + sourcesText;
-                    } else {
-                        // Or create a new part if none exists
-                        responseParts.push({ text: sourcesText });
-                    }
-                }
-            }
             setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
         } else {
             console.error("AI response is missing parts:", finalResponse);
