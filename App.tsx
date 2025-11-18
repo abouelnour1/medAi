@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, InsuranceSearchMode, Cosmetic } from './types';
 import Header from './components/Header';
@@ -454,7 +452,11 @@ const App: React.FC = () => {
     });
 
     setSearchResults(sorted);
-    if (view === 'search' || view === 'results') setView(isSearchActive ? 'results' : 'search');
+    if (isSearchActive && view === 'search') {
+      setView('results');
+    } else if (!isSearchActive && view === 'results') {
+      setView('search');
+    }
   }, [isSearchActive, searchTerm, filters, textSearchMode, medicines, view, sortBy, forceSearch]);
 
   const handleImportData = (data: any[]): void => {
@@ -767,7 +769,6 @@ const App: React.FC = () => {
                     setInsuranceSearchTerm={setInsuranceSearchTerm}
                     insuranceSearchMode={insuranceSearchMode}
                     setInsuranceSearchMode={setInsuranceSearchMode}
-                    requestAIAccess={requestAIAccess}
                 />;
             case 'insuranceDetails':
                 return selectedInsuranceData && <InsuranceDetailsView data={selectedInsuranceData} t={t} />;

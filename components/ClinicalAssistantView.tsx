@@ -62,9 +62,9 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
       description: 'Searches the database for medicines. Can filter by trade name, scientific name, etc.',
       properties: {
         tradeName: { type: Type.STRING, description: 'The trade name of the drug.' },
-        scientificName: { type: Type.STRING, description: 'The scientific (active ingredient) name of the drug.' },
-      },
-    },
+        scientificName: { type: Type.STRING, description: 'The scientific (active ingredient) name of the drug.' }
+      }
+    }
   };
   
   const searchDatabase = useCallback((args: {

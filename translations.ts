@@ -299,7 +299,10 @@ export const translations = {
     suggestedProducts: 'المنتجات المقترحة',
     sellingPoint: 'نقطة التميز',
     adminPasswordNotNeeded: 'كلمة المرور غير مطلوبة للمشرف.',
-    wildcardSearchHint: 'نصيحة: استخدم علامة % كحرف بدل للبحث المتقدم (مثال: ce%um).'
+    wildcardSearchHint: 'نصيحة: استخدم علامة % كحرف بدل للبحث المتقدم (مثال: ce%um).',
+    addGuidelinesDataTitle: 'إضافة بيانات الإرشادات السريرية',
+    addGuidelinesDataDescription: 'قم بلصق بيانات الإرشادات السريرية بصيغة JSON.',
+    clinicalAssistantWelcome: 'أهلاً بك في المساعد السريري. كيف يمكنني المساعدة اليوم؟'
   },
   en: {
     appTitle: 'Saudi Drug Directory',
@@ -601,7 +604,10 @@ export const translations = {
     suggestedProducts: 'Suggested Products',
     sellingPoint: 'Selling Point',
     adminPasswordNotNeeded: 'Password not required for admin.',
-    wildcardSearchHint: 'Tip: Use the % symbol as a wildcard for advanced search (e.g., ce%um).'
+    wildcardSearchHint: 'Tip: Use the % symbol as a wildcard for advanced search (e.g., ce%um).',
+    addGuidelinesDataTitle: 'Add Clinical Guidelines Data',
+    addGuidelinesDataDescription: 'Paste clinical guidelines data in JSON format.',
+    clinicalAssistantWelcome: 'Welcome to the Clinical Assistant. How can I help today?'
   }
 };
 

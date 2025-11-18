@@ -76,9 +76,9 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
       type: Type.OBJECT,
       properties: {
         tradeName: { type: Type.STRING, description: 'The trade name of the drug.' },
-        scientificName: { type: Type.STRING, description: 'The scientific (active ingredient) name of the drug.' },
-      },
-    },
+        scientificName: { type: Type.STRING, description: 'The scientific (active ingredient) name of the drug.' }
+      }
+    }
   };
 
   const handleSendMessage = useCallback(async () => {
