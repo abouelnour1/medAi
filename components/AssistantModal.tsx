@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type, Part, Tool, GenerateContentResponse } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage, Recommendation, ProductSuggestion } from '../types';
@@ -386,7 +387,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ isOpen, onSaveAndClose,
     -   **قائمة الأدوية المفضلة للمستخدم:**\n${favoriteMedicinesListAr}
     -   استخدم هذه القائمة **لتوجيه بحثك** في أداة \`searchDatabase\`. لا تذكر أي تفاصيل (مثل السعر أو التركيز) لم يتم تأكيدها عبر استدعاء الأداة.
 3.  **الاعتماد الحصري والإجباري على قاعدة البيانات:** معرفتك الداخلية بالأسماء التجارية **معطلة تمامًا**. الطريقة **الوحيدة** لمعرفة أو اقتراح أي اسم تجاري هي عبر استدعاء أداة \`searchDatabase\`. **ممنوع منعًا باتًا** ذكر أي اسم تجاري من ذاكرتك أو تدريبك. **كل اسم تجاري تقترحه يجب أن يكون نتيجة مباشرة لاستدعاء الأداة**. إذا لم تعثر الأداة على أي منتجات، **يجب** عليك ذكر المادة الفعالة فقط وتوضيح عدم توفر منتجات لها في قاعدة البيانات. **لا تخترع منتجات تحت أي ظرف من الظروف.**
-4.  **دقة السعر:** عند استدعاء السعر من قاعدة البيانات، ستحصل عليه كرقم. **مهمتك هي عرض الرقم فقط**. إذا كان السعر غير متوفر في قاعدة البيانات، اكتب "N/A" بالضبط. لا تخترع أسعارًا أبدًا.
+4.  **دقة السعر:** عند استدعاء السعر من قاعدة البيانات، ستحصل عليه كرقم. **مهمتك هي عرض الرقم فقط**. إذا كان السعر غير متوفر في قاعدة البيانات، اكتب "N/A". لا تخترع أسعارًا أبدًا.
 5.  **المصطلحات العلمية:** استخدم دائمًا المصطلحات الطبية والصيدلانية الإنجليزية (Medical/Pharmacological Terminology) لضمان الدقة والاحترافية، حتى عند الإجابة باللغة العربية.
 6.  **حدود المعرفة:** ليس لديك وصول مباشر إلى الإنترنت. أجب على الأسئلة السريرية بناءً على معرفتك التدريبية الواسعة.
 7.  **تنسيق الإجابة:** التزم تمامًا بهيكل XML لتوصيات البيع عند الاقتضاء. **لا تغير التنسيق مطلقًا.**
@@ -565,7 +566,32 @@ When asked about a drug for a specific condition, use the following XML structur
         const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
         if (responsePartsFromApi && responsePartsFromApi.length > 0) {
-            const responseParts = [...responsePartsFromApi];
+            // Strictly sanitize the response parts to prevent circular reference errors when saving to state/localStorage
+            const responseParts = responsePartsFromApi.map(p => {
+                const part: Part = {};
+                if (p.text) part.text = p.text;
+                if (p.inlineData) {
+                    part.inlineData = {
+                        mimeType: p.inlineData.mimeType,
+                        data: p.inlineData.data
+                    };
+                }
+                if (p.functionCall) {
+                    part.functionCall = {
+                        name: p.functionCall.name,
+                        args: p.functionCall.args ? JSON.parse(JSON.stringify(p.functionCall.args)) : {},
+                        id: p.functionCall.id
+                    };
+                }
+                if (p.functionResponse) {
+                    part.functionResponse = {
+                        name: p.functionResponse.name,
+                        response: p.functionResponse.response ? JSON.parse(JSON.stringify(p.functionResponse.response)) : {},
+                        id: p.functionResponse.id
+                    };
+                }
+                return part;
+            });
             setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
         } else {
             let errorMessage = t('geminiError');
@@ -671,7 +697,17 @@ When asked about a drug for a specific condition, use the following XML structur
   };
 
   const handleClose = () => {
-    onSaveAndClose(chatHistory);
+    // Sanitize before closing to ensure clean data for parent
+    const sanitizedHistory = chatHistory.map(msg => ({
+      role: msg.role,
+      parts: msg.parts.map(part => {
+          const newPart: Part = {};
+          if (part.text) newPart.text = part.text;
+          // Simplify or skip heavy objects
+          return newPart;
+      })
+    }));
+    onSaveAndClose(sanitizedHistory);
   };
   
   const handleQuickActionClick = (action: 'price' | 'ingredient' | 'alternatives' | 'usage' | 'sellingPoint' | 'howToSell' | 'upselling' | 'crossSelling') => {

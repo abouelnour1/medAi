@@ -235,6 +235,7 @@ export const translations = {
     firstName: 'الاسم الأول',
     lastName: 'اسم العائلة',
     email: 'البريد الإلكتروني',
+    emailOrAdmin: 'البريد الإلكتروني (أو admin)',
     loginPrompt: 'ليس لديك حساب؟',
     registerPrompt: 'لديك حساب بالفعل؟',
     adminDashboard: 'لوحة التحكم',
@@ -312,7 +313,13 @@ export const translations = {
     resendVerificationEmail: 'إعادة إرسال بريد التفعيل',
     iHaveVerified: 'لقد قمت بالتفعيل، تحديث',
     verificationEmailSent: 'تم إرسال رابط التفعيل بنجاح.',
-    emailVerificationRequired: 'يرجى تفعيل بريدك الإلكتروني لاستخدام هذه الميزة.'
+    emailVerificationRequired: 'يرجى تفعيل بريدك الإلكتروني لاستخدام هذه الميزة.',
+    forgotPassword: 'نسيت كلمة المرور؟',
+    sendResetLink: 'إرسال رابط الاستعادة',
+    backToLogin: 'العودة لتسجيل الدخول',
+    resetPasswordEmailSent: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. الرجاء التحقق من صندوق الوارد.',
+    enterEmailForReset: 'أدخل بريدك الإلكتروني لاستلام رابط إعادة التعيين',
+    invalidEmailFormat: 'الرجاء إدخال بريد إلكتروني صحيح.',
   },
   en: {
     appTitle: 'Saudi Drug Directory',
@@ -549,6 +556,7 @@ export const translations = {
     firstName: 'First Name',
     lastName: 'Last Name',
     email: 'Email',
+    emailOrAdmin: 'Email',
     loginPrompt: "Don't have an account?",
     registerPrompt: 'Already have an account?',
     adminDashboard: 'Admin Dashboard',
@@ -626,7 +634,13 @@ export const translations = {
     resendVerificationEmail: 'Resend Verification Email',
     iHaveVerified: 'I Have Verified, Reload',
     verificationEmailSent: 'Verification email sent successfully.',
-    emailVerificationRequired: 'Please verify your email to use this feature.'
+    emailVerificationRequired: 'Please verify your email to use this feature.',
+    forgotPassword: 'Forgot Password?',
+    sendResetLink: 'Send Reset Link',
+    backToLogin: 'Back to Login',
+    resetPasswordEmailSent: 'Password reset link sent to your email. Please check your inbox.',
+    enterEmailForReset: 'Enter your email to receive a reset link',
+    invalidEmailFormat: 'Please enter a valid email address.',
   }
 };
 

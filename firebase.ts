@@ -1,24 +1,33 @@
 
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore, enableIndexedDbPersistence, disableNetwork, enableNetwork } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDVTRpELx9xjjVeSPAPUHeOr7ksaAqANBw",
-  authDomain: "medai-f640f.firebaseapp.com",
-  projectId: "medai-f640f",
-  storageBucket: "medai-f640f.firebasestorage.app",
-  messagingSenderId: "966649608766",
-  appId: "1:966649608766:web:4841fa54f82daa41f0af6f",
-  measurementId: "G-NWCMFW5H00"
+  apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
+  authDomain: "medainew-fa6a2.firebaseapp.com",
+  projectId: "medainew-fa6a2",
+  storageBucket: "medainew-fa6a2.firebasestorage.app",
+  messagingSenderId: "568872568132",
+  appId: "1:568872568132:web:3b07d77360eb8f3d16c311",
+  measurementId: "G-J06N12MDW0"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
+let analytics;
+
+// Initialize Analytics only in browser environment
+if (typeof window !== 'undefined') {
+  try {
+    analytics = getAnalytics(app);
+  } catch (e) {
+    console.error("Firebase Analytics failed to initialize", e);
+  }
+}
 
 // Enable offline persistence
 enableIndexedDbPersistence(db)
@@ -30,4 +39,4 @@ enableIndexedDbPersistence(db)
     }
   });
 
-export { app, db, auth };
+export { app, db, auth, analytics };

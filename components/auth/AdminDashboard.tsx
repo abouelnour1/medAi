@@ -61,6 +61,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   // Migration State
   const [migrationStatus, setMigrationStatus] = useState<string>('');
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isMigrationLocked, setIsMigrationLocked] = useState(true); // SAFETY LOCK
 
   // Fetch users from Firestore
   const fetchUsers = async () => {
@@ -144,18 +145,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
 
     try {
         if (editingMedicine.RegisterNumber.startsWith('new-')) { // New medicine
-             // Remove temporary ID and let Firestore gen ID or use unique field
              const { RegisterNumber, ...dataToSave } = editingMedicine;
              const docRef = await addDoc(collection(db, 'medicines'), {
                  ...dataToSave,
-                 RegisterNumber: `med-${Date.now()}` // or use actual register number if available
+                 RegisterNumber: `med-${Date.now()}` 
              });
-             // Optimistic update or refetch
              setMedicines(prev => [...prev, { ...editingMedicine, RegisterNumber: `med-${Date.now()}` }]);
         } else {
-             // Update existing
-             // Finding the document ID in Firestore would require a query if we don't store the docId in the Medicine object.
-             // For now, assuming we modify local first. In full implementation, Medicine type should have firestoreId.
              alert("Update functionality requires Firestore Document IDs. Use Migration tool first.");
         }
     } catch(e) {
@@ -176,7 +172,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
     if (medicine) {
         setEditingMedicine(medicine);
     } else {
-        // Create a new empty medicine object for the form
         setEditingMedicine({ RegisterNumber: `new-${Date.now()}`, "Trade Name": "", "Scientific Name": "", "Public price": "", PharmaceuticalForm: "", Strength: "", StrengthUnit: "", "Manufacture Name": "", "Legal Status": "Prescription", "Product type": "Human", PackageSize: "", PackageTypes: "" } as Medicine);
     }
     setIsMedicineModalOpen(true);
@@ -185,7 +180,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const handleInsuranceFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingInsuranceItem) return;
-    // Similar logic for Firestore saving would go here
     setIsInsuranceModalOpen(false);
     setEditingInsuranceItem(null);
   };
@@ -214,65 +208,98 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   };
 
   // --- MIGRATION LOGIC ---
-  const migrateDataToFirebase = async () => {
-      if (!window.confirm("Are you sure? This will upload all static data to Firestore.")) return;
-      
+  
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const uploadCollection = async (collectionName: string, data: any[]) => {
       setIsMigrating(true);
-      setMigrationStatus('Starting migration...');
+      setMigrationStatus(`Starting upload for ${collectionName}... Total items: ${data.length}`);
       
-      const batchSize = 450; // Firestore batch limit is 500
+      const batchSize = 400; 
+      let count = 0;
+      const total = data.length;
       
-      const uploadCollection = async (collectionName: string, data: any[]) => {
-          let count = 0;
-          const total = data.length;
-          
-          for (let i = 0; i < total; i += batchSize) {
-              const batch = writeBatch(db);
-              const chunk = data.slice(i, i + batchSize);
-              
-              chunk.forEach(item => {
-                  const docRef = doc(collection(db, collectionName));
-                  batch.set(docRef, item);
-              });
-              
-              await batch.commit();
-              count += chunk.length;
-              setMigrationStatus(`Uploaded ${count}/${total} to ${collectionName}...`);
-          }
-          setMigrationStatus(`Finished uploading ${collectionName}.`);
-      };
-
       try {
-          // 1. Migrate Medicines
-          const normalizedSupplements = SUPPLEMENT_DATA_RAW.map(p => {
-               // Normalize logic inline or reuse from App.tsx if exported
-               return {
-                   "RegisterNumber": String(p.Id || Math.random()),
-                   "Trade Name": p.TradeName,
-                   "Scientific Name": p.ScientificName || '',
-                   "Public price": p.Price || 'N/A',
-                   "Product type": 'Supplement',
-                   // ... map other fields minimally for now
-                   "PharmaceuticalForm": p.DoesageForm || '',
-                   "Manufacture Name": p.ManufacturerNameEN || '',
-                   "Legal Status": "OTC"
-               };
-          });
-          const allMeds = [...MEDICINE_DATA, ...normalizedSupplements];
-          await uploadCollection('medicines', allMeds);
-          
-          // 2. Migrate Insurance
-          const allInsurance = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA];
-          await uploadCollection('insurance', allInsurance);
-
-          // 3. Migrate Cosmetics
-          await uploadCollection('cosmetics', INITIAL_COSMETICS_DATA);
-
-          setMigrationStatus('All data migrated successfully! Please refresh the page to fetch from Firestore.');
+        for (let i = 0; i < total; i += batchSize) {
+            const batch = writeBatch(db);
+            const chunk = data.slice(i, i + batchSize);
+            
+            chunk.forEach(item => {
+                const docRef = doc(collection(db, collectionName));
+                batch.set(docRef, item);
+            });
+            
+            await batch.commit();
+            count += chunk.length;
+            setMigrationStatus(`Uploaded ${count} / ${total} items to '${collectionName}'...`);
+            
+            await sleep(300);
+        }
+        setMigrationStatus(`✅ Successfully uploaded all ${total} items to '${collectionName}'.`);
       } catch (e: any) {
-          console.error("Migration failed", e);
-          setMigrationStatus(`Migration failed: ${e.message}`);
+        console.error(`Error uploading ${collectionName}:`, e);
+        setMigrationStatus(`❌ Error uploading ${collectionName}: ${e.message}`);
+        alert(`Upload failed: ${e.message}`);
       } finally {
+        setIsMigrating(false);
+      }
+  };
+
+  const handleMigrateMedicines = async () => {
+      try {
+        setMigrationStatus("Preparing Medicine & Supplement data...");
+        if (!window.confirm("Start uploading Medicines & Supplements? This may take a moment.")) {
+            setMigrationStatus("Migration cancelled.");
+            return;
+        }
+        
+        const normalizedSupplements = SUPPLEMENT_DATA_RAW.map(p => ({
+             "RegisterNumber": String(p.Id || Math.random()),
+             "Trade Name": p.TradeName,
+             "Scientific Name": p.ScientificName || '',
+             "Public price": p.Price || 'N/A',
+             "Product type": 'Supplement',
+             "PharmaceuticalForm": p.DoesageForm || '',
+             "Manufacture Name": p.ManufacturerNameEN || '',
+             "Legal Status": "OTC",
+             "Strength": p.Strength || '',
+             "StrengthUnit": p.StrengthUnit || ''
+        }));
+        
+        const allMeds = [...MEDICINE_DATA, ...normalizedSupplements];
+        await uploadCollection('medicines', allMeds);
+      } catch (error: any) {
+          alert("Error preparing data: " + error.message);
+          setIsMigrating(false);
+      }
+  };
+
+  const handleMigrateInsurance = async () => {
+      try {
+        setMigrationStatus("Preparing Insurance data...");
+        if (!window.confirm("Start uploading Insurance Data? This file is large, please keep the window open.")) {
+             setMigrationStatus("Migration cancelled.");
+             return;
+        }
+        
+        const allInsurance = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA];
+        await uploadCollection('insurance', allInsurance);
+      } catch (error: any) {
+          alert("Error preparing data: " + error.message);
+          setIsMigrating(false);
+      }
+  };
+
+  const handleMigrateCosmetics = async () => {
+      try {
+        setMigrationStatus("Preparing Cosmetics data...");
+        if (!window.confirm("Start uploading Cosmetics Data?")) {
+            setMigrationStatus("Migration cancelled.");
+            return;
+        }
+        await uploadCollection('cosmetics', INITIAL_COSMETICS_DATA);
+      } catch (error: any) {
+          alert("Error preparing data: " + error.message);
           setIsMigrating(false);
       }
   };
@@ -474,30 +501,108 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     <h3 className="font-bold text-lg">{t('apiKey')}</h3>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-2">{t('apiKeyDescription')}</p>
                     <div className="p-2 bg-white dark:bg-slate-700 rounded font-mono text-sm">
-                        {/* FIX: Use process.env.API_KEY to be consistent with Gemini API guidelines. */}
                         {process.env.API_KEY ? '****************' + String(process.env.API_KEY).slice(-4) : 'Not Set'}
                     </div>
                 </div>
             </div>
         );
         case 'migration':
+            const medCount = MEDICINE_DATA.length + SUPPLEMENT_DATA_RAW.length;
+            const insCount = INITIAL_INSURANCE_DATA.length + CUSTOM_INSURANCE_DATA.length;
+            const cosCount = INITIAL_COSMETICS_DATA.length;
+            
             return (
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl space-y-4">
-                    <h3 className="font-bold text-lg text-orange-600">Data Migration</h3>
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                        This tool will upload all data from the static JSON files (data.ts, etc.) to your Firestore database. 
-                        This should generally be done only once when initializing the database.
-                    </p>
-                    <div className="p-4 bg-black text-green-400 font-mono text-xs rounded-lg h-32 overflow-y-auto">
-                        {migrationStatus || 'Ready to migrate.'}
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="font-bold text-lg text-orange-600 mb-2">Database Migration</h3>
+                        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                            Upload local data to Firebase. <strong>Warning:</strong> This is a heavy operation.
+                        </p>
                     </div>
-                    <button 
-                        onClick={migrateDataToFirebase} 
-                        disabled={isMigrating}
-                        className="px-4 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 disabled:bg-gray-400"
-                    >
-                        {isMigrating ? 'Migrating...' : 'Start Migration to Firebase'}
-                    </button>
+
+                    {/* SAFETY LOCK SECTION */}
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded-r-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-bold text-orange-700 dark:text-orange-300">⚠️ Migration Safety Lock</h4>
+                                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                    {isMigrationLocked 
+                                        ? "Migration features are currently LOCKED to prevent accidental data uploads." 
+                                        : "Migration features are UNLOCKED. Proceed with caution."}
+                                </p>
+                            </div>
+                            <label className="inline-flex relative items-center cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={!isMigrationLocked}
+                                    onChange={e => setIsMigrationLocked(!e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"></div>
+                                <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Unlock</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                         {/* Medicines Card */}
+                         <div className={`bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-5 flex flex-col items-center text-center gap-4 shadow-sm transition-all ${isMigrationLocked ? 'opacity-50 grayscale' : 'hover:shadow-md'}`}>
+                            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                <div className="w-6 h-6"><PillBottleIcon /></div>
+                            </div>
+                            <div className="flex-grow">
+                                <h4 className="font-bold text-lg text-light-text dark:text-dark-text">Medicines & Supplements</h4>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">{medCount} items</p>
+                            </div>
+                            <button
+                                onClick={handleMigrateMedicines}
+                                disabled={isMigrating || isMigrationLocked}
+                                className="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-2"
+                            >
+                                Start Migration
+                            </button>
+                        </div>
+
+                         {/* Insurance Card */}
+                         <div className={`bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-5 flex flex-col items-center text-center gap-4 shadow-sm transition-all ${isMigrationLocked ? 'opacity-50 grayscale' : 'hover:shadow-md'}`}>
+                            <div className="w-12 h-12 bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 flex-shrink-0">
+                                <div className="w-6 h-6"><HealthInsuranceIcon /></div>
+                            </div>
+                            <div className="flex-grow">
+                                <h4 className="font-bold text-lg text-light-text dark:text-dark-text">Insurance Data</h4>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">{insCount} items</p>
+                            </div>
+                             <button
+                                onClick={handleMigrateInsurance}
+                                disabled={isMigrating || isMigrationLocked}
+                                className="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-2"
+                            >
+                                Start Migration
+                            </button>
+                        </div>
+
+                         {/* Cosmetics Card */}
+                         <div className={`bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-5 flex flex-col items-center text-center gap-4 shadow-sm transition-all ${isMigrationLocked ? 'opacity-50 grayscale' : 'hover:shadow-md'}`}>
+                            <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-400 flex-shrink-0">
+                                <div className="w-6 h-6"><ChartIcon /></div>
+                            </div>
+                            <div className="flex-grow">
+                                <h4 className="font-bold text-lg text-light-text dark:text-dark-text">Cosmetics Data</h4>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">{cosCount} items</p>
+                            </div>
+                             <button
+                                onClick={handleMigrateCosmetics}
+                                disabled={isMigrating || isMigrationLocked}
+                                className="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-2"
+                            >
+                                Start Migration
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-black text-green-400 font-mono text-xs rounded-lg h-32 overflow-y-auto shadow-inner border border-slate-800">
+                        {migrationStatus || '> System ready. Select a migration task to begin.'}
+                    </div>
                 </div>
             )
     }

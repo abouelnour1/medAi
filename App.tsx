@@ -5,10 +5,10 @@ import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import AddDataView from './components/AddDataView';
-import { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } from './data/data'; // Keep these for initial fallback or migration
-import { INITIAL_INSURANCE_DATA } from './data/insurance-data'; // Keep for fallback
+import { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } from './data/data'; 
+import { INITIAL_INSURANCE_DATA } from './data/insurance-data'; 
 import { CUSTOM_INSURANCE_DATA } from './data/custom-insurance-data';
-import { INITIAL_COSMETICS_DATA } from './data/cosmetics-data'; // Keep for fallback
+import { INITIAL_COSMETICS_DATA } from './data/cosmetics-data'; 
 import MedicineDetail from './components/MedicineDetail';
 import { translations, TranslationKeys } from './translations';
 import FloatingAssistantButton from './components/FloatingAssistantButton';
@@ -41,6 +41,7 @@ import FavoritesView from './components/FavoritesView';
 import { isAIAvailable } from './geminiService';
 import { db } from './firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import { Part } from '@google/genai';
 
 const normalizeProduct = (product: any): Medicine => {
   let productType = product['Product type'];
@@ -99,65 +100,20 @@ const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const App: React.FC = () => {
   const { user, requestAIAccess, isLoading: isAuthLoading } = useAuth();
 
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
-  const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-
+  // Initialize with static data immediately for instant load
+  const [medicines, setMedicines] = useState<Medicine[]>(() => {
+     const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
+     return [...MEDICINE_DATA, ...initialSupplements];
+  });
+  
+  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>(() => {
+     return [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
+  });
+  
+  const [cosmetics, setCosmetics] = useState<Cosmetic[]>(() => INITIAL_COSMETICS_DATA);
+  
   useEffect(() => {
-    const fetchData = async () => {
-        setIsLoadingData(true);
-        try {
-            // Fetch Medicines
-            // In a real app, you might want to paginate this or rely on the Firestore cache (enabled in firebase.ts)
-            const medSnapshot = await getDocs(collection(db, 'medicines'));
-            if (!medSnapshot.empty) {
-                 const fetchedMeds: Medicine[] = [];
-                 medSnapshot.forEach(doc => fetchedMeds.push(normalizeProduct(doc.data())));
-                 setMedicines(fetchedMeds);
-            } else {
-                // Fallback to static data if DB is empty (first run before migration)
-                 const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-                 const initialData = [...MEDICINE_DATA, ...initialSupplements];
-                 setMedicines(initialData);
-            }
-
-            // Fetch Insurance
-            const insuranceSnapshot = await getDocs(collection(db, 'insurance'));
-            if (!insuranceSnapshot.empty) {
-                 const fetchedInsurance: InsuranceDrug[] = [];
-                 insuranceSnapshot.forEach(doc => fetchedInsurance.push({ ...doc.data(), id: doc.id } as InsuranceDrug));
-                 setInsuranceData(fetchedInsurance);
-            } else {
-                 // Fallback
-                const initialData = [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
-                setInsuranceData(initialData);
-            }
-
-            // Fetch Cosmetics
-            const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
-             if (!cosmeticsSnapshot.empty) {
-                 const fetchedCosmetics: Cosmetic[] = [];
-                 cosmeticsSnapshot.forEach(doc => fetchedCosmetics.push({ ...doc.data(), id: doc.id } as Cosmetic));
-                 setCosmetics(fetchedCosmetics);
-            } else {
-                 // Fallback
-                 setCosmetics(INITIAL_COSMETICS_DATA);
-            }
-
-        } catch (error) {
-            console.error("Error fetching data from Firebase:", error);
-            // Fallback in case of error (e.g., offline without cache initially)
-             const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-             setMedicines([...MEDICINE_DATA, ...initialSupplements]);
-             setInsuranceData([...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` })));
-             setCosmetics(INITIAL_COSMETICS_DATA);
-        } finally {
-            setIsLoadingData(false);
-        }
-    };
-
-    fetchData();
+    console.log("Firebase data fetching currently disabled to save quota and improve performance.");
   }, []);
   
   const [activeTab, setActiveTab] = useState<Tab>('search');
@@ -253,7 +209,6 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
-  // Lock body scroll when a modal is open
   useEffect(() => {
     const isModalOpen = isAssistantModalOpen || isFilterModalOpen || isBarcodeScannerOpen;
     if (isModalOpen) {
@@ -340,24 +295,29 @@ const App: React.FC = () => {
       return;
     }
 
-    const searchTermIsLongEnough = searchTerm.trim().length >= 3 || (forceSearch && searchTerm.trim().length > 0);
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
-    const useRegex = lowerSearchTerm.includes('%');
-    let searchRegex: RegExp | null = null;
+    const searchTermIsLongEnough = lowerSearchTerm.length >= 3 || (forceSearch && lowerSearchTerm.length > 0);
     
-    if (useRegex) {
-      const escapedTerm = lowerSearchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regexString = escapedTerm.replace(/%/g, '.*');
-      try {
-        searchRegex = new RegExp(regexString, 'i');
-      } catch (e) {
-        console.error("Invalid Regex from search", e);
-      }
+    // FIX: Improved Numeric Detection
+    const isNumericSearch = /^\d+(\.\d+)?$/.test(lowerSearchTerm);
+
+    // Prepare Regex for Wildcard Search (%)
+    const escapeRegExp = (string: string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+    
+    const regexPattern = lowerSearchTerm.split('%').map(escapeRegExp).join('.*');
+    let searchRegex: RegExp;
+    try {
+        searchRegex = new RegExp(regexPattern, 'i');
+    } catch (e) {
+        searchRegex = new RegExp(escapeRegExp(lowerSearchTerm), 'i');
     }
 
-    // Filter optimization: if we have > 4000 items, this might block the thread slightly.
-    // Consider debouncing or web worker if it grows larger.
+    const prefixPart = lowerSearchTerm.split('%')[0];
+
     const filtered = medicines.filter(med => {
+      // 1. Apply General Filters first (Fast)
       if (filters.productType === 'medicine' && med['Product type'] !== 'Human') return false;
       if (filters.productType === 'supplement' && med['Product type'] !== 'Supplement') return false;
       const price = parseFloat(med['Public price']);
@@ -368,20 +328,26 @@ const App: React.FC = () => {
       if (filters.pharmaceuticalForm && med.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
       if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(med['Manufacture Name'])) return false;
       if (filters.legalStatus && med['Legal Status'] !== filters.legalStatus) return false;
-      if (searchTermIsLongEnough) {
-        const tradeName = String(med['Trade Name']);
-        const scientificName = String(med['Scientific Name']);
-        
-        let tradeNameMatch = false;
-        let scientificNameMatch = false;
 
-        if (searchRegex) {
-            tradeNameMatch = searchRegex.test(tradeName);
-            scientificNameMatch = searchRegex.test(scientificName);
-        } else {
-            tradeNameMatch = tradeName.toLowerCase().includes(lowerSearchTerm);
-            scientificNameMatch = scientificName.toLowerCase().includes(lowerSearchTerm);
+      if (searchTermIsLongEnough) {
+        const tradeName = String(med['Trade Name']).toLowerCase();
+        const scientificName = String(med['Scientific Name']).toLowerCase();
+        const strength = String(med.Strength).toLowerCase();
+        
+        // FIX: Strict Numeric Search logic for Strength
+        if (isNumericSearch) {
+             // If the search term is purely a number (e.g., "500"), we prioritize Strength.
+             // We verify if strength contains the number. 
+             // BUT we also allow Trade Name matches in case the user meant a name with a number.
+             const strengthMatch = strength.includes(lowerSearchTerm);
+             const tradeNameMatch = tradeName.includes(lowerSearchTerm);
+             
+             return strengthMatch || tradeNameMatch;
         }
+
+        // Normal Text Search
+        let tradeNameMatch = searchRegex.test(tradeName);
+        let scientificNameMatch = searchRegex.test(scientificName);
 
         if (textSearchMode === 'tradeName' && !tradeNameMatch) return false;
         if (textSearchMode === 'scientificName' && !scientificNameMatch) return false;
@@ -391,55 +357,55 @@ const App: React.FC = () => {
     });
 
     const sorted = filtered.sort((a, b) => {
-        switch (sortBy) {
-            case 'scientificName': return a['Scientific Name'].localeCompare(b['Scientific Name']);
-            case 'priceAsc': {
-                const priceA = parseFloat(a['Public price']);
-                const priceB = parseFloat(b['Public price']);
-                if (isNaN(priceA) && !isNaN(priceB)) return 1;
-                if (!isNaN(priceA) && isNaN(priceB)) return -1;
-                return priceA - priceB;
-            }
-            case 'priceDesc': {
-                const priceA = parseFloat(a['Public price']);
-                const priceB = parseFloat(b['Public price']);
-                 if (isNaN(priceA) && !isNaN(priceB)) return 1;
-                 if (!isNaN(priceA) && isNaN(priceB)) return -1;
-                return priceB - priceA;
-            }
-            case 'alphabetical':
-            default: {
-                if (!lowerSearchTerm) {
-                    return a['Trade Name'].localeCompare(b['Trade Name']);
-                }
-    
-                const aTradeName = String(a['Trade Name']).toLowerCase();
-                const bTradeName = String(b['Trade Name']).toLowerCase();
-                const aSciName = String(a['Scientific Name']).toLowerCase();
-                const bSciName = String(b['Scientific Name']).toLowerCase();
-                const targetFieldA = textSearchMode === 'scientificName' ? aSciName : aTradeName;
-                const targetFieldB = textSearchMode === 'scientificName' ? bSciName : bTradeName;
-    
-                let scoreA = 0;
-                let scoreB = 0;
-    
-                const isPrefixIntent = !lowerSearchTerm.startsWith('%');
-                const termForPrefixMatch = lowerSearchTerm.split('%')[0];
-    
-                if (isPrefixIntent && termForPrefixMatch) {
-                    if (targetFieldA.startsWith(termForPrefixMatch)) scoreA = 2; else scoreA = 1;
-                    if (targetFieldB.startsWith(termForPrefixMatch)) scoreB = 2; else scoreB = 1;
-                } else {
-                    scoreA = 1;
-                    scoreB = 1;
-                }
-    
-                if (scoreA !== scoreB) {
-                    return scoreB - scoreA;
-                }
-                return a['Trade Name'].localeCompare(b['Trade Name']);
-            }
+        if (!lowerSearchTerm) {
+             return a['Trade Name'].localeCompare(b['Trade Name']);
         }
+        
+        // FIX: Numeric Sorting Priority
+        if (isNumericSearch) {
+            const aStrength = String(a.Strength).trim();
+            const bStrength = String(b.Strength).trim();
+            const aMatchExact = aStrength === lowerSearchTerm;
+            const bMatchExact = bStrength === lowerSearchTerm;
+
+            // Exact Strength match at the top
+            if (aMatchExact && !bMatchExact) return -1;
+            if (!aMatchExact && bMatchExact) return 1;
+            
+            // Starts with Strength
+            const aStarts = aStrength.startsWith(lowerSearchTerm);
+            const bStarts = bStrength.startsWith(lowerSearchTerm);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+        }
+
+        const aTradeName = String(a['Trade Name']).toLowerCase();
+        const bTradeName = String(b['Trade Name']).toLowerCase();
+        const aSciName = String(a['Scientific Name']).toLowerCase();
+        const bSciName = String(b['Scientific Name']).toLowerCase();
+
+        // PRIORITY 1: Starts with Search Term (Trade Name)
+        if (prefixPart.length > 0) {
+            const aStartsTrade = aTradeName.startsWith(prefixPart);
+            const bStartsTrade = bTradeName.startsWith(prefixPart);
+            
+            if (aStartsTrade && !bStartsTrade) return -1;
+            if (!aStartsTrade && bStartsTrade) return 1;
+        }
+
+        // PRIORITY 2: Starts with Search Term (Scientific Name)
+        if ((textSearchMode === 'scientificName' || textSearchMode === 'all') && prefixPart.length > 0) {
+             const aStartsSci = aSciName.startsWith(prefixPart);
+             const bStartsSci = bSciName.startsWith(prefixPart);
+
+             if (!aTradeName.startsWith(prefixPart) && !bTradeName.startsWith(prefixPart)) {
+                 if (aStartsSci && !bStartsSci) return -1;
+                 if (!aStartsSci && bStartsSci) return 1;
+             }
+        }
+
+        // PRIORITY 3: Alphabetical Order
+        return aTradeName.localeCompare(bTradeName);
     });
 
     setSearchResults(sorted);
@@ -450,9 +416,6 @@ const App: React.FC = () => {
     }
   }, [isSearchActive, searchTerm, filters, textSearchMode, medicines, view, sortBy, forceSearch]);
 
-  // Import handlers are now managed differently (via Admin Dashboard to update Firebase)
-  // But we keep them here if we want temporary local-only imports, 
-  // though typically Admin Dashboard migration tool is better.
   const handleImportData = (data: any[]): void => {
     const normalizedData = data.map(normalizeProduct);
     setMedicines(prevMeds => [...prevMeds, ...normalizedData]);
@@ -460,13 +423,10 @@ const App: React.FC = () => {
   };
 
   const handleImportInsuranceData = (data: any[]): void => {
-    // Similar logic if local import is needed
-    // ...
     setView('settings');
   };
   
   const handleImportCosmeticsData = (data: any[]): void => {
-    // ...
     setView('settings');
   };
 
@@ -479,7 +439,7 @@ const App: React.FC = () => {
   const handleBack = useCallback(() => {
     if (view === 'login' || view === 'register') { setView('settings'); return; }
     if (view === 'admin') { setView('settings'); return; }
-    if (view === 'verifyEmail') { /* Prevent back from verify screen except logout */ return; }
+    if (view === 'verifyEmail') { return; }
     if (activeTab === 'prescriptions' && selectedPrescription) { setSelectedPrescription(null); return; }
     
     const targetView = (isSearchActive && activeTab === 'search') ? 'results' : 'search';
@@ -552,25 +512,58 @@ const App: React.FC = () => {
 
   const handleCloseAssistant = (historyToSave: ChatMessage[]) => {
     if (historyToSave.length <= 1) { setIsAssistantModalOpen(false); setSelectedConversation(null); setAssistantContextMedicine(null); return; }
+    
+    // Sanitize chat history to prevent circular JSON errors
+    const sanitizedHistory = historyToSave.map(msg => ({
+      role: msg.role,
+      parts: msg.parts.map(part => {
+          const newPart: Part = {};
+          if (part.text) newPart.text = part.text;
+          if (part.inlineData) newPart.inlineData = { mimeType: part.inlineData.mimeType, data: part.inlineData.data };
+          // Simplify function calls/responses to just basic objects if needed, or strip them if causing issues
+          if (part.functionCall) {
+             newPart.functionCall = { 
+                 name: part.functionCall.name, 
+                 args: part.functionCall.args ? JSON.parse(JSON.stringify(part.functionCall.args)) : {}, 
+                 id: part.functionCall.id 
+             };
+          }
+          if (part.functionResponse) {
+              newPart.functionResponse = { 
+                  name: part.functionResponse.name, 
+                  response: part.functionResponse.response ? JSON.parse(JSON.stringify(part.functionResponse.response)) : {}, 
+                  id: part.functionResponse.id 
+              };
+          }
+          return newPart;
+      })
+    }));
+
     let newConversations: Conversation[];
     if (selectedConversation) {
-        const updatedConversation = { ...selectedConversation, messages: historyToSave, timestamp: Date.now() };
+        const updatedConversation = { ...selectedConversation, messages: sanitizedHistory, timestamp: Date.now() };
         newConversations = conversations.map(c => c.id === updatedConversation.id ? updatedConversation : c);
     } else {
-        const firstUserMessage = historyToSave.find(m => m.role === 'user');
+        const firstUserMessage = sanitizedHistory.find(m => m.role === 'user');
         const textPart = firstUserMessage?.parts.find(p => 'text' in p);
         const titleText = textPart && 'text' in textPart ? textPart.text : '';
 
         const newConversation: Conversation = {
             id: `convo-${Date.now()}`,
             title: titleText.substring(0, 40) || t('newConversation'),
-            messages: historyToSave,
+            messages: sanitizedHistory,
             timestamp: Date.now()
         };
         newConversations = [newConversation, ...conversations];
     }
     setConversations(newConversations);
-    localStorage.setItem('chatHistory', JSON.stringify(newConversations));
+    
+    try {
+      localStorage.setItem('chatHistory', JSON.stringify(newConversations));
+    } catch (e) {
+      console.error("Failed to save chat history to localStorage:", e);
+    }
+
     setIsAssistantModalOpen(false);
     setSelectedConversation(null);
     setAssistantContextMedicine(null);
@@ -646,16 +639,15 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    if (isAuthLoading || isLoadingData) {
+    if (isAuthLoading) {
       return (
         <div className="flex flex-col items-center justify-center h-[50vh]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Loading...</p>
+            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Authenticating...</p>
         </div>
       );
     }
 
-    // Check for email verification logic
     if (user && !user.emailVerified && user.role !== 'admin') {
         return <VerifyEmailView user={user} t={t} />;
     }
@@ -893,7 +885,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Only show BottomNavBar if user is verified or not logged in (but verified is required for most features anyway, so mainly hide if waiting for verification) */}
       {(!user || user.emailVerified || user.role === 'admin') && (
           <BottomNavBar 
             activeTab={activeTab} 

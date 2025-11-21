@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FunctionDeclaration, Type, Part, GenerateContentResponse } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage } from '../types';
@@ -164,9 +165,35 @@ Answer the user's question clearly and comprehensively. The user might ask about
         toolImplementations,
         'gemini-2.5-flash'
       );
-      const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
+      const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
-      if (responseParts && responseParts.length > 0) {
+      if (responsePartsFromApi && responsePartsFromApi.length > 0) {
+          // Strictly sanitize response parts
+          const responseParts = responsePartsFromApi.map(p => {
+            const part: Part = {};
+            if (p.text) part.text = p.text;
+            if (p.inlineData) {
+                part.inlineData = {
+                    mimeType: p.inlineData.mimeType,
+                    data: p.inlineData.data
+                };
+            }
+            if (p.functionCall) {
+                part.functionCall = {
+                    name: p.functionCall.name,
+                    args: p.functionCall.args ? JSON.parse(JSON.stringify(p.functionCall.args)) : {},
+                    id: p.functionCall.id
+                };
+            }
+            if (p.functionResponse) {
+                part.functionResponse = {
+                    name: p.functionResponse.name,
+                    response: p.functionResponse.response ? JSON.parse(JSON.stringify(p.functionResponse.response)) : {},
+                    id: p.functionResponse.id
+                };
+            }
+            return part;
+          });
           setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
       } else {
           let errorMessage = t('geminiError');

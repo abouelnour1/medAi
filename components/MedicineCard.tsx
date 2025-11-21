@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
@@ -95,7 +96,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
   return (
     <div
-      className="bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden transform hover:shadow-lg transition-all duration-300 cursor-pointer select-none"
+      className="bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden transform hover:shadow-lg transition-all duration-300 cursor-pointer select-none min-h-min"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -113,8 +114,9 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <FactoryIcon />
                 <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
               </div>
-              <h2 className="text-base font-bold text-light-text dark:text-dark-text truncate" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
-              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
+              {/* Removed truncate to allow text wrapping and prevent overlap */}
+              <h2 className="text-base font-bold text-light-text dark:text-dark-text break-words whitespace-normal leading-tight mb-1" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary break-words whitespace-normal leading-snug" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
           </div>
           <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
             {!isNaN(price) && (
@@ -139,7 +141,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             <div className="flex items-center gap-1">
                 <div className="flex items-center gap-1.5 min-w-0 text-light-text-secondary dark:text-dark-text-secondary">
                     <PillIcon />
-                    <span className="truncate" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
+                    <span className="truncate max-w-[100px]" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
                 </div>
                 <button
                     onClick={(e) => {

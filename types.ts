@@ -167,11 +167,13 @@ export interface SelectedInsuranceData {
 export interface User {
   id: string;
   username: string;
+  firstName?: string;
+  lastName?: string;
   role: 'admin' | 'premium'; 
   aiRequestCount: number;
   lastRequestDate: string; 
   status: 'active' | 'pending';
-  emailVerified: boolean; // Added this field
+  emailVerified: boolean; 
   email?: string;
 }
 
@@ -183,11 +185,12 @@ export interface AppSettings {
 export type AuthContextType = {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   requestAIAccess: (callback: () => void, t: TFunction) => void;
   resendVerificationEmail: () => Promise<void>;
   reloadUser: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   isLoading: boolean;
   // Admin functions
   getAllUsers: () => User[];

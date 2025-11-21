@@ -8,6 +8,9 @@ import {
   signOut, 
   onAuthStateChanged,
   sendEmailVerification,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -22,12 +25,25 @@ import {
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
+const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Enforce local persistence on mount
+  useEffect(() => {
+     const initAuth = async () => {
+         try {
+             await setPersistence(auth, browserLocalPersistence);
+         } catch (e) {
+             console.error("Error setting persistence:", e);
+         }
+     };
+     initAuth();
+  }, []);
 
   // Sync user state with Firebase Auth
   useEffect(() => {
@@ -36,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await syncUserData(firebaseUser);
       } else {
         setUser(null);
+        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
         setIsLoading(false);
       }
     });
@@ -50,12 +67,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (userDocSnap.exists()) {
             const firestoreData = userDocSnap.data();
-            setUser({ 
+            
+            // Check if verify status changed in Auth but not in Firestore
+            // Priority: Auth Object > Firestore Object
+            let emailVerified = firebaseUser.emailVerified;
+            
+            if (emailVerified && !firestoreData.emailVerified) {
+                await updateDoc(userDocRef, { emailVerified: true });
+            }
+
+            const finalUser = { 
                 id: firebaseUser.uid, 
-                emailVerified: firebaseUser.emailVerified,
+                ...firestoreData, 
+                emailVerified: emailVerified, 
                 email: firebaseUser.email || '',
-                ...firestoreData 
-            } as User);
+            } as User;
+
+            setUser(finalUser);
+            localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(finalUser));
           } else {
               // Handle case where auth exists but firestore doc doesn't
               const newUser: User = {
@@ -70,11 +99,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               };
               await setDoc(userDocRef, newUser);
               setUser(newUser);
+              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
           }
       } catch (e) {
           console.error("Error fetching user profile:", e);
-          // Fallback
-          setUser({
+          // Try loading from Local Storage backup if Firestore fails (Offline mode)
+          const cachedUserStr = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+          if (cachedUserStr) {
+              try {
+                  const cachedUser = JSON.parse(cachedUserStr);
+                  if (cachedUser.id === firebaseUser.uid) {
+                       setUser(cachedUser);
+                       setIsLoading(false);
+                       return;
+                  }
+              } catch (parseErr) {
+                  console.error("Failed to parse cached user", parseErr);
+              }
+          }
+
+          // Fallback if no cache available
+          const fallbackUser: User = {
               id: firebaseUser.uid,
               username: firebaseUser.email?.split('@')[0] || 'User',
               role: 'premium',
@@ -83,37 +128,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               status: 'pending',
               emailVerified: firebaseUser.emailVerified,
               email: firebaseUser.email || ''
-          });
+          };
+          setUser(fallbackUser);
       }
       setIsLoading(false);
   };
 
-  const login = useCallback(async (username: string, password: string): Promise<void> => {
-    let email = username.trim().toLowerCase();
-    // Allow login with just username (for legacy or convenience) assuming fake domain
-    if (!email.includes('@')) {
-        // Note: This assumes legacy users or specific domain logic. 
-        // For verified email flow, explicit email is better, but we keep this for backward compat.
-        email = `${email}@medai.sa`; 
+  const login = useCallback(async (usernameInput: string, password: string): Promise<void> => {
+    let email = usernameInput.trim();
+
+    // Special Exception: Map 'admin' username to the admin email
+    // This allows the user to just type "admin" to login.
+    if (email.toLowerCase() === 'admin') {
+        email = 'admin@medai.com'; 
     }
 
     try {
+        // Ensure session persistence is set to LOCAL (survives app restart)
+        await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
         console.error("Login error:", error);
         let errorMessage = 'خطأ في تسجيل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.';
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-             errorMessage = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
+             errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
         } else if (error.code === 'auth/too-many-requests') {
              errorMessage = 'تم تعليق الدخول مؤقتاً بسبب تكرار المحاولة. حاول لاحقاً.';
+        } else if (error.code === 'auth/invalid-email') {
+             // If mapping failed or input was bad
+             errorMessage = 'البريد الإلكتروني غير صالح.';
         }
         throw new Error(errorMessage);
     }
   }, []);
 
-  const register = useCallback(async (firstName: string, lastName: string, email: string, password: string): Promise<void> => {
+  const resetPassword = useCallback(async (email: string): Promise<void> => {
+     if (!email) throw new Error('الرجاء إدخال البريد الإلكتروني.');
+     try {
+         await sendPasswordResetEmail(auth, email);
+     } catch (error: any) {
+         console.error("Reset password error:", error);
+         let msg = 'حدث خطأ أثناء إرسال الرابط.';
+         if (error.code === 'auth/user-not-found') msg = 'البريد الإلكتروني غير مسجل.';
+         if (error.code === 'auth/invalid-email') msg = 'البريد الإلكتروني غير صالح.';
+         throw new Error(msg);
+     }
+  }, []);
+
+  const register = useCallback(async (email: string, password: string): Promise<void> => {
     const cleanEmail = email.trim().toLowerCase();
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const defaultUsername = cleanEmail.split('@')[0];
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
@@ -123,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const newUser: User = {
         id: userCredential.user.uid,
-        username: fullName, // Storing Full Name as username
+        username: defaultUsername,
         role: 'premium',
         aiRequestCount: 0,
         lastRequestDate: new Date().toISOString().split('T')[0],
@@ -137,6 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Update local state immediately to reflect the new user
       setUser(newUser);
+      localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
 
     } catch (error: any) {
         console.error("Registration error:", error);
@@ -151,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
         await signOut(auth);
         setUser(null);
+        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
     } catch (error) {
         console.error("Logout error:", error);
     }
@@ -169,9 +235,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const reloadUser = useCallback(async () => {
     if (auth.currentUser) {
+        // 1. Force reload from Firebase Auth server
         await auth.currentUser.reload();
-        // Force sync
-        await syncUserData(auth.currentUser);
+        // 2. Get the refreshed object (important!)
+        const currentUser = auth.currentUser;
+        // 3. Sync with app state
+        if (currentUser) {
+            await syncUserData(currentUser);
+        }
     }
   }, []);
   
@@ -210,6 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Optimistic update
         currentUserState.aiRequestCount += 1;
         setUser(currentUserState);
+        localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(currentUserState));
         
         // Update in Firestore
         try {
@@ -237,6 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await updateDoc(userRef, { ...updatedUser });
         if (user && user.id === updatedUser.id) {
             setUser(updatedUser);
+            localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(updatedUser));
         }
     } catch (e) {
         console.error("Error updating user:", e);
@@ -272,7 +345,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout, 
       requestAIAccess, 
       resendVerificationEmail, 
-      reloadUser,
+      reloadUser, 
+      resetPassword,
       isLoading, 
       getAllUsers, 
       updateUser, 
