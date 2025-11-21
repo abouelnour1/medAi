@@ -10,6 +10,7 @@ import { INITIAL_INSURANCE_DATA } from './data/insurance-data';
 import { CUSTOM_INSURANCE_DATA } from './data/custom-insurance-data';
 import { INITIAL_COSMETICS_DATA } from './data/cosmetics-data'; 
 import MedicineDetail from './components/MedicineDetail';
+import CosmeticDetail from './components/CosmeticDetail';
 import { translations, TranslationKeys } from './translations';
 import FloatingAssistantButton from './components/FloatingAssistantButton';
 import AssistantModal from './components/AssistantModal';
@@ -43,40 +44,58 @@ import { db } from './firebase';
 import { collection, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { Part } from '@google/genai';
 
+// Enhanced Normalization to handle Raw JSON keys properly and prevent white screens
 const normalizeProduct = (product: any): Medicine => {
   let productType = product['Product type'];
+  
+  // Handle Supplement Raw Data Keys Logic
   if (!productType) {
-    if (product.DrugType === 'Health' || product.DrugType === 'Herbal') {
+    if (product.DrugType === 'Health' || product.DrugType === 'Herbal' || product.DrugTypeAR) {
       productType = 'Supplement';
     } else {
-      productType = 'Human'; // Default to medicine if unknown
+      productType = 'Human'; 
     }
   }
 
+  // Handle Price Variations
   const price = product['Public price'] || product.Price || 'N/A';
+
+  // Handle Name Variations (Raw JSON keys vs App keys)
+  const tradeName = product['Trade Name'] || product.TradeName || 'Unknown';
+  const scientificName = product['Scientific Name'] || product.ScientificName || 'Unknown';
+  
+  // Handle Form Variations
+  const form = product.PharmaceuticalForm || product.DoesageForm || 'Unknown';
+  
+  // Handle Legal Status
+  const legalStatus = product['Legal Status'] || product.LegalStatus || product.LegalStatusEn || 'Unknown';
+
+  // Handle Manufacturer
+  const manufacturer = product['Manufacture Name'] || product.ManufacturerNameEN || 'Unknown';
+  const manufacturerCountry = product['Manufacture Country'] || product.ManufacturerCountry || 'Unknown';
 
   return {
     'RegisterNumber': String(product.RegisterNumber || product.Id || `unknown-${Math.random()}`),
-    'Trade Name': String(product['Trade Name'] || product.TradeName || 'Unknown'),
-    'Scientific Name': String(product['Scientific Name'] || product.ScientificName || 'Unknown'),
+    'Trade Name': String(tradeName).trim(),
+    'Scientific Name': String(scientificName).trim(),
     'Product type': String(productType),
     'Public price': String(price),
-    'PharmaceuticalForm': String(product.PharmaceuticalForm || product.DoesageForm || 'Unknown'),
+    'PharmaceuticalForm': String(form).trim(),
     'Strength': String(product.Strength || ''),
-    'StrengthUnit': String(product.StrengthUnit || ''),
+    'StrengthUnit': String(product.StrengthUnit || product.StrengthUnitAR || ''),
     'PackageSize': String(product.PackageSize || ''),
     'PackageTypes': String(product.PackageTypes || product.PackageType || ''),
-    'Legal Status': String(product['Legal Status'] || product.LegalStatus || 'Unknown'),
-    'Manufacture Name': String(product['Manufacture Name'] || product.ManufacturerNameEN || 'Unknown'),
-    'Manufacture Country': String(product['Manufacture Country'] || product.ManufacturerCountry || 'Unknown'),
+    'Legal Status': String(legalStatus), 
+    'Manufacture Name': String(manufacturer),
+    'Manufacture Country': String(manufacturerCountry),
     'Storage Condition Arabic': String(product['Storage Condition Arabic'] || product.StorageConditions || 'Unknown'),
     'Storage conditions': String(product['Storage conditions'] || product.StorageConditions || 'Unknown'),
-    'Main Agent': String(product['Main Agent'] || product.AgentName || 'Unknown'),
+    'Main Agent': String(product['Main Agent'] || product.AgentName || product.Agent || 'Unknown'),
     'ReferenceNumber': String(product.ReferenceNumber || ''),
     'Old register Number': String(product['Old register Number'] || ''),
     'DrugType': String(product.DrugType || ''),
     'Sub-Type': String(product['Sub-Type'] || ''),
-    'AdministrationRoute': String(product.AdministrationRoute || ''),
+    'AdministrationRoute': String(product.AdministrationRoute || product.AdministrationRouteAr || ''),
     'AtcCode1': String(product.AtcCode1 || ''),
     'AtcCode2': String(product.AtcCode2 || ''),
     'Size': String(product.Size || ''),
@@ -97,6 +116,7 @@ const normalizeProduct = (product: any): Medicine => {
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache';
 
 const App: React.FC = () => {
   const { user, requestAIAccess, isLoading: isAuthLoading } = useAuth();
@@ -112,16 +132,26 @@ const App: React.FC = () => {
          console.error("Failed to load medicines from cache", e);
      }
      // Fallback to static data
+     // Normalize static supplements immediately to avoid corrupted data
      const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
      return [...MEDICINE_DATA, ...initialSupplements];
   });
   
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>(() => {
-     // Future: Add caching for insurance data similar to medicines
      return [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
   });
   
-  const [cosmetics, setCosmetics] = useState<Cosmetic[]>(() => INITIAL_COSMETICS_DATA);
+  const [cosmetics, setCosmetics] = useState<Cosmetic[]>(() => {
+      try {
+          const cached = localStorage.getItem(COSMETICS_CACHE_KEY);
+          if (cached) {
+              return JSON.parse(cached);
+          }
+      } catch (e) {
+          console.error("Failed to load cosmetics from cache", e);
+      }
+      return INITIAL_COSMETICS_DATA;
+  });
   
   // Smart Merge: Fetch updates from Firebase and merge with local data
   useEffect(() => {
@@ -138,7 +168,8 @@ const App: React.FC = () => {
                 const data = doc.data();
                 // Ensure RegisterNumber matches
                 const regNum = data.RegisterNumber || doc.id; 
-                firestoreMap.set(regNum, { ...data, RegisterNumber: regNum } as Medicine);
+                // Apply normalization even to firestore data to be safe
+                firestoreMap.set(regNum, normalizeProduct({ ...data, RegisterNumber: regNum }));
             });
 
             setMedicines(prevMedicines => {
@@ -176,6 +207,47 @@ const App: React.FC = () => {
         syncMedicines();
     }
   }, []);
+
+  // Sync Cosmetics from Firebase
+  useEffect(() => {
+    const syncCosmetics = async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, 'cosmetics'));
+            if (querySnapshot.empty) return;
+
+            const firestoreMap = new Map<string, Cosmetic>();
+            querySnapshot.forEach(doc => {
+                const data = doc.data() as Cosmetic;
+                const id = data.id || doc.id;
+                firestoreMap.set(id, { ...data, id });
+            });
+
+            setCosmetics(prevCosmetics => {
+                const mergedMap = new Map<string, Cosmetic>();
+                prevCosmetics.forEach(c => mergedMap.set(c.id, c));
+                
+                firestoreMap.forEach((c, key) => {
+                    mergedMap.set(key, c);
+                });
+
+                const mergedArray = Array.from(mergedMap.values());
+                
+                try {
+                    localStorage.setItem(COSMETICS_CACHE_KEY, JSON.stringify(mergedArray));
+                } catch (e) {
+                    console.error("Failed to cache cosmetics", e);
+                }
+                return mergedArray;
+            });
+        } catch (e) {
+            console.error("Failed to sync cosmetics from Firebase:", e);
+        }
+    };
+
+    if (navigator.onLine) {
+        syncCosmetics();
+    }
+  }, []);
   
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
@@ -195,8 +267,13 @@ const App: React.FC = () => {
   const [forceSearch, setForceSearch] = useState(false);
   
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [selectedCosmetic, setSelectedCosmetic] = useState<Cosmetic | null>(null);
   const [language, setLanguage] = useState<Language>('ar');
   
+  // Cosmetics Search State (Lifted to App to persist on back navigation)
+  const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
+  const [cosmeticsSelectedBrand, setCosmeticsSelectedBrand] = useState('');
+
   const [isAssistantModalOpen, setIsAssistantModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
@@ -219,6 +296,9 @@ const App: React.FC = () => {
   // Edit Modal State for Main App (Admin only)
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
+
+  const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
+  const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
   
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   
@@ -275,13 +355,13 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    const isModalOpen = isAssistantModalOpen || isFilterModalOpen || isBarcodeScannerOpen || isEditMedicineModalOpen;
+    const isModalOpen = isAssistantModalOpen || isFilterModalOpen || isBarcodeScannerOpen || isEditMedicineModalOpen || isEditCosmeticModalOpen;
     if (isModalOpen) {
         document.body.classList.add('no-scroll');
     } else {
         document.body.classList.remove('no-scroll');
     }
-  }, [isAssistantModalOpen, isFilterModalOpen, isBarcodeScannerOpen, isEditMedicineModalOpen]);
+  }, [isAssistantModalOpen, isFilterModalOpen, isBarcodeScannerOpen, isEditMedicineModalOpen, isEditCosmeticModalOpen]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -500,6 +580,8 @@ const App: React.FC = () => {
   };
 
   const handleMedicineSelect = (medicine: Medicine) => { scrollPositionRef.current = window.scrollY; setSelectedMedicine(medicine); setView('details'); };
+  const handleCosmeticSelect = (cosmetic: Cosmetic) => { scrollPositionRef.current = window.scrollY; setSelectedCosmetic(cosmetic); setView('cosmeticDetails'); };
+
   const handleFilterChange = <K extends keyof Filters>(filterName: K, value: Filters[K]) => setFilters(prevFilters => ({ ...prevFilters, [filterName]: value }));
   const handleClearFilters = useCallback(() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' }), []);
   const handleClearSearch = useCallback(() => { setSearchTerm(''); setTextSearchMode('tradeName'); handleClearFilters(); setSortBy('alphabetical'); setSearchResults([]); setView('search'); setForceSearch(false); }, [handleClearFilters]);
@@ -513,7 +595,7 @@ const App: React.FC = () => {
     
     const targetView = (isSearchActive && activeTab === 'search') ? 'results' : 'search';
 
-    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails', 'favorites'].includes(view)) {
+    if (['details', 'alternatives', 'chatHistory', 'insuranceDetails', 'favorites', 'cosmeticDetails'].includes(view)) {
        if (activeTab === 'insurance') {
            setView('insuranceSearch');
        } else if (activeTab === 'cosmetics') {
@@ -531,7 +613,7 @@ const App: React.FC = () => {
     } else {
         setView(targetView);
     }
-    setSourceMedicine(null); setAlternativesResults(null); setSelectedMedicine(null); setSelectedInsuranceData(null);
+    setSourceMedicine(null); setAlternativesResults(null); setSelectedMedicine(null); setSelectedInsuranceData(null); setSelectedCosmetic(null);
   }, [view, isSearchActive, activeTab, selectedPrescription]);
 
   const handleOpenContextualAssistant = (medicine: Medicine) => {
@@ -636,7 +718,7 @@ const App: React.FC = () => {
     setAssistantContextMedicine(null);
   };
   
-  // Edit Logic for Admin
+  // Edit Logic for Admin (Medicines)
   const handleEditMedicine = (medicine: Medicine) => {
       setEditingMedicine({ ...medicine });
       setIsEditMedicineModalOpen(true);
@@ -667,13 +749,44 @@ const App: React.FC = () => {
               console.error("Failed to sync edit to cloud", e);
               alert("Saved locally, but failed to sync to cloud. Check internet.");
           }
-      } else {
-          // alert("Saved locally only."); 
-          // Optional feedback, kept silent for speed as requested by user preference for "Save Local" usually implies speed.
       }
 
       setIsEditMedicineModalOpen(false);
       setEditingMedicine(null);
+  };
+
+  // Edit Logic for Admin (Cosmetics)
+  const handleEditCosmetic = (cosmetic: Cosmetic) => {
+      setEditingCosmetic({ ...cosmetic });
+      setIsEditCosmeticModalOpen(true);
+  };
+
+  const handleSaveEditedCosmetic = async (syncToCloud: boolean) => {
+      if (!editingCosmetic) return;
+
+      setCosmetics(prev => {
+          const updated = prev.map(c => c.id === editingCosmetic.id ? editingCosmetic : c);
+          localStorage.setItem(COSMETICS_CACHE_KEY, JSON.stringify(updated));
+          return updated;
+      });
+
+      if (selectedCosmetic && selectedCosmetic.id === editingCosmetic.id) {
+          setSelectedCosmetic(editingCosmetic);
+      }
+
+      if (syncToCloud) {
+          try {
+              const cosmeticDocRef = doc(db, 'cosmetics', editingCosmetic.id);
+              await setDoc(cosmeticDocRef, editingCosmetic, { merge: true });
+              alert("Cosmetic saved locally AND synced to Cloud Firestore.");
+          } catch (e) {
+              console.error("Failed to sync edit to cloud", e);
+              alert("Saved locally, but failed to sync to cloud.");
+          }
+      }
+
+      setIsEditCosmeticModalOpen(false);
+      setEditingCosmetic(null);
   };
 
   
@@ -702,6 +815,7 @@ const App: React.FC = () => {
   const headerTitle = useMemo(() => {
     switch (view) {
       case 'details': return selectedMedicine ? selectedMedicine['Trade Name'] : t('appTitle');
+      case 'cosmeticDetails': return selectedCosmetic ? selectedCosmetic.BrandName : t('appTitle');
       case 'alternatives': return t('alternativesFor', { name: sourceMedicine ? sourceMedicine['Trade Name'] : '' });
       case 'settings':
       case 'addData':
@@ -726,7 +840,7 @@ const App: React.FC = () => {
         if (activeTab === 'settings') return t('navSettings');
         return t('appTitle');
     }
-  }, [view, activeTab, selectedMedicine, sourceMedicine, t, selectedPrescription]);
+  }, [view, activeTab, selectedMedicine, selectedCosmetic, sourceMedicine, t, selectedPrescription]);
 
   const showBackButton = useMemo(() => {
     if (activeTab === 'prescriptions' && selectedPrescription) return true;
@@ -747,8 +861,6 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    // REMOVED: The blocking loading state check. 
-    // App now renders immediately even if auth is still initializing.
     
     if (user && !user.emailVerified && user.role !== 'admin') {
         return <VerifyEmailView user={user} t={t} />;
@@ -863,10 +975,18 @@ const App: React.FC = () => {
     }
 
     if (activeTab === 'cosmetics') {
+      if (view === 'cosmeticDetails' && selectedCosmetic) {
+          return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={handleEditCosmetic} />;
+      }
       return <CosmeticsView 
         t={t} 
         language={language} 
         cosmetics={cosmetics}
+        onSelectCosmetic={handleCosmeticSelect}
+        searchTerm={cosmeticsSearchTerm}
+        setSearchTerm={setCosmeticsSearchTerm}
+        selectedBrand={cosmeticsSelectedBrand}
+        setSelectedBrand={setCosmeticsSelectedBrand}
       />;
     }
 
@@ -913,7 +1033,7 @@ const App: React.FC = () => {
         case 'addCosmeticsData':
             return <AddCosmeticsDataView onImport={handleImportCosmeticsData} t={t} />;
         case 'admin':
-            return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} /> : null;
+            return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
         case 'favorites':
           return <FavoritesView
               favoriteIds={favorites}
@@ -1042,7 +1162,7 @@ const App: React.FC = () => {
         t={t}
       />
 
-      {/* Edit Modal for Admin from Main View */}
+      {/* Edit Modal for Admin (Medicine) */}
       {isEditMedicineModalOpen && editingMedicine && (
             <div className="fixed inset-0 z-50 bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsEditMedicineModalOpen(false)}>
                 <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mt-8 sm:mt-0" onClick={e => e.stopPropagation()}>
@@ -1072,13 +1192,50 @@ const App: React.FC = () => {
                                         <option value="Human">{t('humanProduct')}</option>
                                         <option value="Supplement">{t('supplementProduct')}</option>
                                     </select>
-                               </div>
+                                </div>
                             </div>
                         </div>
                         <div className="flex flex-wrap justify-end gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
                             <button type="button" onClick={() => setIsEditMedicineModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
                             <button type="button" onClick={() => handleSaveEditedMedicine(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally Only</button>
                             <button type="button" onClick={() => handleSaveEditedMedicine(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                Save & Sync to Cloud
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+      )}
+
+      {/* Edit Modal for Admin (Cosmetic) */}
+      {isEditCosmeticModalOpen && editingCosmetic && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsEditCosmeticModalOpen(false)}>
+                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mt-8 sm:mt-0" onClick={e => e.stopPropagation()}>
+                    <h3 className="text-xl font-bold mb-4 flex-shrink-0">Edit Cosmetic</h3>
+                    <form onSubmit={(e) => e.preventDefault()} className="flex-grow flex flex-col overflow-hidden">
+                        <div className="space-y-3 overflow-y-auto pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('brandName')}</label><input type="text" value={editingCosmetic.BrandName} onChange={e => setEditingCosmetic({...editingCosmetic, BrandName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
+                                
+                                <div><label className="text-sm font-medium">Product Name (En)</label><input type="text" value={editingCosmetic.SpecificName} onChange={e => setEditingCosmetic({...editingCosmetic, SpecificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required/></div>
+                                <div><label className="text-sm font-medium">Product Name (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.SpecificNameAr} onChange={e => setEditingCosmetic({...editingCosmetic, SpecificNameAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                
+                                <div><label className="text-sm font-medium">Category (En)</label><input type="text" value={editingCosmetic.FirstSubCategoryEn} onChange={e => setEditingCosmetic({...editingCosmetic, FirstSubCategoryEn: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">Category (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.FirstSubCategoryAr} onChange={e => setEditingCosmetic({...editingCosmetic, FirstSubCategoryAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                
+                                <div><label className="text-sm font-medium">Sub-Category (En)</label><input type="text" value={editingCosmetic.SecondSubCategoryEn} onChange={e => setEditingCosmetic({...editingCosmetic, SecondSubCategoryEn: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">Sub-Category (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.SecondSubCategoryAr} onChange={e => setEditingCosmetic({...editingCosmetic, SecondSubCategoryAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">Active Ingredient</label><input type="text" value={editingCosmetic["Active ingredient"]} onChange={e => setEditingCosmetic({...editingCosmetic, "Active ingredient": e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">Key Ingredients</label><textarea value={editingCosmetic["Key Ingredients"] || ''} onChange={e => setEditingCosmetic({...editingCosmetic, "Key Ingredients": e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" rows={2} /></div>
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">Highlights</label><textarea value={editingCosmetic.Highlights || ''} onChange={e => setEditingCosmetic({...editingCosmetic, Highlights: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" rows={2} /></div>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
+                            <button type="button" onClick={() => setIsEditCosmeticModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
+                            <button type="button" onClick={() => handleSaveEditedCosmetic(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally Only</button>
+                            <button type="button" onClick={() => handleSaveEditedCosmetic(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                 Save & Sync to Cloud
                             </button>

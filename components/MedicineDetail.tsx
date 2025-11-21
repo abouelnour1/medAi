@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
@@ -49,13 +50,14 @@ interface MedicineDetailProps {
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit }) => {
   const price = parseFloat(medicine['Public price']);
-  const scientificName = medicine['Scientific Name'];
-  const strengths = medicine.Strength;
-  const strengthUnit = medicine.StrengthUnit || '';
+  const scientificName = medicine['Scientific Name'] || '';
+  const strengths = String(medicine.Strength || '');
+  const strengthUnit = String(medicine.StrengthUnit || '');
 
-  const strengthValues = strengths.split(',').map(s => s.trim()).filter(Boolean);
-  const strengthUnitValues = strengthUnit.split(',').map(s => s.trim()).filter(Boolean);
-  const ingredients = scientificName.split(',').map(s => s.trim()).filter(Boolean);
+  // Safeguard against null/undefined before split
+  const strengthValues = strengths ? strengths.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const strengthUnitValues = strengthUnit ? strengthUnit.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
 
   const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
 
@@ -64,7 +66,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
       <div>
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name']}</h2>
+              <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name'] || 'Unknown Name'}</h2>
               <div className="flex items-center gap-2">
                   {user?.role === 'admin' && onEdit && (
                       <button
@@ -100,7 +102,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                   } else if (strengthUnitValues.length === 1) {
                     unit = strengthUnitValues[0];
                   }
-                  const strengthDisplay = `${strengthValues[index]}${unit ? ` ${unit}` : ''}`.trim();
+                  const strengthDisplay = `${strengthValues[index] || ''}${unit ? ` ${unit}` : ''}`.trim();
 
                   return (
                     <li key={index} className="flex justify-between items-baseline">
@@ -128,7 +130,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
-            <DetailRow label={t('packageSize')} value={`${medicine.PackageSize} ${medicine.PackageTypes || ''}`.trim()} />
+            <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
             
             {medicine['Legal Status'] && (
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">

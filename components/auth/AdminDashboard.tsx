@@ -9,6 +9,7 @@ import SettingsIcon from '../icons/SettingsIcon';
 import SearchIcon from '../icons/SearchIcon';
 import TrashIcon from '../icons/TrashIcon';
 import HealthInsuranceIcon from '../icons/HealthInsuranceIcon';
+import CosmeticsIcon from '../icons/CosmeticsIcon';
 import { db } from '../../firebase';
 import { collection, getDocs, writeBatch, doc, addDoc, setDoc } from 'firebase/firestore';
 import { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } from '../../data/data';
@@ -16,7 +17,7 @@ import { INITIAL_INSURANCE_DATA } from '../../data/insurance-data';
 import { CUSTOM_INSURANCE_DATA } from '../../data/custom-insurance-data';
 import { INITIAL_COSMETICS_DATA } from '../../data/cosmetics-data';
 
-type Panel = 'overview' | 'users' | 'medicines' | 'insurance' | 'settings' | 'migration';
+type Panel = 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl flex items-center gap-4">
@@ -35,9 +36,10 @@ interface AdminDashboardProps {
   insuranceData: InsuranceDrug[];
   setInsuranceData: React.Dispatch<React.SetStateAction<InsuranceDrug[]>>;
   cosmetics: Cosmetic[];
+  setCosmetics?: React.Dispatch<React.SetStateAction<Cosmetic[]>>;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines, setMedicines, insuranceData, setInsuranceData, cosmetics = [] }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines, setMedicines, insuranceData, setInsuranceData, cosmetics = [], setCosmetics }) => {
   const { updateUser, deleteUser, getSettings, updateSettings } = useAuth();
   const [activePanel, setActivePanel] = useState<Panel>('overview');
   
@@ -55,6 +57,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [editingInsuranceItem, setEditingInsuranceItem] = useState<InsuranceDrug | null>(null);
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
+
+  // Cosmetics Management State
+  const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
+  const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
+  const [isCosmeticsModalOpen, setIsCosmeticsModalOpen] = useState(false);
 
   // Settings State
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
@@ -85,13 +92,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   }, [activePanel]);
 
   useEffect(() => {
-    const isModalOpen = isMedicineModalOpen || isInsuranceModalOpen;
+    const isModalOpen = isMedicineModalOpen || isInsuranceModalOpen || isCosmeticsModalOpen;
     if (isModalOpen) {
       document.body.classList.add('no-scroll');
     } else {
       document.body.classList.remove('no-scroll');
     }
-  }, [isMedicineModalOpen, isInsuranceModalOpen]);
+  }, [isMedicineModalOpen, isInsuranceModalOpen, isCosmeticsModalOpen]);
   
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm) return users;
@@ -116,6 +123,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
         i.icd10Code.toLowerCase().includes(lowerTerm)
     );
   }, [insuranceData, insuranceSearchTerm]);
+
+  const filteredCosmetics = useMemo(() => {
+    if (!cosmeticsSearchTerm) return cosmetics;
+    const lowerTerm = cosmeticsSearchTerm.toLowerCase();
+    return cosmetics.filter(c => 
+        c.SpecificName.toLowerCase().includes(lowerTerm) || 
+        c.BrandName.toLowerCase().includes(lowerTerm)
+    );
+  }, [cosmetics, cosmeticsSearchTerm]);
 
   const handleUserUpdate = async () => {
     if (editingUser) {
@@ -147,7 +163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
     try {
         if (editingMedicine.RegisterNumber.startsWith('new-')) { // New medicine
              const { RegisterNumber, ...dataToSave } = editingMedicine;
-             const docRef = await addDoc(collection(db, 'medicines'), {
+             await addDoc(collection(db, 'medicines'), {
                  ...dataToSave,
                  RegisterNumber: `med-${Date.now()}` 
              });
@@ -201,6 +217,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
     setIsInsuranceModalOpen(true);
   };
 
+  const handleCosmeticsFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCosmetic) return;
+    // In a real app, you would save to Firebase here. For now, local update (mock).
+    // If setCosmetics is passed, use it to update local state
+    if (setCosmetics) {
+        setCosmetics(prev => {
+            if (editingCosmetic.id.startsWith('new-')) {
+                return [...prev, { ...editingCosmetic, id: `cosmetic-${Date.now()}` }];
+            }
+            return prev.map(c => c.id === editingCosmetic.id ? editingCosmetic : c);
+        });
+    }
+    setIsCosmeticsModalOpen(false);
+    setEditingCosmetic(null);
+  };
+
+  const openCosmeticsModal = (item: Cosmetic | null) => {
+      if (item) {
+          setEditingCosmetic(item);
+      } else {
+          setEditingCosmetic({ 
+              id: `new-${Date.now()}`, 
+              BrandName: '', SpecificName: '', SpecificNameAr: '', 
+              FirstSubCategoryAr: '', FirstSubCategoryEn: '', 
+              SecondSubCategoryAr: '', SecondSubCategoryEn: '',
+              manufacturerNameEn: '', manufacturerCountryAr: '', manufacturerCountryEn: '',
+              "Active ingredient": ''
+          });
+      }
+      setIsCosmeticsModalOpen(true);
+  };
+
 
   const handleSettingsChange = (key: keyof AppSettings, value: any) => {
     const newSettings = {...appSettings, [key]: value};
@@ -226,7 +275,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             const chunk = data.slice(i, i + batchSize);
             
             chunk.forEach(item => {
-                const docRef = doc(collection(db, collectionName));
+                // Important: Use a key if available for ID to avoid duplicates, else auto-gen
+                const docId = item.RegisterNumber || item.id;
+                const docRef = docId ? doc(db, collectionName, docId) : doc(collection(db, collectionName));
                 batch.set(docRef, item);
             });
             
@@ -246,28 +297,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
       }
   };
 
+  // Normalization logic for Migration to prevent data corruption
+  const normalizeSupplementForUpload = (product: any): Medicine => {
+      const price = product.Price || product['Public price'] || 'N/A';
+      return {
+        'RegisterNumber': String(product.Id || product.RegisterNumber || `sup-${Math.random()}`),
+        'Trade Name': String(product.TradeName || product['Trade Name'] || '').trim(),
+        'Scientific Name': String(product.ScientificName || product['Scientific Name'] || '').trim(),
+        'Product type': 'Supplement',
+        'Public price': String(price),
+        'PharmaceuticalForm': String(product.DoesageForm || product.PharmaceuticalForm || '').trim(),
+        'Strength': String(product.Strength || ''),
+        'StrengthUnit': String(product.StrengthUnit || product.StrengthUnitAR || ''),
+        'PackageSize': String(product.PackageSize || ''),
+        'PackageTypes': String(product.PackageType || product.PackageTypes || ''),
+        'Legal Status': 'OTC',
+        'Manufacture Name': String(product.ManufacturerNameEN || product['Manufacture Name'] || ''),
+        'Manufacture Country': String(product.ManufacturerCountry || product['Manufacture Country'] || ''),
+        'Storage conditions': String(product.StorageConditions || product['Storage conditions'] || ''),
+        'Storage Condition Arabic': '',
+        'Main Agent': String(product.AgentName || product['Main Agent'] || ''),
+        'ReferenceNumber': '', 'Old register Number': '', 'DrugType': '', 'Sub-Type': '', 'AdministrationRoute': '', 'AtcCode1': '', 'AtcCode2': '', 'Size': '', 'SizeUnit': '', 'Product Control': '', 'Distribute area': '', 'shelfLife': '', 'Marketing Company': '', 'Marketing Country': '', 'Secondry package  manufacture': '', 'Secosnd Agent': '', 'Third agent': '', 'Description Code': '', 'Authorization Status': '', 'Last Update': '',
+      };
+  };
+
   const handleMigrateMedicines = async () => {
       try {
         setMigrationStatus("Preparing Medicine & Supplement data...");
-        if (!window.confirm("Start uploading Medicines & Supplements? This may take a moment.")) {
+        if (!window.confirm("Start uploading Medicines & Supplements? This will normalize raw data.")) {
             setMigrationStatus("Migration cancelled.");
             return;
         }
         
-        const normalizedSupplements = SUPPLEMENT_DATA_RAW.map(p => ({
-             "RegisterNumber": String(p.Id || Math.random()),
-             "Trade Name": p.TradeName,
-             "Scientific Name": p.ScientificName || '',
-             "Public price": p.Price || 'N/A',
-             "Product type": 'Supplement',
-             "PharmaceuticalForm": p.DoesageForm || '',
-             "Manufacture Name": p.ManufacturerNameEN || '',
-             "Legal Status": "OTC",
-             "Strength": p.Strength || '',
-             "StrengthUnit": p.StrengthUnit || ''
-        }));
+        // 1. Process Supplements: Normalize Raw Data to Medicine Schema
+        const normalizedSupplements = SUPPLEMENT_DATA_RAW.map(normalizeSupplementForUpload);
         
+        // 2. Combine with Existing Medicine Data (already in correct schema)
         const allMeds = [...MEDICINE_DATA, ...normalizedSupplements];
+        
         await uploadCollection('medicines', allMeds);
       } catch (error: any) {
           alert("Error preparing data: " + error.message);
@@ -278,11 +345,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const handleMigrateInsurance = async () => {
       try {
         setMigrationStatus("Preparing Insurance data...");
-        if (!window.confirm("Start uploading Insurance Data? This file is large, please keep the window open.")) {
+        if (!window.confirm("Start uploading Insurance Data?")) {
              setMigrationStatus("Migration cancelled.");
              return;
         }
         
+        // Ensure we are uploading the cleaned/normalized insurance data array
         const allInsurance = [...insuranceData];
         await uploadCollection('insurance', allInsurance);
       } catch (error: any) {
@@ -298,6 +366,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             setMigrationStatus("Migration cancelled.");
             return;
         }
+        // Upload the normalized cosmetics array
         await uploadCollection('cosmetics', cosmetics);
       } catch (error: any) {
           alert("Error preparing data: " + error.message);
@@ -519,6 +588,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                 </div>
             </div>
         );
+      case 'cosmetics':
+        return (
+            <div>
+                 <div className="flex justify-between items-center mb-4">
+                    <div className="relative w-full max-w-xs">
+                        <input type="text" placeholder={t('searchCosmeticsPlaceholder')} value={cosmeticsSearchTerm} onChange={e => setCosmeticsSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                        <div className="absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary h-5 w-5"><SearchIcon /></div>
+                    </div>
+                    <button onClick={() => openCosmeticsModal(null)} className="bg-primary text-white px-4 py-2 rounded-lg font-semibold">Add Cosmetic</button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-800">
+                            <tr>
+                                <th className="px-3 py-2">{t('brandName')}</th>
+                                <th className="px-3 py-2">{t('productName')}</th>
+                                <th className="px-3 py-2">Category</th>
+                                <th className="px-3 py-2 text-right">{t('actions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredCosmetics.map(item => (
+                                <tr key={item.id} className="border-b dark:border-slate-700">
+                                    <td className="px-3 py-2 font-medium whitespace-normal break-words">{item.BrandName}</td>
+                                    <td className="px-3 py-2 whitespace-normal break-words">{item.SpecificName}</td>
+                                    <td className="px-3 py-2">{item.FirstSubCategoryEn}</td>
+                                    <td className="px-3 py-2 text-right">
+                                        <div className="flex gap-2 justify-end">
+                                            <button onClick={() => openCosmeticsModal(item)} className="font-medium text-primary hover:underline">{t('editUser')}</button>
+                                            <button className="font-medium text-red-500 hover:underline"><TrashIcon/></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
        case 'settings':
          return (
             <div className="space-y-6">
@@ -645,7 +753,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                          {/* Cosmetics Card */}
                          <div className={`bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-5 flex flex-col items-center text-center gap-4 shadow-sm transition-all ${isMigrationLocked ? 'opacity-50 grayscale' : 'hover:shadow-md'}`}>
                             <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-400 flex-shrink-0">
-                                <div className="w-6 h-6"><ChartIcon /></div>
+                                <div className="w-6 h-6"><CosmeticsIcon /></div>
                             </div>
                             <div className="flex-grow">
                                 <h4 className="font-bold text-lg text-light-text dark:text-dark-text">Cosmetics Data</h4>
@@ -693,6 +801,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           <SidebarItem panel="users" label={t('adminPanelUsers')} icon={<UsersIcon />} />
           <SidebarItem panel="medicines" label={t('adminPanelMedicines')} icon={<PillBottleIcon />} />
           <SidebarItem panel="insurance" label={t('adminPanelInsurance')} icon={<HealthInsuranceIcon />} />
+          <SidebarItem panel="cosmetics" label="Cosmetics" icon={<CosmeticsIcon />} />
           <SidebarItem panel="settings" label={t('adminPanelSettings')} icon={<SettingsIcon />} />
           <SidebarItem panel="migration" label="DB Migration" icon={<div className="text-orange-500"><SettingsIcon /></div>} />
         </nav>
@@ -705,6 +814,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             {activePanel === 'insurance' && t('insuranceManagementTitle')}
             {activePanel === 'settings' && t('appSettingsTitle')}
             {activePanel === 'migration' && 'Database Migration'}
+            {activePanel === 'cosmetics' && 'Cosmetics Management'}
         </h2>
         {renderPanel()}
       </main>
@@ -766,14 +876,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                             <datalist id="drug-class-list"><>{uniqueDrugClasses.map(name => <option key={name} value={name} />)}</></datalist>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('indication')}</label><input list="indication-list" type="text" value={editingInsuranceItem.indication} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, indication: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
-                                <div><label className="text-sm font-medium">{t('scientificName')}</label><input list="insurance-sci-name-list" type="text" value={editingInsuranceItem.scientificName} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, scientificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
-                                <div><label className="text-sm font-medium">{t('icd10Code')}</label><input type="text" value={editingInsuranceItem.icd10Code} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, icd10Code: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('drugClass')}</label><input list="drug-class-list" type="text" value={editingInsuranceItem.drugClass} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, drugClass: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div className="sm:col-span-2">
+                                    <label className="text-sm font-medium">{t('indication')}</label>
+                                    <input list="indication-list" type="text" value={editingInsuranceItem.indication} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, indication: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="text-sm font-medium">{t('scientificName')}</label>
+                                    <input list="insurance-sci-name-list" type="text" value={editingInsuranceItem.scientificName} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, scientificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required />
+                                </div>
+                                
+                                {/* Grid for Technical Details */}
+                                <div className="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-800/30 p-2 rounded-lg">
+                                    <div><label className="text-xs text-gray-500">{t('icd10Code')}</label><input type="text" value={editingInsuranceItem.icd10Code} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, icd10Code: e.target.value})} className="w-full text-sm p-1 bg-white dark:bg-slate-700 rounded border dark:border-slate-600" /></div>
+                                    <div><label className="text-xs text-gray-500">{t('atcCode')}</label><input type="text" value={editingInsuranceItem.atcCode} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, atcCode: e.target.value})} className="w-full text-sm p-1 bg-white dark:bg-slate-700 rounded border dark:border-slate-600" /></div>
+                                    <div className="col-span-2"><label className="text-xs text-gray-500">{t('drugClass')}</label><input list="drug-class-list" type="text" value={editingInsuranceItem.drugClass} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, drugClass: e.target.value})} className="w-full text-sm p-1 bg-white dark:bg-slate-700 rounded border dark:border-slate-600" /></div>
+                                </div>
+
                                 <div><label className="text-sm font-medium">{t('pharmaceuticalForm')}</label><input list="form-list" type="text" value={editingInsuranceItem.form} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, form: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                                <div><label className="text-sm font-medium">{t('atcCode')}</label><input type="text" value={editingInsuranceItem.atcCode} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, atcCode: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                                <div><label className="text-sm font-medium">{t('strength')}</label><input type="text" value={editingInsuranceItem.strength} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strength: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
-                                <div><label className="text-sm font-medium">{t('strengthUnit')}</label><input type="text" value={editingInsuranceItem.strengthUnit} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strengthUnit: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">{t('strength')}</label><div className="flex gap-1"><input type="text" value={editingInsuranceItem.strength} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strength: e.target.value})} className="w-2/3 mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" placeholder="Val"/><input type="text" value={editingInsuranceItem.strengthUnit} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, strengthUnit: e.target.value})} className="w-1/3 mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" placeholder="Unit"/></div></div>
+                                
                                 <div className="sm:col-span-2"><label className="text-sm font-medium">{t('notes')}</label><textarea value={editingInsuranceItem.notes} onChange={e => setEditingInsuranceItem({...editingInsuranceItem, notes: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" rows={3}></textarea></div>
                             </div>
                         </div>
@@ -785,6 +906,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                 </div>
             </div>
         )}
+
+      {/* Cosmetics Modal */}
+      {isCosmeticsModalOpen && editingCosmetic && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={() => setIsCosmeticsModalOpen(false)}>
+                <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mt-8 sm:mt-0" onClick={e => e.stopPropagation()}>
+                    <h3 className="text-xl font-bold mb-4 flex-shrink-0">{editingCosmetic.id.startsWith('new-') ? 'Add Cosmetic' : 'Edit Cosmetic'}</h3>
+                    <form onSubmit={handleCosmeticsFormSubmit} className="flex-grow flex flex-col overflow-hidden">
+                        <div className="space-y-3 overflow-y-auto pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="sm:col-span-2"><label className="text-sm font-medium">{t('brandName')}</label><input type="text" value={editingCosmetic.BrandName} onChange={e => setEditingCosmetic({...editingCosmetic, BrandName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required /></div>
+                                
+                                <div><label className="text-sm font-medium">Product Name (En)</label><input type="text" value={editingCosmetic.SpecificName} onChange={e => setEditingCosmetic({...editingCosmetic, SpecificName: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" required/></div>
+                                <div><label className="text-sm font-medium">Product Name (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.SpecificNameAr} onChange={e => setEditingCosmetic({...editingCosmetic, SpecificNameAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                
+                                <div><label className="text-sm font-medium">Category (En)</label><input type="text" value={editingCosmetic.FirstSubCategoryEn} onChange={e => setEditingCosmetic({...editingCosmetic, FirstSubCategoryEn: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">Category (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.FirstSubCategoryAr} onChange={e => setEditingCosmetic({...editingCosmetic, FirstSubCategoryAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                
+                                <div><label className="text-sm font-medium">Sub-Category (En)</label><input type="text" value={editingCosmetic.SecondSubCategoryEn} onChange={e => setEditingCosmetic({...editingCosmetic, SecondSubCategoryEn: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                                <div><label className="text-sm font-medium">Sub-Category (Ar)</label><input type="text" dir="rtl" value={editingCosmetic.SecondSubCategoryAr} onChange={e => setEditingCosmetic({...editingCosmetic, SecondSubCategoryAr: e.target.value})} className="w-full mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded" /></div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
+                            <button type="button" onClick={() => setIsCosmeticsModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{t('cancel')}</button>
+                            <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg">{t('save')}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+      )}
 
     </div>
   );

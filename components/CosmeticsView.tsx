@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Cosmetic, TFunction, Language } from '../types';
 import SearchableDropdown from './SearchableDropdown';
@@ -7,11 +8,23 @@ interface CosmeticsViewProps {
   cosmetics: Cosmetic[];
   t: TFunction;
   language: Language;
+  onSelectCosmetic: (cosmetic: Cosmetic) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  selectedBrand: string;
+  setSelectedBrand: (brand: string) => void;
 }
 
-const CosmeticsView: React.FC<CosmeticsViewProps> = ({ cosmetics, t, language }) => {
-  const [selectedBrand, setSelectedBrand] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
+const CosmeticsView: React.FC<CosmeticsViewProps> = ({ 
+    cosmetics, 
+    t, 
+    language, 
+    onSelectCosmetic,
+    searchTerm,
+    setSearchTerm,
+    selectedBrand,
+    setSelectedBrand
+}) => {
 
   const uniqueBrands = useMemo(() => {
     const brands = new Set(cosmetics.map(c => c.BrandName));
@@ -73,7 +86,13 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({ cosmetics, t, language })
         filteredCosmetics.length > 0 ? (
           <div className="space-y-3">
             {filteredCosmetics.map(cosmetic => (
-              <CosmeticCard key={cosmetic.id} cosmetic={cosmetic} t={t} language={language} />
+              <CosmeticCard 
+                key={cosmetic.id} 
+                cosmetic={cosmetic} 
+                t={t} 
+                language={language}
+                onClick={() => onSelectCosmetic(cosmetic)}
+              />
             ))}
           </div>
         ) : (
