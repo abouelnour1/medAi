@@ -283,7 +283,7 @@ const App: React.FC = () => {
   }, [filters]);
 
   const isSearchActive = useMemo(() => {
-    return Object.values(filters).some(val => Array.isArray(val) ? val.length > 0 : !!val && val !== 'all') || searchTerm.trim().length >= 3 || forceSearch;
+    return Object.values(filters).some(val => Array.isArray(val) ? val.length > 0 : !!val && val !== 'all') || searchTerm.trim().length >= 2 || forceSearch;
   }, [searchTerm, filters, forceSearch]);
 
   useEffect(() => {
@@ -296,25 +296,29 @@ const App: React.FC = () => {
     }
 
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
-    const searchTermIsLongEnough = lowerSearchTerm.length >= 3 || (forceSearch && lowerSearchTerm.length > 0);
     
-    // FIX: Improved Numeric Detection
-    const isNumericSearch = /^\d+(\.\d+)?$/.test(lowerSearchTerm);
-
-    // Prepare Regex for Wildcard Search (%)
+    // Advanced Search Logic: Separating numbers (strength) from text
+    const searchTerms = lowerSearchTerm.split(/\s+/).filter(Boolean);
+    const numberTerms = searchTerms.filter(term => /^\d+(\.\d+)?(mg|g|ml|%)?$/.test(term));
+    const textTerms = searchTerms.filter(term => !/^\d+(\.\d+)?(mg|g|ml|%)?$/.test(term));
+    
+    // If we have text terms, combine them back for regex searching
+    const textQuery = textTerms.join(' ');
+    
     const escapeRegExp = (string: string) => {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     };
     
-    const regexPattern = lowerSearchTerm.split('%').map(escapeRegExp).join('.*');
-    let searchRegex: RegExp;
-    try {
-        searchRegex = new RegExp(regexPattern, 'i');
-    } catch (e) {
-        searchRegex = new RegExp(escapeRegExp(lowerSearchTerm), 'i');
+    // Create regex for text part only if it exists
+    let searchRegex: RegExp | null = null;
+    if (textQuery) {
+        const regexPattern = textQuery.split('%').map(escapeRegExp).join('.*');
+        try {
+            searchRegex = new RegExp(regexPattern, 'i');
+        } catch (e) {
+            searchRegex = new RegExp(escapeRegExp(textQuery), 'i');
+        }
     }
-
-    const prefixPart = lowerSearchTerm.split('%')[0];
 
     const filtered = medicines.filter(med => {
       // 1. Apply General Filters first (Fast)
@@ -329,82 +333,69 @@ const App: React.FC = () => {
       if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(med['Manufacture Name'])) return false;
       if (filters.legalStatus && med['Legal Status'] !== filters.legalStatus) return false;
 
-      if (searchTermIsLongEnough) {
+      // 2. Advanced Search Matching
+      if (searchTerms.length > 0) {
         const tradeName = String(med['Trade Name']).toLowerCase();
         const scientificName = String(med['Scientific Name']).toLowerCase();
         const strength = String(med.Strength).toLowerCase();
         
-        // FIX: Strict Numeric Search logic for Strength
-        if (isNumericSearch) {
-             // If the search term is purely a number (e.g., "500"), we prioritize Strength.
-             // We verify if strength contains the number. 
-             // BUT we also allow Trade Name matches in case the user meant a name with a number.
-             const strengthMatch = strength.includes(lowerSearchTerm);
-             const tradeNameMatch = tradeName.includes(lowerSearchTerm);
-             
-             return strengthMatch || tradeNameMatch;
+        // Check numeric terms (Concentration) - STRICT check if numbers are typed
+        if (numberTerms.length > 0) {
+            // Check if ALL typed numbers appear in Strength OR Trade Name
+            const allNumbersMatch = numberTerms.every(num => {
+                const cleanNum = num.replace(/(mg|g|ml|%)/g, ''); // Handle 500mg vs 500
+                return strength.includes(cleanNum) || tradeName.includes(cleanNum);
+            });
+            if (!allNumbersMatch) return false;
         }
 
-        // Normal Text Search
-        let tradeNameMatch = searchRegex.test(tradeName);
-        let scientificNameMatch = searchRegex.test(scientificName);
-
-        if (textSearchMode === 'tradeName' && !tradeNameMatch) return false;
-        if (textSearchMode === 'scientificName' && !scientificNameMatch) return false;
-        if (textSearchMode === 'all' && !tradeNameMatch && !scientificNameMatch) return false;
+        // Check text terms
+        if (searchRegex) {
+            let matchFound = false;
+            
+            if (textSearchMode === 'scientificName') {
+                // Strict Scientific Name Search
+                matchFound = searchRegex.test(scientificName);
+            } else if (textSearchMode === 'tradeName') {
+                // Trade Name Search
+                matchFound = searchRegex.test(tradeName);
+            } else {
+                // All Search
+                matchFound = searchRegex.test(tradeName) || searchRegex.test(scientificName);
+            }
+            
+            if (!matchFound) return false;
+        }
       }
       return true;
     });
 
     const sorted = filtered.sort((a, b) => {
-        if (!lowerSearchTerm) {
+        // 1. User's Explicit Sort
+        if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
+        if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
+        if (sortBy === 'scientificName') return a['Scientific Name'].localeCompare(b['Scientific Name']);
+
+        // 2. Logic for "Alphabetical" (Default)
+        
+        // If searching by Scientific Name, sort strictly alphabetically by Trade Name to group variants clearly
+        // The user specifically requested this to avoid "Levo..." trade names appearing first when searching "Levofloxacin"
+        if (textSearchMode === 'scientificName') {
              return a['Trade Name'].localeCompare(b['Trade Name']);
         }
-        
-        // FIX: Numeric Sorting Priority
-        if (isNumericSearch) {
-            const aStrength = String(a.Strength).trim();
-            const bStrength = String(b.Strength).trim();
-            const aMatchExact = aStrength === lowerSearchTerm;
-            const bMatchExact = bStrength === lowerSearchTerm;
 
-            // Exact Strength match at the top
-            if (aMatchExact && !bMatchExact) return -1;
-            if (!aMatchExact && bMatchExact) return 1;
-            
-            // Starts with Strength
-            const aStarts = aStrength.startsWith(lowerSearchTerm);
-            const bStarts = bStrength.startsWith(lowerSearchTerm);
+        // If searching by Trade Name or All, prioritize matches starting with the term
+        const aTradeName = String(a['Trade Name']).toLowerCase();
+        const bTradeName = String(b['Trade Name']).toLowerCase();
+        
+        if (textQuery) {
+            const prefix = textQuery;
+            const aStarts = aTradeName.startsWith(prefix);
+            const bStarts = bTradeName.startsWith(prefix);
             if (aStarts && !bStarts) return -1;
             if (!aStarts && bStarts) return 1;
         }
 
-        const aTradeName = String(a['Trade Name']).toLowerCase();
-        const bTradeName = String(b['Trade Name']).toLowerCase();
-        const aSciName = String(a['Scientific Name']).toLowerCase();
-        const bSciName = String(b['Scientific Name']).toLowerCase();
-
-        // PRIORITY 1: Starts with Search Term (Trade Name)
-        if (prefixPart.length > 0) {
-            const aStartsTrade = aTradeName.startsWith(prefixPart);
-            const bStartsTrade = bTradeName.startsWith(prefixPart);
-            
-            if (aStartsTrade && !bStartsTrade) return -1;
-            if (!aStartsTrade && bStartsTrade) return 1;
-        }
-
-        // PRIORITY 2: Starts with Search Term (Scientific Name)
-        if ((textSearchMode === 'scientificName' || textSearchMode === 'all') && prefixPart.length > 0) {
-             const aStartsSci = aSciName.startsWith(prefixPart);
-             const bStartsSci = bSciName.startsWith(prefixPart);
-
-             if (!aTradeName.startsWith(prefixPart) && !bTradeName.startsWith(prefixPart)) {
-                 if (aStartsSci && !bStartsSci) return -1;
-                 if (!aStartsSci && bStartsSci) return 1;
-             }
-        }
-
-        // PRIORITY 3: Alphabetical Order
         return aTradeName.localeCompare(bTradeName);
     });
 
@@ -639,15 +630,9 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    if (isAuthLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center h-[50vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Authenticating...</p>
-        </div>
-      );
-    }
-
+    // REMOVED: The blocking loading state check. 
+    // App now renders immediately even if auth is still initializing.
+    
     if (user && !user.emailVerified && user.role !== 'admin') {
         return <VerifyEmailView user={user} t={t} />;
     }

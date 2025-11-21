@@ -30,8 +30,24 @@ const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. Initialize State DIRECTLY from Local Storage (Synchronous)
+  // This allows the app to open immediately without waiting for Firebase/Internet
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      console.error("Failed to load user from cache", e);
+      return null;
+    }
+  });
+
+  // 2. Loading is false if we already have a user from cache
+  const [isLoading, setIsLoading] = useState(() => {
+      // If we found a user in local storage, we are NOT loading, we render the app immediately.
+      // If no user in cache, we wait for Firebase to tell us (loading = true).
+      return !localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+  });
 
   // Enforce local persistence on mount
   useEffect(() => {
@@ -45,14 +61,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
      initAuth();
   }, []);
 
-  // Sync user state with Firebase Auth
+  // Sync user state with Firebase Auth (Background Check)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Update local state with fresh data from server (Silent Update)
         await syncUserData(firebaseUser);
       } else {
-        setUser(null);
-        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        // Only clear user if we were previously logged in and Firebase explicitly says signed out
+        // We only clear if we don't have a cached user OR if firebase explicitly signs out (null)
+        // Ideally, if offline, onAuthStateChanged might trigger with null if persistence fails, 
+        // but with browserLocalPersistence it should restore.
+        
+        const cachedUser = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+        // Only force logout if we were previously loading (fresh start) or if explicit logout action happened elsewhere.
+        // But to be safe and match standard auth flow:
+        if (!isLoading) { 
+             // If we were already loaded (from cache), and now firebase says null, it usually means token expired or logout.
+             setUser(null);
+             localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        } else {
+             setUser(null);
+        }
         setIsLoading(false);
       }
     });
@@ -61,19 +91,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncUserData = async (firebaseUser: FirebaseUser) => {
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      // If offline, this fetch might fail or hang. We wrap in try/catch
+      // and rely on the cached user we already set in the state initializer.
       try {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
 
           if (userDocSnap.exists()) {
             const firestoreData = userDocSnap.data();
-            
-            // Check if verify status changed in Auth but not in Firestore
-            // Priority: Auth Object > Firestore Object
             let emailVerified = firebaseUser.emailVerified;
             
             if (emailVerified && !firestoreData.emailVerified) {
-                await updateDoc(userDocRef, { emailVerified: true });
+                // Attempt to update firestore, but don't block if offline
+                updateDoc(userDocRef, { emailVerified: true }).catch(e => console.log("Offline: Could not update verify status"));
             }
 
             const finalUser = { 
@@ -83,70 +113,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: firebaseUser.email || '',
             } as User;
 
+            // Update state and cache with fresh data
             setUser(finalUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(finalUser));
           } else {
-              // Handle case where auth exists but firestore doc doesn't
+              // Create new user logic...
               const newUser: User = {
                   id: firebaseUser.uid,
                   username: firebaseUser.email?.split('@')[0] || 'User',
-                  role: 'premium', // Default role
+                  role: 'premium',
                   aiRequestCount: 0,
                   lastRequestDate: new Date().toISOString().split('T')[0],
                   status: 'pending',
                   emailVerified: firebaseUser.emailVerified,
                   email: firebaseUser.email || ''
               };
-              await setDoc(userDocRef, newUser);
+              // Only block on this if we really have to, otherwise set state
+              setDoc(userDocRef, newUser).catch(e => console.log("Offline: could not create doc"));
+              
               setUser(newUser);
               localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
           }
       } catch (e) {
-          console.error("Error fetching user profile:", e);
-          // Try loading from Local Storage backup if Firestore fails (Offline mode)
-          const cachedUserStr = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-          if (cachedUserStr) {
-              try {
-                  const cachedUser = JSON.parse(cachedUserStr);
-                  if (cachedUser.id === firebaseUser.uid) {
-                       setUser(cachedUser);
-                       setIsLoading(false);
-                       return;
-                  }
-              } catch (parseErr) {
-                  console.error("Failed to parse cached user", parseErr);
-              }
-          }
-
-          // Fallback if no cache available
-          const fallbackUser: User = {
-              id: firebaseUser.uid,
-              username: firebaseUser.email?.split('@')[0] || 'User',
-              role: 'premium',
-              aiRequestCount: 0,
-              lastRequestDate: new Date().toISOString().split('T')[0],
-              status: 'pending',
-              emailVerified: firebaseUser.emailVerified,
-              email: firebaseUser.email || ''
-          };
-          setUser(fallbackUser);
+          console.log("Network issue or offline: keeping existing cached user data.");
+          // We don't need to do anything because 'user' state was already set from localStorage in the useState initializer.
+      } finally {
+          setIsLoading(false);
       }
-      setIsLoading(false);
   };
 
   const login = useCallback(async (usernameInput: string, password: string): Promise<void> => {
     let email = usernameInput.trim();
-
-    // Special Exception: Map 'admin' username to the admin email
-    // This allows the user to just type "admin" to login.
     if (email.toLowerCase() === 'admin') {
         email = 'admin@medai.com'; 
     }
 
     try {
-        // Ensure session persistence is set to LOCAL (survives app restart)
         await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, password);
+        // syncUserData will be called by the onAuthStateChanged listener
     } catch (error: any) {
         console.error("Login error:", error);
         let errorMessage = 'خطأ في تسجيل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.';
@@ -155,8 +160,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (error.code === 'auth/too-many-requests') {
              errorMessage = 'تم تعليق الدخول مؤقتاً بسبب تكرار المحاولة. حاول لاحقاً.';
         } else if (error.code === 'auth/invalid-email') {
-             // If mapping failed or input was bad
              errorMessage = 'البريد الإلكتروني غير صالح.';
+        } else if (error.code === 'auth/network-request-failed') {
+             errorMessage = 'لا يوجد اتصال بالإنترنت. يرجى التحقق من الاتصال.';
         }
         throw new Error(errorMessage);
     }
@@ -181,8 +187,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      
-      // Send Verification Email
       await sendEmailVerification(userCredential.user);
 
       const newUser: User = {
@@ -192,14 +196,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         aiRequestCount: 0,
         lastRequestDate: new Date().toISOString().split('T')[0],
         status: 'pending',
-        emailVerified: false, // Initially false
+        emailVerified: false,
         email: cleanEmail
       };
       
-      // Create user document in Firestore
       await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
-      
-      // Update local state immediately to reflect the new user
       setUser(newUser);
       localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
 
@@ -235,13 +236,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const reloadUser = useCallback(async () => {
     if (auth.currentUser) {
-        // 1. Force reload from Firebase Auth server
-        await auth.currentUser.reload();
-        // 2. Get the refreshed object (important!)
-        const currentUser = auth.currentUser;
-        // 3. Sync with app state
-        if (currentUser) {
-            await syncUserData(currentUser);
+        try {
+            await auth.currentUser.reload();
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                await syncUserData(currentUser);
+            }
+        } catch(e) {
+            console.log("Offline: Cannot reload user from server.");
         }
     }
   }, []);
@@ -252,8 +254,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
 
-    // Allow admins bypass even if email not verified (though they should verify)
-    // Enforce email verification for others
     if (user.role !== 'admin' && !user.emailVerified) {
         alert(t('emailVerificationRequired'));
         return;
@@ -278,27 +278,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currentUserState.lastRequestDate = today;
         }
         
-        // Optimistic update
         currentUserState.aiRequestCount += 1;
         setUser(currentUserState);
         localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(currentUserState));
         
-        // Update in Firestore
         try {
              const userRef = doc(db, 'users', user.id);
-            await updateDoc(userRef, {
+            updateDoc(userRef, {
                 aiRequestCount: currentUserState.aiRequestCount,
                 lastRequestDate: currentUserState.lastRequestDate
-            });
+            }).catch(e => console.log("Offline update failed (non-critical)"));
         } catch (e) {
-            console.error("Failed to update usage stats", e);
-            // Silent fail, allow usage
+            // Silent fail
         }
         callback();
     }
   }, [user]);
 
-  // Admin functions
   const getAllUsers = useCallback(() => {
     return [] as User[]; 
   }, []);
@@ -346,7 +342,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       requestAIAccess, 
       resendVerificationEmail, 
       reloadUser, 
-      resetPassword,
+      resetPassword, 
       isLoading, 
       getAllUsers, 
       updateUser, 
