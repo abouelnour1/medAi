@@ -1,10 +1,8 @@
 
-
 import React from 'react';
 import { TFunction, TextSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import ClearIcon from './icons/ClearIcon';
-import BarcodeIcon from './icons/BarcodeIcon';
 
 interface SearchBarProps {
   searchTerm: string;
@@ -26,7 +24,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
   isSearchActive,
   onClearSearch,
   onForceSearch,
-  onBarcodeScanClick,
   t,
 }) => {
 
@@ -52,7 +49,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             }
           }}
           placeholder={t('searchPlaceholder')}
-          className={`w-full bg-transparent py-1.5 text-sm pl-9 pr-16 border-b-2 border-gray-200 dark:border-slate-700 focus:border-primary dark:focus:border-primary outline-none transition-colors`}
+          className={`w-full bg-transparent py-1.5 text-sm pl-9 pr-10 border-b-2 border-gray-200 dark:border-slate-700 focus:border-primary dark:focus:border-primary outline-none transition-colors`}
           aria-label="Search term"
         />
         <div className="absolute top-1/2 right-0 transform -translate-y-1/2 flex items-center">
@@ -65,15 +62,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
               <ClearIcon />
             </button>
           )}
-          <div className="h-5 w-px bg-gray-200 dark:bg-slate-700 mx-1"></div>
-          <button
-            type="button"
-            onClick={onBarcodeScanClick}
-            className="p-2 text-gray-500 dark:text-dark-text-secondary hover:text-primary dark:hover:text-primary transition-colors rounded-full"
-            aria-label={t('scanBarcode')}
-          >
-            <BarcodeIcon />
-          </button>
         </div>
       </div>
       {/* Search Mode Toggle */}

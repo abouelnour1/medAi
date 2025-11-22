@@ -42,6 +42,8 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 
 
 const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, isFavorite, onToggleFavorite, t, language }) => {
+  if (!medicine) return null; // Crash protection
+
   const price = parseFloat(medicine['Public price']);
   const pressTimer = useRef<number | undefined>(undefined);
   const startCoords = useRef({ x: 0, y: 0 });

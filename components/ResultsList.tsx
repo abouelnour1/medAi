@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
@@ -26,19 +27,22 @@ const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, 
 
   return (
     <div className="space-y-3 animate-fade-in">
-      {medicines.map((med) => (
-        <MedicineCard 
-          key={med.RegisterNumber} 
-          medicine={med} 
-          onShortPress={() => onMedicineSelect(med)} 
-          onLongPress={onMedicineLongPress}
-          onFindAlternative={onFindAlternative}
-          isFavorite={favorites.includes(med.RegisterNumber)}
-          onToggleFavorite={onToggleFavorite}
-          t={t} 
-          language={language} 
-        />
-      ))}
+      {medicines.map((med) => {
+        if (!med) return null; // Safety check to prevent crashing on null/undefined items
+        return (
+          <MedicineCard 
+            key={med.RegisterNumber || Math.random()} 
+            medicine={med} 
+            onShortPress={() => onMedicineSelect(med)} 
+            onLongPress={onMedicineLongPress}
+            onFindAlternative={onFindAlternative}
+            isFavorite={favorites.includes(med.RegisterNumber)}
+            onToggleFavorite={onToggleFavorite}
+            t={t} 
+            language={language} 
+          />
+        );
+      })}
     </div>
   );
 };

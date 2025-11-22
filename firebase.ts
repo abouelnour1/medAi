@@ -1,8 +1,13 @@
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
+
+// --- FIREBASE SWITCH ---
+// Set this to TRUE to disconnect Firebase completely.
+// Set this to FALSE to enable Firebase connection.
+export const FIREBASE_DISABLED = false;
 
 const firebaseConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
@@ -14,29 +19,44 @@ const firebaseConfig = {
   measurementId: "G-J06N12MDW0"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-let analytics;
+let app: any;
+let db: Firestore;
+let auth: Auth;
+let analytics: any;
 
-// Initialize Analytics only in browser environment
-if (typeof window !== 'undefined') {
-  try {
-    analytics = getAnalytics(app);
-  } catch (e) {
-    console.error("Firebase Analytics failed to initialize", e);
-  }
-}
+if (!FIREBASE_DISABLED) {
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
 
-// Enable offline persistence
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a a time.');
-    } else if (err.code == 'unimplemented') {
-        console.warn('The current browser does not support all of the features required to enable persistence');
+  // Initialize Analytics only in browser environment
+  if (typeof window !== 'undefined') {
+    try {
+      analytics = getAnalytics(app);
+    } catch (e) {
+      console.error("Firebase Analytics failed to initialize", e);
     }
-  });
+  }
+
+  // Enable offline persistence
+  if (typeof window !== 'undefined') {
+      enableIndexedDbPersistence(db)
+        .catch((err) => {
+          if (err.code == 'failed-precondition') {
+              console.warn('Multiple tabs open, persistence can only be enabled in one tab at a a time.');
+          } else if (err.code == 'unimplemented') {
+              console.warn('The current browser does not support all of the features required to enable persistence');
+          }
+        });
+  }
+} else {
+  console.log("Firebase is currently DISABLED by configuration.");
+  // Export dummies to prevent import crashes, but logic must check FIREBASE_DISABLED
+  app = null;
+  db = null as unknown as Firestore;
+  auth = null as unknown as Auth;
+  analytics = null;
+}
 
 export { app, db, auth, analytics };

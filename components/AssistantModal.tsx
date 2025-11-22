@@ -821,18 +821,17 @@ When asked about a drug for a specific condition, use the following XML structur
                 </div>
             )
           })}
+          
           {isLoading && (
-            <div className="flex items-start gap-3 justify-start">
-               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary"><AssistantIcon /></div>
-               <div className="max-w-md rounded-2xl p-3 shadow-sm bg-gray-100 dark:bg-slate-700 text-light-text dark:text-dark-text rounded-bl-none">
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse [animation-delay:-0.3s]"></div>
-                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse [animation-delay:-0.15s]"></div>
-                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
-                </div>
-               </div>
-            </div>
+              <div className="flex justify-start animate-fade-in">
+                 <div className="bg-gray-100 dark:bg-slate-700 p-3 rounded-2xl rounded-bl-none flex items-center gap-1">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                 </div>
+              </div>
           )}
+          
           <div ref={chatEndRef} />
         </div>
 

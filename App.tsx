@@ -40,12 +40,54 @@ import AdminIcon from './components/icons/AdminIcon';
 import StarIcon from './components/icons/StarIcon';
 import FavoritesView from './components/FavoritesView';
 import { isAIAvailable } from './geminiService';
-import { db } from './firebase';
+import { db, FIREBASE_DISABLED } from './firebase';
 import { collection, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { Part } from '@google/genai';
 
 // Enhanced Normalization to handle Raw JSON keys properly and prevent white screens
 const normalizeProduct = (product: any): Medicine => {
+  // Strict safety check: if product is null, undefined, or not an object (including arrays), return a safe fallback.
+  if (!product || typeof product !== 'object' || Array.isArray(product)) {
+      return {
+        'RegisterNumber': `invalid-${Math.random().toString(36).slice(2, 9)}`,
+        'Trade Name': 'Invalid Item',
+        'Scientific Name': '',
+        'Product type': 'Human',
+        'Public price': '0',
+        'PharmaceuticalForm': '',
+        'Strength': '',
+        'StrengthUnit': '',
+        'PackageSize': '',
+        'PackageTypes': '',
+        'Legal Status': '',
+        'Manufacture Name': '',
+        'Manufacture Country': '',
+        'Storage Condition Arabic': '',
+        'Storage conditions': '',
+        'Main Agent': '',
+        'ReferenceNumber': '',
+        'Old register Number': '',
+        'DrugType': '',
+        'Sub-Type': '',
+        'AdministrationRoute': '',
+        'AtcCode1': '',
+        'AtcCode2': '',
+        'Size': '',
+        'SizeUnit': '',
+        'Product Control': '',
+        'Distribute area': '',
+        'shelfLife': '',
+        'Marketing Company': '',
+        'Marketing Country': '',
+        'Secondry package  manufacture': '',
+        'Secosnd Agent': '',
+        'Third agent': '',
+        'Description Code': '',
+        'Authorization Status': '',
+        'Last Update': '',
+      };
+  }
+
   let productType = product['Product type'];
   
   // Handle Supplement Raw Data Keys Logic
@@ -74,45 +116,109 @@ const normalizeProduct = (product: any): Medicine => {
   const manufacturer = product['Manufacture Name'] || product.ManufacturerNameEN || 'Unknown';
   const manufacturerCountry = product['Manufacture Country'] || product.ManufacturerCountry || 'Unknown';
 
+  // Helper to safely stringify and trim
+  const safeStr = (val: any) => (val === null || val === undefined) ? '' : String(val).trim();
+
   return {
-    'RegisterNumber': String(product.RegisterNumber || product.Id || `unknown-${Math.random()}`),
-    'Trade Name': String(tradeName).trim(),
-    'Scientific Name': String(scientificName).trim(),
-    'Product type': String(productType),
-    'Public price': String(price),
-    'PharmaceuticalForm': String(form).trim(),
-    'Strength': String(product.Strength || ''),
-    'StrengthUnit': String(product.StrengthUnit || product.StrengthUnitAR || ''),
-    'PackageSize': String(product.PackageSize || ''),
-    'PackageTypes': String(product.PackageTypes || product.PackageType || ''),
-    'Legal Status': String(legalStatus), 
-    'Manufacture Name': String(manufacturer),
-    'Manufacture Country': String(manufacturerCountry),
-    'Storage Condition Arabic': String(product['Storage Condition Arabic'] || product.StorageConditions || 'Unknown'),
-    'Storage conditions': String(product['Storage conditions'] || product.StorageConditions || 'Unknown'),
-    'Main Agent': String(product['Main Agent'] || product.AgentName || product.Agent || 'Unknown'),
-    'ReferenceNumber': String(product.ReferenceNumber || ''),
-    'Old register Number': String(product['Old register Number'] || ''),
-    'DrugType': String(product.DrugType || ''),
-    'Sub-Type': String(product['Sub-Type'] || ''),
-    'AdministrationRoute': String(product.AdministrationRoute || product.AdministrationRouteAr || ''),
-    'AtcCode1': String(product.AtcCode1 || ''),
-    'AtcCode2': String(product.AtcCode2 || ''),
-    'Size': String(product.Size || ''),
-    'SizeUnit': String(product.SizeUnit || ''),
-    'Product Control': String(product['Product Control'] || product.ProductControl || ''),
-    'Distribute area': String(product['Distribute area'] || product.DistributionArea || ''),
-    'shelfLife': String(product.shelfLife || product.ShelfLife || ''),
-    'Marketing Company': String(product['Marketing Company'] || product.CompanyName || ''),
-    'Marketing Country': String(product['Marketing Country'] || product.CompanyCountryEn || ''),
-    'Secondry package  manufacture': String(product['Secondry package  manufacture'] || product.SecondaryPackaging || ''),
-    'Secosnd Agent': String(product['Secosnd Agent'] || product.AddtionalAgentName || ''),
-    'Third agent': String(product['Third agent'] || ''),
-    'Description Code': String(product['Description Code'] || ''),
-    'Authorization Status': String(product['Authorization Status'] || product.AuthorizationStatus || ''),
-    'Last Update': String(product['Last Update'] || ''),
+    'RegisterNumber': safeStr(product.RegisterNumber || product.Id || `unknown-${Math.random().toString(36).slice(2, 9)}`),
+    'Trade Name': safeStr(tradeName),
+    'Scientific Name': safeStr(scientificName),
+    'Product type': safeStr(productType),
+    'Public price': safeStr(price),
+    'PharmaceuticalForm': safeStr(form),
+    'Strength': safeStr(product.Strength || ''),
+    'StrengthUnit': safeStr(product.StrengthUnit || product.StrengthUnitAR || ''),
+    'PackageSize': safeStr(product.PackageSize || ''),
+    'PackageTypes': safeStr(product.PackageTypes || product.PackageType || ''),
+    'Legal Status': safeStr(legalStatus), 
+    'Manufacture Name': safeStr(manufacturer),
+    'Manufacture Country': safeStr(manufacturerCountry),
+    'Storage Condition Arabic': safeStr(product['Storage Condition Arabic'] || product.StorageConditions || 'Unknown'),
+    'Storage conditions': safeStr(product['Storage conditions'] || product.StorageConditions || 'Unknown'),
+    'Main Agent': safeStr(product['Main Agent'] || product.AgentName || product.Agent || 'Unknown'),
+    'ReferenceNumber': safeStr(product.ReferenceNumber || ''),
+    'Old register Number': safeStr(product['Old register Number'] || ''),
+    'DrugType': safeStr(product.DrugType || ''),
+    'Sub-Type': safeStr(product['Sub-Type'] || ''),
+    'AdministrationRoute': safeStr(product.AdministrationRoute || product.AdministrationRouteAr || ''),
+    'AtcCode1': safeStr(product.AtcCode1 || ''),
+    'AtcCode2': safeStr(product.AtcCode2 || ''),
+    'Size': safeStr(product.Size || ''),
+    'SizeUnit': safeStr(product.SizeUnit || ''),
+    'Product Control': safeStr(product['Product Control'] || product.ProductControl || ''),
+    'Distribute area': safeStr(product['Distribute area'] || product.DistributionArea || ''),
+    'shelfLife': safeStr(product.shelfLife || product.ShelfLife || ''),
+    'Marketing Company': safeStr(product['Marketing Company'] || product.CompanyName || ''),
+    'Marketing Country': safeStr(product['Marketing Country'] || product.CompanyCountryEn || ''),
+    'Secondry package  manufacture': safeStr(product['Secondry package  manufacture'] || product.SecondaryPackaging || ''),
+    'Secosnd Agent': safeStr(product['Secosnd Agent'] || product.AddtionalAgentName || ''),
+    'Third agent': safeStr(product['Third agent'] || ''),
+    'Description Code': safeStr(product['Description Code'] || ''),
+    'Authorization Status': safeStr(product['Authorization Status'] || product.AuthorizationStatus || ''),
+    'Last Update': safeStr(product['Last Update'] || ''),
   };
 };
+
+// Insurance Normalization
+const normalizeInsuranceDrug = (item: any): InsuranceDrug => {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return {
+        id: `ins-invalid-${Math.random()}`,
+        indication: '', icd10Code: '', drugClass: '', drugSubclass: '', scientificName: '',
+        atcCode: '', form: '', strength: '', strengthUnit: '', notes: ''
+      };
+  }
+  const safeStr = (val: any) => (val === null || val === undefined) ? '' : String(val).trim();
+  return {
+    id: safeStr(item.id || `ins-imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`),
+    indication: safeStr(item.indication || item.INDICATION || ''),
+    icd10Code: safeStr(item.icd10Code || item['ICD 10 CODE'] || ''),
+    drugClass: safeStr(item.drugClass || item['DRUG PHARMACOLOGICAL CLASS '] || ''),
+    drugSubclass: safeStr(item.drugSubclass || item['DRUG PHARMACOLOGICAL SUBCLASS'] || ''),
+    scientificName: safeStr(item.scientificName || item['SCIENTIFIC NAME '] || ''),
+    atcCode: safeStr(item.atcCode || item['ATC CODE'] || ''),
+    form: safeStr(item.form || item['PHARMACEUTICAL FORM '] || ''),
+    strength: safeStr(item.strength || item['STRENGTH '] || ''),
+    strengthUnit: safeStr(item.strengthUnit || item['STRENGTH UNIT '] || ''),
+    notes: safeStr(item.notes || item.NOTES || ''),
+    administrationRoute: safeStr(item.administrationRoute || item['ADMINISTRATION ROUTE'] || ''),
+    substitutable: safeStr(item.substitutable || item['SUBSTITUTABLE'] || ''),
+    prescribingEdits: safeStr(item.prescribingEdits || item['PRESCRIBING EDITS'] || ''),
+    mddAdults: safeStr(item.mddAdults || item['MDD ADULTS'] || ''),
+    mddPediatrics: safeStr(item.mddPediatrics || item['MDD PEDIATRICS'] || ''),
+    appendix: safeStr(item.appendix || item['APPENDIX'] || ''),
+    patientType: safeStr(item.patientType || item['PATIENT TYPE'] || ''),
+    descriptionCode: safeStr(item.descriptionCode || item['DESCRIPTION CODE \n(ACTIVE INGREDIENT- STRENGTH-DOSAGE FORM)'] || ''),
+    sfdaRegistrationStatus: safeStr(item.sfdaRegistrationStatus || item['SFDA REGISTRATION STATUS'] || ''),
+  };
+};
+
+// Cosmetics Normalization
+const normalizeCosmetic = (item: any): Cosmetic => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        return {
+            id: `cos-invalid-${Math.random()}`,
+            BrandName: '', SpecificName: '', SpecificNameAr: '', FirstSubCategoryAr: '', FirstSubCategoryEn: '', SecondSubCategoryAr: '', SecondSubCategoryEn: '', manufacturerNameEn: '', manufacturerCountryAr: '', manufacturerCountryEn: '', "Active ingredient": ''
+        };
+    }
+    const safeStr = (val: any) => (val === null || val === undefined) ? '' : String(val).trim();
+    return {
+        id: safeStr(item.id || `cosmetic-${Date.now()}-${Math.random()}`),
+        BrandName: safeStr(item.BrandName || ''),
+        SpecificName: safeStr(item.SpecificName || ''),
+        SpecificNameAr: safeStr(item.SpecificNameAr || ''),
+        FirstSubCategoryAr: safeStr(item.FirstSubCategoryAr || ''),
+        FirstSubCategoryEn: safeStr(item.FirstSubCategoryEn || ''),
+        SecondSubCategoryAr: safeStr(item.SecondSubCategoryAr || ''),
+        SecondSubCategoryEn: safeStr(item.SecondSubCategoryEn || ''),
+        manufacturerNameEn: safeStr(item.manufacturerNameEn || ''),
+        manufacturerCountryAr: safeStr(item.manufacturerCountryAr || ''),
+        manufacturerCountryEn: safeStr(item.manufacturerCountryEn || ''),
+        "Active ingredient": safeStr(item["Active ingredient"] || ''),
+        "Key Ingredients": safeStr(item["Key Ingredients"] || ''),
+        Highlights: safeStr(item.Highlights || ''),
+    };
+}
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
@@ -123,86 +229,85 @@ const App: React.FC = () => {
 
   // Initialize with Persistent Data (Cache first, then Static)
   const [medicines, setMedicines] = useState<Medicine[]>(() => {
+     let cachedMeds: Medicine[] = [];
      try {
          const cached = localStorage.getItem(MEDICINES_CACHE_KEY);
          if (cached) {
-             return JSON.parse(cached);
+             const parsed = JSON.parse(cached);
+             if (Array.isArray(parsed)) {
+                 // CRITICAL: Force normalize on cached data to fix corrupted entries from previous versions
+                 cachedMeds = parsed.map(normalizeProduct);
+             }
          }
      } catch (e) {
          console.error("Failed to load medicines from cache", e);
      }
-     // Fallback to static data
-     // Normalize static supplements immediately to avoid corrupted data
-     const initialSupplements = SUPPLEMENT_DATA_RAW.map(normalizeProduct);
-     return [...MEDICINE_DATA, ...initialSupplements];
+     
+     const initialStaticMeds = [...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW.map(normalizeProduct)];
+     
+     if (cachedMeds.length > 0) {
+         return cachedMeds; 
+     }
+     
+     return initialStaticMeds;
   });
   
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>(() => {
-     return [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map((item, index) => ({ ...item, id: `ins-item-${Date.now()}-${index}` }));
+     // Also normalize initial insurance data to avoid crash if static files have nulls
+     return [...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA].map(normalizeInsuranceDrug);
   });
   
   const [cosmetics, setCosmetics] = useState<Cosmetic[]>(() => {
       try {
           const cached = localStorage.getItem(COSMETICS_CACHE_KEY);
           if (cached) {
-              return JSON.parse(cached);
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed)) {
+                  // CRITICAL: Force normalize on cache load
+                  return parsed.map(normalizeCosmetic);
+              }
           }
       } catch (e) {
           console.error("Failed to load cosmetics from cache", e);
       }
-      return INITIAL_COSMETICS_DATA;
+      // Normalize initial cosmetic data
+      return INITIAL_COSMETICS_DATA.map(normalizeCosmetic);
   });
   
   // Smart Merge: Fetch updates from Firebase and merge with local data
   useEffect(() => {
+    if (FIREBASE_DISABLED) return;
+
     const syncMedicines = async () => {
         try {
-            // We don't want to block the UI, so this runs in background
             const querySnapshot = await getDocs(collection(db, 'medicines'));
-            
             if (querySnapshot.empty) return;
 
-            // Create a map of Firestore medicines for O(1) lookup
             const firestoreMap = new Map<string, Medicine>();
             querySnapshot.forEach(doc => {
                 const data = doc.data();
-                // Ensure RegisterNumber matches
                 const regNum = data.RegisterNumber || doc.id; 
-                // Apply normalization even to firestore data to be safe
                 firestoreMap.set(regNum, normalizeProduct({ ...data, RegisterNumber: regNum }));
             });
 
             setMedicines(prevMedicines => {
-                // 1. Create a map of current local medicines
                 const mergedMap = new Map<string, Medicine>();
                 prevMedicines.forEach(med => mergedMap.set(med.RegisterNumber, med));
-
-                // 2. Overwrite/Add medicines from Firestore
-                firestoreMap.forEach((med, key) => {
-                    mergedMap.set(key, med);
-                });
-
-                // 3. Convert back to array
+                firestoreMap.forEach((med, key) => mergedMap.set(key, med));
                 const mergedArray = Array.from(mergedMap.values());
                 
-                // 4. Save to LocalStorage for offline persistence
                 try {
                     localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(mergedArray));
                 } catch (e) {
                     console.error("Failed to cache merged medicines", e);
                 }
-
                 return mergedArray;
             });
-            
-            console.log(`Synced ${firestoreMap.size} items from cloud.`);
-
         } catch (e) {
             console.error("Failed to sync medicines from Firebase:", e);
         }
     };
 
-    // Only sync if online
     if (navigator.onLine) {
         syncMedicines();
     }
@@ -210,6 +315,8 @@ const App: React.FC = () => {
 
   // Sync Cosmetics from Firebase
   useEffect(() => {
+    if (FIREBASE_DISABLED) return;
+
     const syncCosmetics = async () => {
         try {
             const querySnapshot = await getDocs(collection(db, 'cosmetics'));
@@ -217,19 +324,15 @@ const App: React.FC = () => {
 
             const firestoreMap = new Map<string, Cosmetic>();
             querySnapshot.forEach(doc => {
-                const data = doc.data() as Cosmetic;
-                const id = data.id || doc.id;
-                firestoreMap.set(id, { ...data, id });
+                const data = doc.data();
+                const normalized = normalizeCosmetic({ ...data, id: data.id || doc.id });
+                firestoreMap.set(normalized.id, normalized);
             });
 
             setCosmetics(prevCosmetics => {
                 const mergedMap = new Map<string, Cosmetic>();
                 prevCosmetics.forEach(c => mergedMap.set(c.id, c));
-                
-                firestoreMap.forEach((c, key) => {
-                    mergedMap.set(key, c);
-                });
-
+                firestoreMap.forEach((c, key) => mergedMap.set(key, c));
                 const mergedArray = Array.from(mergedMap.values());
                 
                 try {
@@ -300,8 +403,6 @@ const App: React.FC = () => {
   const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
   const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
   
-  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
-  
   const scrollPositionRef = useRef(0);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -368,28 +469,6 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPromptEvent(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallClick = () => {
-    if (!installPromptEvent) return;
-    installPromptEvent.prompt();
-    installPromptEvent.userChoice.then((choiceResult: { outcome: string }) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      setInstallPromptEvent(null);
-    });
-  };
-
-  useEffect(() => {
     try {
       const stored = localStorage.getItem('chatHistory');
       if (stored) {
@@ -441,20 +520,20 @@ const App: React.FC = () => {
     }
 
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
-    
-    // Advanced Search Logic: Separating numbers (strength) from text
     const searchTerms = lowerSearchTerm.split(/\s+/).filter(Boolean);
-    const numberTerms = searchTerms.filter(term => /^\d+(\.\d+)?(mg|g|ml|%)?$/.test(term));
-    const textTerms = searchTerms.filter(term => !/^\d+(\.\d+)?(mg|g|ml|%)?$/.test(term));
     
-    // If we have text terms, combine them back for regex searching
+    const numberRegex = /^\d+(\.\d+)?(mg|g|ml|%|iu|mcg|ug)?$/i;
+    const unitRegex = /^(mg|g|ml|%|iu|mcg|ug)$/i;
+
+    const numberTerms = searchTerms.filter(term => numberRegex.test(term));
+    const textTerms = searchTerms.filter(term => !numberRegex.test(term) && !unitRegex.test(term));
+    
     const textQuery = textTerms.join(' ');
     
     const escapeRegExp = (string: string) => {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     };
     
-    // Create regex for text part only if it exists
     let searchRegex: RegExp | null = null;
     if (textQuery) {
         const regexPattern = textQuery.split('%').map(escapeRegExp).join('.*');
@@ -466,7 +545,6 @@ const App: React.FC = () => {
     }
 
     const filtered = medicines.filter(med => {
-      // 1. Apply General Filters first (Fast)
       if (filters.productType === 'medicine' && med['Product type'] !== 'Human') return false;
       if (filters.productType === 'supplement' && med['Product type'] !== 'Supplement') return false;
       const price = parseFloat(med['Public price']);
@@ -478,45 +556,31 @@ const App: React.FC = () => {
       if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(med['Manufacture Name'])) return false;
       if (filters.legalStatus && med['Legal Status'] !== filters.legalStatus) return false;
 
-      // 2. Advanced Search Matching
       if (searchTerms.length > 0) {
         const tradeName = String(med['Trade Name']).toLowerCase();
         const scientificName = String(med['Scientific Name']).toLowerCase();
         const strength = String(med.Strength).toLowerCase();
         
-        // Check numeric terms (Concentration) - STRICT check if numbers are typed
         if (numberTerms.length > 0) {
-            // Check if ALL typed numbers appear in Strength OR Trade Name
             const allNumbersMatch = numberTerms.every(num => {
-                const cleanNum = num.replace(/(mg|g|ml|%)/g, ''); // Handle 500mg vs 500
-                
-                // STRICTER CHECK FOR SCIENTIFIC NAME SEARCH:
-                // If searching by Scientific Name, the number MUST be in the Strength field.
-                // Ignore numbers in Trade Name to avoid unrelated matches.
+                const cleanNum = num.replace(/(mg|g|ml|%|iu|mcg|ug)/g, ''); 
                 if (textSearchMode === 'scientificName') {
                      return strength.includes(cleanNum);
                 }
-                
                 return strength.includes(cleanNum) || tradeName.includes(cleanNum);
             });
             if (!allNumbersMatch) return false;
         }
 
-        // Check text terms
         if (searchRegex) {
             let matchFound = false;
-            
             if (textSearchMode === 'scientificName') {
-                // Strict Scientific Name Search
                 matchFound = searchRegex.test(scientificName);
             } else if (textSearchMode === 'tradeName') {
-                // Trade Name Search
                 matchFound = searchRegex.test(tradeName);
             } else {
-                // All Search
                 matchFound = searchRegex.test(tradeName) || searchRegex.test(scientificName);
             }
-            
             if (!matchFound) return false;
         }
       }
@@ -524,20 +588,14 @@ const App: React.FC = () => {
     });
 
     const sorted = filtered.sort((a, b) => {
-        // 1. User's Explicit Sort
         if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
         if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
         if (sortBy === 'scientificName') return a['Scientific Name'].localeCompare(b['Scientific Name']);
 
-        // 2. Logic for "Alphabetical" (Default)
-        
-        // If searching by Scientific Name, sort strictly alphabetically by Trade Name to group variants clearly
-        // The user specifically requested this to avoid "Levo..." trade names appearing first when searching "Levofloxacin"
         if (textSearchMode === 'scientificName') {
              return a['Trade Name'].localeCompare(b['Trade Name']);
         }
 
-        // If searching by Trade Name or All, prioritize matches starting with the term
         const aTradeName = String(a['Trade Name']).toLowerCase();
         const bTradeName = String(b['Trade Name']).toLowerCase();
         
@@ -561,22 +619,72 @@ const App: React.FC = () => {
   }, [isSearchActive, searchTerm, filters, textSearchMode, medicines, view, sortBy, forceSearch]);
 
   const handleImportData = (data: any[]): void => {
-    const normalizedData = data.map(normalizeProduct);
-    setMedicines(prevMeds => {
-        const updated = [...prevMeds, ...normalizedData];
-        // Update cache on import
-        localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(updated));
-        return updated;
-    });
-    setView('settings');
+    try {
+        const normalizedData = data.map(normalizeProduct);
+        
+        setMedicines(prevMeds => {
+            // Deduplicate based on RegisterNumber
+            const existingIds = new Set(prevMeds.map(m => m.RegisterNumber));
+            const newUniqueMeds = normalizedData.filter(m => !existingIds.has(m.RegisterNumber));
+            
+            if (newUniqueMeds.length === 0) {
+                alert("All items already exist.");
+                return prevMeds;
+            }
+
+            const updated = [...prevMeds, ...newUniqueMeds];
+            try {
+                localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(updated));
+            } catch (e) {
+                console.error("Storage full", e);
+                alert("Warning: Storage full. New items added but not saved for next session.");
+            }
+            return updated;
+        });
+        setView('settings');
+        alert(t('importSuccess', { count: normalizedData.length }));
+    } catch (error) {
+        console.error("Import failed", error);
+        alert(t('errorProcessingData'));
+    }
   };
 
   const handleImportInsuranceData = (data: any[]): void => {
-    setView('settings');
+    try {
+        const normalizedData = data.map(normalizeInsuranceDrug);
+        setInsuranceData(prev => [...prev, ...normalizedData]);
+        setView('settings');
+        alert(t('importSuccess', { count: normalizedData.length }));
+    } catch (error) {
+        console.error("Import failed", error);
+        alert(t('errorProcessingData'));
+    }
   };
   
   const handleImportCosmeticsData = (data: any[]): void => {
-    setView('settings');
+    try {
+        const normalizedData = data.map(normalizeCosmetic);
+        setCosmetics(prev => {
+            const existingIds = new Set(prev.map(c => c.id));
+            const newUniqueItems = normalizedData.filter(c => !existingIds.has(c.id));
+            
+            if (newUniqueItems.length === 0) return prev;
+
+            const updated = [...prev, ...newUniqueItems];
+            try {
+                localStorage.setItem(COSMETICS_CACHE_KEY, JSON.stringify(updated));
+            } catch (e) {
+                console.error("Storage full", e);
+                alert("Warning: Storage full. New items added but not saved for next session.");
+            }
+            return updated;
+        });
+        setView('settings');
+        alert(t('importSuccess', { count: normalizedData.length }));
+    } catch (error) {
+        console.error("Import failed", error);
+        alert(t('errorProcessingData'));
+    }
   };
 
   const handleMedicineSelect = (medicine: Medicine) => { scrollPositionRef.current = window.scrollY; setSelectedMedicine(medicine); setView('details'); };
@@ -731,7 +839,11 @@ const App: React.FC = () => {
       setMedicines(prev => {
           const updated = prev.map(m => m.RegisterNumber === editingMedicine.RegisterNumber ? editingMedicine : m);
           // Update cache immediately after edit
-          localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(updated));
+          try {
+            localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.error("Failed to update cache", e);
+          }
           return updated;
       });
 
@@ -740,7 +852,7 @@ const App: React.FC = () => {
       }
 
       // 2. Attempt to update Firestore ONLY if syncToCloud is true
-      if (syncToCloud) {
+      if (syncToCloud && !FIREBASE_DISABLED) {
           try {
               const medDocRef = doc(db, 'medicines', editingMedicine.RegisterNumber);
               await setDoc(medDocRef, editingMedicine, { merge: true });
@@ -749,6 +861,8 @@ const App: React.FC = () => {
               console.error("Failed to sync edit to cloud", e);
               alert("Saved locally, but failed to sync to cloud. Check internet.");
           }
+      } else if (syncToCloud && FIREBASE_DISABLED) {
+          alert("Saved locally. Cloud sync is DISABLED.");
       }
 
       setIsEditMedicineModalOpen(false);
@@ -766,7 +880,11 @@ const App: React.FC = () => {
 
       setCosmetics(prev => {
           const updated = prev.map(c => c.id === editingCosmetic.id ? editingCosmetic : c);
-          localStorage.setItem(COSMETICS_CACHE_KEY, JSON.stringify(updated));
+          try {
+            localStorage.setItem(COSMETICS_CACHE_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.error("Failed to update cache", e);
+          }
           return updated;
       });
 
@@ -774,7 +892,7 @@ const App: React.FC = () => {
           setSelectedCosmetic(editingCosmetic);
       }
 
-      if (syncToCloud) {
+      if (syncToCloud && !FIREBASE_DISABLED) {
           try {
               const cosmeticDocRef = doc(db, 'cosmetics', editingCosmetic.id);
               await setDoc(cosmeticDocRef, editingCosmetic, { merge: true });
@@ -783,6 +901,8 @@ const App: React.FC = () => {
               console.error("Failed to sync edit to cloud", e);
               alert("Saved locally, but failed to sync to cloud.");
           }
+      } else if (syncToCloud && FIREBASE_DISABLED) {
+          alert("Saved locally. Cloud sync is DISABLED.");
       }
 
       setIsEditCosmeticModalOpen(false);
@@ -964,6 +1084,12 @@ const App: React.FC = () => {
     }
 
     if (activeTab === 'prescriptions') {
+        // Only allow admin users
+        if (user?.role !== 'admin') {
+            setTimeout(() => setActiveTab('search'), 0);
+            return null;
+        }
+
         if (selectedPrescription) {
             return <PrescriptionView prescriptionData={selectedPrescription} t={t} />
         }
@@ -996,7 +1122,7 @@ const App: React.FC = () => {
           return (
             <div className="space-y-6">
               <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">
-                <h3 className="text-lg font-bold mb-4">{t('generalSettings')}</h3>
+                {/* Removed Title 'General Settings' */}
                 <div className="flex justify-between items-center">
                   <span className="font-medium">{t('darkMode')} / {t('lightMode')}</span>
                   <button onClick={toggleTheme} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{theme === 'light' ? t('darkMode') : t('lightMode')}</button>
@@ -1086,8 +1212,6 @@ const App: React.FC = () => {
         onBack={handleBack}
         theme={theme}
         toggleTheme={toggleTheme}
-        showInstallButton={!!installPromptEvent}
-        onInstallClick={handleInstallClick}
         t={t}
         onLoginClick={() => {
             setView('login');
@@ -1121,7 +1245,8 @@ const App: React.FC = () => {
                 };
                 setView(mainViews[tab]);
             }} 
-            t={t} 
+            t={t}
+            user={user}
           />
       )}
       
@@ -1198,7 +1323,7 @@ const App: React.FC = () => {
                         <div className="flex flex-wrap justify-end gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
                             <button type="button" onClick={() => setIsEditMedicineModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
                             <button type="button" onClick={() => handleSaveEditedMedicine(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally Only</button>
-                            <button type="button" onClick={() => handleSaveEditedMedicine(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                            <button type="button" onClick={() => handleSaveEditedMedicine(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2" disabled={FIREBASE_DISABLED}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                 Save & Sync to Cloud
                             </button>
@@ -1235,7 +1360,7 @@ const App: React.FC = () => {
                         <div className="flex flex-wrap justify-end gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
                             <button type="button" onClick={() => setIsEditCosmeticModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
                             <button type="button" onClick={() => handleSaveEditedCosmetic(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally Only</button>
-                            <button type="button" onClick={() => handleSaveEditedCosmetic(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                            <button type="button" onClick={() => handleSaveEditedCosmetic(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2" disabled={FIREBASE_DISABLED}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                 Save & Sync to Cloud
                             </button>

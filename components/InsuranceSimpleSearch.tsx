@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
@@ -61,7 +59,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const lowerSearchTerm = trimmedSearchTerm.toLowerCase();
     const searchKeywords = lowerSearchTerm.split(/\s+/).filter(Boolean);
-    const normalizeSciName = (name: string) => name.toLowerCase().split(',').map(s => s.trim()).sort().join(',');
+    const normalizeSciName = (name: string) => (name || '').toLowerCase().split(',').map(s => s.trim()).sort().join(',');
 
     let matchingPolicies: InsuranceDrug[] = [];
     
@@ -69,15 +67,15 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const matchingMeds = isNameSearch 
         ? allMedicines.filter(m => 
-            m['Trade Name'].toLowerCase().includes(lowerSearchTerm) || 
-            m['Scientific Name'].toLowerCase().includes(lowerSearchTerm)
+            (m['Trade Name'] || '').toLowerCase().includes(lowerSearchTerm) || 
+            (m['Scientific Name'] || '').toLowerCase().includes(lowerSearchTerm)
           )
         : [];
 
     const sciNameToTradeNames = new Map<string, Set<string>>();
     if (searchMode === 'tradeName') {
         matchingMeds.forEach(med => {
-            if (med['Trade Name'].toLowerCase().includes(lowerSearchTerm)) {
+            if ((med['Trade Name'] || '').toLowerCase().includes(lowerSearchTerm)) {
                 const sciName = normalizeSciName(med['Scientific Name']);
                 if (!sciNameToTradeNames.has(sciName)) {
                     sciNameToTradeNames.set(sciName, new Set());
@@ -89,14 +87,15 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
     // Find all policies that match the search criteria.
     if (searchMode === 'scientificName') {
-        matchingPolicies = insuranceData.filter(p => p.scientificName.toLowerCase().includes(lowerSearchTerm));
+        matchingPolicies = insuranceData.filter(p => (p.scientificName || '').toLowerCase().includes(lowerSearchTerm));
     } else if (searchMode === 'tradeName') {
         const sciNamesFromMeds = new Set(matchingMeds.map(m => normalizeSciName(m['Scientific Name'])));
         matchingPolicies = insuranceData.filter(p => sciNamesFromMeds.has(normalizeSciName(p.scientificName)));
     } else { // indication or icd10Code
         matchingPolicies = insuranceData.filter(p => {
             const field = searchMode === 'indication' ? p.indication : p.icd10Code;
-            return searchKeywords.every(kw => field.toLowerCase().replace(/[,-]/g, ' ').includes(kw));
+            // Safety check: ensure field is a string before calling toLowerCase
+            return searchKeywords.every(kw => (field || '').toLowerCase().replace(/[,-]/g, ' ').includes(kw));
         });
     }
 
@@ -118,7 +117,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     // Group covered policies by indication
     const groupedByIndication = new Map<string, InsuranceDrug[]>();
     matchingPolicies.forEach(policy => {
-        const key = policy.indication;
+        const key = policy.indication || 'Unknown';
         if (!groupedByIndication.has(key)) {
             groupedByIndication.set(key, []);
         }
@@ -131,14 +130,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         
         const allIcd10Codes = new Set<string>();
         policies.forEach(p => {
-            p.icd10Code.split(',').forEach(code => {
-                const trimmedCode = code.trim();
-                if(trimmedCode) allIcd10Codes.add(trimmedCode);
-            });
+            if (p.icd10Code) {
+                p.icd10Code.split(',').forEach(code => {
+                    const trimmedCode = code.trim();
+                    if(trimmedCode) allIcd10Codes.add(trimmedCode);
+                });
+            }
         });
         
         policies.forEach(policy => {
-            const sciName = policy.scientificName;
+            const sciName = policy.scientificName || 'Unknown';
             if (!scientificGroupsMap.has(sciName)) {
                  const availableMedicines = allMedicines
                     .filter(m => normalizeSciName(m['Scientific Name']) === normalizeSciName(sciName))
@@ -172,17 +173,17 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
           if (item.type === 'covered') {
               switch(searchMode) {
                   case 'indication':
-                      targetStrings.push(item.indication);
+                      targetStrings.push(item.indication || '');
                       break;
                   case 'icd10Code':
                       targetStrings.push(...item.icd10Codes);
                       break;
                   case 'scientificName':
-                      item.scientificGroups.forEach(sg => targetStrings.push(sg.scientificName));
+                      item.scientificGroups.forEach(sg => targetStrings.push(sg.scientificName || ''));
                       break;
                   case 'tradeName':
                       item.scientificGroups.forEach(sg => {
-                          targetStrings.push(sg.scientificName);
+                          targetStrings.push(sg.scientificName || '');
                           if (sg.matchingTradeNames) {
                               targetStrings.push(...sg.matchingTradeNames);
                           }
@@ -190,11 +191,11 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                       break;
               }
           } else { // 'not-covered'
-              targetStrings.push(item.medicine['Trade Name']);
-              targetStrings.push(item.medicine['Scientific Name']);
+              targetStrings.push(item.medicine['Trade Name'] || '');
+              targetStrings.push(item.medicine['Scientific Name'] || '');
           }
 
-          const lowerTargetStrings = targetStrings.map(s => s.toLowerCase());
+          const lowerTargetStrings = targetStrings.map(s => (s || '').toLowerCase());
 
           if (lowerTargetStrings.some(s => s.startsWith(lowerSearchTerm))) {
               return 2; // Starts with match
@@ -218,10 +219,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
       // Fallback to alphabetical sort for items with the same score
       if (a.type === 'covered' && b.type === 'covered') {
-          return a.indication.localeCompare(b.indication);
+          return (a.indication || '').localeCompare(b.indication || '');
       }
       if (a.type === 'not-covered' && b.type === 'not-covered') {
-          return a.medicine['Trade Name'].localeCompare(b.medicine['Trade Name']);
+          return (a.medicine['Trade Name'] || '').localeCompare(b.medicine['Trade Name'] || '');
       }
       
       return 0;
@@ -275,7 +276,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
           id="insurance-search-mode"
           value={searchMode}
           onChange={(e) => setSearchMode(e.target.value as InsuranceSearchMode)}
-          className="w-full h-10 px-3 py-2 text-sm bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary dark:focus:border-primary rounded-xl outline-none transition-colors appearance-none cursor-pointer text-light-text dark:text-dark-text"
+          className="w-full h-10 pl-3 pr-8 rtl:pr-3 rtl:pl-8 py-2 text-sm bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary dark:focus:border-primary rounded-xl outline-none transition-colors appearance-none cursor-pointer text-light-text dark:text-dark-text"
         >
           <option value="tradeName">{t('searchBy')}: {t('tradeName')}</option>
           <option value="scientificName">{t('searchBy')}: {t('scientificName')}</option>
@@ -295,10 +296,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           placeholder={placeholderText}
-          className="w-full h-10 py-2 pl-3 pr-10 text-sm bg-light-card dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 focus:border-primary dark:focus-border-primary rounded-xl outline-none transition-colors"
+          className="w-full h-10 py-2 pl-3 pr-10 rtl:pr-3 rtl:pl-10 text-sm bg-light-card dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 focus:border-primary dark:focus:border-primary rounded-xl outline-none transition-colors"
           aria-label={placeholderText}
         />
-        <div className="absolute top-1/2 right-3 transform -translate-y-1/2">
+        <div className="absolute top-1/2 right-3 rtl:right-auto rtl:left-3 transform -translate-y-1/2">
           {inputValue && (
              <button
               type="button"

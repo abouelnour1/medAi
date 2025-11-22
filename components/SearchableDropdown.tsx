@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { TFunction } from '../types';
 import ClearIcon from './icons/ClearIcon';
@@ -74,11 +75,11 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       return options
         .map(group => ({
           ...group,
-          options: group.options.filter(opt => opt.toLowerCase().includes(lowerSearchTerm)),
+          options: group.options.filter(opt => typeof opt === 'string' && opt.toLowerCase().includes(lowerSearchTerm)),
         }))
         .filter(group => group.options.length > 0);
     } else {
-      return (options as string[]).filter(opt => opt.toLowerCase().includes(lowerSearchTerm));
+      return (options as string[]).filter(opt => typeof opt === 'string' && opt.toLowerCase().includes(lowerSearchTerm));
     }
   }, [options, searchTerm]);
 

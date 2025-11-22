@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
-import { auth, db } from '../../firebase';
+import { auth, db, FIREBASE_DISABLED } from '../../firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Enforce local persistence on mount
   useEffect(() => {
+     if (FIREBASE_DISABLED) return;
      const initAuth = async () => {
          try {
              await setPersistence(auth, browserLocalPersistence);
@@ -63,6 +64,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync user state with Firebase Auth (Background Check)
   useEffect(() => {
+    if (FIREBASE_DISABLED) {
+        setIsLoading(false);
+        return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Update local state with fresh data from server (Silent Update)
@@ -143,6 +149,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = useCallback(async (usernameInput: string, password: string): Promise<void> => {
+    if (FIREBASE_DISABLED) throw new Error("Firebase unavailable (Disconnected mode)");
+
     let email = usernameInput.trim();
     if (email.toLowerCase() === 'admin') {
         email = 'admin@medai.com'; 
@@ -169,6 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<void> => {
+     if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
      if (!email) throw new Error('الرجاء إدخال البريد الإلكتروني.');
      try {
          await sendPasswordResetEmail(auth, email);
@@ -182,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const register = useCallback(async (email: string, password: string): Promise<void> => {
+    if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
     const cleanEmail = email.trim().toLowerCase();
     const defaultUsername = cleanEmail.split('@')[0];
 
@@ -215,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     try {
-        await signOut(auth);
+        if (!FIREBASE_DISABLED) await signOut(auth);
         setUser(null);
         localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
     } catch (error) {
@@ -224,6 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const resendVerificationEmail = useCallback(async () => {
+    if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
     if (auth.currentUser && !auth.currentUser.emailVerified) {
         try {
             await sendEmailVerification(auth.currentUser);
@@ -235,6 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const reloadUser = useCallback(async () => {
+    if (FIREBASE_DISABLED) return;
     if (auth.currentUser) {
         try {
             await auth.currentUser.reload();
@@ -248,6 +260,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
   
+  const getSettings = useCallback((): AppSettings => {
+    // Try to get from local storage cache first to be fast
+    try {
+      const stored = localStorage.getItem('mock_app_settings');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+        // ignore
+    }
+    // Return default if nothing found
+    return { aiRequestLimit: 10, isAiEnabled: true };
+  }, []);
+
+  const updateSettings = useCallback(async (settings: AppSettings) => {
+    try {
+        // Update local immediately
+        localStorage.setItem('mock_app_settings', JSON.stringify(settings));
+        
+        if (!FIREBASE_DISABLED) {
+            const settingsRef = doc(db, 'settings', SETTINGS_DOC_ID);
+            await setDoc(settingsRef, settings, { merge: true });
+        }
+    } catch (e) {
+        console.error("Error saving settings:", e);
+    }
+  }, []);
+
+  // Fetch settings on mount to ensure we have latest limits
+  useEffect(() => {
+      if (FIREBASE_DISABLED) return;
+      const fetchSettings = async () => {
+          try {
+              const settingsRef = doc(db, 'settings', SETTINGS_DOC_ID);
+              const docSnap = await getDoc(settingsRef);
+              if (docSnap.exists()) {
+                  const data = docSnap.data() as AppSettings;
+                  localStorage.setItem('mock_app_settings', JSON.stringify(data));
+              }
+          } catch(e) {
+              console.log("Could not fetch settings");
+          }
+      }
+      fetchSettings();
+  }, []);
+
   const requestAIAccess = useCallback(async (callback: () => void, t: TFunction) => {
     if (!user) {
         alert(t('loginRequired'));
@@ -270,30 +326,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
 
+        // FORCE SYNC SETTINGS IF ONLINE TO ENSURE LIMITS ARE UP TO DATE
+        // Use a race condition to prevent blocking UI for too long on slow networks
+        if (!FIREBASE_DISABLED && navigator.onLine) {
+            try {
+                const fetchPromise = (async () => {
+                    const settingsRef = doc(db, 'settings', SETTINGS_DOC_ID);
+                    const docSnap = await getDoc(settingsRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data() as AppSettings;
+                        localStorage.setItem('mock_app_settings', JSON.stringify(data));
+                    }
+                })();
+                
+                // Wait maximum 2 seconds for settings sync, then proceed with cached
+                const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+                await Promise.race([fetchPromise, timeoutPromise]);
+            } catch(e) {
+                console.log("Failed to sync settings before request (using cache)");
+            }
+        }
+
+        // Check against Global Settings Limit
+        const currentSettings = getSettings();
+        const limit = currentSettings.aiRequestLimit || 10;
+        const isAiEnabled = currentSettings.isAiEnabled !== false; // Default true if undefined
+
+        if (!isAiEnabled) {
+            alert(t('aiUnavailableMessage'));
+            return;
+        }
+
         const today = new Date().toISOString().split('T')[0];
         let currentUserState = { ...user };
         
+        // Reset counter if new day
         if (currentUserState.lastRequestDate !== today) {
             currentUserState.aiRequestCount = 0;
             currentUserState.lastRequestDate = today;
         }
         
+        // Check Limit
+        if (currentUserState.aiRequestCount >= limit) {
+            alert(t('usageLimitReached', { limit }));
+            return;
+        }
+        
+        // Proceed
         currentUserState.aiRequestCount += 1;
         setUser(currentUserState);
         localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(currentUserState));
         
-        try {
-             const userRef = doc(db, 'users', user.id);
-            updateDoc(userRef, {
-                aiRequestCount: currentUserState.aiRequestCount,
-                lastRequestDate: currentUserState.lastRequestDate
-            }).catch(e => console.log("Offline update failed (non-critical)"));
-        } catch (e) {
-            // Silent fail
+        if (!FIREBASE_DISABLED) {
+            try {
+                const userRef = doc(db, 'users', user.id);
+                updateDoc(userRef, {
+                    aiRequestCount: currentUserState.aiRequestCount,
+                    lastRequestDate: currentUserState.lastRequestDate
+                }).catch(e => console.log("Offline update failed (non-critical)"));
+            } catch (e) {
+                // Silent fail
+            }
         }
         callback();
     }
-  }, [user]);
+  }, [user, getSettings]);
 
   const getAllUsers = useCallback(() => {
     return [] as User[]; 
@@ -301,8 +398,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = useCallback(async (updatedUser: User) => {
     try {
-        const userRef = doc(db, 'users', updatedUser.id);
-        await updateDoc(userRef, { ...updatedUser });
+        if (!FIREBASE_DISABLED) {
+            const userRef = doc(db, 'users', updatedUser.id);
+            await updateDoc(userRef, { ...updatedUser });
+        }
         if (user && user.id === updatedUser.id) {
             setUser(updatedUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(updatedUser));
@@ -314,22 +413,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteUser = useCallback(async (userId: string) => {
     try {
-        await deleteDoc(doc(db, 'users', userId));
+        if (!FIREBASE_DISABLED) await deleteDoc(doc(db, 'users', userId));
     } catch (e) {
         console.error("Error deleting user:", e);
-    }
-  }, []);
-
-  const getSettings = useCallback((): AppSettings => {
-    return { aiRequestLimit: 10, isAiEnabled: true };
-  }, []);
-
-  const updateSettings = useCallback(async (settings: AppSettings) => {
-    try {
-        const settingsRef = doc(db, 'settings', SETTINGS_DOC_ID);
-        await setDoc(settingsRef, settings, { merge: true });
-    } catch (e) {
-        console.error("Error saving settings:", e);
     }
   }, []);
 

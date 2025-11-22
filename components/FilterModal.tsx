@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Filters, ProductTypeFilter, TFunction } from '../types';
 import SearchableDropdown from './SearchableDropdown';
@@ -57,16 +58,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
                 {/* Body */}
                 <div className="flex-grow p-3 space-y-3 overflow-y-auto">
-                    <FilterItem icon={<FormIcon />} label={t('filterByPharmaceuticalForm')}>
-                      <SearchableDropdown
-                        ariaLabel={t('filterByPharmaceuticalForm')}
-                        value={filters.pharmaceuticalForm}
-                        onChange={(value) => onFilterChange('pharmaceuticalForm', Array.isArray(value) ? '' : value)}
-                        options={groupedPharmaceuticalForms}
-                        placeholder={t('allPharmaceuticalForms')}
-                        t={t}
-                      />
-                    </FilterItem>
+                    {/* Pharmaceutical Form Filter Removed */}
 
                     <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')}>
                       <SearchableDropdown
