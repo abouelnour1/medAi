@@ -29,10 +29,10 @@ const NavItem: React.FC<{
           : 'text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300'
       }`}
     >
-      <div className={`w-6 h-6 mb-1 transition-transform duration-200 ${isActive ? 'drop-shadow-md -translate-y-0.5' : ''}`}>
+      <div className={`w-5 h-5 mb-0.5 transition-transform duration-200 ${isActive ? 'drop-shadow-md -translate-y-0.5' : ''}`}>
         {icon}
       </div>
-      <span className={`text-[11px] font-medium tracking-wide ${isActive ? 'font-bold' : ''} leading-normal pb-0.5`}>
+      <span className={`text-[10px] font-medium tracking-wide ${isActive ? 'font-bold' : ''} leading-none`}>
         {label}
       </span>
     </button>
@@ -48,16 +48,24 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
       if (typeof window !== 'undefined') {
         const currentScrollY = window.scrollY;
         const diff = currentScrollY - lastScrollY.current;
+        
+        // Check if page is actually scrollable (content height > viewport height + buffer)
+        const isScrollable = document.documentElement.scrollHeight > window.innerHeight + 100;
 
-        // Ignore small movements (jitter)
-        if (Math.abs(diff) < 10) return;
+        if (isScrollable) {
+            // Ignore small movements (jitter)
+            if (Math.abs(diff) < 10) return;
 
-        if (diff > 0 && currentScrollY > 50) {
-          // Scrolling Down -> Hide
-          setIsVisible(false);
-        } else if (diff < 0) {
-          // Scrolling Up -> Show
-          setIsVisible(true);
+            if (diff > 0 && currentScrollY > 50) {
+              // Scrolling Down -> Hide
+              setIsVisible(false);
+            } else if (diff < 0) {
+              // Scrolling Up -> Show
+              setIsVisible(true);
+            }
+        } else {
+            // Always show if not scrollable
+            setIsVisible(true);
         }
         
         lastScrollY.current = currentScrollY;
@@ -78,9 +86,9 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
 
   return (
     <nav 
-        className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-dark-card border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] z-30 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-2 transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-30 pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1 transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
     >
-      <div className="flex justify-around items-center h-auto min-h-[60px] max-w-2xl mx-auto px-2">
+      <div className="flex justify-around items-center h-auto min-h-[50px] max-w-2xl mx-auto px-2">
         {navItems.map(item => (
           <NavItem
             key={item.id}

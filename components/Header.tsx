@@ -22,6 +22,42 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll logic
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const controlHeader = () => {
+      if (typeof window !== 'undefined') {
+        const currentScrollY = window.scrollY;
+        const diff = currentScrollY - lastScrollY.current;
+        const isScrollable = document.documentElement.scrollHeight > window.innerHeight + 100;
+
+        // Only perform hide logic if there is actually content to scroll
+        if (isScrollable) {
+            // Ignore small movements (jitter)
+            if (Math.abs(diff) < 10) return;
+
+            if (diff > 0 && currentScrollY > 50) {
+              // Scrolling Down -> Hide
+              setIsVisible(false);
+            } else if (diff < 0) {
+              // Scrolling Up -> Show
+              setIsVisible(true);
+            }
+        } else {
+            // If not scrollable, always show
+            setIsVisible(true);
+        }
+        
+        lastScrollY.current = currentScrollY;
+      }
+    };
+
+    window.addEventListener('scroll', controlHeader);
+    return () => window.removeEventListener('scroll', controlHeader);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,14 +77,14 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className="bg-gradient-to-b from-primary to-primary-dark text-white sticky top-0 z-20 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 transition-all duration-300 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30"
+        className={`bg-gradient-to-b from-primary to-primary-dark text-white sticky top-0 z-20 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30 transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
-      <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full h-full">
-        <div className="flex-1 flex justify-start">
+      <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full h-full overflow-hidden">
+        <div className="flex-1 flex justify-start min-w-0">
           {showBack && (
             <button
               onClick={onBack}
-              className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95"
+              className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"
               aria-label={t('back')}
             >
               <span className={document.documentElement.lang === 'en' ? 'inline-block' : 'inline-block transform scale-x-[-1]'}>
@@ -58,7 +94,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
           )}
         </div>
         
-        <div className="flex-[2] flex justify-center items-center overflow-visible"> 
+        <div className="flex-[2] flex justify-center items-center min-w-0 px-2"> 
           {isMainView ? (
             <div className="flex flex-col items-center justify-center gap-0.5 animate-fade-in">
                 {!imageError ? (
@@ -76,18 +112,18 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                 <span className="text-base font-bold whitespace-nowrap tracking-wide drop-shadow-md text-white text-shadow-sm leading-normal pb-1">{title}</span>
             </div>
           ) : (
-            <h1 className="text-lg font-bold whitespace-nowrap truncate px-2 text-center drop-shadow-md leading-normal pb-1">
+            <h1 className="text-lg font-bold whitespace-nowrap truncate text-center drop-shadow-md leading-normal pb-1 w-full">
               {title}
             </h1>
           )}
         </div>
 
-        <div className="flex-1 flex justify-end items-center gap-1">
+        <div className="flex-1 flex justify-end items-center gap-1 min-w-0">
           {user ? (
             <div className="relative" ref={menuRef}>
-                <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1.5 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 flex items-center gap-1.5 active:scale-95">
+                <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1.5 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 flex items-center gap-1.5 active:scale-95 max-w-full">
                     <span className="font-medium text-xs max-w-[70px] truncate drop-shadow-md">{user.username}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 drop-shadow-md flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-xl shadow-xl ring-1 ring-black/5 py-1 transition-all duration-200 z-30 divide-y divide-slate-100 dark:divide-slate-700 origin-top-right ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
                     <div className="px-4 py-2">
@@ -103,7 +139,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                 </div>
             </div>
           ) : (
-            <button onClick={onLoginClick} className="px-3 py-1.5 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition-all shadow-sm backdrop-blur-sm">{t('login')}</button>
+            <button onClick={onLoginClick} className="px-3 py-1.5 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition-all shadow-sm backdrop-blur-sm whitespace-nowrap">{t('login')}</button>
           )}
         </div>
       </div>

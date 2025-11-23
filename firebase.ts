@@ -9,7 +9,7 @@ import { getFunctions, Functions } from "firebase/functions";
 // --- FIREBASE SWITCH ---
 // Set this to TRUE to disconnect Firebase completely.
 // Set this to FALSE to enable Firebase connection.
-export const FIREBASE_DISABLED = true;
+export const FIREBASE_DISABLED = false;
 
 const firebaseConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",

@@ -46,9 +46,10 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
       
       const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const parts = lowerSearchTerm.split('%').map(escapeRegExp);
-      // If no wildcard, force start-of-string match
-      const prefix = lowerSearchTerm.includes('%') ? '' : '^';
-      const pattern = prefix + parts.join('.*');
+      
+      // REMOVED: const prefix = lowerSearchTerm.includes('%') ? '' : '^';
+      // Allow matching anywhere in the string by default (no start anchor)
+      const pattern = parts.join('.*');
       
       let searchRegex: RegExp;
       try {
@@ -57,8 +58,31 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
           searchRegex = new RegExp(escapeRegExp(lowerSearchTerm), 'i');
       }
 
+      // 1. Filter: Find matches anywhere
       results = results.filter(c => {
-        return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr);
+        return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr || '');
+      });
+
+      // 2. Sort: Prioritize matches that start with the search term
+      results.sort((a, b) => {
+          const cleanTerm = lowerSearchTerm.replace(/%/g, ''); // Remove wildcard for checking startsWith
+
+          const aNameEn = a.SpecificName.toLowerCase();
+          const aNameAr = (a.SpecificNameAr || '').toLowerCase();
+          // Check if A starts with the term
+          const aStartsWith = aNameEn.startsWith(cleanTerm) || aNameAr.startsWith(cleanTerm);
+
+          const bNameEn = b.SpecificName.toLowerCase();
+          const bNameAr = (b.SpecificNameAr || '').toLowerCase();
+          // Check if B starts with the term
+          const bStartsWith = bNameEn.startsWith(cleanTerm) || bNameAr.startsWith(cleanTerm);
+
+          // Priority Logic:
+          if (aStartsWith && !bStartsWith) return -1; // A comes first
+          if (!aStartsWith && bStartsWith) return 1;  // B comes first
+
+          // If both or neither start with the term, fallback to alphabetical
+          return a.SpecificName.localeCompare(b.SpecificName);
       });
     }
     
