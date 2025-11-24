@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'medai-cache-v10'; // Version updated to force refresh
+const CACHE_NAME = 'medai-cache-v12'; // Version updated to force refresh
 const APP_SHELL_URLS = [
   '/',
   '/index.html',

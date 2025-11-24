@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { TFunction, Language } from '../types';
 import { isAIAvailable } from '../geminiService';
+import AssistantIcon from './icons/AssistantIcon';
 
 interface FloatingAssistantButtonProps {
     onClick: () => void;
@@ -93,11 +94,9 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
             title={aiAvailable ? t('assistantFabTooltip') : t('aiUnavailableShort')}
             disabled={!aiAvailable}
         >
-            <img 
-                src="/logo.png" 
-                alt="AI Assistant" 
-                className="w-full h-full object-contain filter drop-shadow-md" 
-            />
+            <div className="w-8 h-8">
+                <AssistantIcon />
+            </div>
         </button>
     );
 };
