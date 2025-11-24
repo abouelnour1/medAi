@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Tab, TFunction, User } from '../types';
+import { Tab, TFunction, User, View } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
 import ReceiptIcon from './icons/ReceiptIcon';
@@ -12,6 +12,7 @@ interface BottomNavBarProps {
   setActiveTab: (tab: Tab) => void;
   t: TFunction;
   user: User | null;
+  view: View;
 }
 
 const NavItem: React.FC<{
@@ -39,11 +40,19 @@ const NavItem: React.FC<{
   );
 };
 
-const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user }) => {
+const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user, view }) => {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
+    // Only apply auto-hide logic on main list views
+    const isMainListView = ['search', 'results', 'insuranceSearch', 'cosmeticsSearch', 'prescriptions', 'chatHistory', 'settings'].includes(view);
+    
+    if (!isMainListView) {
+        setIsVisible(true);
+        return;
+    }
+
     const scrollContainer = document.getElementById('main-scroll-container');
 
     const controlNavbar = () => {
@@ -91,7 +100,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
             scrollContainer.removeEventListener('scroll', controlNavbar);
         }
     };
-  }, [activeTab]); // Add dependency to re-check on tab switch
+  }, [activeTab, view]); // Add view to dependency to re-check on view switch
 
   const navItems = [
     { id: 'search', labelKey: t('navSearch'), icon: <SearchIcon /> },

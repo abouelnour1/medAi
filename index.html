@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
   <head>
@@ -10,27 +11,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#14b8a6">
+    <meta name="theme-color" content="#2dd4bf">
     <!-- iOS support -->
     <link rel="apple-touch-icon" href="/logo.png">
     <link rel="icon" type="image/png" href="/logo.png">
-    <meta name="apple-mobile-web-app-status-bar" content="#14b8a6">
+    <meta name="apple-mobile-web-app-status-bar" content="#2dd4bf">
 
     <style>
-      html, body {
+      html {
         height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      body {
+        height: 100%;
+        width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Prevent body scroll */
-        overscroll-behavior: none; /* Disable bounce */
+        overflow: hidden; /* Prevent body scroll completely */
+        position: fixed; /* Lock the body in place */
+        top: 0;
+        left: 0;
         font-family: 'Cairo', 'Poppins', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        background-color: #f8fafc; /* Match light-bg */
+        touch-action: none; /* Disable default touch actions on body */
       }
       #root {
         height: 100%;
+        width: 100%;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
       }
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
@@ -68,9 +86,13 @@
       .dark .ai-response-content a {
         color: #2dd4bf;
       }
-      body.no-scroll {
-        /* No longer needed on body since body is hidden overflow, 
-           but kept for modal logic if needed on internal containers */
+      
+      /* Smooth scrolling for the main container */
+      #main-scroll-container {
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
+        touch-action: pan-y; /* Allow vertical scrolling */
+        overscroll-behavior-y: auto; /* Allow bounce */
       }
     </style>
   <script type="importmap">

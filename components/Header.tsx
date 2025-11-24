@@ -28,6 +28,14 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   const lastScrollY = useRef(0);
 
   useEffect(() => {
+    // Only apply auto-hide logic on main list views
+    const isMainListView = ['search', 'results', 'insuranceSearch', 'cosmeticsSearch', 'prescriptions', 'chatHistory', 'settings'].includes(view);
+    
+    if (!isMainListView) {
+        setIsVisible(true);
+        return;
+    }
+
     const scrollContainer = document.getElementById('main-scroll-container');
     
     const controlHeader = () => {
@@ -37,7 +45,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         
         // 1. Check content height vs container height
         // If content is smaller than or equal to container, it can't scroll, so always show header.
-        // Adding a small buffer (1px) for float precision issues.
         if (scrollContainer.scrollHeight <= scrollContainer.clientHeight + 1) {
             setIsVisible(true);
             return;
@@ -96,7 +103,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className={`bg-gradient-to-r from-[#14b8a6] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30 transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
+        className={`bg-gradient-to-b from-[#2dd4bf] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30 transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
       <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full h-full overflow-hidden">
         <div className="flex-1 flex justify-start min-w-0">
@@ -121,8 +128,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                     alt="Logo" 
                     className="h-7 w-7 object-contain drop-shadow-md" 
                     onError={(e) => {
-                        // Fallback if logo fails, but try to persist
-                        // console.error("Logo load failed");
                         setImageError(true);
                     }}
                 />

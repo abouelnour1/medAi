@@ -1321,7 +1321,7 @@ const App: React.FC = () => {
 
       <main 
         id="main-scroll-container" 
-        className="flex-grow container mx-auto px-4 space-y-4 transition-all duration-300 max-w-7xl overflow-y-auto overscroll-none pt-[90px] pb-[90px]"
+        className="flex-grow container mx-auto px-4 space-y-4 transition-all duration-300 max-w-7xl overflow-y-auto pt-[90px] pb-[90px]"
       >
         {renderContent()}
       </main>
@@ -1348,6 +1348,7 @@ const App: React.FC = () => {
             }} 
             t={t}
             user={user}
+            view={view}
           />
       )}
       

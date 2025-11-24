@@ -1,7 +1,6 @@
 
 import React, { useRef, useState } from 'react';
 import { TFunction, Language } from '../types';
-import AssistantIcon from './icons/AssistantIcon';
 import { isAIAvailable } from '../geminiService';
 
 interface FloatingAssistantButtonProps {
@@ -88,13 +87,17 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
             className={`w-16 h-16 bg-primary text-white rounded-2xl shadow-lg flex items-center justify-center
                        transform transition-all duration-200 ease-in-out hover:shadow-xl focus:outline-none
                        ${isPressing ? 'scale-95 bg-primary-dark' : 'scale-100 hover:scale-105'}
-                       disabled:bg-slate-400 disabled:dark:bg-slate-600 disabled:cursor-not-allowed disabled:scale-100 touch-none select-none`}
+                       disabled:bg-slate-400 disabled:dark:bg-slate-600 disabled:cursor-not-allowed disabled:scale-100 touch-none select-none overflow-hidden p-3`}
             style={{ touchAction: 'none' }} 
             aria-label={t('assistantFabTooltip')}
             title={aiAvailable ? t('assistantFabTooltip') : t('aiUnavailableShort')}
             disabled={!aiAvailable}
         >
-            <AssistantIcon />
+            <img 
+                src="/logo.png" 
+                alt="AI Assistant" 
+                className="w-full h-full object-contain filter drop-shadow-md" 
+            />
         </button>
     );
 };
