@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Tab, TFunction, User } from '../types';
 import SearchIcon from './icons/SearchIcon';
@@ -50,14 +51,21 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
         const currentScrollY = scrollContainer.scrollTop;
         const diff = currentScrollY - lastScrollY.current;
         
+        // 1. Check content height vs container height
+        // If content fits on screen, never hide the navbar
+        if (scrollContainer.scrollHeight <= scrollContainer.clientHeight + 1) {
+            setIsVisible(true);
+            return;
+        }
+
         // Check if page is actually scrollable (content height > viewport height + buffer)
         const isScrollable = scrollContainer.scrollHeight > scrollContainer.clientHeight + 50;
 
         if (isScrollable) {
             // Ignore small movements (jitter)
-            if (Math.abs(diff) < 10) return;
+            if (Math.abs(diff) < 15) return;
 
-            if (diff > 0 && currentScrollY > 50) {
+            if (diff > 0 && currentScrollY > 60) {
               // Scrolling Down -> Hide
               setIsVisible(false);
             } else if (diff < 0) {
@@ -75,13 +83,15 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
 
     if (scrollContainer) {
         scrollContainer.addEventListener('scroll', controlNavbar);
+        // Initial check
+        controlNavbar();
     }
     return () => {
         if (scrollContainer) {
             scrollContainer.removeEventListener('scroll', controlNavbar);
         }
     };
-  }, []);
+  }, [activeTab]); // Add dependency to re-check on tab switch
 
   const navItems = [
     { id: 'search', labelKey: t('navSearch'), icon: <SearchIcon /> },
@@ -93,7 +103,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
 
   return (
     <nav 
-        className={`fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-30 pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1 transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-30 pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1 transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
     >
       <div className="flex justify-around items-center h-auto min-h-[50px] max-w-2xl mx-auto px-2">
         {navItems.map(item => (

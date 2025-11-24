@@ -1,3 +1,4 @@
+
 import React, { forwardRef, useState, useRef, useEffect } from 'react';
 import BackIcon from './icons/BackIcon';
 import PillIcon from './icons/PillIcon'; // Used as fallback
@@ -33,14 +34,23 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
       if (scrollContainer) {
         const currentScrollY = scrollContainer.scrollTop;
         const diff = currentScrollY - lastScrollY.current;
+        
+        // 1. Check content height vs container height
+        // If content is smaller than or equal to container, it can't scroll, so always show header.
+        // Adding a small buffer (1px) for float precision issues.
+        if (scrollContainer.scrollHeight <= scrollContainer.clientHeight + 1) {
+            setIsVisible(true);
+            return;
+        }
+
         const isScrollable = scrollContainer.scrollHeight > scrollContainer.clientHeight + 50;
 
         // Only perform hide logic if there is actually content to scroll
         if (isScrollable) {
-            // Ignore small movements (jitter)
-            if (Math.abs(diff) < 10) return;
+            // Reduced jitter threshold to avoid erratic hiding on small scrolls
+            if (Math.abs(diff) < 15) return;
 
-            if (diff > 0 && currentScrollY > 50) {
+            if (diff > 0 && currentScrollY > 60) {
               // Scrolling Down -> Hide
               setIsVisible(false);
             } else if (diff < 0) {
@@ -58,13 +68,15 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
 
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', controlHeader);
+      // Initial check in case content is short on load
+      controlHeader();
     }
     return () => {
       if (scrollContainer) {
         scrollContainer.removeEventListener('scroll', controlHeader);
       }
     };
-  }, []);
+  }, [view]); // Re-run on view change to re-assess scrollability
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -84,7 +96,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className={`bg-gradient-to-b from-primary to-primary-dark text-white relative z-20 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30 transition-all duration-300 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 h-0 overflow-hidden py-0 border-none'}`}
+        className={`bg-gradient-to-r from-[#14b8a6] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30 transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
       <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full h-full overflow-hidden">
         <div className="flex-1 flex justify-start min-w-0">
@@ -104,18 +116,16 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         <div className="flex-[2] flex justify-center items-center min-w-0 px-2"> 
           {isMainView ? (
             <div className="flex flex-col items-center justify-center gap-0.5 animate-fade-in">
-                {!imageError ? (
-                    <img 
-                        src="/logo.png" 
-                        alt="Logo" 
-                        className="h-7 w-7 object-contain drop-shadow-md" 
-                        onError={() => setImageError(true)}
-                    />
-                ) : (
-                    <div className="h-7 w-7 bg-white/20 rounded-full flex items-center justify-center text-white">
-                        <PillIcon />
-                    </div>
-                )}
+                <img 
+                    src="/logo.png" 
+                    alt="Logo" 
+                    className="h-7 w-7 object-contain drop-shadow-md" 
+                    onError={(e) => {
+                        // Fallback if logo fails, but try to persist
+                        // console.error("Logo load failed");
+                        setImageError(true);
+                    }}
+                />
                 <span className="text-base font-bold whitespace-nowrap tracking-wide drop-shadow-md text-white text-shadow-sm leading-normal pb-1">{title}</span>
             </div>
           ) : (

@@ -1303,7 +1303,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden">
+    <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden relative">
       <Header
         title={headerTitle}
         showBack={showBackButton}
@@ -1319,7 +1319,10 @@ const App: React.FC = () => {
         view={view}
       />
 
-      <main id="main-scroll-container" className="flex-grow container mx-auto p-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] transition-all duration-300 max-w-7xl overflow-y-auto overscroll-y-contain">
+      <main 
+        id="main-scroll-container" 
+        className="flex-grow container mx-auto px-4 space-y-4 transition-all duration-300 max-w-7xl overflow-y-auto overscroll-none pt-[90px] pb-[90px]"
+      >
         {renderContent()}
       </main>
 
