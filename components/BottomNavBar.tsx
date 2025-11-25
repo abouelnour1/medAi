@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Tab, TFunction, User, View } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
-import ReceiptIcon from './icons/ReceiptIcon';
 import CosmeticsIcon from './icons/CosmeticsIcon';
 import SettingsIcon from './icons/SettingsIcon';
 
@@ -41,78 +40,16 @@ const NavItem: React.FC<{
 };
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user, view }) => {
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
-
-  useEffect(() => {
-    // Only apply auto-hide logic on main list views
-    const isMainListView = ['search', 'results', 'insuranceSearch', 'cosmeticsSearch', 'prescriptions', 'chatHistory', 'settings'].includes(view);
-    
-    if (!isMainListView) {
-        setIsVisible(true);
-        return;
-    }
-
-    const scrollContainer = document.getElementById('main-scroll-container');
-
-    const controlNavbar = () => {
-      if (scrollContainer) {
-        const currentScrollY = scrollContainer.scrollTop;
-        const diff = currentScrollY - lastScrollY.current;
-        
-        // 1. Check content height vs container height
-        // If content fits on screen, never hide the navbar
-        if (scrollContainer.scrollHeight <= scrollContainer.clientHeight + 1) {
-            setIsVisible(true);
-            return;
-        }
-
-        // Check if page is actually scrollable (content height > viewport height + buffer)
-        const isScrollable = scrollContainer.scrollHeight > scrollContainer.clientHeight + 50;
-
-        if (isScrollable) {
-            // Ignore small movements (jitter)
-            if (Math.abs(diff) < 15) return;
-
-            if (diff > 0 && currentScrollY > 60) {
-              // Scrolling Down -> Hide
-              setIsVisible(false);
-            } else if (diff < 0) {
-              // Scrolling Up -> Show
-              setIsVisible(true);
-            }
-        } else {
-            // Always show if not scrollable
-            setIsVisible(true);
-        }
-        
-        lastScrollY.current = currentScrollY;
-      }
-    };
-
-    if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', controlNavbar);
-        // Initial check
-        controlNavbar();
-    }
-    return () => {
-        if (scrollContainer) {
-            scrollContainer.removeEventListener('scroll', controlNavbar);
-        }
-    };
-  }, [activeTab, view]); // Add view to dependency to re-check on view switch
-
   const navItems = [
     { id: 'search', labelKey: t('navSearch'), icon: <SearchIcon /> },
     { id: 'insurance', labelKey: t('navInsurance'), icon: <HealthInsuranceIcon /> },
-    ...(user?.role === 'admin' ? [{ id: 'prescriptions', labelKey: t('navPrescriptions'), icon: <ReceiptIcon /> }] : []),
     { id: 'cosmetics', labelKey: t('navCosmetics'), icon: <CosmeticsIcon /> },
     { id: 'settings', labelKey: t('navSettings'), icon: <SettingsIcon /> },
   ];
 
   return (
     <nav 
-        className={`fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-30 pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1 transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+        className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-30 pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1"
     >
       <div className="flex justify-around items-center h-auto min-h-[50px] max-w-2xl mx-auto px-2">
         {navItems.map(item => (

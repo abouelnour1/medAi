@@ -1,7 +1,6 @@
-
 {
-  "name": "دليل الدواء السعودي",
-  "short_name": "medAI",
+  "name": "PharmaSource KSA",
+  "short_name": "PharmaSource",
   "description": "An application to search for medicines and supplements available in Saudi Arabia by trade name or active ingredient, and view their prices. It also allows for adding new medication data in JSON format.",
   "start_url": "/",
   "display": "standalone",

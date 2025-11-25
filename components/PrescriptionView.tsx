@@ -1,11 +1,34 @@
+
 import React, { useMemo, useState } from 'react';
 import { TFunction, PrescriptionData } from '../types';
 
 const parsePrescription = (content: string): Omit<PrescriptionData, 'id'> | null => {
-    const match = content.match(/---PRESCRIPTION_START---\s*```json\s*([\s\S]*?)\s*```\s*---PRESCRIPTION_END---/);
-    if (!match || !match[1]) return null;
+    // 1. Extract content between markers if they exist, otherwise use the whole content
+    const markerMatch = content.match(/---PRESCRIPTION_START---([\s\S]*?)---PRESCRIPTION_END---/);
+    let potentialJson = markerMatch ? markerMatch[1] : content;
+
+    // 2. Clean up: Remove markdown code blocks if present (```json ... ```)
+    // This is just to clean up the string before we hunt for braces
+    potentialJson = potentialJson.replace(/```(?:json)?/g, '').replace(/```/g, '');
+
+    // 3. Robust Extraction: Find the first '{' and the last '}'
+    // This ignores any text the AI might have put before or after the JSON object
+    const firstBrace = potentialJson.indexOf('{');
+    const lastBrace = potentialJson.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
+        return null;
+    }
+
+    const jsonString = potentialJson.substring(firstBrace, lastBrace + 1);
+
     try {
-        return JSON.parse(match[1]);
+        const parsed = JSON.parse(jsonString);
+        // Basic validation: Check for key fields to ensure it's actually a prescription
+        if (parsed.hospitalName || parsed.drugs || parsed.patientName) {
+             return parsed;
+        }
+        return null;
     } catch (e) {
         console.error("Failed to parse prescription JSON", e);
         return null;
@@ -81,7 +104,12 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
 
     if (!data) {
         if (content && content.includes('---PRESCRIPTION_START---')) {
-             return <div className="p-4 text-sm text-gray-700 dark:text-gray-300">Could not display prescription preview. Please check the generated content.</div>;
+             // If markers exist but we couldn't parse, show a more helpful error or fallback
+             return (
+                <div className="p-4 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    Warning: Malformed prescription data received.
+                </div>
+             );
         }
         return null;
     }

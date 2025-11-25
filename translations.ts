@@ -1,7 +1,7 @@
 
 export const translations = {
   ar: {
-    appTitle: 'دليل الدواء السعودي',
+    appTitle: 'PharmaSource',
     search: 'بحث',
     searchPlaceholder: 'ابحث باسم تجاري أو علمي...',
     tradeName: 'الاسم التجاري',
@@ -192,7 +192,7 @@ export const translations = {
     quickActionUpselling: 'البيع الأعلى (Upsell)',
     quickActionCrossSelling: 'البيع المتقاطع (Cross-sell)',
     quickActionHowToSell: 'كيفية البيع والمميزات',
-    welcomeTitle: 'مرحباً بك في دليل الدواء السعودي',
+    welcomeTitle: 'مرحباً بك في PharmaSource',
     welcomeSubtitle: 'ابحث عن الأدوية والمكملات، تحقق من تغطية التأمين، أو اسأل المساعد الذكي.',
     scanBarcode: 'مسح الباركود',
     insuranceCoverageDetails: "تفاصيل تغطية التأمين",
@@ -325,7 +325,7 @@ export const translations = {
     sendBroadcast: 'إرسال للجميع',
   },
   en: {
-    appTitle: 'Saudi Drug Directory',
+    appTitle: 'PharmaSource',
     search: 'Search',
     searchPlaceholder: 'Search by trade or scientific name...',
     tradeName: 'Trade Name',
@@ -515,7 +515,7 @@ export const translations = {
     quickActionUpselling: 'Upselling',
     quickActionCrossSelling: 'Cross-selling',
     quickActionHowToSell: 'How to Sell & Advantages',
-    welcomeTitle: 'Welcome to the Saudi Drug Directory',
+    welcomeTitle: 'Welcome to PharmaSource',
     welcomeSubtitle: 'Search for medicines, check insurance coverage, or ask the smart assistant.',
     scanBarcode: 'Scan Barcode',
     insuranceCoverageDetails: "Insurance Coverage Details",

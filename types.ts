@@ -177,6 +177,7 @@ export interface User {
   status: 'active' | 'pending';
   emailVerified: boolean; 
   email?: string;
+  prescriptionPrivilege?: boolean;
 }
 
 export interface AppSettings {

@@ -41,7 +41,7 @@ import StarIcon from './components/icons/StarIcon';
 import FavoritesView from './components/FavoritesView';
 import { isAIAvailable } from './geminiService';
 import { db, messaging, FIREBASE_DISABLED, auth } from './firebase';
-import { collection, getDocs, updateDoc, doc, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, setDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { Part } from '@google/genai';
 
@@ -842,13 +842,20 @@ const App: React.FC = () => {
       alert(t('aiUnavailableMessage'));
       return;
     }
+    
+    // Only Admin or Privileged users can access prescription mode
+    if (user?.role !== 'admin' && !user?.prescriptionPrivilege) {
+        alert(t('aiAccessPendingError')); 
+        return;
+    }
+
     requestAIAccess(() => {
       setAssistantContextMedicine(null);
       setAssistantInitialPrompt('##PRESCRIPTION_MODE##'); 
       setSelectedConversation(null);
       setIsAssistantModalOpen(true);
     }, t);
-  }, [requestAIAccess, t]);
+  }, [requestAIAccess, t, user]);
 
   const handleFindAlternative = (medicine: Medicine) => {
     const priceSorter = (a: Medicine, b: Medicine) => parseFloat(a['Public price']) - parseFloat(b['Public price']);
@@ -918,6 +925,38 @@ const App: React.FC = () => {
   const handleEditMedicine = (medicine: Medicine) => {
       setEditingMedicine({ ...medicine });
       setIsEditMedicineModalOpen(true);
+  };
+
+  const handleDeleteMedicine = async (medicine: Medicine) => {
+      if (!window.confirm(t('confirmDeleteMedicine'))) return;
+
+      // Update local state immediately for instant feedback
+      setMedicines(prev => {
+          const updated = prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber);
+          try {
+              localStorage.setItem(MEDICINES_CACHE_KEY, JSON.stringify(updated));
+          } catch (e) {
+              console.error("Failed to update cache", e);
+          }
+          return updated;
+      });
+
+      // Close modal and return to search results
+      setIsEditMedicineModalOpen(false);
+      setEditingMedicine(null);
+      if (selectedMedicine && selectedMedicine.RegisterNumber === medicine.RegisterNumber) {
+          setSelectedMedicine(null);
+          setView('results');
+      }
+
+      // Background cloud sync
+      if (!FIREBASE_DISABLED) {
+          try {
+              await deleteDoc(doc(db, 'medicines', medicine.RegisterNumber));
+          } catch (e) {
+              console.error("Failed to delete from cloud", e);
+          }
+      }
   };
 
   const handleSaveEditedMedicine = async (syncToCloud: boolean) => {
@@ -1181,23 +1220,6 @@ const App: React.FC = () => {
         }
     }
 
-    if (activeTab === 'prescriptions') {
-        // Only allow admin users
-        if (user?.role !== 'admin') {
-            setTimeout(() => setActiveTab('search'), 0);
-            return null;
-        }
-
-        if (selectedPrescription) {
-            return <PrescriptionView prescriptionData={selectedPrescription} t={t} />
-        }
-        return <PrescriptionListView 
-            prescriptions={prescriptions}
-            onSelectPrescription={setSelectedPrescription}
-            t={t}
-        />
-    }
-
     if (activeTab === 'cosmetics') {
       if (view === 'cosmeticDetails' && selectedCosmetic) {
           return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={handleEditCosmetic} />;
@@ -1220,7 +1242,6 @@ const App: React.FC = () => {
           return (
             <div className="space-y-6">
               <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">
-                {/* Removed Title 'General Settings' */}
                 <div className="flex justify-between items-center">
                   <span className="font-medium">{t('darkMode')} / {t('lightMode')}</span>
                   <button onClick={toggleTheme} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg">{theme === 'light' ? t('darkMode') : t('lightMode')}</button>
@@ -1422,13 +1443,17 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-wrap justify-end gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
-                            <button type="button" onClick={() => setIsEditMedicineModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
-                            <button type="button" onClick={() => handleSaveEditedMedicine(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally Only</button>
-                            <button type="button" onClick={() => handleSaveEditedMedicine(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2" disabled={FIREBASE_DISABLED}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                                Save & Sync to Cloud
+                        <div className="flex flex-wrap justify-between items-center gap-2 pt-4 flex-shrink-0 border-t border-gray-200 dark:border-slate-700 mt-2">
+                            <button type="button" onClick={() => handleDeleteMedicine(editingMedicine)} className="px-4 py-2 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm font-medium">
+                                {t('delete')}
                             </button>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setIsEditMedicineModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">{t('cancel')}</button>
+                                <button type="button" onClick={() => handleSaveEditedMedicine(false)} className="px-4 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-sm font-medium">Save Locally</button>
+                                <button type="button" onClick={() => handleSaveEditedMedicine(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2" disabled={FIREBASE_DISABLED}>
+                                    Save & Sync
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

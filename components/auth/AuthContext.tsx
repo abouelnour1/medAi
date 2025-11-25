@@ -117,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...firestoreData, 
                 emailVerified: emailVerified, 
                 email: firebaseUser.email || '',
+                prescriptionPrivilege: firestoreData.prescriptionPrivilege ?? false
             } as User;
 
             // Update state and cache with fresh data
@@ -132,7 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   lastRequestDate: new Date().toISOString().split('T')[0],
                   status: 'pending',
                   emailVerified: firebaseUser.emailVerified,
-                  email: firebaseUser.email || ''
+                  email: firebaseUser.email || '',
+                  prescriptionPrivilege: false
               };
               // Only block on this if we really have to, otherwise set state
               setDoc(userDocRef, newUser).catch(e => console.log("Offline: could not create doc"));
@@ -207,7 +209,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastRequestDate: new Date().toISOString().split('T')[0],
         status: 'pending',
         emailVerified: false,
-        email: cleanEmail
+        email: cleanEmail,
+        prescriptionPrivilege: false
       };
       
       await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
@@ -268,8 +271,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
         // ignore
     }
-    // Return default if nothing found
-    return { aiRequestLimit: 10, isAiEnabled: true };
+    // Return default limit of 3
+    return { aiRequestLimit: 3, isAiEnabled: true };
   }, []);
 
   const updateSettings = useCallback(async (settings: AppSettings) => {
@@ -327,7 +330,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // FORCE SYNC SETTINGS IF ONLINE TO ENSURE LIMITS ARE UP TO DATE
-        // Use a race condition to prevent blocking UI for too long on slow networks
         if (!FIREBASE_DISABLED && navigator.onLine) {
             try {
                 const fetchPromise = (async () => {
@@ -339,7 +341,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 })();
                 
-                // Wait maximum 2 seconds for settings sync, then proceed with cached
+                // Wait maximum 2 seconds for settings sync
                 const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
                 await Promise.race([fetchPromise, timeoutPromise]);
             } catch(e) {
@@ -349,8 +351,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Check against Global Settings Limit
         const currentSettings = getSettings();
-        const limit = currentSettings.aiRequestLimit || 10;
-        const isAiEnabled = currentSettings.isAiEnabled !== false; // Default true if undefined
+        // Default limit is 3 if not set in settings
+        const limit = currentSettings.aiRequestLimit ?? 3;
+        const isAiEnabled = currentSettings.isAiEnabled !== false; // Default true
 
         if (!isAiEnabled) {
             alert(t('aiUnavailableMessage'));
