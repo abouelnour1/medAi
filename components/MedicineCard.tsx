@@ -20,13 +20,16 @@ interface MedicineCardProps {
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
 
-  const statusText = status === 'OTC' ? t('otc') : status === 'Prescription' ? t('prescription') : status;
+  // Force English text regardless of app language
+  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
   
-  let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; // Default
+  let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
-    colorClasses = 'bg-secondary/10 text-green-700 dark:bg-secondary/20 dark:text-green-300';
+    // Green for OTC
+    colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
   } else if (status === 'Prescription') {
-    colorClasses = 'bg-primary/10 text-primary-dark dark:bg-primary/20 dark:text-primary-light';
+    // Red for Prescription
+    colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
   
   const sizeClasses = size === 'sm' 
@@ -43,17 +46,18 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 const DrugTypeBadge: React.FC<{ type: string; size?: 'sm' | 'base', t: TFunction }> = ({ type, size = 'sm', t }) => {
     if (!type) return null;
     
+    // Force English Text
     let displayType = '';
     let colorClasses = '';
 
     if (type === 'NCE') {
-        displayType = t('brand');
+        displayType = 'Brand';
         colorClasses = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
     } else if (type === 'Generic') {
-        displayType = t('generic');
+        displayType = 'Generic';
         colorClasses = 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border border-blue-100 dark:border-blue-800';
     } else {
-        return null; // Don't show if undefined or other types not specified
+        return null;
     }
 
     const sizeClasses = size === 'sm' 
@@ -69,7 +73,7 @@ const DrugTypeBadge: React.FC<{ type: string; size?: 'sm' | 'base', t: TFunction
 
 
 const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, isFavorite, onToggleFavorite, t, language }) => {
-  if (!medicine) return null; // Crash protection
+  if (!medicine) return null; 
 
   const price = parseFloat(medicine['Public price']);
   const pressTimer = useRef<number | undefined>(undefined);
@@ -80,12 +84,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
     isScrolling.current = false;
     startCoords.current = { x: e.clientX, y: e.clientY };
     pressTimer.current = window.setTimeout(() => {
-      // only trigger long press if not scrolling
       if (!isScrolling.current) {
         onLongPress(medicine);
-        pressTimer.current = undefined; // Prevent click from firing
+        pressTimer.current = undefined; 
       }
-    }, 1000); // Increased to 1s for a more deliberate long press
+    }, 1000); 
   };
   
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -93,9 +96,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
     const dx = Math.abs(e.clientX - startCoords.current.x);
     const dy = Math.abs(e.clientY - startCoords.current.y);
-    if (dx > 10 || dy > 10) { // If pointer moves more than 10px, it's a scroll
+    if (dx > 10 || dy > 10) { 
       isScrolling.current = true;
-      // This is a scroll, so cancel the timer and prevent click.
       window.clearTimeout(pressTimer.current);
       pressTimer.current = undefined;
     }
@@ -131,7 +133,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onClick={handleClick}
-      onContextMenu={(e) => e.preventDefault()} // Prevents context menu on long press
+      onContextMenu={(e) => e.preventDefault()}
       role="button"
       tabIndex={0}
       aria-label={t('viewDetails', { name: medicine['Trade Name'] })}
@@ -143,7 +145,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <FactoryIcon />
                 <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
               </div>
-              {/* Removed truncate to allow text wrapping and prevent overlap */}
               <h2 className="text-base font-bold text-light-text dark:text-dark-text break-words whitespace-normal leading-tight mb-1" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
               <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary break-words whitespace-normal leading-snug" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
           </div>
@@ -157,11 +158,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <LegalStatusBadge status={medicine['Legal Status']} size="sm" t={t} />
                 <DrugTypeBadge type={medicine.DrugType} size="sm" t={t} />
             </div>
-            {medicine['Product type'] === 'Supplement' && (
-              <span className="inline-block font-semibold rounded-full px-2.5 py-0.5 text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                {t('notCoveredShort')}
-              </span>
-            )}
           </div>
         </div>
         <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
 
@@ -13,9 +13,42 @@ interface ResultsListProps {
   t: TFunction;
   language: Language;
   resultsState: 'loading' | 'loaded' | 'empty';
+  limit?: number;
+  onLoadMore?: () => void;
 }
 
-const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language, resultsState, favorites, onToggleFavorite }) => {
+const ResultsList: React.FC<ResultsListProps> = ({ 
+    medicines, 
+    onMedicineSelect, 
+    onMedicineLongPress, 
+    onFindAlternative, 
+    t, 
+    language, 
+    resultsState, 
+    favorites, 
+    onToggleFavorite,
+    limit = 20,
+    onLoadMore
+}) => {
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && onLoadMore) {
+            onLoadMore();
+        }
+    }, { threshold: 0.1 });
+
+    if (loaderRef.current) {
+        observer.observe(loaderRef.current);
+    }
+
+    return () => {
+        if (loaderRef.current) observer.unobserve(loaderRef.current);
+    }
+  }, [onLoadMore, medicines.length]);
+
   if (resultsState === 'empty') {
     return (
       <div className="text-center py-10 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm animate-fade-in" role="status">
@@ -25,13 +58,15 @@ const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, 
     );
   }
 
+  const displayedMedicines = medicines.slice(0, limit);
+
   return (
     <div className="space-y-3 animate-fade-in">
-      {medicines.map((med) => {
-        if (!med) return null; // Safety check to prevent crashing on null/undefined items
+      {displayedMedicines.map((med) => {
+        if (!med) return null; 
         return (
           <MedicineCard 
-            key={med.RegisterNumber || Math.random()} 
+            key={med.RegisterNumber} 
             medicine={med} 
             onShortPress={() => onMedicineSelect(med)} 
             onLongPress={onMedicineLongPress}
@@ -43,6 +78,13 @@ const ResultsList: React.FC<ResultsListProps> = ({ medicines, onMedicineSelect, 
           />
         );
       })}
+      
+      {/* Infinite Scroll Trigger */}
+      {medicines.length > limit && (
+          <div ref={loaderRef} className="py-4 text-center text-sm text-gray-400">
+              {t('loadMore') || 'Loading more...'}
+          </div>
+      )}
     </div>
   );
 };

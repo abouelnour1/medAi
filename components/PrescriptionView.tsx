@@ -8,11 +8,9 @@ const parsePrescription = (content: string): Omit<PrescriptionData, 'id'> | null
     let potentialJson = markerMatch ? markerMatch[1] : content;
 
     // 2. Clean up: Remove markdown code blocks if present (```json ... ```)
-    // This is just to clean up the string before we hunt for braces
     potentialJson = potentialJson.replace(/```(?:json)?/g, '').replace(/```/g, '');
 
     // 3. Robust Extraction: Find the first '{' and the last '}'
-    // This ignores any text the AI might have put before or after the JSON object
     const firstBrace = potentialJson.indexOf('{');
     const lastBrace = potentialJson.lastIndexOf('}');
 
@@ -24,7 +22,7 @@ const parsePrescription = (content: string): Omit<PrescriptionData, 'id'> | null
 
     try {
         const parsed = JSON.parse(jsonString);
-        // Basic validation: Check for key fields to ensure it's actually a prescription
+        // Basic validation: Check for key fields
         if (parsed.hospitalName || parsed.drugs || parsed.patientName) {
              return parsed;
         }
@@ -65,22 +63,21 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
 
         if (pri) {
             pri.document.open();
-            pri.document.write('<html><head>');
+            pri.document.write('<html><head><title>Print Prescription</title>');
             
-            // Copy all <link> and <style> tags from parent document
-            const headTags = document.head.querySelectorAll('link, style');
-            headTags.forEach(tag => {
-                pri.document.write(tag.outerHTML);
-            });
+            // Inject Tailwind CSS for styling
+            pri.document.write('<script src="https://cdn.tailwindcss.com"></script>');
             
-            // Add custom print styles for A4 layout and proper margins
+            // Add custom print styles
             pri.document.write(`
                 <style>
                     @page { size: A4; margin: 0; }
                     body { 
-                        margin: 1.5cm; 
+                        margin: 0;
+                        padding: 20px; 
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
+                        font-family: 'Cairo', 'Arial', sans-serif;
                     }
                 </style>
             `);
@@ -90,12 +87,17 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
             pri.document.write('</body></html>');
             pri.document.close();
 
-            // Use onload to ensure all content (especially fonts) is loaded before printing
+            // Wait for resources to load before printing
             pri.onload = function() {
-                pri.focus(); // required for some browsers
-                pri.print();
-                // Clean up by removing the iframe
-                document.body.removeChild(iframe);
+                // Short delay to ensure Tailwind classes are applied
+                setTimeout(() => {
+                    pri.focus();
+                    pri.print();
+                    // Clean up after printing (optional, can be done on focus back)
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 1000);
+                }, 500);
             };
         } else {
              document.body.removeChild(iframe);
@@ -104,7 +106,6 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
 
     if (!data) {
         if (content && content.includes('---PRESCRIPTION_START---')) {
-             // If markers exist but we couldn't parse, show a more helpful error or fallback
              return (
                 <div className="p-4 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                     Warning: Malformed prescription data received.
@@ -114,7 +115,7 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
         return null;
     }
     
-    // Using a style tag for precise print control and font definitions
+    // Using a style tag for precise print control and font definitions within the preview
     const style = `
         .prescription-font {
             font-family: 'Cairo', 'Arial', sans-serif;

@@ -3,6 +3,7 @@ import React from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
+import CameraIcon from './icons/CameraIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '') return null;
@@ -17,13 +18,13 @@ const DetailRow: React.FC<{ label: string; value?: string | number | null }> = (
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
 
-  const statusText = status === 'OTC' ? t('otc') : status === 'Prescription' ? t('prescription') : status;
+  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
   
-  let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; // Default
+  let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
-    colorClasses = 'bg-secondary/10 text-green-700 dark:bg-secondary/20 dark:text-green-300';
+    colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
   } else if (status === 'Prescription') {
-    colorClasses = 'bg-primary/10 text-primary-dark dark:bg-primary/20 dark:text-primary-light';
+    colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
   
   const sizeClasses = size === 'sm' 
@@ -54,12 +55,25 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const strengths = String(medicine.Strength || '');
   const strengthUnit = String(medicine.StrengthUnit || '');
 
-  // Safeguard against null/undefined before split
   const strengthValues = strengths ? strengths.split(',').map(s => s.trim()).filter(Boolean) : [];
   const strengthUnitValues = strengthUnit ? strengthUnit.split(',').map(s => s.trim()).filter(Boolean) : [];
   const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
 
   const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
+
+  const handleImageSearch = () => {
+      const tradeName = medicine['Trade Name'] || '';
+      let query = tradeName;
+      
+      if (tradeName.trim().split(/\s+/).length === 1) {
+          const strength = medicine.Strength || '';
+          const form = medicine.PharmaceuticalForm || '';
+          query = `${tradeName} ${strength} ${form}`;
+      }
+      
+      const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+      window.open(url, '_blank');
+  };
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-8">
@@ -68,6 +82,15 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <div className="flex items-center justify-between gap-4">
               <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name'] || 'Unknown Name'}</h2>
               <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleImageSearch}
+                    className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                    title={t('searchImage')}
+                  >
+                      <div className="h-6 w-6">
+                        <CameraIcon />
+                      </div>
+                  </button>
                   {user?.role === 'admin' && onEdit && (
                       <button
                           onClick={() => onEdit(medicine)}

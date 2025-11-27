@@ -3,6 +3,7 @@ import React from 'react';
 import { Cosmetic, TFunction, Language, User } from '../types';
 import EditIcon from './icons/EditIcon';
 import CosmeticsIcon from './icons/CosmeticsIcon';
+import CameraIcon from './icons/CameraIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '') return null;
@@ -23,6 +24,15 @@ interface CosmeticDetailProps {
 }
 
 const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, user, onEdit }) => {
+  const handleImageSearch = () => {
+      const brand = cosmetic.BrandName || '';
+      const name = cosmetic.SpecificName || '';
+      const query = `${brand} ${name}`;
+      
+      const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+      window.open(url, '_blank');
+  };
+
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-8">
       <div>
@@ -38,17 +48,28 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
                   </h2>
               </div>
               
-              {user?.role === 'admin' && onEdit && (
+              <div className="flex items-center gap-2">
                   <button
-                      onClick={() => onEdit(cosmetic)}
-                      className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary hover:bg-primary/10 flex-shrink-0"
-                      title="Edit Cosmetic"
+                      onClick={handleImageSearch}
+                      className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 flex-shrink-0"
+                      title={t('searchImage')}
                   >
                       <div className="h-6 w-6">
-                          <EditIcon />
+                          <CameraIcon />
                       </div>
                   </button>
-              )}
+                  {user?.role === 'admin' && onEdit && (
+                      <button
+                          onClick={() => onEdit(cosmetic)}
+                          className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary hover:bg-primary/10 flex-shrink-0"
+                          title="Edit Cosmetic"
+                      >
+                          <div className="h-6 w-6">
+                              <EditIcon />
+                          </div>
+                      </button>
+                  )}
+              </div>
           </div>
         </div>
         
