@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Cosmetic, TFunction, Language } from '../types';
 import SearchableDropdown from './SearchableDropdown';

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { TFunction } from '../types';
 import ClearIcon from './icons/ClearIcon';

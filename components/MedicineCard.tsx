@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';

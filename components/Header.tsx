@@ -1,4 +1,3 @@
-
 import React, { forwardRef, useState, useRef, useEffect } from 'react';
 import BackIcon from './icons/BackIcon';
 import { TFunction, View } from '../types';

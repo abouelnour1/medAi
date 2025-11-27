@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';

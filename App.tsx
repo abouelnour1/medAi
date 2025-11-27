@@ -359,17 +359,60 @@ const App: React.FC = () => {
       setEditingCosmetic(null);
   };
 
-  const isSearchActive = (searchTerm.trim().length > 0 || filters.productType !== 'all' || filters.priceMin !== '' || filters.priceMax !== '' || filters.pharmaceuticalForm !== '' || filters.manufactureName.length > 0 || filters.legalStatus !== '');
+  // --- LOGIC UPDATE: Calculate effective length to control UI visibility ---
+  const effectiveSearchLength = searchTerm.replace(/%/g, '').trim().length;
+  const isSearchActive = (effectiveSearchLength >= 3 || filters.productType !== 'all' || filters.priceMin !== '' || filters.priceMax !== '' || filters.pharmaceuticalForm !== '' || filters.manufactureName.length > 0 || filters.legalStatus !== '');
 
   const filteredMedicines = useMemo(() => {
       let results = medicines;
-      if (searchTerm.trim()) {
-          const lowerTerm = searchTerm.toLowerCase();
+      const trimmedTerm = searchTerm.trim();
+
+      // Only perform text filtering if there are at least 3 valid characters (excluding %)
+      if (trimmedTerm && effectiveSearchLength >= 3) {
+          const lowerTerm = trimmedTerm.toLowerCase();
+          const isWildcardSearch = lowerTerm.includes('%');
+          let searchRegex: RegExp;
+
+          // Helper to escape special regex chars to prevent crashes
+          const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+          if (isWildcardSearch) {
+              // Wildcard logic: Split by %, escape parts, join with .*
+              const parts = lowerTerm.split('%').map(escapeRegExp);
+              let pattern = parts.join('.*');
+              
+              // CRITICAL: If it doesn't start with %, anchor to the beginning (Starts With logic)
+              // User logic: "If I type o%ta, it means Starts with O... then ta"
+              if (!lowerTerm.startsWith('%')) {
+                  pattern = '^' + pattern;
+              }
+              // Note: We do NOT anchor the end ($) unless the user put a % at the start but not end? 
+              // Usually wildcards imply partial matching unless anchored. 
+              // The requirement is "Matches letters written at the beginning only... unless %".
+              // So `o%ta` -> `^o.*ta`.
+              
+              try {
+                searchRegex = new RegExp(pattern, 'i');
+              } catch (e) {
+                // Fallback safe regex
+                searchRegex = new RegExp(escapeRegExp(lowerTerm.replace(/%/g, '')), 'i'); 
+              }
+          } else {
+              // NO Wildcard: STRICT "Starts With" logic
+              // Matches ONLY if the field starts with the term
+              searchRegex = new RegExp('^' + escapeRegExp(lowerTerm), 'i');
+          }
+
           results = results.filter(m => 
-              (textSearchMode === 'all' || textSearchMode === 'tradeName') && m['Trade Name'].toLowerCase().includes(lowerTerm) ||
-              (textSearchMode === 'all' || textSearchMode === 'scientificName') && m['Scientific Name'].toLowerCase().includes(lowerTerm)
+              (textSearchMode === 'all' || textSearchMode === 'tradeName') && searchRegex.test(m['Trade Name'].toLowerCase()) ||
+              (textSearchMode === 'all' || textSearchMode === 'scientificName') && searchRegex.test(m['Scientific Name'].toLowerCase())
           );
+      } else if (trimmedTerm && effectiveSearchLength < 3) {
+          // If term exists but < 3 chars, return empty list (don't show anything yet)
+          // This prevents "Results appearing without reason" or unrelated results
+          return [];
       }
+
       if (filters.productType !== 'all') {
           results = results.filter(m => {
               if (filters.productType === 'medicine') return m['Product type'] === 'Human';
@@ -394,10 +437,11 @@ const App: React.FC = () => {
           if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
           if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
           if (sortBy === 'scientificName') return a['Scientific Name'].localeCompare(b['Scientific Name']);
+          // Default Alphabetical
           return a['Trade Name'].localeCompare(b['Trade Name']);
       });
       return results;
-  }, [medicines, searchTerm, textSearchMode, filters, sortBy]);
+  }, [medicines, searchTerm, textSearchMode, filters, sortBy, effectiveSearchLength]);
 
   const uniqueManufactureNames = useMemo(() => Array.from(new Set(medicines.map(m => m['Manufacture Name']))).sort(), [medicines]);
   const uniqueLegalStatuses = useMemo(() => Array.from(new Set(medicines.map(m => m['Legal Status']).filter(Boolean))).sort(), [medicines]);
@@ -460,6 +504,7 @@ const App: React.FC = () => {
                     <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                 </div>
                 <div className="mt-4">
+                    {/* Only show results if search is active (3+ chars or filters) */}
                     {isSearchActive ? (
                         <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setAssistantPrompt(''); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState={filteredMedicines.length > 0 ? 'loaded' : 'empty'} />
                     ) : (
