@@ -389,7 +389,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           {/* Terminal Log */}
           <div className="mt-4 bg-black text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto shadow-inner" ref={logContainerRef}>
               <div className="flex justify-between items-center border-b border-green-900/50 pb-2 mb-2 sticky top-0 bg-black">
-                  <span>>_ System Log</span>
+                  <span>&gt;_ System Log</span>
                   <button onClick={() => setMigrationLogs([])} className="text-[10px] hover:text-white">CLEAR</button>
               </div>
               {migrationLogs.length === 0 && <span className="opacity-50">Ready for command...</span>}
