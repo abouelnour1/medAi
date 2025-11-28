@@ -9,6 +9,7 @@ export interface RecommendedProduct {
   price: string;
   reason: string;
   form?: string;
+  manufacturer?: string;
 }
 
 interface ProductRecommendationsViewProps {
@@ -62,6 +63,14 @@ const ProductRecommendationsView: React.FC<ProductRecommendationsViewProps> = ({
                         <span className="text-slate-500 dark:text-slate-400 font-medium">{t('scientificName')}:</span>
                         <span className="text-slate-700 dark:text-slate-300 text-right font-mono">{product.scientificName}</span>
                     </div>
+                    
+                    {product.manufacturer && (
+                        <div className="flex justify-between items-start gap-2 text-xs">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{t('manufacturer')}:</span>
+                            <span className="text-slate-700 dark:text-slate-300 text-right truncate max-w-[65%]">{product.manufacturer}</span>
+                        </div>
+                    )}
+
                     {product.form && (
                         <div className="flex justify-between items-start gap-2 text-xs">
                             <span className="text-slate-500 dark:text-slate-400 font-medium">{t('pharmaceuticalForm')}:</span>

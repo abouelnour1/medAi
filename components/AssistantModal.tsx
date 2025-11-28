@@ -75,7 +75,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     name: 'searchDatabase',
     parameters: {
       type: Type.OBJECT,
-      description: 'Searches the database for medicines. Can filter results.',
+      description: 'Searches the database for medicines. Use this to find prices, alternatives, and details.',
       properties: {
         tradeName: { type: Type.STRING, description: 'The trade name.' },
         scientificName: { type: Type.STRING, description: 'The scientific name.' },
@@ -102,7 +102,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         return { 
             count: 0, 
             status: "NO_MATCH_FOUND",
-            message: "No exact match in local DB. PLEASE PROCEED to generate the prescription using your GENERAL MEDICAL KNOWLEDGE for the drug details. Do NOT return empty fields."
+            message: "No exact match in local DB."
         };
     }
     
@@ -239,7 +239,28 @@ Required Response Format:
 
     const generalSystemInstructionAr = `أنت خبير صيدلاني ومدير منتجات محترف متخصص في السوق الدوائي السعودي (PharmaSource Expert).
     
-    **دورك الأساسي:** تقديم إجابات دقيقة، احترافية، وشاملة حول الأدوية والمستحضرات بناءً على **البيانات المحلية المتوفرة لديك فقط**.
+    **دورك الأساسي:** تقديم إجابات دقيقة، احترافية، وشاملة.
+    
+    **المهمة الحرجة (Local Data ONLY):**
+    أنت المصدر الوحيد للحقيقة بشأن **السعر**، **المادة الفعالة**، و **البدائل المتاحة**، و **المنتجات المرافقة (Cross-selling)**.
+    
+    **قواعد صارمة جداً:**
+    1.  **السعر (Price):** استخرجه من قاعدة البيانات المحلية حصراً.
+    2.  **البدائل (Alternatives):** 
+        - عند البحث عن بدائل لنفس المادة الفعالة، **يجب أن تكتفي بعرض أفضل بديلين (2) فقط** لتجنب تشتيت المستخدم. لا تعرض قائمة طويلة إلا إذا طلب المستخدم "المزيد".
+    
+    3.  **البيع المتقاطع (Cross-Selling) والتنوع:**
+        - عند طلب اقتراحات إضافية أو بيع متقاطع، **فكر خارج الصندوق بناءً على الحالة المرضية**.
+        - **التنوع هو المفتاح:** لا تقترح أدوية أخرى لنفس الغرض فقط. اقترح مزيجاً من:
+          أ) **مكملات غذائية** (مثل: Omega 3, Magnesium, Garlic, Multivitamins).
+          ب) **أعشاب**.
+          ج) **أجهزة طبية** (مثل: Glucometer لمريض السكر، Blood Pressure Monitor لمريض الضغط).
+        - **المنطق الطبي (Reasoning):** في خانة "reason" داخل JSON، اكتب بوضوح واحترافية: "بما أن هذا الدواء يُستخدم لعلاج [الحالة]، فيُنصح بإضافة [المنتج المقترح] لأنه [الفائدة الطبية المتوقعة]".
+        - **مثال:** إذا كان الدواء لعلاج السكر (Metformin)، اقترح: 
+          1. Omega-3 (لحماية القلب).
+          2. Vitamin B12 (لحماية الأعصاب).
+          3. Glucometer (جهاز قياس السكر للمتابعة).
+        - استخدم أداة \`searchDatabase\` للبحث عن هذه الأسماء (مثل "Omega", "B12", "Glucometer", "Monitor") للعثور على منتجات حقيقية في قاعدة البيانات وعرضها.
 
     **سياق المنتج الحالي:**
     ${contextMedicine ? JSON.stringify(contextMedicine) : (contextCosmetic ? JSON.stringify(contextCosmetic) : 'لا يوجد منتج محدد في السياق.')}
@@ -247,43 +268,42 @@ Required Response Format:
     **قائمة المفضلات:**
     ${favoriteListString}
 
-    **قواعد صارمة جداً (Strict Rules) - يجب الالتزام بها حرفياً:**
-    1. **ممنوع الترجمة نهائياً:** يجب كتابة الاسم التجاري (Trade Name) والاسم العلمي (Scientific Name) **باللغة الإنجليزية فقط** تماماً كما تظهر في قاعدة البيانات أو السياق. لا تترجمها للعربية أبداً، حتى لو كنت تتحدث بالعربية.
-    2. **الأسعار والمواد الفعالة:** اعتمد حصراً على الأسعار والمواد الفعالة الموجودة في قاعدة البيانات المحلية. **لا تستخدم الإنترنت** لجلب الأسعار أو المعلومات الأساسية. إذا لم يكن السعر في البيانات، اكتب "غير متوفر". لا تخترع أسعاراً.
-    3. **اللغة:** اشرح التفاصيل (الاستخدام، المميزات، الأسباب) باللغة العربية، لكن أبقِ أسماء الأدوية والمواد الفعالة بالإنجليزية.
-
-    **مهامك الرئيسية وتنسيق الإجابة:**
-
-    1. **البيع المتقاطع (Cross-Selling) والبدائل (Alternatives):**
-       - استخدم أداة \`searchDatabase\` للعثور على منتجات حقيقية من المخزون.
-       - اعرض الأسماء بالإنجليزية (Trade Name).
-       - التنسيق المطلوب بدقة (JSON):
+    **تنسيق الإجابة:**
+    - عند سرد منتجات (بدائل أو مقترحات)، استخدم دائماً تنسيق JSON التالي لضمان عرضها بشكل جميل في الكروت المخصصة:
          \`\`\`json
          ---PRODUCTS_START---
          [
            {
-             "tradeName": "Name in English (From DB)",
-             "scientificName": "Scientific Name in English (From DB)",
+             "tradeName": "Name (English)",
+             "scientificName": "Scientific Name (English)",
              "price": "12.50", 
-             "reason": "سبب الترشيح باختصار وتسويق (بالعربية)",
-             "form": "أقراص/كريم..."
+             "manufacturer": "Manufacturer Name",
+             "reason": "السبب الطبي المقنع والمحترف...",
+             "form": "Form..."
            }
          ]
          ---PRODUCTS_END---
          \`\`\`
-
-    2. **نقطة البيع الفريدة (USP):**
-       - اكتب فقرة تسويقية قوية.
-       - اذكر المميزات (Benefits) بالعربية، لكن اسم المنتج بالإنجليزية.
-
-    3. **طريقة الاستخدام (Usage):**
-       - اشرح بالتفصيل الممل كخبير (بالعربية).
-
-    كن دقيقاً، لا تترجم الأسماء، واستخدم بيانات السعر من السياق فقط.`;
+    - باقي الشرح يكون نصياً باللغة العربية.
+    - الأسماء العلمية والتجارية بالإنجليزية دائماً.`;
 
     const generalSystemInstructionEn = `You are an Expert Pharmacist and Product Manager specializing in the Saudi Pharmaceutical Market (PharmaSource Expert).
 
-    **Role:** Provide accurate, professional answers based **ONLY on the local data provided**.
+    **CRITICAL ROLE:** Source of truth for **Price**, **Ingredients**, **Alternatives**, and **Cross-selling**.
+
+    **STRICT RULES:**
+    1.  **Price:** Local DB only.
+    2.  **Alternatives (Same Active Ingredient):**
+        - Strictly limit output to **ONLY the top 2 best alternatives**. Do not overwhelm the user with a long list unless they ask for "more".
+    
+    3.  **Cross-Selling (Upselling & Variety):**
+        - When asked for cross-selling or suggestions, analyze the **medical condition**.
+        - **Variety is key:** Do not just suggest more drugs. Suggest a mix of:
+          a) **Supplements** (e.g., Omega 3, Magnesium, Garlic).
+          b) **Medical Devices** (e.g., Glucometer for diabetics, BP Monitor for hypertension).
+        - **Medical Logic:** In the JSON "reason" field, explain *why* professionally. E.g., "Since this drug is for [condition], [Product] is recommended to [benefit]."
+        - **Example:** For a Diabetes drug -> Suggest Vitamin B12 (Neuroprotection), Omega-3 (Heart health), and a Glucometer (Monitoring).
+        - Use \`searchDatabase\` to find these specific items (search for "Omega", "Device", "Monitor", etc.) in the DB.
 
     **Context:**
     ${contextMedicine ? JSON.stringify(contextMedicine) : (contextCosmetic ? JSON.stringify(contextCosmetic) : 'No context.')}
@@ -291,35 +311,23 @@ Required Response Format:
     **Favorites:**
     ${favoriteListString}
 
-    **STRICT RULES:**
-    - **NO INTERNET PRICES:** Use ONLY the price found in the database/context. If missing, say "Price N/A". Do NOT invent prices.
-    - **NAMES:** Keep Trade Names and Scientific Names exactly as they appear in the database (English). Do not translate or alter them.
-
     **Task Guidelines & Formatting:**
-
-    1. **Cross-Selling & Alternatives:**
-       - Use \`searchDatabase\` to find real items.
-       - Return valid JSON wrapped in tags.
-       - Required Format:
+    - Return product lists (alternatives, cross-sells) in valid JSON wrapped in tags:
          \`\`\`json
          ---PRODUCTS_START---
          [
            {
              "tradeName": "Product Name (From DB)",
-             "scientificName": "Active Ingredient (From DB)",
+             "scientificName": "Active Ingredient / Type",
              "price": "12.50", 
-             "reason": "Marketing reason",
-             "form": "Tablet/Cream..."
+             "manufacturer": "Manufacturer Name",
+             "reason": "Professional medical reason...",
+             "form": "Tablet/Device..."
            }
          ]
          ---PRODUCTS_END---
          \`\`\`
-
-    2. **USP & Usage:**
-       - Provide detailed expert advice.
-       - Use Bold Headings.
-
-    Be professional. Use JSON for product lists.`;
+    `;
 
     let systemInstruction;
     if (isPrescriptionMode) {
@@ -387,65 +395,112 @@ Required Response Format:
   const handleClose = () => { onSaveAndClose(chatHistory); };
   
   const handleQuickAction = (action: 'price' | 'ingredient' | 'alternatives' | 'cross_sell' | 'usp' | 'usage') => {
-      // Determine the active item (Medicine or Cosmetic)
       const item = contextMedicine || contextCosmetic;
       if (!item) return;
       
-      // Determine name based on type
       let name = '';
-      let scientificName = '';
+      if ('Trade Name' in item) name = item['Trade Name'];
+      else if ('BrandName' in item) name = `${item.BrandName} ${item.SpecificName}`;
+
+      // --- LOCAL / INSTANT ACTIONS ---
+      // These actions use local data and do NOT query the AI, providing instant response.
       
-      if ('Trade Name' in item) {
-          name = item['Trade Name'];
-          scientificName = item['Scientific Name'];
-      } else if ('BrandName' in item) {
-          name = `${item.BrandName} ${item.SpecificName}`;
+      if (action === 'price') {
+          let price = 'N/A';
+          if ('Public price' in item) price = item['Public price'];
+          
+          const userText = language === 'ar' ? `كم سعر ${name}؟` : `What is the price of ${name}?`;
+          const modelText = language === 'ar' 
+            ? `سعر **${name}** هو: **${price} ${t('sar')}**`
+            : `The price of **${name}** is: **${price} ${t('sar')}**`;
+
+          setChatHistory(prev => [
+              ...prev, 
+              { role: 'user', parts: [{ text: userText }] },
+              { role: 'model', parts: [{ text: modelText }] }
+          ]);
+          return;
       }
+
+      if (action === 'ingredient') {
+          let ing = '';
+          if ('Scientific Name' in item) ing = item['Scientific Name'];
+          else if ('Active ingredient' in item) ing = item['Active ingredient'];
+
+          const userText = language === 'ar' ? `ما هي المادة الفعالة لـ ${name}؟` : `What is the active ingredient of ${name}?`;
+          const modelText = language === 'ar'
+            ? `المادة الفعالة هي: **${ing}**`
+            : `The active ingredient is: **${ing}**`;
+
+          setChatHistory(prev => [
+              ...prev,
+              { role: 'user', parts: [{ text: userText }] },
+              { role: 'model', parts: [{ text: modelText }] }
+          ]);
+          return;
+      }
+
+      if (action === 'alternatives' && contextMedicine) {
+          const userText = language === 'ar' ? `ابحث عن بدائل لـ ${name}` : `Find alternatives for ${name}`;
+          
+          // Local Search Logic
+          const cleanSciName = contextMedicine['Scientific Name'].toLowerCase().trim();
+          const alts = allMedicines.filter(m => 
+              m.RegisterNumber !== contextMedicine.RegisterNumber &&
+              m['Scientific Name'].toLowerCase().trim() === cleanSciName
+          ).slice(0, 15); // Limit to top 15 results
+
+          let modelText = '';
+          
+          if (alts.length > 0) {
+              const productsPayload = alts.map(m => ({
+                  tradeName: m['Trade Name'],
+                  scientificName: m['Scientific Name'],
+                  price: m['Public price'],
+                  form: m['PharmaceuticalForm'],
+                  manufacturer: m['Manufacture Name'],
+                  reason: language === 'ar' ? 'بديل مباشر (نفس المادة الفعالة)' : 'Direct Alternative (Same Ingredient)'
+              }));
+              modelText = `---PRODUCTS_START---${JSON.stringify(productsPayload)}---PRODUCTS_END---`;
+          } else {
+              modelText = language === 'ar' ? 'عفواً، لم أجد بدائل مباشرة مطابقة تماماً في قاعدة البيانات.' : 'Sorry, I found no direct alternatives in the local database.';
+          }
+
+          setChatHistory(prev => [
+              ...prev,
+              { role: 'user', parts: [{ text: userText }] },
+              { role: 'model', parts: [{ text: modelText }] }
+          ]);
+          return;
+      }
+
+      // --- AI GENERATIVE ACTIONS ---
+      // These still require the LLM because they need creative/generative content (marketing, usage advice, etc.)
       
       let prompt = '';
-
-      switch(action) {
-          case 'price':
-              prompt = language === 'ar' 
-                ? `كم سعر ${name}؟ (استخرجه مباشرة من البيانات المتوفرة في السياق).` 
-                : `What is the price of ${name}? (Extract directly from context data).`;
-              break;
-          case 'ingredient':
-              prompt = language === 'ar'
-                ? `ما هي المكونات الفعالة لـ ${name}؟ (من البيانات)`
-                : `What are the active ingredients of ${name}? (From data)`;
-              break;
-          case 'alternatives':
-              // Use AI to search DB and display table, instead of navigating away.
-              prompt = language === 'ar'
-                ? `ابحث في قاعدة البيانات عن بدائل للدواء "${name}" (المادة الفعالة: ${scientificName}). اعرض النتائج في بطاقات عرض (Product Cards) واذكر السعر والسبب.`
-                : `Search the database for alternatives to "${name}" (Scientific Name: ${scientificName}). Display the results as Product Cards with price and reason.`;
-              break;
-          case 'cross_sell':
-              prompt = language === 'ar'
-                ? `(Cross-selling Request)
-                   1. حدد فئة ${name}.
-                   2. ابحث في قاعدة البيانات عن 3-5 منتجات مكملة تباع معها عادة.
-                   3. اعرض النتيجة في بطاقات عرض (Product Cards) أنيقة مع ذكر السعر والسبب.`
-                : `(Cross-selling Request)
-                   1. Identify category of ${name}.
-                   2. Search DB for 3-5 complementary products.
-                   3. Show results in styled Product Cards with Price and Reason.`;
-              break;
-          case 'usp':
-              prompt = language === 'ar'
-                ? `ما هي ميزة البيع الفريدة (USP) لـ ${name}؟ لماذا هو مميز؟ (اكتب بالتفصيل الممل)`
-                : `What is the Unique Selling Point (USP) of ${name}? Why is it special? (Detailed explanation)`;
-              break;
-          case 'usage':
-              prompt = language === 'ar'
-                ? `اشرح طريقة استخدام ${name} بالتفصيل الممل كخبير (جرعات، توقيت، نصائح).`
-                : `Explain the usage of ${name} in great detail like an expert (dosage, timing, tips).`;
-              break;
+      if (action === 'cross_sell') {
+          prompt = language === 'ar'
+            ? `(Cross-selling Request for ${name})
+                1. حدد فئة المنتج والحالة التي يعالجها.
+                2. اقترح 3 منتجات **متنوعة** (فيتامينات، أجهزة، منتجات تكميلية) تناسب الحالة.
+                3. ابحث عنها في قاعدة البيانات.
+                4. اعرض النتائج في بطاقات (Product Cards) مع ذكر سبب الاقتراح الطبي باحترافية.`
+            : `(Cross-selling Request for ${name})
+                1. Identify category & condition.
+                2. Suggest 3 **diverse** items (Vitamins, Devices, Complementary).
+                3. Search DB for them.
+                4. Show in Product Cards with professional medical reasoning.`;
+      } else if (action === 'usp') {
+          prompt = language === 'ar'
+            ? `ما هي ميزة البيع الفريدة (USP) لـ ${name}؟ لماذا هو مميز؟ (اكتب بالتفصيل الممل)`
+            : `What is the Unique Selling Point (USP) of ${name}? Why is it special? (Detailed explanation)`;
+      } else if (action === 'usage') {
+          prompt = language === 'ar'
+            ? `اشرح طريقة استخدام ${name} بالتفصيل الممل كخبير (جرعات، توقيت، نصائح).`
+            : `Explain the usage of ${name} in great detail like an expert (dosage, timing, tips).`;
       }
       
       if (prompt) {
-          // Send message but hide it from the UI for a seamless "magical" experience
           handleSendMessage(prompt, true);
       }
   };

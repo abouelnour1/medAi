@@ -341,6 +341,7 @@ export const translations = {
     agents: 'الوكلاء',
     descriptionCode: 'الكود الوصفي',
     authorizationStatus: 'حالة الترخيص',
+    aiActivityLog: 'سجل المساعد الذكي',
   },
   en: {
     appTitle: 'PharmaSource',
@@ -683,6 +684,7 @@ export const translations = {
     agents: 'Agents',
     descriptionCode: 'Description Code',
     authorizationStatus: 'Authorization Status',
+    aiActivityLog: 'Smart Assistant Log',
   }
 };
 

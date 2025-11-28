@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { Conversation, TFunction, Language } from '../types';
 import HistoryIcon from './icons/HistoryIcon';
 import TrashIcon from './icons/TrashIcon';
+import ReceiptIcon from './icons/ReceiptIcon';
 
 interface ChatHistoryViewProps {
   conversations: Conversation[];
@@ -56,29 +58,42 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
         
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm">
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-          {conversations.map(convo => (
-            <li key={convo.id} className="group">
-                <div 
-                    onClick={() => onSelectConversation(convo)}
-                    className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                >
-                    <div className="flex-grow">
-                        <p className="font-semibold text-light-text dark:text-dark-text truncate">{convo.title}</p>
-                        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{formatDate(convo.timestamp)}</p>
-                    </div>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteConversation(convo.id);
-                        }}
-                        className="p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-100/50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label={t('deleteConversation')}
+          {conversations.map(convo => {
+            const hasPrescription = convo.messages.some(msg => 
+                msg.parts?.some(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))
+            );
+
+            return (
+                <li key={convo.id} className="group">
+                    <div 
+                        onClick={() => onSelectConversation(convo)}
+                        className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50"
                     >
-                        <TrashIcon />
-                    </button>
-                </div>
-            </li>
-          ))}
+                        <div className="flex-grow min-w-0">
+                            <div className="flex items-center gap-2">
+                                <p className="font-semibold text-light-text dark:text-dark-text truncate">{convo.title}</p>
+                                {hasPrescription && (
+                                    <span className="text-primary dark:text-primary-light flex-shrink-0" title={t('prescription')}>
+                                        <div className="w-4 h-4"><ReceiptIcon /></div>
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{formatDate(convo.timestamp)}</p>
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteConversation(convo.id);
+                            }}
+                            className="p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-100/50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={t('deleteConversation')}
+                        >
+                            <TrashIcon />
+                        </button>
+                    </div>
+                </li>
+            );
+          })}
         </ul>
       </div>
     </div>

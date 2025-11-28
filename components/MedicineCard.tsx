@@ -74,24 +74,44 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const price = parseFloat(medicine['Public price']);
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
 
-  // --- Long Press Logic ---
+  // --- Long Press & Scroll Logic ---
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
   const isLongPressTriggered = useRef(false);
+  const startPos = useRef<{x: number, y: number} | null>(null);
 
-  // We rely on standard events to manage the visual "pressed" state and the timer.
-  // We rely on the browser's native `onClick` to decide if it was a scroll or a tap.
-
-  const handlePressStart = () => {
+  const handlePressStart = (e: React.TouchEvent | React.MouseEvent) => {
       setIsPressing(true);
       isLongPressTriggered.current = false;
+      
+      // Store start position to detect scrolling
+      if ('touches' in e) {
+          startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else {
+          startPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+      }
       
       timerRef.current = window.setTimeout(() => {
           isLongPressTriggered.current = true;
           if (navigator.vibrate) navigator.vibrate(50); // Feedback
           onLongPress(medicine);
           setIsPressing(false);
-      }, 500); // 500ms for long press
+      }, 500); // 500ms delay for long press
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (startPos.current && timerRef.current) {
+          const moveX = Math.abs(e.touches[0].clientX - startPos.current.x);
+          const moveY = Math.abs(e.touches[0].clientY - startPos.current.y);
+          
+          // If moved more than 10px, assume scrolling and cancel everything
+          if (moveX > 10 || moveY > 10) {
+              clearTimeout(timerRef.current);
+              timerRef.current = undefined;
+              setIsPressing(false);
+              startPos.current = null;
+          }
+      }
   };
 
   const handlePressEnd = () => {
@@ -100,11 +120,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
           timerRef.current = undefined;
       }
       setIsPressing(false);
+      startPos.current = null;
   };
 
-  // The browser automatically cancels 'click' events if the user scrolls.
+  // The browser ONLY fires onClick if the user lifted their finger without scrolling significantly.
   const handleClick = (e: React.MouseEvent) => {
-      // If a long press was successfully triggered, we prevent the short press action.
+      // If a long press happened, ignore the click (don't open details)
       if (isLongPressTriggered.current) {
           e.preventDefault();
           e.stopPropagation();
@@ -117,14 +138,14 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
     <div
       className={`bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden cursor-pointer select-none min-h-min border border-slate-100 dark:border-slate-800 transition-transform duration-100 ${isPressing ? 'scale-[0.98] bg-slate-50 dark:bg-slate-800' : 'active:scale-[0.98]'}`}
       
-      // Timer Logic for Long Press
       onMouseDown={handlePressStart}
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressEnd}
+      
       onTouchStart={handlePressStart}
       onTouchEnd={handlePressEnd}
+      onTouchMove={handleTouchMove} // CRITICAL: Cancel long press on scroll
       
-      // Native click handles the "Tap vs Scroll" distinction automatically
       onClick={handleClick}
 
       onContextMenu={(e) => {

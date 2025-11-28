@@ -51,6 +51,7 @@ import MoonIcon from './components/MoonIcon';
 import SunIcon from './components/SunIcon';
 import AdminIcon from './components/icons/AdminIcon';
 import DatabaseIcon from './components/icons/DatabaseIcon';
+import HistoryIcon from './components/icons/HistoryIcon';
 
 // Normalization functions
 const normalizeMedicine = (item: any): Medicine => ({
@@ -567,7 +568,7 @@ const App: React.FC = () => {
           setView('cosmeticsSearch');
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
-      } else if (view === 'login' || view === 'register' || view === 'admin') {
+      } else if (view === 'login' || view === 'register' || view === 'admin' || view === 'aiHistory') {
           setView('settings');
       } else if (view === 'addData' || view === 'addInsuranceData' || view === 'addCosmeticsData') {
           setView('settings');
@@ -619,6 +620,7 @@ const App: React.FC = () => {
       if (activeTab === 'insurance') return t('navInsurance');
       if (activeTab === 'cosmetics') return t('navCosmetics');
       if (activeTab === 'settings') return t('navSettings');
+      if (view === 'aiHistory') return t('chatHistoryTitle');
       return t('appTitle');
   }, [view, activeTab, selectedMedicine, selectedCosmetic, sourceMedicine, t]);
 
@@ -643,10 +645,32 @@ const App: React.FC = () => {
       setIsAssistantOpen(true);
   }
 
+  // --- History Handlers ---
+  const handleDeleteConversation = (id: string) => {
+      setChatHistory(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleClearHistory = () => {
+      setChatHistory([]);
+  };
+
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
+      if (view === 'aiHistory') {
+          return <ChatHistoryView 
+              conversations={chatHistory}
+              onSelectConversation={(convo) => {
+                  setCurrentChatHistory(convo.messages);
+                  setIsAssistantOpen(true);
+              }}
+              onDeleteConversation={handleDeleteConversation}
+              onClearHistory={handleClearHistory}
+              t={t}
+              language={language}
+          />
+      }
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={handleEditMedicine} onOpenAssistant={() => handleOpenAssistantWithContext(selectedMedicine)} />;
@@ -743,6 +767,14 @@ const App: React.FC = () => {
                           <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>
                       )}
                   </div>
+                  
+                  {/* AI Activity Log Button */}
+                  <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden">
+                      <button onClick={() => setView('aiHistory')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700">
+                          <span className="flex items-center gap-3"><div className="w-5 h-5 text-primary"><HistoryIcon /></div> {t('aiActivityLog')}</span>
+                      </button>
+                  </div>
+
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden">
                       <button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700">
                           <span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span>
