@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
@@ -20,15 +20,12 @@ interface MedicineCardProps {
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
 
-  // Force English text regardless of app language
   const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
   
   let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
-    // Green for OTC
     colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
   } else if (status === 'Prescription') {
-    // Red for Prescription
     colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
   
@@ -46,7 +43,6 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 const DrugTypeBadge: React.FC<{ type: string; size?: 'sm' | 'base', t: TFunction }> = ({ type, size = 'sm', t }) => {
     if (!type) return null;
     
-    // Force English Text
     let displayType = '';
     let colorClasses = '';
 
@@ -76,69 +72,81 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   if (!medicine) return null; 
 
   const price = parseFloat(medicine['Public price']);
-  const pressTimer = useRef<number | undefined>(undefined);
-  const startCoords = useRef({ x: 0, y: 0 });
-  const isScrolling = useRef(false);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    isScrolling.current = false;
-    startCoords.current = { x: e.clientX, y: e.clientY };
-    pressTimer.current = window.setTimeout(() => {
-      if (!isScrolling.current) {
-        onLongPress(medicine);
-        pressTimer.current = undefined; 
-      }
-    }, 1000); 
-  };
-  
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (pressTimer.current === undefined) return;
-
-    const dx = Math.abs(e.clientX - startCoords.current.x);
-    const dy = Math.abs(e.clientY - startCoords.current.y);
-    if (dx > 10 || dy > 10) { 
-      isScrolling.current = true;
-      window.clearTimeout(pressTimer.current);
-      pressTimer.current = undefined;
-    }
-  };
-
-  const handlePointerUp = () => {
-    if (pressTimer.current !== undefined) {
-      window.clearTimeout(pressTimer.current);
-    }
-  };
-
-  const handlePointerCancel = () => {
-    if (pressTimer.current !== undefined) {
-      window.clearTimeout(pressTimer.current);
-      pressTimer.current = undefined;
-    }
-    isScrolling.current = false;
-  };
-
-  const handleClick = () => {
-    if (pressTimer.current !== undefined && !isScrolling.current) {
-      onShortPress();
-    }
-  };
-  
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
+
+  // --- Long Press Logic ---
+  const [isPressing, setIsPressing] = useState(false);
+  const timerRef = useRef<number | undefined>(undefined);
+  const isLongPressTriggered = useRef(false);
+  const startPos = useRef({ x: 0, y: 0 });
+
+  const handleStart = (clientX: number, clientY: number) => {
+      setIsPressing(true);
+      isLongPressTriggered.current = false;
+      startPos.current = { x: clientX, y: clientY };
+
+      timerRef.current = window.setTimeout(() => {
+          isLongPressTriggered.current = true;
+          if (navigator.vibrate) navigator.vibrate(50); // Feedback
+          onLongPress(medicine);
+          setIsPressing(false);
+      }, 500); // 500ms for long press
+  };
+
+  const handleEnd = (e: React.MouseEvent | React.TouchEvent) => {
+      if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = undefined;
+      }
+      setIsPressing(false);
+      
+      // If it wasn't a long press, trigger short press
+      if (!isLongPressTriggered.current) {
+          // Prevent ghost clicks on touch devices if needed, but here we just call the handler
+          onShortPress();
+      }
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+      if (timerRef.current) {
+          const moveX = Math.abs(clientX - startPos.current.x);
+          const moveY = Math.abs(clientY - startPos.current.y);
+          if (moveX > 10 || moveY > 10) { // Tolerance for small movements
+              clearTimeout(timerRef.current);
+              timerRef.current = undefined;
+              setIsPressing(false);
+          }
+      }
+  };
 
   return (
     <div
-      className="bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden transform hover:shadow-lg transition-all duration-300 cursor-pointer select-none min-h-min"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onClick={handleClick}
-      onContextMenu={(e) => e.preventDefault()}
+      className={`bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden cursor-pointer select-none min-h-min border border-slate-100 dark:border-slate-800 transition-transform duration-100 ${isPressing ? 'scale-[0.98] bg-slate-50 dark:bg-slate-800' : 'active:scale-[0.98]'}`}
+      onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
+      onMouseUp={handleEnd}
+      onMouseLeave={() => {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setIsPressing(false);
+      }}
+      onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
+      
+      onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
+      onTouchEnd={handleEnd}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
+      
+      onContextMenu={(e) => {
+          e.preventDefault();
+          // Fallback context menu handler if touch logic fails or for desktop right-click
+          // But we don't want to double trigger if logic worked.
+          if (!isLongPressTriggered.current && !timerRef.current) {
+               onLongPress(medicine);
+          }
+      }}
       role="button"
       tabIndex={0}
       aria-label={t('viewDetails', { name: medicine['Trade Name'] })}
     >
-      <div className="p-3">
+      <div className="p-3 pointer-events-none"> {/* content ignores pointer events to let parent handle clicks */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-grow min-w-0">
               <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mb-1">
@@ -160,7 +168,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             </div>
           </div>
         </div>
-        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs pointer-events-auto"> {/* Re-enable pointer events for buttons */}
             <div className="flex items-center gap-2 min-w-0">
                 <span className="font-medium text-light-text dark:text-dark-text truncate">
                     {medicine.Strength} {medicine.StrengthUnit}
@@ -174,8 +182,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        // Prevent long press logic from firing
+                        if (timerRef.current) clearTimeout(timerRef.current);
                         onToggleFavorite(medicine.RegisterNumber);
                     }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     className={`p-1.5 transition-colors rounded-full ${isFavorite ? 'text-accent hover:text-amber-500' : 'text-gray-400 hover:text-accent'}`}
                     title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
                     aria-label={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
@@ -185,8 +197,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        if (timerRef.current) clearTimeout(timerRef.current);
                         onFindAlternative(medicine);
                     }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     className="p-1.5 text-gray-400 hover:text-primary dark:hover:text-primary-light transition-colors rounded-full"
                     title={t('findAlternativeTooltip')}
                     aria-label={t('findAlternativesButton', { name: medicine['Trade Name'] })}

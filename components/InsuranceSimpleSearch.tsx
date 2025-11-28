@@ -5,6 +5,7 @@ import SearchIcon from './icons/SearchIcon';
 import ClearIcon from './icons/ClearIcon';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
+import DrugPolicyCard, { DrugGroup } from './DrugPolicyCard';
 
 interface InsuranceSimpleSearchProps {
   t: TFunction;
@@ -18,7 +19,7 @@ interface InsuranceSimpleSearchProps {
   setSearchMode: (mode: InsuranceSearchMode) => void;
 }
 
-type SearchResult = IndicationGroup | { type: 'not-covered'; medicine: Medicine };
+type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
 
 
 const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({ 
@@ -33,18 +34,20 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
 
+  // Debounce effect to update the parent search term
   useEffect(() => {
     const handler = setTimeout(() => {
       if (inputValue !== searchTerm) {
         setSearchTerm(inputValue);
       }
-    }, 300);
+    }, 300); // 300ms delay
 
     return () => {
       clearTimeout(handler);
     };
   }, [inputValue, searchTerm, setSearchTerm]);
 
+  // Effect to sync input value if parent term changes (e.g., from a global clear)
   useEffect(() => {
     if (searchTerm !== inputValue) {
       setInputValue(searchTerm);
@@ -53,6 +56,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   const searchResults = useMemo((): SearchResult[] => {
     const trimmedSearchTerm = searchTerm.trim();
+    
+    // Logic Update: Ensure 3 chars NOT counting the wildcard %
     const effectiveLength = trimmedSearchTerm.replace(/%/g, '').length;
     if (effectiveLength < 3) return [];
     
@@ -64,8 +69,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
     
+    // Build Regex for strict/wildcard matching
     const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const parts = lowerSearchTerm.split('%').map(escapeRegExp);
+    // If no wildcard, force start-of-string match. If wildcard exists, use standard regex matching.
     const prefix = lowerSearchTerm.includes('%') ? '' : '^';
     const pattern = prefix + parts.join('.*');
     
@@ -78,9 +85,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const matchingMeds = isNameSearch 
         ? allMedicines.filter(m => {
-            if (searchMode === 'tradeName') return searchRegex.test((m['Trade Name'] || '').toLowerCase());
-            if (searchMode === 'scientificName') return searchRegex.test((m['Scientific Name'] || '').toLowerCase());
-            return searchRegex.test((m['Trade Name'] || '').toLowerCase()) || searchRegex.test((m['Scientific Name'] || '').toLowerCase());
+            if (searchMode === 'tradeName') {
+                return searchRegex.test((m['Trade Name'] || '').toLowerCase());
+            }
+            if (searchMode === 'scientificName') {
+                return searchRegex.test((m['Scientific Name'] || '').toLowerCase());
+            }
+            // Fallback (though select only allows specific modes)
+            const tName = (m['Trade Name'] || '').toLowerCase();
+            const sName = (m['Scientific Name'] || '').toLowerCase();
+            return searchRegex.test(tName) || searchRegex.test(sName);
         })
         : [];
 
@@ -88,6 +102,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     if (searchMode === 'tradeName') {
         matchingMeds.forEach(med => {
             const tName = (med['Trade Name'] || '').toLowerCase();
+            // Only count it as a "match" for highlighting purposes if it matches the regex
             if (searchRegex.test(tName)) {
                 const sciName = normalizeSciName(med['Scientific Name']);
                 if (!sciNameToTradeNames.has(sciName)) {
@@ -98,12 +113,13 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
+    // Find all policies that match the search criteria.
     if (searchMode === 'scientificName') {
         matchingPolicies = insuranceData.filter(p => searchRegex.test(p.scientificName || ''));
     } else if (searchMode === 'tradeName') {
         const sciNamesFromMeds = new Set(matchingMeds.map(m => normalizeSciName(m['Scientific Name'])));
         matchingPolicies = insuranceData.filter(p => sciNamesFromMeds.has(normalizeSciName(p.scientificName)));
-    } else { 
+    } else { // indication or icd10Code
         matchingPolicies = insuranceData.filter(p => {
             const field = searchMode === 'indication' ? p.indication : p.icd10Code;
             return searchKeywords.every(kw => (field || '').toLowerCase().replace(/[,-]/g, ' ').includes(kw.replace(/%/g, '')));
@@ -112,7 +128,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
     const results: SearchResult[] = [];
 
-    // TRACKER: Strictly exclude covered ingredients from Not Covered list
+    // TRACKER: Keep track of which scientific names are actually covered in this search result.
     const actuallyCoveredSciNames = new Set<string>();
     matchingPolicies.forEach(p => {
         if (p.scientificName) {
@@ -120,11 +136,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         }
     });
 
+    // Handle non-covered items for name searches
     if (isNameSearch) {
         const notCoveredMeds = matchingMeds.filter(m => {
             const normName = normalizeSciName(m['Scientific Name']);
             if (actuallyCoveredSciNames.has(normName)) {
-                return false; // Covered, so remove from Not Covered list
+                return false; // Covered
             }
             return true;
         });
@@ -134,64 +151,90 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
-    const groupedByIndication = new Map<string, InsuranceDrug[]>();
-    matchingPolicies.forEach(policy => {
-        const key = policy.indication || 'Unknown';
-        if (!groupedByIndication.has(key)) {
-            groupedByIndication.set(key, []);
-        }
-        groupedByIndication.get(key)!.push(policy);
-    });
+    // --- GROUPING LOGIC START ---
 
-    groupedByIndication.forEach((policies, indication) => {
-        const scientificGroupsMap = new Map<string, ScientificGroupData>();
-        
-        const allIcd10Codes = new Set<string>();
-        policies.forEach(p => {
-            if (p.icd10Code) {
-                p.icd10Code.split(',').forEach(code => {
-                    const trimmedCode = code.trim();
-                    if(trimmedCode) allIcd10Codes.add(trimmedCode);
-                });
-            }
+    if (isNameSearch) {
+        // Group by Scientific Name (Drug-Centric View)
+        const groupedByDrug = new Map<string, InsuranceDrug[]>();
+        matchingPolicies.forEach(policy => {
+            const key = normalizeSciName(policy.scientificName);
+            if (!groupedByDrug.has(key)) groupedByDrug.set(key, []);
+            groupedByDrug.get(key)!.push(policy);
         });
-        
-        policies.forEach(policy => {
-            const sciName = policy.scientificName || 'Unknown';
-            if (!scientificGroupsMap.has(sciName)) {
-                 const availableMedicines = allMedicines
-                    .filter(m => normalizeSciName(m['Scientific Name']) === normalizeSciName(sciName))
-                    .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
-                scientificGroupsMap.set(sciName, {
-                    policies: [],
-                    availableMedicines: availableMedicines,
-                    scientificName: sciName,
-                    matchingTradeNames: searchMode === 'tradeName' 
-                        ? Array.from(sciNameToTradeNames.get(normalizeSciName(sciName)) || []) 
-                        : undefined
-                });
+        groupedByDrug.forEach((policies, sciNameKey) => {
+            const realSciName = policies[0].scientificName || sciNameKey;
+            
+            const availableMedicines = allMedicines
+                .filter(m => normalizeSciName(m['Scientific Name']) === sciNameKey)
+                .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
+
+            results.push({
+                type: 'drug-grouped',
+                scientificName: realSciName,
+                tradeNames: Array.from(sciNameToTradeNames.get(sciNameKey) || []),
+                policies: policies,
+                availableMedicines: availableMedicines
+            });
+        });
+
+    } else {
+        // Group covered policies by INDICATION (Legacy Indication View)
+        const groupedByIndication = new Map<string, InsuranceDrug[]>();
+        matchingPolicies.forEach(policy => {
+            const key = policy.indication || 'Unknown';
+            if (!groupedByIndication.has(key)) {
+                groupedByIndication.set(key, []);
             }
-            scientificGroupsMap.get(sciName)!.policies.push(policy);
+            groupedByIndication.get(key)!.push(policy);
         });
-        
-        results.push({
-            type: 'covered',
-            indication: indication,
-            icd10Codes: Array.from(allIcd10Codes).sort(),
-            scientificGroups: Array.from(scientificGroupsMap.values())
-                .sort((a, b) => a.scientificName.localeCompare(b.scientificName))
+
+        groupedByIndication.forEach((policies, indication) => {
+            const scientificGroupsMap = new Map<string, ScientificGroupData>();
+            
+            const allIcd10Codes = new Set<string>();
+            policies.forEach(p => {
+                if (p.icd10Code) {
+                    p.icd10Code.split(',').forEach(code => {
+                        const trimmedCode = code.trim();
+                        if(trimmedCode) allIcd10Codes.add(trimmedCode);
+                    });
+                }
+            });
+            
+            policies.forEach(policy => {
+                const sciName = policy.scientificName || 'Unknown';
+                if (!scientificGroupsMap.has(sciName)) {
+                     const availableMedicines = allMedicines
+                        .filter(m => normalizeSciName(m['Scientific Name']) === normalizeSciName(sciName))
+                        .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
+
+                    scientificGroupsMap.set(sciName, {
+                        policies: [],
+                        availableMedicines: availableMedicines,
+                        scientificName: sciName,
+                        matchingTradeNames: searchMode === 'tradeName' 
+                            ? Array.from(sciNameToTradeNames.get(normalizeSciName(sciName)) || []) 
+                            : undefined
+                    });
+                }
+                scientificGroupsMap.get(sciName)!.policies.push(policy);
+            });
+            
+            results.push({
+                type: 'covered',
+                indication: indication,
+                icd10Codes: Array.from(allIcd10Codes).sort(),
+                scientificGroups: Array.from(scientificGroupsMap.values())
+                    .sort((a, b) => a.scientificName.localeCompare(b.scientificName))
+            });
         });
-    });
+    }
     
     return results.sort((a, b) => {
-      if (a.type === 'covered' && b.type === 'not-covered') return -1;
-      if (a.type === 'not-covered' && b.type === 'covered') return 1;
-      
-      if (a.type === 'covered' && b.type === 'covered') {
-          return (a.indication || '').localeCompare(b.indication || '');
-      }
-      return 0;
+      if (a.type === 'not-covered' && b.type !== 'not-covered') return 1;
+      if (a.type !== 'not-covered' && b.type === 'not-covered') return -1;
+      return 0; // Keep roughly grouped
     });
 
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
@@ -208,6 +251,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
   }, [searchMode, t]);
 
   const renderResults = () => {
+    // Logic Update: Check effective length excluding wildcard
     if (searchTerm.replace(/%/g, '').trim().length < 3) return null;
     
     if (searchResults.length === 0) {
@@ -222,6 +266,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     return searchResults.map((result, index) => {
       if (result.type === 'covered') {
         return <IndicationCard key={result.indication} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+      }
+      if (result.type === 'drug-grouped') {
+          return <DrugPolicyCard key={result.scientificName} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />
       }
       if (result.type === 'not-covered') {
         return <NotCoveredCard key={result.medicine.RegisterNumber} medicine={result.medicine} t={t} />;

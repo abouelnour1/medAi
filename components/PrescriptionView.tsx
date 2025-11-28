@@ -143,16 +143,16 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
             {/* Patient & Doctor Info */}
             <section className="grid grid-cols-2 gap-4 text-sm mb-2 p-2 border border-gray-300 rounded">
                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('patientName')}:</strong> <span>{document.documentElement.lang === 'ar' ? data.patientNameAr : data.patientName}</span></div>
+                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('patientName')}:</strong> <span>{data.patientNameAr || data.patientName}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('natId')}:</strong> <span>{data.patientId}</span></div>
-                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('age')}/{t('gender')}:</strong> <span>{data.patientAge} / {data.patientGender}</span></div>
+                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('age')}/{t('gender')}:</strong> <span>{data.patientAge || '-'} / {data.patientGender || '-'}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('fileNo')}:</strong> <span>{data.fileNumber}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('date')}:</strong> <span>{data.date}</span></div>
                  </div>
                  <div className="space-y-1">
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('doctorName')}:</strong> <span>{data.doctorName}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('specialty')}:</strong> <span>{data.doctorSpecialty}</span></div>
-                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('policy')}:</strong> <span>{data.policy}</span></div>
+                    <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('policy')}:</strong> <span>{data.policy || '-'}</span></div>
                     <div className="flex items-baseline gap-2"><strong className="w-[100px] flex-shrink-0">{t('insurCompany')}:</strong> <span>{data.insuranceCompany}</span></div>
                  </div>
             </section>
@@ -177,13 +177,13 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                             <tr key={index} className="align-top">
                                 <td className="border border-black p-1.5 text-center">{index + 1}</td>
                                 <td className="border border-black p-1.5">
-                                    <p>{drug.code}</p>
+                                    <p>{drug.code || '-'}</p>
                                 </td>
                                 <td className="border border-black p-1.5 text-black">
                                     <p className="font-bold">R / {drug.genericName}</p>
                                     <p>{drug.tradeName}</p>
                                     <p className="text-xs">{drug.dosage} {drug.usageMethod}</p>
-                                    <p className="text-xs text-right" dir="rtl">{drug.usageMethodAr}</p>
+                                    {drug.usageMethodAr && <p className="text-xs text-right" dir="rtl">{drug.usageMethodAr}</p>}
                                 </td>
                                 <td className="border border-black p-1.5 text-center">{drug.quantity}</td>
                             </tr>

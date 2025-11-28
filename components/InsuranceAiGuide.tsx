@@ -239,7 +239,8 @@ Answer the user's question clearly and comprehensively. The user might ask about
             </div>
           )}
           {aiAvailable && chatHistory.map((msg, index) => {
-             const textPart = msg.parts.find(p => 'text' in p) as { text: string } | undefined;
+             // Safe navigation using optional chaining
+             const textPart = msg.parts?.find(p => 'text' in p) as { text: string } | undefined;
              const textContent = textPart?.text || '';
 
             return (

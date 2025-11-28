@@ -8,17 +8,22 @@ interface CosmeticCardProps {
   t: TFunction;
   language: Language;
   onClick?: () => void;
+  onLongPress?: (cosmetic: Cosmetic) => void;
 }
 
-const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onClick }) => {
+const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onClick, onLongPress }) => {
   // Categories can remain localized for better UX
   const firstCategory = language === 'ar' ? cosmetic.FirstSubCategoryAr : cosmetic.FirstSubCategoryEn;
   const secondCategory = language === 'ar' ? cosmetic.SecondSubCategoryAr : cosmetic.SecondSubCategoryEn;
 
   return (
     <div 
-      className="bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden transition-all duration-300 cursor-pointer hover:shadow-lg border border-slate-100 dark:border-slate-800"
+      className="bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden cursor-pointer border border-slate-100 dark:border-slate-800 active:scale-[0.98] transition-transform duration-100"
       onClick={onClick}
+      onContextMenu={(e) => {
+          e.preventDefault();
+          if (onLongPress) onLongPress(cosmetic);
+      }}
     >
       <div className="p-4">
         <div className="flex items-start justify-between gap-4">

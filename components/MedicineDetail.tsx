@@ -4,6 +4,7 @@ import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
+import AssistantIcon from './icons/AssistantIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '') return null;
@@ -47,9 +48,10 @@ interface MedicineDetailProps {
     onToggleFavorite: (medicineId: string) => void;
     user?: User | null;
     onEdit?: (medicine: Medicine) => void;
+    onOpenAssistant?: () => void;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant }) => {
   const price = parseFloat(medicine['Public price']);
   const scientificName = medicine['Scientific Name'] || '';
   const strengths = String(medicine.Strength || '');
@@ -80,7 +82,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
       <div>
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">{medicine['Trade Name'] || 'Unknown Name'}</h2>
+              <button 
+                onClick={onOpenAssistant}
+                className="group flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
+                title={t('assistantFabTooltip')}
+              >
+                  <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text group-hover:text-primary dark:group-hover:text-primary-light underline decoration-dotted decoration-gray-300 dark:decoration-slate-600 underline-offset-4">
+                      {medicine['Trade Name'] || 'Unknown Name'}
+                  </h2>
+                  <span className="text-primary dark:text-primary-light opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
+              </button>
+
               <div className="flex items-center gap-2">
                   <button
                     onClick={handleImageSearch}
@@ -161,13 +173,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                 <dd className="mt-1 text-sm leading-6 sm:col-span-2 sm:mt-0">
                   <LegalStatusBadge status={medicine['Legal Status']} size="base" t={t} />
                 </dd>
-              </div>
-            )}
-
-            {medicine['Product type'] === 'Supplement' && (
-              <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('insuranceCoverage')}</dt>
-                <dd className="mt-1 text-sm leading-6 text-red-600 dark:text-red-400 font-semibold sm:col-span-2 sm:mt-0">{t('notCovered')}</dd>
               </div>
             )}
 

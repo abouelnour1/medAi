@@ -4,6 +4,7 @@ import { Cosmetic, TFunction, Language } from '../types';
 import SearchableDropdown from './SearchableDropdown';
 import CosmeticCard from './CosmeticCard';
 import SearchIcon from './icons/SearchIcon';
+import ClearIcon from './icons/ClearIcon';
 
 interface CosmeticsViewProps {
   cosmetics: Cosmetic[];
@@ -16,6 +17,7 @@ interface CosmeticsViewProps {
   setSelectedBrand: (brand: string) => void;
   limit?: number;
   onLoadMore?: () => void;
+  onCosmeticLongPress?: (cosmetic: Cosmetic) => void;
 }
 
 const CosmeticsView: React.FC<CosmeticsViewProps> = ({ 
@@ -28,7 +30,8 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
     selectedBrand,
     setSelectedBrand,
     limit = 20,
-    onLoadMore
+    onLoadMore,
+    onCosmeticLongPress
 }) => {
   const loaderRef = useRef<HTMLDivElement>(null);
 
@@ -123,11 +126,19 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t('searchCosmeticsPlaceholder')}
-              className="w-full h-[42px] py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors ltr:pl-10 ltr:pr-3 rtl:pr-10 rtl:pl-3"
+              className="w-full h-[42px] py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors ltr:pl-10 ltr:pr-10 rtl:pr-10 rtl:pl-3"
             />
             <div className="absolute top-1/2 ltr:left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary pointer-events-none h-5 w-5">
                <SearchIcon />
             </div>
+            {searchTerm && (
+                <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute top-1/2 ltr:right-3 rtl:left-3 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded-full"
+                >
+                    <ClearIcon />
+                </button>
+            )}
           </div>
         </div>
       </div>
@@ -142,6 +153,7 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
                 t={t} 
                 language={language}
                 onClick={() => onSelectCosmetic(cosmetic)}
+                onLongPress={onCosmeticLongPress}
               />
             ))}
             {filteredCosmetics.length > limit && (
