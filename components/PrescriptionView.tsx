@@ -63,13 +63,16 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         background: #fff; 
                         color: #000;
                         -webkit-print-color-adjust: exact; 
+                        height: 100vh;
                     }
                     .rx-container {
+                        width: 100%;
                         max-width: 210mm;
                         margin: 0 auto;
                         padding: 10mm;
-                        min-height: 297mm; /* A4 height */
-                        position: relative;
+                        height: 98vh; /* Use viewport height for flex container */
+                        display: flex;
+                        flex-direction: column;
                         box-sizing: border-box;
                     }
                     
@@ -77,14 +80,15 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     .header {
                         border-bottom: 3px solid #1e293b;
                         padding-bottom: 15px;
-                        margin-bottom: 25px;
+                        margin-bottom: 20px;
                         display: flex;
                         justify-content: space-between;
                         align-items: flex-start;
+                        flex-shrink: 0;
                     }
                     .hospital-info h1 {
                         margin: 0;
-                        font-size: 24px;
+                        font-size: 26px;
                         color: #0f172a;
                         text-transform: uppercase;
                         letter-spacing: 1px;
@@ -92,13 +96,13 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     }
                     .hospital-info p {
                         margin: 4px 0 0;
-                        font-size: 11px;
+                        font-size: 12px;
                         color: #64748b;
-                        max-width: 300px;
+                        max-width: 350px;
                     }
                     .meta-data {
                         text-align: right;
-                        font-size: 11px;
+                        font-size: 12px;
                         line-height: 1.5;
                         color: #334155;
                     }
@@ -108,26 +112,27 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     .patient-box {
                         border: 1px solid #cbd5e1;
                         border-radius: 8px;
-                        padding: 12px 16px;
+                        padding: 15px 20px;
                         margin-bottom: 25px;
                         background-color: #f8fafc;
                         display: grid;
                         grid-template-columns: 1.5fr 1fr;
-                        gap: 15px;
+                        gap: 20px;
+                        flex-shrink: 0;
                     }
                     .info-row {
                         display: flex;
-                        margin-bottom: 6px;
-                        font-size: 12px;
+                        margin-bottom: 8px;
+                        font-size: 13px;
                         align-items: baseline;
                     }
                     .info-row:last-child { margin-bottom: 0; }
                     .info-label {
-                        width: 90px;
+                        width: 100px;
                         font-weight: 700;
                         color: #64748b;
                         text-transform: uppercase;
-                        font-size: 10px;
+                        font-size: 11px;
                         flex-shrink: 0;
                     }
                     .info-val {
@@ -137,86 +142,84 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
 
                     /* Diagnosis */
                     .diagnosis-box {
-                        margin-bottom: 20px;
-                        padding: 10px;
+                        margin-bottom: 25px;
+                        padding: 12px;
                         background-color: #f0fdf4;
                         border: 1px dashed #16a34a;
                         border-radius: 6px;
-                        font-size: 12px;
+                        font-size: 13px;
                         color: #15803d;
+                        flex-shrink: 0;
                     }
 
-                    /* Rx Symbol */
-                    .rx-symbol {
-                        font-family: serif;
-                        font-size: 42px;
-                        font-weight: 900;
-                        font-style: italic;
-                        color: #0f172a;
-                        margin-bottom: 10px;
-                        margin-left: 5px;
+                    /* Main Content (Drugs) - Takes remaining space */
+                    .main-content {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
                     }
 
                     /* Drug Table */
                     table {
                         width: 100%;
                         border-collapse: collapse;
-                        margin-bottom: 40px;
+                        margin-bottom: 20px;
                     }
                     th {
                         text-align: left;
                         border-bottom: 2px solid #0f172a;
-                        padding: 10px 8px;
-                        font-size: 11px;
+                        padding: 12px 10px;
+                        font-size: 12px;
                         text-transform: uppercase;
                         color: #334155;
-                        font-weight: 700;
+                        font-weight: 800;
+                        background-color: #f8fafc;
                     }
                     td {
-                        padding: 12px 8px;
+                        padding: 16px 10px; /* Increased padding */
                         border-bottom: 1px solid #e2e8f0;
                         vertical-align: top;
                     }
                     .drug-trade {
-                        font-size: 14px;
+                        font-size: 16px;
                         font-weight: 800;
                         color: #0f172a;
                         display: block;
-                        margin-bottom: 2px;
+                        margin-bottom: 4px;
                     }
                     .drug-generic {
-                        font-size: 11px;
+                        font-size: 12px;
                         color: #64748b;
                         font-style: italic;
                         display: block;
-                        margin-bottom: 4px;
+                        margin-bottom: 6px;
                     }
                     .drug-sig {
-                        font-size: 12px;
+                        font-size: 13px;
                         font-weight: 600;
                         color: #334155;
                         background: #f1f5f9;
                         display: inline-block;
-                        padding: 2px 6px;
+                        padding: 4px 8px;
                         border-radius: 4px;
+                        border: 1px solid #e2e8f0;
                     }
                     .qty-cell {
                         text-align: center;
                         font-weight: 800;
-                        font-size: 14px;
+                        font-size: 15px;
                         vertical-align: middle;
                     }
 
                     /* Footer */
                     .footer {
-                        position: absolute;
-                        bottom: 20mm;
-                        left: 10mm;
-                        right: 10mm;
+                        margin-top: auto; /* Pushes footer to the bottom */
                         display: flex;
                         justify-content: space-between;
-                        padding-top: 20px;
+                        padding-top: 30px;
                         border-top: 2px solid #e2e8f0;
+                        position: relative;
+                        flex-shrink: 0;
                     }
                     .sig-block {
                         width: 30%;
@@ -225,62 +228,83 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     }
                     .sig-line {
                         border-bottom: 1px solid #000;
-                        height: 40px;
-                        margin-bottom: 8px;
+                        height: 50px;
+                        margin-bottom: 10px;
                     }
                     .sig-label {
-                        font-size: 10px;
+                        font-size: 11px;
                         text-transform: uppercase;
                         color: #94a3b8;
                         font-weight: 700;
                         letter-spacing: 0.5px;
                     }
                     .doc-details {
-                        font-size: 12px;
+                        font-size: 13px;
                         font-weight: 700;
                         color: #0f172a;
                         margin-top: 4px;
                     }
 
-                    /* Doctor's Stamp */
+                    /* Realistic Doctor's Stamp */
                     .stamp {
                         position: absolute;
-                        top: -40px;
+                        top: -50px;
                         left: 50%;
-                        transform: translateX(-50%) rotate(-10deg);
-                        width: 120px;
-                        height: 120px;
-                        border: 3px double #1e3a8a;
+                        transform: translateX(-50%) rotate(-8deg);
+                        width: 110px;
+                        height: 110px;
+                        border: 3px double #2c5282; /* Ink Blue */
                         border-radius: 50%;
                         display: flex;
                         flex-direction: column;
                         justify-content: center;
                         align-items: center;
-                        color: #1e3a8a;
-                        opacity: 0.8;
-                        pointer-events: none;
+                        color: #2c5282;
+                        opacity: 0.85; /* Slight transparency for ink effect */
                         z-index: 10;
+                        background: rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 0 0 1px rgba(44, 82, 130, 0.3) inset; /* Inner ring hint */
                     }
+                    /* Rough edge effect */
+                    .stamp::after {
+                        content: '';
+                        position: absolute;
+                        top: 2px; bottom: 2px; left: 2px; right: 2px;
+                        border: 1px solid rgba(44, 82, 130, 0.4);
+                        border-radius: 50%;
+                        pointer-events: none;
+                    }
+                    
                     .stamp-inner {
                         text-align: center;
                         font-weight: bold;
                         font-size: 10px;
-                        line-height: 1.2;
+                        line-height: 1.3;
+                    }
+                    .stamp-header {
+                        font-size: 9px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        margin-bottom: 2px;
                     }
                     .stamp-name {
                         font-size: 12px;
+                        font-weight: 900;
                         text-transform: uppercase;
                         margin-bottom: 4px;
-                        border-bottom: 1px solid #1e3a8a;
-                        padding-bottom: 2px;
+                        border-bottom: 2px solid #2c5282;
+                        padding: 0 4px 2px;
+                        display: inline-block;
                     }
                     .stamp-lic {
-                        font-size: 8px;
+                        font-size: 9px;
+                        font-family: monospace;
                     }
                     .stamp-sig {
-                        font-family: cursive;
-                        font-size: 14px;
-                        margin-top: 2px;
+                        font-family: 'Brush Script MT', cursive;
+                        font-size: 18px;
+                        margin-top: 4px;
+                        transform: rotate(-5deg);
                     }
 
                     /* Watermark */
@@ -299,8 +323,9 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
 
                     @media print {
                         @page { margin: 0; size: A4; }
-                        body { margin: 0; }
-                        .rx-container { border: none; min-height: 100vh; }
+                        body { margin: 0; -webkit-print-color-adjust: exact; }
+                        .rx-container { height: 100vh; padding: 10mm; }
+                        .footer { margin-top: auto; } /* Ensure it pushes to bottom on print */
                     }
                 </style>
             </head>
@@ -339,31 +364,31 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         <strong>DIAGNOSIS:</strong> ${data.diagnosisCode ? `[${data.diagnosisCode}]` : ''} ${data.diagnosisDescription}
                     </div>` : ''}
 
-                    <div class="rx-symbol">Rx</div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 5%">#</th>
-                                <th style="width: 80%">Medication & Instructions</th>
-                                <th style="width: 15%; text-align: center">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.drugs?.map((drug, i) => `
+                    <div class="main-content">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td>${i + 1}</td>
-                                    <td>
-                                        <span class="drug-trade">${drug.tradeName}</span>
-                                        <span class="drug-generic">${drug.genericName}</span>
-                                        <div class="drug-sig">${drug.dosage} • ${drug.usageMethod}</div>
-                                        ${drug.usageMethodAr ? `<div style="font-family:'Cairo'; font-size:11px; margin-top:4px; text-align:right; color:#64748b;">${drug.usageMethodAr}</div>` : ''}
-                                    </td>
-                                    <td class="qty-cell">${drug.quantity}</td>
+                                    <th style="width: 5%">#</th>
+                                    <th style="width: 80%">Medication & Instructions</th>
+                                    <th style="width: 15%; text-align: center">Qty</th>
                                 </tr>
-                            `).join('') || ''}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                ${data.drugs?.map((drug, i) => `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>
+                                            <span class="drug-trade">${drug.tradeName}</span>
+                                            <span class="drug-generic">${drug.genericName}</span>
+                                            <div class="drug-sig">${drug.dosage} • ${drug.usageMethod}</div>
+                                            ${drug.usageMethodAr ? `<div style="font-family:'Cairo'; font-size:12px; margin-top:4px; text-align:right; color:#64748b;">${drug.usageMethodAr}</div>` : ''}
+                                        </td>
+                                        <td class="qty-cell">${drug.quantity}</td>
+                                    </tr>
+                                `).join('') || ''}
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div class="footer">
                         <div class="sig-block">
@@ -377,7 +402,8 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         <div class="sig-block">
                             <div class="stamp">
                                 <div class="stamp-inner">
-                                    <div class="stamp-name">${data.doctorName || 'DOCTOR'}</div>
+                                    <div class="stamp-header">SAUDI HEALTH</div>
+                                    <div class="stamp-name">${data.doctorName ? data.doctorName.split(' ').slice(0, 2).join(' ') : 'DOCTOR'}</div>
                                     <div class="stamp-lic">LIC: ${Math.floor(Math.random() * 90000) + 10000}</div>
                                     <div class="stamp-sig">Signed</div>
                                     <div class="stamp-lic" style="margin-top:2px">${new Date().toLocaleDateString()}</div>
@@ -430,23 +456,34 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                 </div>
             </div>
             
-            {/* Expanded Patient Info */}
+            {/* Expanded Patient Info - Structured */}
             <div className="bg-slate-50 p-2 rounded mb-3 border border-slate-100">
                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
-                     <div className="col-span-2 flex justify-between">
-                        <span className="text-gray-500 font-semibold uppercase">Patient:</span>
-                        <span className="font-bold text-slate-800">{data.patientName}</span>
+                     <div className="col-span-2 flex justify-between border-b border-slate-200 pb-1 mb-1">
+                        <span className="text-gray-500 font-semibold uppercase">Patient</span>
+                        <span className="font-bold text-slate-900">{data.patientName}</span>
                      </div>
+                     
                      <div className="flex justify-between">
-                        <span className="text-gray-500 font-semibold uppercase">ID:</span>
+                        <span className="text-gray-500 uppercase text-[9px]">ID No</span>
                         <span className="font-medium text-slate-700">{data.patientId}</span>
                      </div>
                      <div className="flex justify-between">
-                        <span className="text-gray-500 font-semibold uppercase">Age/Sex:</span>
-                        <span className="font-medium text-slate-700">{data.patientAge || 'N/A'} / {data.patientGender || '-'}</span>
+                        <span className="text-gray-500 uppercase text-[9px]">Age / Sex</span>
+                        <span className="font-medium text-slate-700">{data.patientAge || '--'} / {data.patientGender || '-'}</span>
                      </div>
+                     
+                     <div className="flex justify-between">
+                        <span className="text-gray-500 uppercase text-[9px]">File No</span>
+                        <span className="font-medium text-slate-700">{data.fileNumber}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span className="text-gray-500 uppercase text-[9px]">Insurance</span>
+                        <span className="font-medium text-slate-700">{data.insuranceCompany}</span>
+                     </div>
+
                      <div className="col-span-2 flex justify-between border-t border-slate-200 pt-1 mt-1">
-                        <span className="text-gray-500 font-semibold uppercase">Dr:</span>
+                        <span className="text-gray-500 font-semibold uppercase">Doctor</span>
                         <span className="font-bold text-slate-800">{data.doctorName}</span>
                      </div>
                  </div>
@@ -455,32 +492,41 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
             {/* Drugs List Preview - Fixed Layout */}
             <div className="flex-grow space-y-3 overflow-hidden relative pb-6">
                 {data.drugs?.slice(0, 3).map((drug, index) => (
-                    <div key={index} className="border-b border-slate-100 pb-2 last:border-0">
-                        <div className="flex justify-between items-start mb-0.5">
+                    <div key={index} className="border-b border-slate-100 pb-2 last:border-0 flex flex-col gap-1">
+                        {/* Line 1: Trade Name & Quantity */}
+                        <div className="flex justify-between items-center">
                             <span className="font-bold text-sm text-slate-900 truncate pr-2">{drug.tradeName}</span>
-                            <span className="font-bold text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 whitespace-nowrap">x{drug.quantity}</span>
+                            <span className="font-bold text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 whitespace-nowrap">Qty: {drug.quantity}</span>
                         </div>
-                        <div className="text-[10px] text-slate-500 italic truncate mb-1">{drug.genericName}</div>
-                        <div className="text-[10px] bg-slate-50 p-1.5 rounded text-slate-700 border border-slate-100 leading-tight">
-                            {drug.dosage} <span className="text-slate-400 mx-1">•</span> {drug.usageMethod}
+                        
+                        {/* Line 2: Generic Name */}
+                        <div className="text-[10px] text-slate-500 italic truncate -mt-0.5">{drug.genericName}</div>
+                        
+                        {/* Line 3: Dosage & Instructions Box */}
+                        <div className="text-[10px] bg-slate-50 p-1.5 rounded text-slate-700 border border-slate-200 leading-tight mt-0.5 flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-900">{drug.dosage}</span>
+                            <span className="text-slate-300">|</span>
+                            <span>{drug.usageMethod}</span>
                         </div>
                     </div>
                 ))}
+                
                 {data.drugs && data.drugs.length > 3 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent flex items-end justify-center">
-                        <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-0.5 shadow-sm rounded-full">+{data.drugs.length - 3} more</span>
+                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center">
+                        <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-3 py-1 shadow-sm rounded-full border border-slate-200">+{data.drugs.length - 3} more items</span>
                     </div>
                 )}
             </div>
 
-            {/* Stamp Preview - Fixed Name */}
-            <div className="absolute bottom-2 right-2 transform rotate-[-12deg] opacity-80 pointer-events-none">
-                <div className="w-20 h-20 rounded-full border-2 border-blue-900 flex flex-col items-center justify-center text-[7px] text-blue-900 font-bold leading-tight bg-white/40 backdrop-blur-[1px]">
-                    <div className="border-b border-blue-900 mb-0.5 pb-0.5 px-1 text-center max-w-[60px] truncate">
-                        {data.doctorName || 'DOCTOR'}
+            {/* Realistic Stamp Preview */}
+            <div className="absolute bottom-3 right-3 transform rotate-[-12deg] opacity-85 pointer-events-none z-10">
+                <div className="w-20 h-20 rounded-full border-[3px] border-double border-[#2c5282] flex flex-col items-center justify-center text-[7px] text-[#2c5282] font-bold leading-tight bg-white/50 backdrop-blur-[1px] shadow-sm">
+                    <div className="text-[6px] uppercase tracking-wide">SAUDI HEALTH</div>
+                    <div className="border-b-2 border-[#2c5282] mb-0.5 pb-0.5 px-1 text-center max-w-[65px] truncate uppercase font-black">
+                        {data.doctorName ? data.doctorName.split(' ')[0] : 'DOCTOR'}
                     </div>
                     <div>APPROVED</div>
-                    <div className="font-serif italic mt-0.5 scale-75">Signed</div>
+                    <div className="font-serif italic mt-0.5 scale-90 text-[10px]">Signed</div>
                 </div>
             </div>
         </div>

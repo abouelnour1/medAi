@@ -70,20 +70,51 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const price = parseFloat(medicine['Public price']);
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
 
-  // --- Simplified Touch Logic ---
+  // --- Simplified Touch Logic with Scroll Detection ---
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
+  const startPos = useRef({ x: 0, y: 0 });
   const isLongPressTriggered = useRef(false);
 
-  const startPress = () => {
+  const startPress = (e: React.MouseEvent | React.TouchEvent) => {
       setIsPressing(true);
       isLongPressTriggered.current = false;
+      
+      if ('touches' in e) {
+          startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else {
+          startPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+      }
+
       timerRef.current = window.setTimeout(() => {
           isLongPressTriggered.current = true;
           if (navigator.vibrate) navigator.vibrate(50);
           onLongPress(medicine);
           setIsPressing(false);
-      }, 600);
+      }, 700); // 700ms for item long press
+  };
+
+  const handleMove = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!timerRef.current) return;
+      
+      let clientX, clientY;
+      if ('touches' in e) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+      } else {
+          clientX = (e as React.MouseEvent).clientX;
+          clientY = (e as React.MouseEvent).clientY;
+      }
+
+      const moveX = Math.abs(clientX - startPos.current.x);
+      const moveY = Math.abs(clientY - startPos.current.y);
+
+      // If moved more than 10px, cancel long press (assume scrolling)
+      if (moveX > 10 || moveY > 10) {
+          clearTimeout(timerRef.current);
+          timerRef.current = undefined;
+          setIsPressing(false);
+      }
   };
 
   const endPress = () => {
@@ -113,13 +144,13 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       className={`relative bg-light-card dark:bg-dark-card rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden cursor-pointer select-none transition-all duration-150 ${isPressing ? 'scale-[0.99] bg-slate-50 dark:bg-slate-800' : 'hover:border-primary/30'}`}
       
       onMouseDown={startPress}
+      onMouseMove={handleMove}
       onMouseUp={endPress}
       onMouseLeave={endPress}
       
       onTouchStart={startPress}
+      onTouchMove={handleMove}
       onTouchEnd={endPress}
-      // Removing explicit onTouchMove for cancel allows small finger adjustments without killing the click
-      // The OS handles scroll vs click distinction mostly
       
       onClick={handleClick}
       onContextMenu={(e) => e.preventDefault()}
