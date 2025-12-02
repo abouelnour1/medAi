@@ -27,21 +27,22 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
         // Clear any existing timer just in case
         if (pressTimer.current) clearTimeout(pressTimer.current);
 
+        // Increased timeout to 700ms to avoid accidental triggering during scroll
         pressTimer.current = window.setTimeout(() => {
             onLongPress();
             isLongPressTriggered.current = true;
             setIsPressing(false); 
             // Haptic feedback
             if (navigator.vibrate) navigator.vibrate(50);
-        }, 500);
+        }, 700);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (pressTimer.current) {
             const moveX = Math.abs(e.clientX - startPos.current.x);
             const moveY = Math.abs(e.clientY - startPos.current.y);
-            // If moved significantly, cancel long press (user is scrolling/dragging)
-            if (moveX > 15 || moveY > 15) {
+            // Reduced threshold to 10px so scrolling cancels the long press faster
+            if (moveX > 10 || moveY > 10) {
                 clearTimeout(pressTimer.current);
                 pressTimer.current = undefined;
                 setIsPressing(false);

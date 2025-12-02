@@ -377,7 +377,7 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         <div class="sig-block">
                             <div class="stamp">
                                 <div class="stamp-inner">
-                                    <div class="stamp-name">DR. ${data.doctorName?.split(' ')[1] || 'DOCTOR'}</div>
+                                    <div class="stamp-name">${data.doctorName || 'DOCTOR'}</div>
                                     <div class="stamp-lic">LIC: ${Math.floor(Math.random() * 90000) + 10000}</div>
                                     <div class="stamp-sig">Signed</div>
                                     <div class="stamp-lic" style="margin-top:2px">${new Date().toLocaleDateString()}</div>
@@ -418,55 +418,69 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
     // Preview Card Component
     const PrescriptionPreviewCard = () => (
         <div className="bg-white text-black p-4 w-full h-full flex flex-col border border-slate-200 rounded-sm font-sans text-xs relative overflow-hidden select-none">
-             {/* Simple Header */}
-            <div className="flex justify-between items-start border-b border-gray-300 pb-2 mb-2">
+             {/* Header */}
+            <div className="flex justify-between items-start border-b-2 border-slate-800 pb-2 mb-2">
                 <div>
-                    <h1 className="text-sm font-bold text-slate-900 uppercase">{data.hospitalName}</h1>
+                    <h1 className="text-sm font-bold text-slate-900 uppercase tracking-tight leading-tight">{data.hospitalName}</h1>
                     <p className="text-[9px] text-gray-500">{data.hospitalAddress}</p>
                 </div>
-                <div className="text-[9px] text-right text-gray-500">
-                    <p>{data.date}</p>
+                <div className="text-[9px] text-right text-gray-500 whitespace-nowrap">
+                    <p className="font-bold text-slate-700">{data.date}</p>
+                    <p>Ref: {data.fileNumber}</p>
                 </div>
             </div>
             
-            {/* Compact Patient Info */}
-            <div className="bg-slate-50 p-2 rounded mb-2 border border-slate-100">
-                 <div className="flex justify-between mb-1">
-                    <span className="font-bold text-[10px] text-gray-600">PATIENT:</span>
-                    <span className="font-bold">{data.patientName}</span>
-                 </div>
-                 <div className="flex justify-between">
-                    <span className="font-bold text-[10px] text-gray-600">DOCTOR:</span>
-                    <span className="truncate max-w-[120px]">{data.doctorName}</span>
+            {/* Expanded Patient Info */}
+            <div className="bg-slate-50 p-2 rounded mb-3 border border-slate-100">
+                 <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
+                     <div className="col-span-2 flex justify-between">
+                        <span className="text-gray-500 font-semibold uppercase">Patient:</span>
+                        <span className="font-bold text-slate-800">{data.patientName}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span className="text-gray-500 font-semibold uppercase">ID:</span>
+                        <span className="font-medium text-slate-700">{data.patientId}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span className="text-gray-500 font-semibold uppercase">Age/Sex:</span>
+                        <span className="font-medium text-slate-700">{data.patientAge || 'N/A'} / {data.patientGender || '-'}</span>
+                     </div>
+                     <div className="col-span-2 flex justify-between border-t border-slate-200 pt-1 mt-1">
+                        <span className="text-gray-500 font-semibold uppercase">Dr:</span>
+                        <span className="font-bold text-slate-800">{data.doctorName}</span>
+                     </div>
                  </div>
             </div>
 
-            <div className="text-xl font-serif font-bold text-slate-800 italic mb-1">Rx</div>
-            
-            {/* Drugs List Preview */}
-            <div className="flex-grow space-y-2 overflow-hidden relative">
+            {/* Drugs List Preview - Fixed Layout */}
+            <div className="flex-grow space-y-3 overflow-hidden relative pb-6">
                 {data.drugs?.slice(0, 3).map((drug, index) => (
-                    <div key={index} className="border-b border-dashed border-gray-200 pb-1 last:border-0">
-                        <div className="flex justify-between">
-                            <span className="font-bold text-[11px] truncate">{drug.tradeName}</span>
-                            <span className="font-bold text-[10px] bg-slate-100 px-1 rounded">x{drug.quantity}</span>
+                    <div key={index} className="border-b border-slate-100 pb-2 last:border-0">
+                        <div className="flex justify-between items-start mb-0.5">
+                            <span className="font-bold text-sm text-slate-900 truncate pr-2">{drug.tradeName}</span>
+                            <span className="font-bold text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 whitespace-nowrap">x{drug.quantity}</span>
                         </div>
-                        <div className="text-[9px] text-gray-500 truncate">{drug.dosage}</div>
+                        <div className="text-[10px] text-slate-500 italic truncate mb-1">{drug.genericName}</div>
+                        <div className="text-[10px] bg-slate-50 p-1.5 rounded text-slate-700 border border-slate-100 leading-tight">
+                            {drug.dosage} <span className="text-slate-400 mx-1">•</span> {drug.usageMethod}
+                        </div>
                     </div>
                 ))}
                 {data.drugs && data.drugs.length > 3 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent flex items-end justify-center">
-                        <span className="text-[9px] text-gray-400">+{data.drugs.length - 3} more</span>
+                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent flex items-end justify-center">
+                        <span className="text-[9px] font-bold text-slate-400 bg-white px-2 py-0.5 shadow-sm rounded-full">+{data.drugs.length - 3} more</span>
                     </div>
                 )}
             </div>
 
-            {/* Stamp Preview */}
-            <div className="absolute bottom-2 right-2 transform rotate-[-12deg] opacity-70 pointer-events-none">
-                <div className="w-16 h-16 rounded-full border-2 border-blue-900 flex flex-col items-center justify-center text-[6px] text-blue-900 font-bold leading-tight bg-white/20">
-                    <div className="border-b border-blue-900 mb-0.5 pb-0.5">DR. {data.doctorName?.split(' ')[1] || 'DOC'}</div>
+            {/* Stamp Preview - Fixed Name */}
+            <div className="absolute bottom-2 right-2 transform rotate-[-12deg] opacity-80 pointer-events-none">
+                <div className="w-20 h-20 rounded-full border-2 border-blue-900 flex flex-col items-center justify-center text-[7px] text-blue-900 font-bold leading-tight bg-white/40 backdrop-blur-[1px]">
+                    <div className="border-b border-blue-900 mb-0.5 pb-0.5 px-1 text-center max-w-[60px] truncate">
+                        {data.doctorName || 'DOCTOR'}
+                    </div>
                     <div>APPROVED</div>
-                    <div className="font-serif italic mt-0.5">Signed</div>
+                    <div className="font-serif italic mt-0.5 scale-75">Signed</div>
                 </div>
             </div>
         </div>
@@ -525,11 +539,11 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
              <iframe ref={iframeRef} className="hidden" />
              
              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-md hover:border-primary/50 transition-all duration-200" onClick={() => setIsExpanded(true)}>
-                 <div className="h-64 w-full bg-slate-50 relative p-3 overflow-hidden">
+                 <div className="h-72 w-full bg-slate-50 relative p-3 overflow-hidden">
                     <div className="w-full h-full transform scale-100 origin-top opacity-90 group-hover:opacity-100 transition-opacity">
                         <PrescriptionPreviewCard />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/10 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/5 via-transparent to-transparent pointer-events-none" />
                     <div className="absolute bottom-3 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-200">
                         <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
