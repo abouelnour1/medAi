@@ -20,7 +20,7 @@ interface MedicineCardProps {
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
 
-  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
+  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Rx' : status; // Shortened Prescription to Rx
   
   let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
@@ -29,12 +29,11 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
     colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
   
-  const sizeClasses = size === 'sm' 
-    ? 'px-2.5 py-0.5 text-xs' 
-    : 'px-3 py-1 text-sm';
+  // Compact sizes
+  const sizeClasses = 'px-1.5 py-0.5 text-[10px]';
 
   return (
-    <span className={`inline-block font-semibold rounded-full ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
+    <span className={`inline-block font-bold rounded-md ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
       {statusText}
     </span>
   );
@@ -56,12 +55,10 @@ const DrugTypeBadge: React.FC<{ type: string; size?: 'sm' | 'base', t: TFunction
         return null;
     }
 
-    const sizeClasses = size === 'sm' 
-        ? 'px-2.5 py-0.5 text-xs' 
-        : 'px-3 py-1 text-sm';
+    const sizeClasses = 'px-1.5 py-0.5 text-[10px]';
 
     return (
-        <span className={`inline-block font-bold rounded-full ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
+        <span className={`inline-block font-bold rounded-md ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
             {displayType}
         </span>
     );
@@ -73,58 +70,32 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const price = parseFloat(medicine['Public price']);
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
 
-  // --- Long Press & Scroll Logic ---
+  // --- Simplified Touch Logic ---
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
   const isLongPressTriggered = useRef(false);
-  const startPos = useRef<{x: number, y: number} | null>(null);
 
-  const handlePressStart = (e: React.TouchEvent | React.MouseEvent) => {
+  const startPress = () => {
       setIsPressing(true);
       isLongPressTriggered.current = false;
-      
-      // Store start position to detect scrolling
-      if ('touches' in e) {
-          startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      } else {
-          startPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
-      }
-      
       timerRef.current = window.setTimeout(() => {
           isLongPressTriggered.current = true;
-          if (navigator.vibrate) navigator.vibrate(50); // Feedback
+          if (navigator.vibrate) navigator.vibrate(50);
           onLongPress(medicine);
           setIsPressing(false);
-      }, 500); // 500ms delay for long press
+      }, 600);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-      if (startPos.current && timerRef.current) {
-          const moveX = Math.abs(e.touches[0].clientX - startPos.current.x);
-          const moveY = Math.abs(e.touches[0].clientY - startPos.current.y);
-          
-          // If moved more than 10px, assume scrolling and cancel everything
-          if (moveX > 10 || moveY > 10) {
-              clearTimeout(timerRef.current);
-              timerRef.current = undefined;
-              setIsPressing(false);
-              startPos.current = null;
-          }
-      }
-  };
-
-  const handlePressEnd = () => {
+  const endPress = () => {
       if (timerRef.current) {
           clearTimeout(timerRef.current);
           timerRef.current = undefined;
       }
       setIsPressing(false);
-      startPos.current = null;
   };
 
-  // The browser ONLY fires onClick if the user lifted their finger without scrolling significantly.
   const handleClick = (e: React.MouseEvent) => {
-      // If a long press happened, ignore the click (don't open details)
+      // If long press triggered, prevent default click action
       if (isLongPressTriggered.current) {
           e.preventDefault();
           e.stopPropagation();
@@ -139,47 +110,50 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
   return (
     <div
-      className={`relative bg-light-card dark:bg-dark-card rounded-xl shadow-md overflow-hidden cursor-pointer select-none min-h-min border border-slate-100 dark:border-slate-800 transition-transform duration-100 ${isPressing ? 'scale-[0.98] bg-slate-50 dark:bg-slate-800' : 'active:scale-[0.98]'}`}
+      className={`relative bg-light-card dark:bg-dark-card rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden cursor-pointer select-none transition-all duration-150 ${isPressing ? 'scale-[0.99] bg-slate-50 dark:bg-slate-800' : 'hover:border-primary/30'}`}
       
-      onMouseDown={handlePressStart}
-      onMouseUp={handlePressEnd}
-      onMouseLeave={handlePressEnd}
+      onMouseDown={startPress}
+      onMouseUp={endPress}
+      onMouseLeave={endPress}
       
-      onTouchStart={handlePressStart}
-      onTouchEnd={handlePressEnd}
-      onTouchMove={handleTouchMove} // CRITICAL: Cancel long press on scroll
+      onTouchStart={startPress}
+      onTouchEnd={endPress}
+      // Removing explicit onTouchMove for cancel allows small finger adjustments without killing the click
+      // The OS handles scroll vs click distinction mostly
       
       onClick={handleClick}
-
-      onContextMenu={(e) => {
-          e.preventDefault();
-      }}
+      onContextMenu={(e) => e.preventDefault()}
       role="button"
       tabIndex={0}
-      aria-label={t('viewDetails', { name: medicine['Trade Name'] })}
     >
       
-      <div className="p-3 pointer-events-none"> 
-        <div className="flex items-start justify-between gap-3">
+      <div className="p-2.5"> 
+        <div className="flex items-start justify-between gap-2">
+          {/* Main Info */}
           <div className="flex-grow min-w-0">
-              <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mb-1">
+              <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary mb-0.5">
                 <FactoryIcon />
-                <span className="truncate" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
+                <span className="truncate max-w-[150px]" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
               </div>
-              <h2 className="text-base font-bold text-light-text dark:text-dark-text break-words whitespace-normal leading-tight mb-1" {...rtlTruncateFixProps}>{medicine['Trade Name']}</h2>
-              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary break-words whitespace-normal leading-snug" {...rtlTruncateFixProps}>{medicine['Scientific Name']}</p>
+              <h2 className="text-sm font-bold text-light-text dark:text-dark-text break-words leading-tight mb-0.5" {...rtlTruncateFixProps}>
+                  {medicine['Trade Name']}
+              </h2>
+              <p className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary truncate leading-tight" {...rtlTruncateFixProps}>
+                  {medicine['Scientific Name']}
+              </p>
           </div>
-          <div className="flex-shrink-0 flex flex-col items-end gap-2 mt-1">
+
+          {/* Price & Badges Column */}
+          <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {!isNaN(price) && (
-              <div className="text-accent text-lg font-bold whitespace-nowrap">
-                {price.toFixed(2)} <span className="text-xs font-normal text-light-text-secondary dark:text-dark-text-secondary">{t('sar')}</span>
+              <div className="text-accent text-sm font-bold whitespace-nowrap">
+                {price.toFixed(2)} <span className="text-[9px] font-normal text-light-text-secondary dark:text-dark-text-secondary">{t('sar')}</span>
               </div>
             )}
-            <div className="flex flex-col items-end gap-1.5">
-                {/* Product Control replaces Legal Status if exists */}
+            <div className="flex flex-wrap justify-end gap-1 max-w-[80px]">
                 {(isControlled || isRestricted) ? (
-                    <span className={`inline-block font-bold rounded-full px-2.5 py-0.5 text-xs text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>
-                        {isControlled ? 'CONTROLLED' : 'RESTRICTED'}
+                    <span className={`inline-block font-bold rounded-md px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>
+                        {isControlled ? 'CTRL' : 'REST'}
                     </span>
                 ) : (
                     <LegalStatusBadge status={medicine['Legal Status']} size="sm" t={t} />
@@ -188,44 +162,39 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             </div>
           </div>
         </div>
-        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs pointer-events-auto"> {/* Re-enable pointer events for buttons */}
-            <div className="flex items-center gap-2 min-w-0">
-                <span className="font-medium text-light-text dark:text-dark-text truncate">
+
+        {/* Footer Row */}
+        <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"> 
+            <div className="flex items-center gap-1.5 min-w-0 flex-grow">
+                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">
                     {medicine.Strength} {medicine.StrengthUnit}
                 </span>
-            </div>
-            <div className="flex items-center gap-1">
-                <div className="flex items-center gap-1.5 min-w-0 text-light-text-secondary dark:text-dark-text-secondary">
+                <span className="text-slate-300 dark:text-slate-600">|</span>
+                <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate">
                     <PillIcon />
-                    <span className="truncate max-w-[100px]" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
+                    <span className="truncate" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
                 </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                     onClick={(e) => {
-                        e.stopPropagation();
-                        if (timerRef.current) clearTimeout(timerRef.current);
+                        e.stopPropagation(); // Stop bubbling to card click
                         onToggleFavorite(medicine.RegisterNumber);
                     }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className={`p-1.5 transition-colors rounded-full ${isFavorite ? 'text-accent hover:text-amber-500' : 'text-gray-400 hover:text-accent'}`}
-                    title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
-                    aria-label={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+                    className={`p-1.5 rounded-full transition-colors ${isFavorite ? 'text-accent hover:text-amber-500 bg-amber-50 dark:bg-amber-900/10' : 'text-gray-300 hover:text-accent'}`}
                 >
-                   <div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div>
+                   <div className="h-4 w-4"><StarIcon isFilled={isFavorite} /></div>
                 </button>
                 <button
                     onClick={(e) => {
-                        e.stopPropagation();
-                        if (timerRef.current) clearTimeout(timerRef.current);
+                        e.stopPropagation(); // Stop bubbling to card click
                         onFindAlternative(medicine);
                     }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="p-1.5 text-gray-400 hover:text-primary dark:hover:text-primary-light transition-colors rounded-full"
-                    title={t('findAlternativeTooltip')}
-                    aria-label={t('findAlternativesButton', { name: medicine['Trade Name'] })}
+                    className="p-1.5 text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors rounded-full"
                 >
-                    <AlternativeIcon />
+                    <div className="h-4 w-4"><AlternativeIcon /></div>
                 </button>
             </div>
         </div>

@@ -221,6 +221,7 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     .sig-block {
                         width: 30%;
                         text-align: center;
+                        position: relative;
                     }
                     .sig-line {
                         border-bottom: 1px solid #000;
@@ -239,6 +240,47 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         font-weight: 700;
                         color: #0f172a;
                         margin-top: 4px;
+                    }
+
+                    /* Doctor's Stamp */
+                    .stamp {
+                        position: absolute;
+                        top: -40px;
+                        left: 50%;
+                        transform: translateX(-50%) rotate(-10deg);
+                        width: 120px;
+                        height: 120px;
+                        border: 3px double #1e3a8a;
+                        border-radius: 50%;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        color: #1e3a8a;
+                        opacity: 0.8;
+                        pointer-events: none;
+                        z-index: 10;
+                    }
+                    .stamp-inner {
+                        text-align: center;
+                        font-weight: bold;
+                        font-size: 10px;
+                        line-height: 1.2;
+                    }
+                    .stamp-name {
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        margin-bottom: 4px;
+                        border-bottom: 1px solid #1e3a8a;
+                        padding-bottom: 2px;
+                    }
+                    .stamp-lic {
+                        font-size: 8px;
+                    }
+                    .stamp-sig {
+                        font-family: cursive;
+                        font-size: 14px;
+                        margin-top: 2px;
                     }
 
                     /* Watermark */
@@ -333,6 +375,14 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                             <span class="sig-label">Pharmacist</span>
                         </div>
                         <div class="sig-block">
+                            <div class="stamp">
+                                <div class="stamp-inner">
+                                    <div class="stamp-name">DR. ${data.doctorName?.split(' ')[1] || 'DOCTOR'}</div>
+                                    <div class="stamp-lic">LIC: ${Math.floor(Math.random() * 90000) + 10000}</div>
+                                    <div class="stamp-sig">Signed</div>
+                                    <div class="stamp-lic" style="margin-top:2px">${new Date().toLocaleDateString()}</div>
+                                </div>
+                            </div>
                             <div class="sig-line"></div>
                             <span class="sig-label">Doctor's Stamp & Signature</span>
                             <div class="doc-details">${data.doctorName || ''}</div>
@@ -410,6 +460,15 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     </div>
                 )}
             </div>
+
+            {/* Stamp Preview */}
+            <div className="absolute bottom-2 right-2 transform rotate-[-12deg] opacity-70 pointer-events-none">
+                <div className="w-16 h-16 rounded-full border-2 border-blue-900 flex flex-col items-center justify-center text-[6px] text-blue-900 font-bold leading-tight bg-white/20">
+                    <div className="border-b border-blue-900 mb-0.5 pb-0.5">DR. {data.doctorName?.split(' ')[1] || 'DOC'}</div>
+                    <div>APPROVED</div>
+                    <div className="font-serif italic mt-0.5">Signed</div>
+                </div>
+            </div>
         </div>
     );
 
@@ -439,17 +498,18 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                     <div className="flex-grow overflow-auto p-4 md:p-8 bg-slate-200 flex justify-center">
                         <div className="shadow-2xl w-full max-w-[210mm] bg-white min-h-[140mm] transform transition-transform">
                              <iframe ref={iframeRef} className="hidden" />
-                             {/* In expanded view, we actually populate the iframe for printing, but we can't easily show the iframe content reactively without complex bridging. 
-                                 So we render a "Print Ready" placeholder or just rely on the print button. 
-                                 The handlePrint function populates the hidden iframe when clicked. 
-                             */}
-                             <div className="w-full h-full p-10 flex flex-col items-center justify-center text-center text-slate-400 space-y-4 border-2 border-dashed border-slate-300 m-4 rounded-lg bg-slate-50">
+                             <div className="w-full h-full p-10 flex flex-col items-center justify-center text-center text-slate-400 space-y-4 border-2 border-dashed border-slate-300 m-4 rounded-lg bg-slate-50 relative overflow-hidden">
+                                <div className="absolute top-10 right-10 transform rotate-[-15deg] opacity-20 pointer-events-none">
+                                    <div className="w-32 h-32 rounded-full border-4 border-slate-800 flex items-center justify-center">
+                                        <span className="text-xl font-black text-slate-800 uppercase">Official Copy</span>
+                                    </div>
+                                </div>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 <div>
                                     <p className="text-lg font-semibold text-slate-600">Print Preview Ready</p>
-                                    <p className="text-sm">Click the "Print" button above to generate the official document.</p>
+                                    <p className="text-sm">Click the "Print" button above to generate the stamped official document.</p>
                                 </div>
                              </div>
                         </div>
