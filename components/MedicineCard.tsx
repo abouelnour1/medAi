@@ -20,7 +20,7 @@ interface MedicineCardProps {
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
 
-  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Rx' : status; // Shortened Prescription to Rx
+  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Rx' : status; 
   
   let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
@@ -39,16 +39,21 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
   );
 };
 
-const DrugTypeBadge: React.FC<{ type: string; size?: 'sm' | 'base', t: TFunction }> = ({ type, size = 'sm', t }) => {
+const DrugTypeBadge: React.FC<{ type: string; subType?: string; size?: 'sm' | 'base', t: TFunction }> = ({ type, subType, size = 'sm', t }) => {
     if (!type) return null;
     
     let displayType = '';
     let colorClasses = '';
 
-    if (type === 'NCE') {
+    // Logic for Brand: NCE or (Biological + Biological)
+    const isBrand = type === 'NCE' || (type === 'Biological' && subType === 'Biological');
+    // Logic for Generic: Generic or (Biological + Biosimilar)
+    const isGeneric = type === 'Generic' || (type === 'Biological' && subType === 'Biosimilar');
+
+    if (isBrand) {
         displayType = 'Brand';
         colorClasses = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
-    } else if (type === 'Generic') {
+    } else if (isGeneric) {
         displayType = 'Generic';
         colorClasses = 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border border-blue-100 dark:border-blue-800';
     } else {
@@ -189,7 +194,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 ) : (
                     <LegalStatusBadge status={medicine['Legal Status']} size="sm" t={t} />
                 )}
-                <DrugTypeBadge type={medicine.DrugType} size="sm" t={t} />
+                <DrugTypeBadge type={medicine.DrugType} subType={medicine['Sub-Type']} size="sm" t={t} />
             </div>
           </div>
         </div>
