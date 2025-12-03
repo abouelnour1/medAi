@@ -33,12 +33,24 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
     const iframeRef = useRef<HTMLIFrameElement>(null);
     
     const data = useMemo(() => {
-        if (prescriptionData) return prescriptionData;
-        if (content) {
+        let parsedData = null;
+        if (prescriptionData) parsedData = prescriptionData;
+        else if (content) {
             const parsed = parsePrescription(content);
-            if (parsed) return { ...parsed, id: `p-${Date.now()}` };
+            if (parsed) parsedData = { ...parsed, id: `p-${Date.now()}` };
         }
-        return null;
+        
+        if (parsedData) {
+            // Force default to Cash if empty, null, or if it was defaulted to generic placeholder
+            if (!parsedData.insuranceCompany || parsedData.insuranceCompany === '...' || parsedData.insuranceCompany.toLowerCase() === 'bupa') {
+                parsedData.insuranceCompany = 'Cash';
+            }
+            // Ensure date is present
+            if (!parsedData.date) {
+                parsedData.date = new Date().toLocaleDateString('en-GB');
+            }
+        }
+        return parsedData;
     }, [content, prescriptionData]);
 
     const handlePrint = () => {
@@ -56,6 +68,8 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                 <title>Prescription - ${data.patientName || 'Patient'}</title>
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+                    @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
                     body { 
                         font-family: 'Poppins', 'Cairo', sans-serif; 
                         margin: 0; 
@@ -245,66 +259,67 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         margin-top: 4px;
                     }
 
-                    /* Realistic Doctor's Stamp */
+                    /* Realistic Rectangular Stamp */
                     .stamp {
                         position: absolute;
                         top: -50px;
                         left: 50%;
-                        transform: translateX(-50%) rotate(-8deg);
-                        width: 110px;
-                        height: 110px;
-                        border: 3px double #2c5282; /* Ink Blue */
-                        border-radius: 50%;
+                        transform: translateX(-50%) rotate(-2deg);
+                        width: 150px;
+                        height: 60px;
+                        border: 3px double #1e3a8a; /* Royal Blue Double Border */
+                        border-radius: 4px; /* Rectangular with slight radius */
                         display: flex;
                         flex-direction: column;
                         justify-content: center;
                         align-items: center;
-                        color: #2c5282;
-                        opacity: 0.85; /* Slight transparency for ink effect */
+                        color: #1e3a8a;
+                        opacity: 0.85;
                         z-index: 10;
-                        background: rgba(255, 255, 255, 0.2);
-                        box-shadow: 0 0 0 1px rgba(44, 82, 130, 0.3) inset; /* Inner ring hint */
-                    }
-                    /* Rough edge effect */
-                    .stamp::after {
-                        content: '';
-                        position: absolute;
-                        top: 2px; bottom: 2px; left: 2px; right: 2px;
-                        border: 1px solid rgba(44, 82, 130, 0.4);
-                        border-radius: 50%;
+                        background: transparent;
+                        box-shadow: 0 0 0 1px rgba(30, 58, 138, 0.1);
+                        padding: 2px;
+                        font-family: 'Courier Prime', 'Courier New', monospace;
                         pointer-events: none;
                     }
                     
                     .stamp-inner {
+                        width: 96%;
+                        height: 90%;
+                        border: 1px solid #1e3a8a;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
                         text-align: center;
-                        font-weight: bold;
-                        font-size: 10px;
-                        line-height: 1.3;
+                        padding: 2px;
                     }
                     .stamp-header {
                         font-size: 9px;
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        margin-bottom: 2px;
-                    }
-                    .stamp-name {
-                        font-size: 12px;
                         font-weight: 900;
                         text-transform: uppercase;
-                        margin-bottom: 4px;
-                        border-bottom: 2px solid #2c5282;
-                        padding: 0 4px 2px;
-                        display: inline-block;
+                        border-bottom: 1px solid #1e3a8a;
+                        letter-spacing: 0.5px;
+                        padding-bottom: 1px;
                     }
-                    .stamp-lic {
+                    .stamp-body {
                         font-size: 9px;
-                        font-family: monospace;
+                        font-weight: 700;
+                        display: flex;
+                        justify-content: space-around;
+                        align-items: center;
+                        flex-grow: 1;
+                    }
+                    .stamp-date {
+                        font-family: 'Courier New', monospace;
+                        font-size: 9px;
+                        letter-spacing: -0.5px;
                     }
                     .stamp-sig {
                         font-family: 'Brush Script MT', cursive;
-                        font-size: 18px;
-                        margin-top: 4px;
-                        transform: rotate(-5deg);
+                        font-size: 14px;
+                        border-top: 1px solid #1e3a8a;
+                        margin-top: 1px;
+                        padding-top: 1px;
                     }
 
                     /* Watermark */
@@ -402,11 +417,12 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                         <div class="sig-block">
                             <div class="stamp">
                                 <div class="stamp-inner">
-                                    <div class="stamp-header">SAUDI HEALTH</div>
-                                    <div class="stamp-name">${data.doctorName ? data.doctorName.split(' ').slice(0, 2).join(' ') : 'DOCTOR'}</div>
-                                    <div class="stamp-lic">LIC: ${Math.floor(Math.random() * 90000) + 10000}</div>
+                                    <div class="stamp-header">SAUDI HEALTH CENTER</div>
+                                    <div class="stamp-body">
+                                        <div style="font-size:8px">LIC: ${Math.floor(Math.random() * 90000) + 10000}</div>
+                                        <div class="stamp-date">${data.date}</div>
+                                    </div>
                                     <div class="stamp-sig">Signed</div>
-                                    <div class="stamp-lic" style="margin-top:2px">${new Date().toLocaleDateString()}</div>
                                 </div>
                             </div>
                             <div class="sig-line"></div>
@@ -518,15 +534,18 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
                 )}
             </div>
 
-            {/* Realistic Stamp Preview */}
-            <div className="absolute bottom-3 right-3 transform rotate-[-12deg] opacity-85 pointer-events-none z-10">
-                <div className="w-20 h-20 rounded-full border-[3px] border-double border-[#2c5282] flex flex-col items-center justify-center text-[7px] text-[#2c5282] font-bold leading-tight bg-white/50 backdrop-blur-[1px] shadow-sm">
-                    <div className="text-[6px] uppercase tracking-wide">SAUDI HEALTH</div>
-                    <div className="border-b-2 border-[#2c5282] mb-0.5 pb-0.5 px-1 text-center max-w-[65px] truncate uppercase font-black">
-                        {data.doctorName ? data.doctorName.split(' ')[0] : 'DOCTOR'}
+            {/* Realistic Rectangular Stamp Preview */}
+            <div className="absolute bottom-4 right-4 transform rotate-[-2deg] opacity-80 pointer-events-none z-10 
+                            w-[100px] h-[40px] border-[2px] border-double border-blue-900 rounded-[3px] 
+                            flex flex-col items-center justify-center bg-transparent 
+                            shadow-[0_0_0_1px_rgba(30,58,138,0.1)] text-blue-900 font-mono leading-none">
+                <div className="w-[94%] h-[90%] border border-blue-900 flex flex-col justify-between text-center py-[2px]">
+                    <div className="text-[6px] font-black uppercase border-b border-blue-900 w-full text-center pb-[1px]">SAUDI HEALTH CENTER</div>
+                    <div className="flex justify-between w-full px-1 text-[5px] font-bold mt-[1px]">
+                        <span>LIC:{Math.floor(Math.random() * 90000) + 10000}</span>
+                        <span className="tracking-tighter">{data.date}</span>
                     </div>
-                    <div>APPROVED</div>
-                    <div className="font-serif italic mt-0.5 scale-90 text-[10px]">Signed</div>
+                    <div className="font-serif italic text-[8px] text-blue-900 leading-none mt-0.5 border-t border-blue-900 pt-[1px]">Signed</div>
                 </div>
             </div>
         </div>

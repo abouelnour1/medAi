@@ -172,7 +172,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 4. **التاريخ** (date): استخدم تاريخ اليوم (YYYY-MM-DD).
 5. **اسم الطبيب** (doctorName): اختر اسماً لطبيب (مثال: د. عبدالله...).
 6. **تخصص الطبيب** (doctorSpecialty): اختر تخصصاً يناسب الدواء الموصوف (مثال: Consultant Internal Medicine).
-7. **شركة التأمين** (insuranceCompany): اختر شركة مشهورة (مثال: Bupa, Tawuniya).
+7. **شركة التأمين** (insuranceCompany): اجعلها دائماً "Cash" (نقدي) إلا إذا حدد المستخدم اسم شركة تأمين بشكل صريح.
 8. **التشخيص والكود** (diagnosisCode, diagnosisDescription): ضع تشخيصاً طبياً دقيقاً بالإنجليزية (English ONLY) وكود ICD-10.
 9. **اسم المستشفى** (hospitalName): اختر اسماً لمستشفى (مثال: مستشفى المملكة، دلة، إلخ).
 
@@ -215,7 +215,7 @@ If the user does not provide the following details, **YOU MUST INVENT REALISTIC 
 4. **Date** (date - use today's date).
 5. **Doctor Name** (doctorName).
 6. **Doctor Specialty** (doctorSpecialty - appropriate for the drug).
-7. **Insurance Company** (insuranceCompany - e.g., Bupa, Tawuniya).
+7. **Insurance Company** (insuranceCompany - default to "Cash" unless user specifies otherwise).
 8. **Diagnosis & Code** (diagnosisCode, diagnosisDescription - appropriate for the drug, in English).
 9. **Hospital Name** (hospitalName).
 
