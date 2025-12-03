@@ -68,15 +68,15 @@ export interface Cosmetic {
   id: string;
   BrandName: string;
   SpecificName: string;
-  SpecificNameAr: string;
-  FirstSubCategoryAr: string;
-  FirstSubCategoryEn: string;
-  SecondSubCategoryAr: string;
-  SecondSubCategoryEn: string;
+  SpecificNameAr?: string;
+  FirstSubCategoryAr?: string;
+  FirstSubCategoryEn?: string;
+  SecondSubCategoryAr?: string;
+  SecondSubCategoryEn?: string;
   manufacturerNameEn: string;
-  manufacturerCountryAr: string;
+  manufacturerCountryAr?: string;
   manufacturerCountryEn: string;
-  "Active ingredient": string;
+  "Active ingredient"?: string;
   "Key Ingredients"?: string;
   Highlights?: string;
 }

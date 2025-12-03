@@ -13,8 +13,8 @@ interface CosmeticCardProps {
 
 const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onClick, onLongPress }) => {
   // Categories can remain localized for better UX
-  const firstCategory = language === 'ar' ? cosmetic.FirstSubCategoryAr : cosmetic.FirstSubCategoryEn;
-  const secondCategory = language === 'ar' ? cosmetic.SecondSubCategoryAr : cosmetic.SecondSubCategoryEn;
+  const firstCategory = language === 'ar' ? (cosmetic.FirstSubCategoryAr || cosmetic.FirstSubCategoryEn) : cosmetic.FirstSubCategoryEn;
+  const secondCategory = language === 'ar' ? (cosmetic.SecondSubCategoryAr || cosmetic.SecondSubCategoryEn) : cosmetic.SecondSubCategoryEn;
 
   return (
     <div 
@@ -38,7 +38,7 @@ const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onCl
               {cosmetic.SpecificName}
             </h2>
 
-            {/* 2. Arabic Name (Secondary) */}
+            {/* 2. Arabic Name (Secondary) - Only if exists */}
             {cosmetic.SpecificNameAr && (
                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary text-right font-medium" dir="rtl">
                  {cosmetic.SpecificNameAr}
@@ -53,16 +53,22 @@ const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onCl
             )}
           </div>
         </div>
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 text-[10px] font-medium">
-          <span className="bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md">
-            {firstCategory}
-          </span>
-          {secondCategory && (
-            <span className="bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md">
-              {secondCategory}
-            </span>
-          )}
-        </div>
+        
+        {/* Render categories only if available */}
+        {(firstCategory || secondCategory) && (
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 text-[10px] font-medium">
+            {firstCategory && (
+                <span className="bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md">
+                    {firstCategory}
+                </span>
+            )}
+            {secondCategory && (
+                <span className="bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md">
+                    {secondCategory}
+                </span>
+            )}
+            </div>
+        )}
       </div>
     </div>
   );

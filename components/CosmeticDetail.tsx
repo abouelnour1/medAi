@@ -42,7 +42,7 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
                     <span className="truncate">{cosmetic.BrandName}</span>
                   </div>
                   <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text">
-                      {language === 'ar' ? cosmetic.SpecificNameAr || cosmetic.SpecificName : cosmetic.SpecificName}
+                      {language === 'ar' ? (cosmetic.SpecificNameAr || cosmetic.SpecificName) : cosmetic.SpecificName}
                   </h2>
               </div>
               
@@ -82,7 +82,10 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
             <DetailRow label="Sub-Category (Ar)" value={cosmetic.SecondSubCategoryAr} />
             
             <DetailRow label="Manufacturer" value={cosmetic.manufacturerNameEn} />
-            <DetailRow label={t('countryOfManufacture')} value={language === 'ar' ? cosmetic.manufacturerCountryAr : cosmetic.manufacturerCountryEn} />
+            <DetailRow 
+                label={t('countryOfManufacture')} 
+                value={language === 'ar' ? (cosmetic.manufacturerCountryAr || cosmetic.manufacturerCountryEn) : cosmetic.manufacturerCountryEn} 
+            />
             
             <DetailRow label={t('quickActionIngredient')} value={cosmetic["Active ingredient"]} />
             <DetailRow label="Key Ingredients" value={cosmetic["Key Ingredients"]} />
