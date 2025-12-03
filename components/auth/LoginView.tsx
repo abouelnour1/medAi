@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
-import AppleIcon from '../icons/AppleIcon';
 
 interface LoginViewProps {
   onSwitchToRegister: () => void;
@@ -18,7 +17,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const [successMessage, setSuccessMessage] = useState('');
   const [isResetMode, setIsResetMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithGoogle, loginWithApple, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +52,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+  const handleSocialLogin = async () => {
       setError('');
       setIsLoading(true);
       try {
-          if (provider === 'google') await loginWithGoogle();
-          else await loginWithApple();
+          await loginWithGoogle();
           onLoginSuccess();
       } catch (err: any) {
           setError(err.message || 'Login failed');
@@ -127,21 +125,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       <div className="space-y-3">
           <button 
             type="button" 
-            onClick={() => handleSocialLogin('google')}
+            onClick={handleSocialLogin}
             disabled={isLoading}
             className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm disabled:opacity-70"
           >
               <div className="w-5 h-5"><GoogleIcon /></div>
               <span>{t('signInGoogle')}</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={() => handleSocialLogin('apple')}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-black text-white border border-black rounded-lg text-sm font-medium hover:opacity-90 transition-colors shadow-sm disabled:opacity-70"
-          >
-              <div className="w-5 h-5"><AppleIcon /></div>
-              <span>{t('signInApple')}</span>
           </button>
       </div>
 

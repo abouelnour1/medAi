@@ -199,7 +199,6 @@ export type AuthContextType = {
   isLoading: boolean;
   // Social Login
   loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
   // Admin functions
   getAllUsers: () => User[];
   updateUser: (user: User) => void;

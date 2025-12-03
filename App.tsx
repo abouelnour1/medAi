@@ -965,7 +965,7 @@ const App: React.FC = () => {
         onAdminClick={handleAdminClick}
         view={view}
       />
-      <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[90px] pb-[90px] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
+      <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[90px] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
         {renderContent()}
       </main>
       <BottomNavBar 

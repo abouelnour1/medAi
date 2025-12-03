@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
-import { auth, db, googleProvider, appleProvider, FIREBASE_DISABLED } from '../../firebase';
+import { auth, db, googleProvider, FIREBASE_DISABLED } from '../../firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -170,22 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               throw new Error(`النطاق الحالي غير مصرح به في Firebase.\n\nيرجى نسخ هذا الرابط وإضافته في Authorized Domains:\n\n${currentDomain}`);
           }
           throw new Error('فشل تسجيل الدخول بواسطة جوجل: ' + (error.message || 'خطأ غير معروف'));
-      }
-  }, []);
-
-  const loginWithApple = useCallback(async (): Promise<void> => {
-      if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
-      try {
-          await signInWithPopup(auth, appleProvider);
-          // syncUserData is called automatically by onAuthStateChanged
-      } catch (error: any) {
-          console.error("Apple Login Error:", error);
-          if (error.code === 'auth/popup-closed-by-user') throw new Error('تم إغلاق النافذة من قبل المستخدم.');
-          if (error.code === 'auth/unauthorized-domain') {
-              const currentDomain = window.location.hostname;
-              throw new Error(`النطاق الحالي غير مصرح به في Firebase.\n\nيرجى نسخ هذا الرابط وإضافته في Authorized Domains:\n\n${currentDomain}`);
-          }
-          throw new Error('فشل تسجيل الدخول بواسطة Apple: ' + (error.message || 'خطأ غير معروف'));
       }
   }, []);
 
@@ -406,7 +390,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       login, 
       loginWithGoogle,
-      loginWithApple,
       register, 
       logout, 
       requestAIAccess, 

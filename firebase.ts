@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
-import { getAuth, Auth, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
+import { getAuth, Auth, GoogleAuthProvider } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging, Messaging } from "firebase/messaging";
 import { getFunctions, Functions } from "firebase/functions";
@@ -25,7 +25,6 @@ let app: any;
 let db: Firestore;
 let auth: Auth;
 let googleProvider: GoogleAuthProvider;
-let appleProvider: OAuthProvider;
 let analytics: any = null;
 let messaging: Messaging | null = null;
 let functions: Functions | null = null;
@@ -39,7 +38,6 @@ if (!FIREBASE_DISABLED) {
     
     // Initialize Providers
     googleProvider = new GoogleAuthProvider();
-    appleProvider = new OAuthProvider('apple.com');
     
     // Initialize Functions specifically
     try {
@@ -92,10 +90,9 @@ if (!FIREBASE_DISABLED) {
   db = null as unknown as Firestore;
   auth = null as unknown as Auth;
   googleProvider = null as unknown as GoogleAuthProvider;
-  appleProvider = null as unknown as OAuthProvider;
   analytics = null;
   messaging = null;
   functions = null;
 }
 
-export { app, db, auth, googleProvider, appleProvider, analytics, messaging, functions };
+export { app, db, auth, googleProvider, analytics, messaging, functions };
