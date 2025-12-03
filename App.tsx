@@ -43,7 +43,7 @@ import { INITIAL_GUIDELINES_DATA } from './data/guidelines-data';
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 // Icons
@@ -179,7 +179,7 @@ const App: React.FC = () => {
 
   // --- Effects ---
 
-  // Load Data with IndexedDB Migration
+  // Load Data with IndexedDB Migration and Cloud Sync
   useEffect(() => {
     const loadData = async () => {
         try {
@@ -187,19 +187,15 @@ const App: React.FC = () => {
             let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
             let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
 
-            // 2. Migration Check: If not in IDB, check LocalStorage (Legacy)
+            // 2. Migration Check
             if (!medicinesData) {
                 const lsMedicines = localStorage.getItem(MEDICINES_CACHE_KEY);
                 if (lsMedicines) {
                     try {
                         medicinesData = JSON.parse(lsMedicines);
-                        // Save to IndexedDB
                         await setItem(MEDICINES_CACHE_KEY, medicinesData);
-                        // Clear LocalStorage to free up space immediately
                         localStorage.removeItem(MEDICINES_CACHE_KEY); 
-                    } catch (e) {
-                        console.warn("Failed to parse LS medicines, fallback to static", e);
-                    }
+                    } catch (e) {}
                 }
             }
 
@@ -210,31 +206,54 @@ const App: React.FC = () => {
                         cosmeticsData = JSON.parse(lsCosmetics);
                         await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
                         localStorage.removeItem(COSMETICS_CACHE_KEY);
-                    } catch (e) {
-                        console.warn("Failed to parse LS cosmetics, fallback to static", e);
-                    }
+                    } catch (e) {}
                 }
             }
 
-            // 3. Fallback to Static Data
+            // 3. Fallback to Static
             if (!medicinesData) {
                 medicinesData = [...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW].map(normalizeMedicine);
-                // Cache default data to IDB for subsequent loads
                 await setItem(MEDICINES_CACHE_KEY, medicinesData);
             }
             
             if (!cosmeticsData) {
                 cosmeticsData = INITIAL_COSMETICS_DATA;
-                // Cache default data to IDB for subsequent loads
                 await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
             }
 
             setMedicines(medicinesData || []);
             setCosmetics(cosmeticsData || []);
 
+            // 4. Background Sync with Firebase (for fresh data)
+            if (!FIREBASE_DISABLED) {
+                // Fetch Cosmetics
+                try {
+                    const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
+                    const cloudCosmetics: Cosmetic[] = [];
+                    cosmeticsSnapshot.forEach((doc) => {
+                        cloudCosmetics.push({ id: doc.id, ...doc.data() } as Cosmetic);
+                    });
+
+                    if (cloudCosmetics.length > 0) {
+                        setCosmetics(prev => {
+                            // Merge strategy: Create a map of existing items, update with cloud items
+                            const mergedMap = new Map(prev.map(c => [c.id, c]));
+                            cloudCosmetics.forEach(c => mergedMap.set(c.id, c));
+                            const mergedArray = Array.from(mergedMap.values());
+                            
+                            // Only update if count changes or force update needed (basic check)
+                            // For simplicity, we just save and set.
+                            setItem(COSMETICS_CACHE_KEY, mergedArray).catch(console.error);
+                            return mergedArray;
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Background fetch for cosmetics failed:", err);
+                }
+            }
+
         } catch (e) {
             console.error("Error loading data", e);
-            // Fallback completely in case of DB error
             setMedicines([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW].map(normalizeMedicine));
             setCosmetics(INITIAL_COSMETICS_DATA);
         }
@@ -274,21 +293,18 @@ const App: React.FC = () => {
       localStorage.setItem('chat_history', JSON.stringify(chatHistory));
   }, [chatHistory]);
 
-  // Scroll Restore Logic - Improved with timeout to ensure content renders
+  // Scroll Restore Logic
   useLayoutEffect(() => {
     const container = document.getElementById('main-scroll-container');
     if (!container) return;
 
     if (view === 'results' || view === 'cosmeticsSearch') {
-      // Restore scroll when returning to list
       if (scrollPositionRef.current > 0) {
-        // Shorter timeout to reduce flicker
         setTimeout(() => {
             if(container) container.scrollTop = scrollPositionRef.current;
         }, 0);
       }
     } else if (view === 'details' || view === 'cosmeticDetails' || view === 'alternatives' || view === 'insuranceDetails') {
-        // Force scroll top when entering details
         container.scrollTop = 0;
     }
   }, [view]);
