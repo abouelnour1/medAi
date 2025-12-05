@@ -34,16 +34,11 @@ import { VerifyEmailView } from './components/auth/VerifyEmailView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import { useAuth } from './components/auth/AuthContext';
 
-// Data & Utils
-import { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } from './data/data';
-import { INITIAL_INSURANCE_DATA } from './data/insurance-data';
-import { CUSTOM_INSURANCE_DATA } from './data/custom-insurance-data';
-import { INITIAL_COSMETICS_DATA } from './data/cosmetics-data';
-import { INITIAL_GUIDELINES_DATA } from './data/guidelines-data';
+// Utils & Helpers
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 // Icons
@@ -76,7 +71,7 @@ const normalizeMedicine = (item: any): Medicine => ({
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
 
 const App: React.FC = () => {
   const { user } = useAuth();
@@ -97,11 +92,12 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
   
-  // Data
+  // Data - Initialized empty to prevent main thread blocking
   const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA]);
+  const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
-  const [clinicalGuidelines, setClinicalGuidelines] = useState<any>(INITIAL_GUIDELINES_DATA);
+  const [clinicalGuidelines, setClinicalGuidelines] = useState<any>({});
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,6 +144,7 @@ const App: React.FC = () => {
       } catch { return []; }
   });
   const [currentChatHistory, setCurrentChatHistory] = useState<ChatMessage[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Insurance Search
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
@@ -178,67 +175,73 @@ const App: React.FC = () => {
 
   // --- Effects ---
 
-  // Load Data with IndexedDB Migration
+  // Load Data with Dynamic Imports (Code Splitting)
   useEffect(() => {
     const loadData = async () => {
         try {
-            // 1. Try to load from IndexedDB
+            // 1. Try to load from IndexedDB first (Fastest)
             let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
             let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
 
-            // 2. Migration Check: If not in IDB, check LocalStorage (Legacy)
+            // 2. Dynamic Import of Static Data (Fallback & First Run)
+            // This prevents the huge data objects from being in the initial JS bundle
             if (!medicinesData) {
-                const lsMedicines = localStorage.getItem(MEDICINES_CACHE_KEY);
-                if (lsMedicines) {
-                    try {
-                        medicinesData = JSON.parse(lsMedicines);
-                        // Save to IndexedDB
-                        await setItem(MEDICINES_CACHE_KEY, medicinesData);
-                        // Clear LocalStorage to free up space immediately
-                        localStorage.removeItem(MEDICINES_CACHE_KEY); 
-                    } catch (e) {
-                        console.warn("Failed to parse LS medicines, fallback to static", e);
-                    }
-                }
-            }
-
-            if (!cosmeticsData) {
-                const lsCosmetics = localStorage.getItem(COSMETICS_CACHE_KEY);
-                if (lsCosmetics) {
-                    try {
-                        cosmeticsData = JSON.parse(lsCosmetics);
-                        await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
-                        localStorage.removeItem(COSMETICS_CACHE_KEY);
-                    } catch (e) {
-                        console.warn("Failed to parse LS cosmetics, fallback to static", e);
-                    }
-                }
-            }
-
-            // 3. Fallback to Static Data
-            if (!medicinesData) {
+                const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
                 medicinesData = [...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW].map(normalizeMedicine);
-                // Cache default data to IDB for subsequent loads
                 await setItem(MEDICINES_CACHE_KEY, medicinesData);
             }
             
             if (!cosmeticsData) {
+                const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
                 cosmeticsData = INITIAL_COSMETICS_DATA;
-                // Cache default data to IDB for subsequent loads
                 await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
             }
 
+            // Load Insurance & Guidelines Dynamically
+            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
+            const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
+            const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
+
+            // Update State
             setMedicines(medicinesData || []);
             setCosmetics(cosmeticsData || []);
+            setInsuranceData([...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA]);
+            setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
+            setIsDataLoaded(true);
+
+            // 3. Background Cloud Sync (Non-blocking)
+            if (!FIREBASE_DISABLED) {
+                try {
+                    const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
+                    const cloudCosmetics: Cosmetic[] = [];
+                    cosmeticsSnapshot.forEach((doc) => {
+                        cloudCosmetics.push({ id: doc.id, ...doc.data() } as Cosmetic);
+                    });
+
+                    if (cloudCosmetics.length > 0) {
+                        setCosmetics(prev => {
+                            const mergedMap = new Map(prev.map(c => [c.id, c]));
+                            cloudCosmetics.forEach(c => mergedMap.set(c.id, c));
+                            const mergedArray = Array.from(mergedMap.values());
+                            setItem(COSMETICS_CACHE_KEY, mergedArray).catch(console.error);
+                            return mergedArray;
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Background fetch failed (Offline?):", err);
+                }
+            }
 
         } catch (e) {
             console.error("Error loading data", e);
-            // Fallback completely in case of DB error
-            setMedicines([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW].map(normalizeMedicine));
-            setCosmetics(INITIAL_COSMETICS_DATA);
+            // Even if dynamic import fails, try to set empty state to unblock UI
+            setIsDataLoaded(true);
         }
     };
-    loadData();
+
+    // Small delay to ensure React commits the first frame before starting heavy work
+    const timer = setTimeout(loadData, 50);
+    return () => clearTimeout(timer);
   }, []);
 
   // Theme
@@ -273,21 +276,18 @@ const App: React.FC = () => {
       localStorage.setItem('chat_history', JSON.stringify(chatHistory));
   }, [chatHistory]);
 
-  // Scroll Restore Logic - Improved with timeout to ensure content renders
+  // Scroll Restore Logic
   useLayoutEffect(() => {
     const container = document.getElementById('main-scroll-container');
     if (!container) return;
 
     if (view === 'results' || view === 'cosmeticsSearch') {
-      // Restore scroll when returning to list
       if (scrollPositionRef.current > 0) {
-        // Shorter timeout to reduce flicker
         setTimeout(() => {
             if(container) container.scrollTop = scrollPositionRef.current;
         }, 0);
       }
     } else if (view === 'details' || view === 'cosmeticDetails' || view === 'alternatives' || view === 'insuranceDetails') {
-        // Force scroll top when entering details
         container.scrollTop = 0;
     }
   }, [view]);
@@ -412,6 +412,8 @@ const App: React.FC = () => {
   }, [cosmeticsSearchTerm, selectedBrand]);
 
   const filteredMedicines = useMemo(() => {
+      if (!isDataLoaded) return [];
+      
       let results = medicines;
       const trimmedTerm = searchTerm.trim();
 
@@ -459,7 +461,7 @@ const App: React.FC = () => {
           return a['Trade Name'].localeCompare(b['Trade Name']);
       });
       return results;
-  }, [medicines, searchTerm, textSearchMode, filters, sortBy, effectiveSearchLength, forceSearch]);
+  }, [medicines, searchTerm, textSearchMode, filters, sortBy, effectiveSearchLength, forceSearch, isDataLoaded]);
 
   const handleDeleteMedicine = useCallback(async (medicine: Medicine) => {
       if (!window.confirm(t('confirmDeleteMedicine'))) return;
@@ -623,6 +625,16 @@ const App: React.FC = () => {
       setView('settings');
   }, [t]);
 
+  // Handle Reset Cosmetics to Default (Force Reload from Code)
+  const handleResetCosmeticsToDefault = useCallback(async () => {
+      if(!confirm(t('confirmResetCosmetics'))) return;
+      const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
+      const defaultData = INITIAL_COSMETICS_DATA;
+      setCosmetics(defaultData);
+      await setItem(COSMETICS_CACHE_KEY, defaultData);
+      alert(t('resetSuccess'));
+  }, [t]);
+
   const headerTitle = useMemo(() => {
       if (view === 'details') return selectedMedicine?.['Trade Name'] || 'Details';
       if (view === 'cosmeticDetails') return selectedCosmetic?.SpecificName || 'Details';
@@ -654,6 +666,7 @@ const App: React.FC = () => {
       setSelectedMedicine(null); 
       setSelectedCosmetic(null);
       setAssistantPrompt(''); 
+      setActiveConversationId(null);
       setIsAssistantOpen(true); 
   }, [checkAiAccess]);
 
@@ -664,6 +677,7 @@ const App: React.FC = () => {
         return; 
     }
     setAssistantPrompt('##PRESCRIPTION_MODE##'); 
+    setActiveConversationId(null);
     setIsAssistantOpen(true);
   }, [user, t, checkAiAccess]);
 
@@ -671,6 +685,7 @@ const App: React.FC = () => {
       if (!checkAiAccess()) return;
       setSelectedMedicine(medicine);
       setAssistantPrompt('');
+      setActiveConversationId(null);
       setIsAssistantOpen(true);
   }, [checkAiAccess]);
   
@@ -678,6 +693,7 @@ const App: React.FC = () => {
       if (!checkAiAccess()) return;
       setSelectedCosmetic(cosmetic);
       setAssistantPrompt('');
+      setActiveConversationId(null);
       setIsAssistantOpen(true);
   }, [checkAiAccess]);
 
@@ -690,9 +706,50 @@ const App: React.FC = () => {
       setChatHistory([]);
   }, []);
 
+  // --- Handle Save Assistant History ---
+  const handleSaveAssistantHistory = useCallback((hist: ChatMessage[]) => {
+      setIsAssistantOpen(false);
+      setCurrentChatHistory([]);
+
+      // 1. Don't save if empty or no user interaction
+      const hasUserMessage = hist.some(msg => msg.role === 'user');
+      if (!hasUserMessage) {
+          setActiveConversationId(null);
+          return;
+      }
+
+      setChatHistory(prev => {
+          // 2. Update existing if active
+          if (activeConversationId) {
+              return prev.map(c => {
+                  if (c.id === activeConversationId) {
+                      return {
+                          ...c,
+                          messages: hist,
+                          timestamp: Date.now() // Update timestamp to bump to top
+                      };
+                  }
+                  return c;
+              });
+          }
+
+          // 3. Create New
+          const firstUserMsg = hist.find(m => m.role === 'user');
+          const titleText = firstUserMsg?.parts.find(p => p.text)?.text || 'New Conversation';
+          const newConvo: Conversation = {
+              id: Date.now().toString(),
+              title: titleText.slice(0, 30) + (titleText.length > 30 ? '...' : ''),
+              messages: hist,
+              timestamp: Date.now()
+          };
+          return [...prev, newConvo];
+      });
+      setActiveConversationId(null);
+  }, [activeConversationId]);
+
   const handleMedicineLongPress = useCallback((m: Medicine) => {
         if (checkAiAccess()) {
-            setSelectedMedicine(m); setAssistantPrompt(''); setIsAssistantOpen(true); 
+            setSelectedMedicine(m); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); 
         }
   }, [checkAiAccess]);
 
@@ -700,6 +757,7 @@ const App: React.FC = () => {
         if (checkAiAccess()) {
             setSelectedCosmetic(c);
             setAssistantPrompt('');
+            setActiveConversationId(null);
             setIsAssistantOpen(true);
         }
   }, [checkAiAccess]);
@@ -715,6 +773,7 @@ const App: React.FC = () => {
           return <ChatHistoryView 
               conversations={chatHistory}
               onSelectConversation={(convo) => {
+                  setActiveConversationId(convo.id);
                   setCurrentChatHistory(convo.messages);
                   setIsAssistantOpen(true);
               }}
@@ -732,16 +791,27 @@ const App: React.FC = () => {
           const isDetails = view === 'details' && selectedMedicine;
           const isAlternatives = view === 'alternatives' && sourceMedicine && alternativesResults;
 
+          // **OPTIMISTIC UI**: Always render the structure (SearchBar, Filters), don't block with loading screen.
+          // The ResultsList will handle the empty/loading state gracefully.
           return (
               <>
                 <div className={showList ? 'contents' : 'hidden'}>
                     <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={handleClearSearch} onForceSearch={handleForceSearch} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
+                    
+                    {/* Tiny Non-blocking Loader for background data fetching */}
+                    {!isDataLoaded && (
+                        <div className="w-full h-1 bg-gray-100 overflow-hidden mt-1 rounded-full">
+                            <div className="h-full bg-primary/50 animate-progress origin-left w-full"></div>
+                        </div>
+                    )}
+
                     <div className="flex gap-2 mt-2">
                         <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFilterCount} t={t} />
                         <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                     </div>
+                    
                     <div className="mt-4">
-                        {isSearchActive ? (
+                        {isSearchActive && (
                             <ResultsList 
                                 medicines={filteredMedicines} 
                                 onMedicineSelect={handleMedicineSelect} 
@@ -751,11 +821,13 @@ const App: React.FC = () => {
                                 onToggleFavorite={toggleFavorite} 
                                 t={t} 
                                 language={language} 
-                                resultsState={filteredMedicines.length > 0 ? 'loaded' : 'empty'}
+                                resultsState={isDataLoaded ? (filteredMedicines.length > 0 ? 'loaded' : 'empty') : 'loading'} 
                                 limit={resultsLimit}
                                 onLoadMore={handleLoadMoreResults}
                             />
-                        ) : (
+                        )}
+                        
+                        {!isSearchActive && !searchTerm && (
                             <div className="flex flex-col items-center justify-center py-20 opacity-80 pointer-events-none select-none">
                                 <h2 className="text-xl font-bold text-gray-400 dark:text-slate-600 font-poppins tracking-wide">PharmaSource</h2>
                                 <div className="h-1 w-12 bg-primary/30 rounded-full mt-2"></div>
@@ -870,6 +942,7 @@ const App: React.FC = () => {
                         <button onClick={() => setView('addData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addData')}</button>
                         <button onClick={() => setView('addInsuranceData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addInsuranceData')}</button>
                         <button onClick={() => setView('addCosmeticsData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addCosmeticsData')}</button>
+                        <button onClick={handleResetCosmeticsToDefault} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700 text-red-500"><div className="w-5 h-5"><TrashIcon /></div> {t('resetCosmeticsData')}</button>
                     </div>
                   )}
               </div>
@@ -891,7 +964,7 @@ const App: React.FC = () => {
         onAdminClick={handleAdminClick}
         view={view}
       />
-      <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[90px] pb-[90px] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
+      <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
         {renderContent()}
       </main>
       <BottomNavBar 
@@ -917,18 +990,7 @@ const App: React.FC = () => {
       </div>
       <AssistantModal 
         isOpen={isAssistantOpen} 
-        onSaveAndClose={(hist) => { 
-            if (hist && hist.length > 0) {
-              setChatHistory(prev => [...prev, { 
-                  id: Date.now().toString(), 
-                  title: hist[0]?.parts?.[0]?.text?.slice(0, 30) || 'Chat', 
-                  messages: hist, 
-                  timestamp: Date.now() 
-              }]); 
-            }
-            setIsAssistantOpen(false); 
-            setCurrentChatHistory([]); 
-        }} 
+        onSaveAndClose={handleSaveAssistantHistory} 
         contextMedicine={selectedMedicine} 
         contextCosmetic={selectedCosmetic} 
         allMedicines={medicines} 

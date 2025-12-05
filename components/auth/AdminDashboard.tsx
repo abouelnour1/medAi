@@ -17,13 +17,10 @@ import DownloadIcon from '../icons/DownloadIcon';
 import SearchableDropdown from '../SearchableDropdown';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
-import { MEDICINE_DATA } from '../../data/data';
-import { INITIAL_INSURANCE_DATA } from '../../data/insurance-data';
-import { INITIAL_COSMETICS_DATA } from '../../data/cosmetics-data';
 import { setItem } from '../../utils/storage';
 
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
 
 type Panel = 'menu' | 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration' | 'addItem';
 
@@ -698,14 +695,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           setIsMigrating(true);
           try {
               if (type === 'medicines') {
+                  // DYNAMIC IMPORT
+                  const { MEDICINE_DATA } = await import('../../data/data');
                   await uploadBatch('medicines', MEDICINE_DATA, 'RegisterNumber');
               } else if (type === 'insurance') {
+                  const { INITIAL_INSURANCE_DATA } = await import('../../data/insurance-data');
                   const dataWithIds = INITIAL_INSURANCE_DATA.map(item => ({
                       ...item,
                       _id: `${item.scientificName}-${item.strength}-${item.form}`.replace(/[\/\s\.]/g, '_')
                   }));
                   await uploadBatch('insurance', dataWithIds, '_id');
               } else {
+                  const { INITIAL_COSMETICS_DATA } = await import('../../data/cosmetics-data');
                   await uploadBatch('cosmetics', INITIAL_COSMETICS_DATA, 'id');
               }
           } catch (e: any) {

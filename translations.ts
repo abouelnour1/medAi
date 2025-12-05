@@ -361,6 +361,12 @@ export const translations = {
     resetAiUsage: 'تصفير العداد',
     grantPrescriptionAccess: 'منح صلاحية الوصفات',
     confirmDeleteCosmetic: 'هل أنت متأكد من حذف هذا المنتج التجميلي؟',
+    signInGoogle: 'تسجيل الدخول بجوجل',
+    signInApple: 'تسجيل الدخول بـ Apple',
+    orContinueWith: 'أو الاستمرار بواسطة',
+    resetCosmeticsData: 'استعادة بيانات التجميل الأصلية',
+    confirmResetCosmetics: 'سيؤدي هذا إلى حذف جميع التغييرات المحلية التي أجريتها على بيانات التجميل واستعادتها كما هي في الكود المصدري. هل أنت متأكد؟',
+    resetSuccess: 'تمت استعادة البيانات بنجاح.',
   },
   en: {
     appTitle: 'PharmaSource',
@@ -723,6 +729,12 @@ export const translations = {
     resetAiUsage: 'Reset Counter',
     grantPrescriptionAccess: 'Grant Prescription Access',
     confirmDeleteCosmetic: 'Are you sure you want to delete this cosmetic product?',
+    signInGoogle: 'Sign in with Google',
+    signInApple: 'Sign in with Apple',
+    orContinueWith: 'Or continue with',
+    resetCosmeticsData: 'Reset Cosmetics to Original',
+    confirmResetCosmetics: 'This will delete all local changes to cosmetics and restore from source code. Are you sure?',
+    resetSuccess: 'Data reset successfully.',
   }
 };
 

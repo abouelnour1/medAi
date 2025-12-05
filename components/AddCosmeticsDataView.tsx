@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { TFunction } from '../types';
 
@@ -8,11 +9,13 @@ interface AddCosmeticsDataViewProps {
 
 const sampleJson = `[
   {
-    "BrandName": "Avalon Pharma",
-    "SpecificName": "Avalon Care Hand Cream Original",
-    "SpecificNameAr": "أفالون كير كريم اليدين الأصلي",
-    "FirstSubCategoryEn": "Skin care products",
-    "SecondSubCategoryEn": "Hand care products"
+    "BrandName": "Bath and Body Works",
+    "SpecificName": "Bath & Body Works Body Cream Sage Mint",
+    "manufacturerNameEn": "bath & body works international llc",
+    "manufacturerCountryEn": "United States",
+    "Active ingredient": "",
+    "Key Ingredients": "",
+    "Highlights": ""
   }
 ]`;
 

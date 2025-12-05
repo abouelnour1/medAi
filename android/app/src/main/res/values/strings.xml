@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">pharmasource</string>
-    <string name="title_activity_main">pharmasource</string>
-    <string name="package_name">com.ahmed.medai</string>
-    <string name="custom_url_scheme">com.ahmed.medai</string>
+    <string name="app_name">PharmaSource</string>
+    <string name="title_activity_main">PharmaSource</string>
+    <string name="package_name">com.ahmed.pharmasource</string>
+    <string name="custom_url_scheme">com.ahmed.pharmasource</string>
 </resources>

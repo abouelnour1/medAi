@@ -39,9 +39,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className="bg-gradient-to-b from-[#2dd4bf] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 shadow-lg h-[80px] flex items-center border-b border-primary-dark/30"
+        className="bg-gradient-to-b from-[#2dd4bf] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 shadow-lg h-auto min-h-[calc(env(safe-area-inset-top)+60px)] flex items-center border-b border-primary-dark/30"
     >
-      <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full h-full">
+      <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full">
         <div className="flex-1 flex justify-start min-w-0">
           {showBack && (
             <button

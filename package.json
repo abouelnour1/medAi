@@ -1,5 +1,5 @@
 {
-  "name": "pharmasource-ksa",
+  "name": "copy-of-pharmasource--التحويل-لاندرويد",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,10 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@google/genai": "0.15.0",
-    "firebase": "^12.6.0"
+    "firebase": "^12.6.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.2.6",
+    "@capacitor/cli": "^7.4.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

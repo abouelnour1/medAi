@@ -8,11 +8,10 @@ import { getFunctions, Functions } from "firebase/functions";
 
 // --- FIREBASE SWITCH ---
 // Set this to TRUE to disconnect Firebase completely.
-// Set this to FALSE to enable Firebase connection.
 export const FIREBASE_DISABLED = false;
 
-// 1. WEB CONFIGURATION (Your existing config)
-const firebaseConfigWeb = {
+// 1. Web Configuration (Default for JS SDK)
+const firebaseWebConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
   authDomain: "medainew-fa6a2.firebaseapp.com",
   projectId: "medainew-fa6a2",
@@ -22,43 +21,21 @@ const firebaseConfigWeb = {
   measurementId: "G-J06N12MDW0"
 };
 
-// 2. ANDROID CONFIGURATION
-// Updated with values provided by user
-const firebaseConfigAndroid = {
-  apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
+// 2. Android Configuration (Provided by User)
+// This will be used when running on an Android device via Capacitor
+const firebaseAndroidConfig = {
+  apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s", // Usually same API Key
   authDomain: "medainew-fa6a2.firebaseapp.com",
   projectId: "medainew-fa6a2",
   storageBucket: "medainew-fa6a2.firebasestorage.app",
   messagingSenderId: "568872568132",
-  appId: "1:568872568132:android:143c4fb5b2221b3416c311",
-  measurementId: "G-J06N12MDW0" // Using same measurement ID or can be left blank if not set up for Android stream
+  appId: "1:568872568132:android:143c4fb5b2221b3416c311", // ANDROID SPECIFIC ID
+  measurementId: "G-J06N12MDW0"
 };
 
-// Helper to detect if running in a Native Environment (Capacitor, Cordova, or Android WebView)
-const isNativePlatform = () => {
-  // Check for Capacitor
-  // @ts-ignore
-  if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
-    return true;
-  }
-  
-  // Check for generic Android WebView (often contains 'Wv' or 'Version/4.0 Chrome...')
-  if (typeof navigator !== 'undefined' && navigator.userAgent) {
-      if (navigator.userAgent.includes('Wv') || (navigator.userAgent.includes('Android') && navigator.userAgent.includes('Version/'))) {
-          return true;
-      }
-  }
-  
-  return false;
-};
-
-// Toggle this manually to 'true' if you want to force test the Android config in the browser
-const FORCE_ANDROID_CONFIG = false; 
-
-// Select the correct config based on environment
-const firebaseConfig = (isNativePlatform() || FORCE_ANDROID_CONFIG) 
-  ? firebaseConfigAndroid 
-  : firebaseConfigWeb;
+// SHA-1 Certificate Fingerprint (For Reference/Console Setup):
+// 69:6c:05:61:da:e0:7f:ce:99:eb:37:f2:5e:42:25:de:63:3f:4f:79
+// Ensure this SHA-1 is added to your Firebase Console -> Project Settings -> Android App
 
 let app: any;
 let db: Firestore;
@@ -67,20 +44,54 @@ let analytics: any = null;
 let messaging: Messaging | null = null;
 let functions: Functions | null = null;
 
+// Robust check for Capacitor Android Environment
+const isAndroidEnvironment = () => {
+  // 1. Check Capacitor Platform
+  // @ts-ignore
+  if (typeof window !== 'undefined' && window.Capacitor) {
+      // @ts-ignore
+      const platform = window.Capacitor.getPlatform();
+      console.log('PharmaSource: Capacitor Platform detected:', platform);
+      if (platform === 'android') return true;
+  }
+
+  // 2. Fallback: Check User Agent for Android AND specific webview indicators
+  // This helps if Capacitor object isn't fully injected yet when this file runs
+  if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      // Check for Android AND (wl = webview/wrapper indicators often present in hybrid apps)
+      if (ua.includes('android') && (ua.includes('wv') || ua.includes('capacitor') || window.location.protocol.includes('http'))) {
+          // If we are on http/https localhost on an Android device, it's likely the wrapper
+          // Note: Capacitor often serves from https://localhost or http://localhost
+          if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+              console.log('PharmaSource: Android Environment detected via UserAgent/Hostname');
+              return true;
+          }
+      }
+  }
+  
+  return false;
+};
+
 if (!FIREBASE_DISABLED) {
-  // Initialize Firebase
   try {
-    const platformName = (isNativePlatform() || FORCE_ANDROID_CONFIG) ? 'ANDROID' : 'WEB';
-    console.log(`[Firebase] Initializing with ${platformName} config...`);
+    let activeConfig = firebaseWebConfig;
     
-    app = initializeApp(firebaseConfig);
+    // Explicitly switch config if on Android
+    if (isAndroidEnvironment()) {
+        console.log("PharmaSource: Switching to Android Firebase Config (App ID: ...143c4fb5b2221b3416c311)");
+        activeConfig = firebaseAndroidConfig;
+    } else {
+        console.log("PharmaSource: Using Web/iOS Firebase Config.");
+    }
+
+    app = initializeApp(activeConfig);
     db = getFirestore(app);
     auth = getAuth(app);
     
-    // Initialize Functions specifically
     try {
-        // Explicitly initializing functions with the app instance
         functions = getFunctions(app);
+        console.log("Firebase Functions initialized successfully");
     } catch (err) {
         console.error("Firebase Functions Initialization failed.", err);
     }
@@ -94,18 +105,17 @@ if (!FIREBASE_DISABLED) {
     try {
       analytics = getAnalytics(app);
     } catch (e) {
-      console.warn("Firebase Analytics failed to initialize (likely blocked by ad-blocker or non-supported env):", e);
+      console.warn("Firebase Analytics failed to initialize:", e);
     }
 
     try {
-      // Only attempt to initialize messaging if Service Workers are supported
       if ('serviceWorker' in navigator) {
         messaging = getMessaging(app);
       } else {
         console.warn("Service Workers not supported, Messaging disabled.");
       }
     } catch (e) {
-      console.warn("Firebase Messaging failed to initialize (Service messaging is not available in this context):", e);
+      console.warn("Firebase Messaging failed to initialize:", e);
     }
   }
 
@@ -122,7 +132,6 @@ if (!FIREBASE_DISABLED) {
   }
 } else {
   console.log("Firebase is currently DISABLED by configuration.");
-  // Export dummies to prevent import crashes, but logic must check FIREBASE_DISABLED
   app = null;
   db = null as unknown as Firestore;
   auth = null as unknown as Auth;

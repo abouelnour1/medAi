@@ -137,10 +137,11 @@ ${guidelinesString}
 3. **رقم الملف** (fileNumber): رقم ملف عشوائي.
 4. **التاريخ** (date - YYYY-MM-DD).
 5. **اسم الطبيب** (doctorName).
-6. **تخصص الطبيب** (doctorSpecialty): تخصص مناسب.
-7. **شركة التأمين** (insuranceCompany): شركة تأمين معروفة.
-8. **التشخيص والكود** (diagnosisCode, diagnosisDescription): بالإنجليزية حصراً.
-9. **اسم المستشفى** (hospitalName).
+6. **اسم الطبيب بالعربي** (doctorNameAr).
+7. **تخصص الطبيب** (doctorSpecialty): تخصص مناسب.
+8. **شركة التأمين** (insuranceCompany): شركة تأمين معروفة.
+9. **التشخيص والكود** (diagnosisCode, diagnosisDescription): بالإنجليزية حصراً.
+10. **اسم المستشفى** (hospitalName).
 
 **كتابة الوصفات الطبية:**
 *   عند كتابة وصفة، تأكد من أن الناتج بصيغة JSON المطلوبة بدقة كما يلي:
@@ -152,6 +153,7 @@ ${guidelinesString}
   "fileNumber": "...",
   "date": "...",
   "doctorName": "...",
+  "doctorNameAr": "...",
   "doctorSpecialty": "...",
   "insuranceCompany": "...",
   "diagnosisCode": "...",
@@ -187,10 +189,11 @@ If the user does not provide the following details, **YOU MUST INVENT REALISTIC 
 3. **File Number** (fileNumber).
 4. **Date** (date).
 5. **Doctor Name** (doctorName).
-6. **Doctor Specialty** (doctorSpecialty).
-7. **Insurance Company** (insuranceCompany).
-8. **Diagnosis & Code** (diagnosisCode, diagnosisDescription - English).
-9. **Hospital Name** (hospitalName).
+6. **Doctor Name Arabic** (doctorNameAr).
+7. **Doctor Specialty** (doctorSpecialty).
+8. **Insurance Company** (insuranceCompany).
+9. **Diagnosis & Code** (diagnosisCode, diagnosisDescription - English).
+10. **Hospital Name** (hospitalName).
 
 **Prescription Writing:**
 *   Ensure the output matches the required JSON format strictly.
