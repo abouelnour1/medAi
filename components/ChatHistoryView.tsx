@@ -45,9 +45,6 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     );
   }
 
-  // Sort conversations by timestamp descending (newest first)
-  const sortedConversations = [...conversations].sort((a, b) => b.timestamp - a.timestamp);
-
   return (
     <div className="animate-fade-in space-y-4">
         <div className="flex justify-end">
@@ -61,7 +58,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
         
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm">
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-          {sortedConversations.map(convo => {
+          {conversations.map(convo => {
             const hasPrescription = convo.messages.some(msg => 
                 msg.parts?.some(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))
             );

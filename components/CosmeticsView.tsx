@@ -98,14 +98,12 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
   
   const showResults = (selectedBrand || searchTerm.replace(/%/g, '').trim().length >= 3);
   const displayedCosmetics = filteredCosmetics.slice(0, limit);
-  const hasMore = filteredCosmetics.length > limit;
 
   return (
-    <div className="animate-fade-in pb-20 relative">
-      {/* Search Header - Removed sticky to fix layout shift issues */}
-      <div className="bg-light-bg dark:bg-dark-bg mb-4 space-y-3">
+    <div className="space-y-4 animate-fade-in">
+      <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm space-y-4">
         <div>
-            <label className="block text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary mb-1 uppercase tracking-wide">
+            <label className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
                 {t('brandName')}
             </label>
             <SearchableDropdown
@@ -118,17 +116,21 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
             />
         </div>
 
-        <div className="relative">
+        <div>
+          <label htmlFor="cosmetic-search" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
+            {t('productName')}
+          </label>
+          <div className="relative">
             <input
-            id="cosmetic-search"
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('searchCosmeticsPlaceholder')}
-            className="w-full h-[45px] pl-10 pr-10 rtl:pr-10 rtl:pl-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 dark:focus:border-pink-500 rounded-xl outline-none transition-all shadow-sm"
+              id="cosmetic-search"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('searchCosmeticsPlaceholder')}
+              className="w-full h-[42px] py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors ltr:pl-10 ltr:pr-10 rtl:pr-10 rtl:pl-3"
             />
             <div className="absolute top-1/2 ltr:left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary pointer-events-none h-5 w-5">
-            <SearchIcon />
+               <SearchIcon />
             </div>
             {searchTerm && (
                 <button
@@ -138,12 +140,13 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
                     <ClearIcon />
                 </button>
             )}
+          </div>
         </div>
       </div>
 
       {showResults ? (
         displayedCosmetics.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-3">
             {displayedCosmetics.map(cosmetic => (
             <CosmeticCard 
                 key={cosmetic.id} 
@@ -154,24 +157,12 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
                 onLongPress={onCosmeticLongPress}
             />
             ))}
-            
-            {hasMore && (
-                <div className="flex flex-col items-center pt-4 pb-8 space-y-3">
-                    <div ref={loaderRef} className="h-6 w-full flex justify-center items-center">
-                        <div className="w-5 h-5 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
-                    </div>
-                    {/* Fallback Manual Button */}
-                    <button 
-                        onClick={() => onLoadMore && onLoadMore()}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary text-sm rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                        {t('loadMore') || 'Load More'}
-                    </button>
-                </div>
+            {filteredCosmetics.length > limit && (
+                <div ref={loaderRef} className="py-4 text-center text-sm text-gray-400">{t('loadMore') || 'Loading more...'}</div>
             )}
         </div>
         ) : (
-        <div className="text-center py-10 px-4 bg-white dark:bg-dark-card rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="text-center py-10 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm">
             <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-text-secondary">{t('noResultsTitle')}</h3>
             <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1">{t('noResultsSubtitle')}</p>
         </div>

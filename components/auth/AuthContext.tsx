@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
-import { auth, db, googleProvider, FIREBASE_DISABLED } from '../../firebase';
+import { auth, db, FIREBASE_DISABLED } from '../../firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -11,19 +11,17 @@ import {
   sendPasswordResetEmail,
   setPersistence,
   browserLocalPersistence,
-  signInWithRedirect, 
-  signInWithPopup,
-  getRedirectResult,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
   doc, 
   getDoc, 
   setDoc, 
+  collection, 
   getDocs, 
   updateDoc, 
   deleteDoc,
-  collection
+  serverTimestamp 
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
@@ -44,51 +42,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [isLoading, setIsLoading] = useState(() => {
-      // If we have a user, we aren't "loading" initially, we are optimistically showing content.
       return !localStorage.getItem(LOCAL_USER_STORAGE_KEY);
   });
 
-  // Handle Redirect Result immediately on mount
+  useEffect(() => {
+     if (FIREBASE_DISABLED) return;
+     const initAuth = async () => {
+         try {
+             await setPersistence(auth, browserLocalPersistence);
+         } catch (e) {
+             console.error("Error setting persistence:", e);
+         }
+     };
+     initAuth();
+  }, []);
+
   useEffect(() => {
     if (FIREBASE_DISABLED) {
         setIsLoading(false);
         return;
     }
 
-    const initAuth = async () => {
-        try {
-            // Force persistence to LOCAL to survive redirects on mobile
-            await setPersistence(auth, browserLocalPersistence);
-            
-            // Check for redirect result (Coming back from Google)
-            const result = await getRedirectResult(auth).catch(error => {
-                console.error("Redirect Result Error:", error);
-                if (error.code === 'auth/network-request-failed') {
-                    console.warn("Network error during redirect result.");
-                }
-                return null;
-            });
-
-            if (result && result.user) {
-                console.log("Successfully returned from redirect login:", result.user.email);
-                await syncUserData(result.user);
-            }
-        } catch (e) {
-            console.error("Auth Init Error:", e);
-        }
-    };
-
-    initAuth();
-
-    // Listen for auth state changes (This handles normal login and session restoration)
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         await syncUserData(firebaseUser);
       } else {
         const cachedUser = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-        if (cachedUser) {
+        if (!isLoading) { 
              setUser(null);
              localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        } else {
+             setUser(null);
         }
         setIsLoading(false);
       }
@@ -98,33 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncUserData = async (firebaseUser: FirebaseUser) => {
-      // 1. Optimistic Update (Immediate UI Feedback)
-      const optimisticUser: User = {
-          id: firebaseUser.uid,
-          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          role: 'premium', // Assume premium/default initially
-          email: firebaseUser.email || '',
-          emailVerified: firebaseUser.emailVerified,
-          status: 'active',
-          aiRequestCount: 0,
-          lastRequestDate: new Date().toISOString().split('T')[0],
-          prescriptionPrivilege: false
-      };
-
-      // Set user immediately to unblock UI while we fetch details
-      setUser(prev => {
-          // If we already have a user with same ID (e.g. from cache), keep it to avoid flicker
-          // unless the new one is "verified" and old one wasn't
-          if (prev && prev.id === optimisticUser.id) {
-              if (optimisticUser.emailVerified && !prev.emailVerified) {
-                  return { ...prev, emailVerified: true };
-              }
-              return prev;
-          }
-          return optimisticUser;
-      });
-
-      // 2. Fetch Full Profile from Firestore
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
@@ -133,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const firestoreData = userDocSnap.data();
             let emailVerified = firebaseUser.emailVerified;
             
-            // Sync verification status to Firestore if changed
             if (emailVerified && !firestoreData.emailVerified) {
                 updateDoc(userDocRef, { emailVerified: true }).catch(e => console.log("Offline: Could not update verify status"));
             }
@@ -144,26 +100,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 emailVerified: emailVerified, 
                 email: firebaseUser.email || '',
                 prescriptionPrivilege: firestoreData.prescriptionPrivilege ?? false,
-                customAiLimit: firestoreData.customAiLimit
+                customAiLimit: firestoreData.customAiLimit // Ensure this is synced
             } as User;
 
             setUser(finalUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(finalUser));
           } else {
-              // Create new user doc if it doesn't exist
               const newUser: User = {
-                  ...optimisticUser,
-                  role: 'premium', // Ensure default role is set
-                  status: 'active'
+                  id: firebaseUser.uid,
+                  username: firebaseUser.email?.split('@')[0] || 'User',
+                  role: 'premium',
+                  aiRequestCount: 0,
+                  lastRequestDate: new Date().toISOString().split('T')[0],
+                  status: 'pending',
+                  emailVerified: firebaseUser.emailVerified,
+                  email: firebaseUser.email || '',
+                  prescriptionPrivilege: false
               };
-              await setDoc(userDocRef, newUser).catch(e => console.log("Offline: could not create doc"));
+              setDoc(userDocRef, newUser).catch(e => console.log("Offline: could not create doc"));
               
               setUser(newUser);
               localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
           }
       } catch (e) {
-          console.log("Network issue or offline: keeping existing/optimistic user data.", e);
-          // We already set the optimistic user, so we are good to go for offline usage
+          console.log("Network issue or offline: keeping existing cached user data.");
       } finally {
           setIsLoading(false);
       }
@@ -194,33 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw new Error(errorMessage);
     }
-  }, []);
-
-  const loginWithGoogle = useCallback(async (): Promise<void> => {
-      if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
-      setIsLoading(true);
-      try {
-          await setPersistence(auth, browserLocalPersistence);
-          // Use signInWithPopup instead of redirect. 
-          // This avoids the "Failed to load localhost" navigation error on Android WebViews
-          // because it handles auth in a separate window/tab and messages back, keeping the main app alive.
-          await signInWithPopup(auth, googleProvider);
-      } catch (error: any) {
-          console.error("Google Login Error:", error);
-          setIsLoading(false);
-          
-          if (error.code === 'auth/popup-closed-by-user') {
-              throw new Error('تم إلغاء تسجيل الدخول.');
-          }
-          if (error.code === 'auth/popup-blocked') {
-              throw new Error('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لتسجيل الدخول.');
-          }
-          if (error.code === 'auth/unauthorized-domain') {
-              const currentDomain = window.location.hostname;
-              throw new Error(`النطاق الحالي (${currentDomain}) غير مصرح به في Firebase.\n\nيرجى إضافته في إعدادات Firebase.`);
-          }
-          throw new Error('فشل تسجيل الدخول بواسطة جوجل: ' + (error.message || 'خطأ غير معروف'));
-      }
   }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<void> => {
@@ -299,14 +232,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             await auth.currentUser.reload();
             const currentUser = auth.currentUser;
-            if (currentUser.emailVerified && user && !user.emailVerified) {
+            if (currentUser) {
                 await syncUserData(currentUser);
             }
         } catch(e) {
             console.log("Offline: Cannot reload user from server.");
         }
     }
-  }, [user]);
+  }, []);
   
   const getSettings = useCallback((): AppSettings => {
     try {
@@ -368,6 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const currentSettings = getSettings();
+        // Priority: User Custom Limit -> Global Settings Limit -> Default 3
         const limit = user.customAiLimit ?? (currentSettings.aiRequestLimit ?? 3);
         const isAiEnabled = currentSettings.isAiEnabled !== false;
 
@@ -416,6 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userRef = doc(db, 'users', updatedUser.id);
             await updateDoc(userRef, { ...updatedUser });
         }
+        // Update local state if the updated user is the current logged in user
         if (user && user.id === updatedUser.id) {
             setUser(updatedUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(updatedUser));
@@ -437,7 +372,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = { 
       user, 
       login, 
-      loginWithGoogle,
       register, 
       logout, 
       requestAIAccess, 

@@ -68,15 +68,15 @@ export interface Cosmetic {
   id: string;
   BrandName: string;
   SpecificName: string;
-  SpecificNameAr?: string;
-  FirstSubCategoryAr?: string;
-  FirstSubCategoryEn?: string;
-  SecondSubCategoryAr?: string;
-  SecondSubCategoryEn?: string;
+  SpecificNameAr: string;
+  FirstSubCategoryAr: string;
+  FirstSubCategoryEn: string;
+  SecondSubCategoryAr: string;
+  SecondSubCategoryEn: string;
   manufacturerNameEn: string;
-  manufacturerCountryAr?: string;
+  manufacturerCountryAr: string;
   manufacturerCountryEn: string;
-  "Active ingredient"?: string;
+  "Active ingredient": string;
   "Key Ingredients"?: string;
   Highlights?: string;
 }
@@ -132,7 +132,6 @@ export interface PrescriptionData {
   fileNumber?: string;
   date?: string;
   doctorName?: string;
-  doctorNameAr?: string;
   doctorSpecialty?: string;
   policy?: string;
   insuranceCompany?: string;
@@ -197,8 +196,6 @@ export type AuthContextType = {
   reloadUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isLoading: boolean;
-  // Social Login
-  loginWithGoogle: () => Promise<void>;
   // Admin functions
   getAllUsers: () => User[];
   updateUser: (user: User) => void;

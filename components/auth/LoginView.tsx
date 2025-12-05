@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
-import GoogleIcon from '../icons/GoogleIcon';
 
 interface LoginViewProps {
   onSwitchToRegister: () => void;
@@ -17,7 +16,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const [successMessage, setSuccessMessage] = useState('');
   const [isResetMode, setIsResetMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,19 +49,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSocialLogin = async () => {
-      setError('');
-      setIsLoading(true);
-      try {
-          await loginWithGoogle();
-          onLoginSuccess();
-      } catch (err: any) {
-          setError(err.message || 'Login failed');
-      } finally {
-          setIsLoading(false);
-      }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -120,26 +106,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   return (
     <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md space-y-6 max-w-md mx-auto animate-fade-in">
       <h2 className="text-2xl font-bold text-center text-light-text dark:text-dark-text">{t('login')}</h2>
-      
-      {/* Social Login Buttons */}
-      <div className="space-y-3">
-          <button 
-            type="button" 
-            onClick={handleSocialLogin}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm disabled:opacity-70"
-          >
-              <div className="w-5 h-5"><GoogleIcon /></div>
-              <span>{t('signInGoogle')}</span>
-          </button>
-      </div>
-
-      <div className="relative flex py-1 items-center">
-          <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-          <span className="flex-shrink-0 mx-4 text-xs text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('orContinueWith')}</span>
-          <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('email')}</label>

@@ -170,12 +170,11 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 2. **الرقم الوطني** (patientId): رقم هوية سعودي عشوائي (مثال: 10452xxxxx).
 3. **رقم الملف** (fileNumber): رقم ملف عشوائي.
 4. **التاريخ** (date): استخدم تاريخ اليوم (YYYY-MM-DD).
-5. **اسم الطبيب** (doctorName): اختر اسماً لطبيب (مثال: Dr. Abdullah...).
-6. **اسم الطبيب بالعربي** (doctorNameAr): اختر الاسم العربي المقابل (مثال: د. عبدالله...).
-7. **تخصص الطبيب** (doctorSpecialty): اختر تخصصاً يناسب الدواء الموصوف (مثال: Consultant Internal Medicine).
-8. **شركة التأمين** (insuranceCompany): اجعلها دائماً "Cash" (نقدي) إلا إذا حدد المستخدم اسم شركة تأمين بشكل صريح.
-9. **التشخيص والكود** (diagnosisCode, diagnosisDescription): ضع تشخيصاً طبياً دقيقاً بالإنجليزية (English ONLY) وكود ICD-10.
-10. **اسم المستشفى** (hospitalName): اختر اسماً لمستشفى (مثال: مستشفى المملكة، دلة، إلخ).
+5. **اسم الطبيب** (doctorName): اختر اسماً لطبيب (مثال: د. عبدالله...).
+6. **تخصص الطبيب** (doctorSpecialty): اختر تخصصاً يناسب الدواء الموصوف (مثال: Consultant Internal Medicine).
+7. **شركة التأمين** (insuranceCompany): اختر شركة مشهورة (مثال: Bupa, Tawuniya).
+8. **التشخيص والكود** (diagnosisCode, diagnosisDescription): ضع تشخيصاً طبياً دقيقاً بالإنجليزية (English ONLY) وكود ICD-10.
+9. **اسم المستشفى** (hospitalName): اختر اسماً لمستشفى (مثال: مستشفى المملكة، دلة، إلخ).
 
 لا تعتذر. لا تقل "لا أستطيع". لا تترك الحقول فارغة. فقط اكتب الوصفة JSON كاملة.
 
@@ -188,7 +187,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   "fileNumber": "...",
   "date": "...",
   "doctorName": "...",
-  "doctorNameAr": "...",
   "doctorSpecialty": "...",
   "insuranceCompany": "...",
   "diagnosisCode": "...",
@@ -216,11 +214,10 @@ If the user does not provide the following details, **YOU MUST INVENT REALISTIC 
 3. **File Number** (fileNumber): Random number.
 4. **Date** (date - use today's date).
 5. **Doctor Name** (doctorName).
-6. **Doctor Name Arabic** (doctorNameAr).
-7. **Doctor Specialty** (doctorSpecialty - appropriate for the drug).
-8. **Insurance Company** (insuranceCompany - default to "Cash" unless user specifies otherwise).
-9. **Diagnosis & Code** (diagnosisCode, diagnosisDescription - appropriate for the drug, in English).
-10. **Hospital Name** (hospitalName).
+6. **Doctor Specialty** (doctorSpecialty - appropriate for the drug).
+7. **Insurance Company** (insuranceCompany - e.g., Bupa, Tawuniya).
+8. **Diagnosis & Code** (diagnosisCode, diagnosisDescription - appropriate for the drug, in English).
+9. **Hospital Name** (hospitalName).
 
 Do NOT apologize. Just write the complete JSON.
 
@@ -233,7 +230,6 @@ Required Response Format:
   "fileNumber": "...",
   "date": "...",
   "doctorName": "...",
-  "doctorNameAr": "...",
   "doctorSpecialty": "...",
   "insuranceCompany": "...",
   "diagnosisCode": "...",
