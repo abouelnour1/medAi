@@ -12,6 +12,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   signInWithRedirect, 
+  signInWithPopup,
   getRedirectResult,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -44,55 +45,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isLoading, setIsLoading] = useState(() => {
       // If we have a user, we aren't "loading" initially, we are optimistically showing content.
-      // Real sync happens in background.
       return !localStorage.getItem(LOCAL_USER_STORAGE_KEY);
   });
 
-  useEffect(() => {
-     if (FIREBASE_DISABLED) return;
-     const initAuth = async () => {
-         try {
-             await setPersistence(auth, browserLocalPersistence);
-         } catch (e) {
-             console.error("Error setting persistence:", e);
-         }
-     };
-     initAuth();
-  }, []);
-
+  // Handle Redirect Result immediately on mount
   useEffect(() => {
     if (FIREBASE_DISABLED) {
         setIsLoading(false);
         return;
     }
 
-    // Handle Redirect Result (Main flow for Google Auth on Mobile)
-    getRedirectResult(auth)
-        .then(async (result) => {
+    const initAuth = async () => {
+        try {
+            // Force persistence to LOCAL to survive redirects on mobile
+            await setPersistence(auth, browserLocalPersistence);
+            
+            // Check for redirect result (Coming back from Google)
+            const result = await getRedirectResult(auth).catch(error => {
+                console.error("Redirect Result Error:", error);
+                if (error.code === 'auth/network-request-failed') {
+                    console.warn("Network error during redirect result.");
+                }
+                return null;
+            });
+
             if (result && result.user) {
-                // User returned from Google Login successfully
+                console.log("Successfully returned from redirect login:", result.user.email);
                 await syncUserData(result.user);
             }
-        })
-        .catch(error => {
-            console.error("Redirect Login Result Error:", error);
-            // Handle specific domain error that users often face when deploying
-            if (error.code === 'auth/unauthorized-domain') {
-                alert(`Configuration Error: The current domain (${window.location.hostname}) is not authorized in Firebase.\n\nPlease go to Firebase Console -> Authentication -> Settings -> Authorized Domains and add this domain.`);
-            } else if (error.code === 'auth/network-request-failed') {
-                // Ignore network errors on redirect result, usually transient
-            } else {
-                // Only alert for real authentication failures to avoid spamming the user
-               console.warn("Auth Redirect Error", error.message);
-            }
-        });
+        } catch (e) {
+            console.error("Auth Init Error:", e);
+        }
+    };
 
+    initAuth();
+
+    // Listen for auth state changes (This handles normal login and session restoration)
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         await syncUserData(firebaseUser);
       } else {
         const cachedUser = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-        // Only clear if we were not already in a logged-out state to prevent unnecessary renders
         if (cachedUser) {
              setUser(null);
              localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
@@ -105,6 +98,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncUserData = async (firebaseUser: FirebaseUser) => {
+      // 1. Optimistic Update (Immediate UI Feedback)
+      const optimisticUser: User = {
+          id: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          role: 'premium', // Assume premium/default initially
+          email: firebaseUser.email || '',
+          emailVerified: firebaseUser.emailVerified,
+          status: 'active',
+          aiRequestCount: 0,
+          lastRequestDate: new Date().toISOString().split('T')[0],
+          prescriptionPrivilege: false
+      };
+
+      // Set user immediately to unblock UI while we fetch details
+      setUser(prev => {
+          // If we already have a user with same ID (e.g. from cache), keep it to avoid flicker
+          // unless the new one is "verified" and old one wasn't
+          if (prev && prev.id === optimisticUser.id) {
+              if (optimisticUser.emailVerified && !prev.emailVerified) {
+                  return { ...prev, emailVerified: true };
+              }
+              return prev;
+          }
+          return optimisticUser;
+      });
+
+      // 2. Fetch Full Profile from Firestore
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
@@ -124,23 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 emailVerified: emailVerified, 
                 email: firebaseUser.email || '',
                 prescriptionPrivilege: firestoreData.prescriptionPrivilege ?? false,
-                customAiLimit: firestoreData.customAiLimit // Ensure this is synced
+                customAiLimit: firestoreData.customAiLimit
             } as User;
 
             setUser(finalUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(finalUser));
           } else {
-              // Create new user doc
+              // Create new user doc if it doesn't exist
               const newUser: User = {
-                  id: firebaseUser.uid,
-                  username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                  role: 'premium',
-                  aiRequestCount: 0,
-                  lastRequestDate: new Date().toISOString().split('T')[0],
-                  status: 'active', // Auto-active for social login usually
-                  emailVerified: firebaseUser.emailVerified,
-                  email: firebaseUser.email || '',
-                  prescriptionPrivilege: false
+                  ...optimisticUser,
+                  role: 'premium', // Ensure default role is set
+                  status: 'active'
               };
               await setDoc(userDocRef, newUser).catch(e => console.log("Offline: could not create doc"));
               
@@ -148,8 +162,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
           }
       } catch (e) {
-          console.log("Network issue or offline: keeping existing cached user data.", e);
-          // If offline, we might already have the user from cache, so just ensure loading is false
+          console.log("Network issue or offline: keeping existing/optimistic user data.", e);
+          // We already set the optimistic user, so we are good to go for offline usage
       } finally {
           setIsLoading(false);
       }
@@ -186,19 +200,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (FIREBASE_DISABLED) throw new Error("Firebase unavailable");
       setIsLoading(true);
       try {
-          // Use signInWithRedirect for better mobile support (prevents popup blocking and crashes)
-          await signInWithRedirect(auth, googleProvider);
-          // The page will redirect to Google, so execution effectively stops here for the user.
-          // When they return, getRedirectResult (above) will handle the login.
+          await setPersistence(auth, browserLocalPersistence);
+          // Use signInWithPopup instead of redirect. 
+          // This avoids the "Failed to load localhost" navigation error on Android WebViews
+          // because it handles auth in a separate window/tab and messages back, keeping the main app alive.
+          await signInWithPopup(auth, googleProvider);
       } catch (error: any) {
           console.error("Google Login Error:", error);
           setIsLoading(false);
-          // Redirect errors are rare unless config is wrong
+          
+          if (error.code === 'auth/popup-closed-by-user') {
+              throw new Error('تم إلغاء تسجيل الدخول.');
+          }
+          if (error.code === 'auth/popup-blocked') {
+              throw new Error('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لتسجيل الدخول.');
+          }
           if (error.code === 'auth/unauthorized-domain') {
               const currentDomain = window.location.hostname;
-              throw new Error(`النطاق الحالي غير مصرح به في Firebase.\n\nيرجى إضافة: ${currentDomain}`);
+              throw new Error(`النطاق الحالي (${currentDomain}) غير مصرح به في Firebase.\n\nيرجى إضافته في إعدادات Firebase.`);
           }
-          throw new Error('فشل بدء تسجيل الدخول بواسطة جوجل: ' + (error.message || 'خطأ غير معروف'));
+          throw new Error('فشل تسجيل الدخول بواسطة جوجل: ' + (error.message || 'خطأ غير معروف'));
       }
   }, []);
 
@@ -278,7 +299,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             await auth.currentUser.reload();
             const currentUser = auth.currentUser;
-            // Only full sync if email status changed to verified, otherwise light sync
             if (currentUser.emailVerified && user && !user.emailVerified) {
                 await syncUserData(currentUser);
             }
@@ -348,7 +368,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const currentSettings = getSettings();
-        // Priority: User Custom Limit -> Global Settings Limit -> Default 3
         const limit = user.customAiLimit ?? (currentSettings.aiRequestLimit ?? 3);
         const isAiEnabled = currentSettings.isAiEnabled !== false;
 
@@ -397,7 +416,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userRef = doc(db, 'users', updatedUser.id);
             await updateDoc(userRef, { ...updatedUser });
         }
-        // Update local state if the updated user is the current logged in user
         if (user && user.id === updatedUser.id) {
             setUser(updatedUser);
             localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(updatedUser));
