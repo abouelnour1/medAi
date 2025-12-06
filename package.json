@@ -15,9 +15,7 @@
     "firebase": "^12.6.0",
     "@vitejs/plugin-react": "^5.1.1",
     "vite": "^7.2.6",
-    "@capacitor/cli": "^7.4.4",
-    "@capacitor/android": "^7.4.4",
-    "@capacitor/core": "^7.4.4"
+    "@capacitor/cli": "^7.4.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
