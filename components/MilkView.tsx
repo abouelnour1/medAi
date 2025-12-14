@@ -19,13 +19,26 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
   const [selectedMilk, setSelectedMilk] = useState<MilkProduct | null>(null);
 
   const filteredProducts = useMemo(() => {
+    // Safety check if milkProducts is undefined or not an array
+    if (!Array.isArray(milkProducts)) return [];
+
     const results = milkProducts.filter(product => {
+      if (!product) return false;
+
+      const lowerSearch = searchTerm.toLowerCase();
+      
+      // Safely access properties with fallback to empty string
+      const name = (product.name || '').toLowerCase();
+      const features = (product.features || '').toLowerCase();
+      const indication = (product.indication || '').toLowerCase();
+      const specialType = (product.specialType || '').toLowerCase();
+
       const matchesSearch = 
         searchTerm === '' ||
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.features.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.indication && product.indication.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (product.specialType && product.specialType.toLowerCase().includes(searchTerm.toLowerCase()));
+        name.includes(lowerSearch) ||
+        features.includes(lowerSearch) ||
+        indication.includes(lowerSearch) ||
+        specialType.includes(lowerSearch);
 
       const matchesFilter = filterType === 'All' || product.type === filterType;
 
