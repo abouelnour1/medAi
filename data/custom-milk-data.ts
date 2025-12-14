@@ -1,13 +1,21 @@
 
 import { MilkProduct } from '../types';
 
+interface RawStandardMilk {
+  "Brand": string;
+  "Stage": string;
+  "Age Range": string;
+  "Key Features / Ingredients": string;
+  "Key Differences": string;
+}
+
 /**
  * بيانات الحليب المخصصة.
  * يمكنك إضافة الحليب العادي في مصفوفة RAW_CUSTOM_STANDARD_MILK بالتنسيق الذي تفضله.
  */
 
 // 1. ضع بيانات الحليب العادي هنا بنفس التنسيق الذي أرسلته
-const RAW_CUSTOM_STANDARD_MILK = [
+const RAW_CUSTOM_STANDARD_MILK: RawStandardMilk[] = [
     /* مثال:
     {
         "Brand": "Primalac 1",
@@ -15,7 +23,7 @@ const RAW_CUSTOM_STANDARD_MILK = [
         "Age Range": "0-6 Months",
         "Key Features / Ingredients": "Swiss quality, contains DHA & ARA.",
         "Key Differences": "High quality protein source."
-    },
+    }
     */
 ];
 
@@ -36,10 +44,10 @@ const CUSTOM_SPECIAL_MILK: MilkProduct[] = [
 
 // --- لا تقم بتعديل الكود في الأسفل (يقوم بالتحويل تلقائياً) ---
 
-const normalizedCustomStandard = RAW_CUSTOM_STANDARD_MILK.map((item: any, index) => ({
+const normalizedCustomStandard: MilkProduct[] = RAW_CUSTOM_STANDARD_MILK.map((item, index) => ({
     id: `custom-std-${Date.now()}-${index}`,
     name: item.Brand || 'Unknown Brand',
-    type: 'Standard' as const,
+    type: 'Standard',
     stage: item.Stage || '',
     ageRange: item["Age Range"] || '',
     features: item["Key Features / Ingredients"] || '',

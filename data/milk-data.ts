@@ -1,9 +1,9 @@
 
 import { MilkProduct } from '../types';
 
-// --- STANDARD FORMULAS (Raw Data in User Format) ---
-const RAW_STANDARD_MILK = [
-  "Brand": "Similac Gold",
+interface RawStandardMilk [
+   {
+    "Brand": "Similac Gold",
     "Stage": "1",
     "Age Range": "0-6 Months",
     "Key Features / Ingredients": "HMO (2'-FL), Lutein, Natural Vitamin E, DHA/ARA, Palm Olein Free.",
@@ -127,6 +127,31 @@ const RAW_STANDARD_MILK = [
     "Age Range": "0-6 Months",
     "Key Features / Ingredients": "Cow's milk-based, fortified with Vitamins and Minerals.",
     "Key Differences": "Locally produced, widely available standard formula."
+  }
+]
+
+// --- STANDARD FORMULAS (Raw Data in User Format) ---
+const RAW_STANDARD_MILK: RawStandardMilk[] = [
+  {
+    "Brand": "Similac Gold",
+    "Stage": "1",
+    "Age Range": "0-6 Months",
+    "Key Features / Ingredients": "HMO (2'-FL), Lutein, Natural Vitamin E, DHA/ARA, Palm Olein Free.",
+    "Key Differences": "Advanced formula focusing on immune support (HMO) and brain/eye development. Palm Olein Free for better calcium absorption."
+  },
+  {
+    "Brand": "Similac Gold",
+    "Stage": "2",
+    "Age Range": "6-12 Months",
+    "Key Features / Ingredients": "HMO (2'-FL), Lutein, Natural Vitamin E, DHA/ARA, Palm Olein Free.",
+    "Key Differences": "Follow-on formula with higher protein/iron content than Stage 1 to meet the needs of a growing baby."
+  },
+  {
+    "Brand": "S-26 Gold",
+    "Stage": "1",
+    "Age Range": "0-6 Months",
+    "Key Features / Ingredients": "Sphingomyelin, DHA, ARA, Choline, Lutein, Alpha-Lactalbumin.",
+    "Key Differences": "Connect technology for faster brain connection."
   }
 ];
 
@@ -252,10 +277,10 @@ const SPECIAL_MILK_DATA: MilkProduct[] = [
 ];
 
 // Convert RAW user format to App Internal Format
-const normalizedStandardMilk = RAW_STANDARD_MILK.map((item, index) => ({
+const normalizedStandardMilk: MilkProduct[] = RAW_STANDARD_MILK.map((item) => ({
     id: `std-${item.Brand.replace(/\s+/g, '-').toLowerCase()}-${item.Stage}`,
     name: item.Brand,
-    type: 'Standard' as const,
+    type: 'Standard',
     stage: item.Stage,
     ageRange: item["Age Range"],
     features: item["Key Features / Ingredients"],
