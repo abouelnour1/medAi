@@ -12,17 +12,17 @@ const BabyBottleIcon: React.FC = () => (
     strokeLinecap="round" 
     strokeLinejoin="round"
   >
-    {/* Nipple (Teat) */}
+    {/* Cap/Teat */}
     <path d="M9 6h6" />
-    <path d="M10 6V4.5a2 2 0 1 1 4 0V6" />
+    <path d="M10 6V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
     
     {/* Bottle Body */}
-    <path d="M8 6h8v11a4 4 0 0 1-4 4h0a4 4 0 0 1-4-4V6z" />
+    <path d="M8 6h8l1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L8 6z" />
     
-    {/* Measurement Lines */}
-    <path d="M11 10h2" />
-    <path d="M11 13h2" />
-    <path d="M11 16h2" />
+    {/* Measurement Marks */}
+    <path d="M14 10h-2" />
+    <path d="M14 13h-2" />
+    <path d="M14 16h-2" />
   </svg>
 );
 

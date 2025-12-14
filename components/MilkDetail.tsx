@@ -25,11 +25,11 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
   return (
     <div className="animate-fade-in pb-20 bg-white dark:bg-dark-card min-h-full rounded-none sm:rounded-xl">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 p-4 flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 p-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2 flex-grow min-w-0">
             <button 
                 onClick={onBack}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0 text-slate-600 dark:text-slate-300"
             >
                 <BackIcon />
             </button>
@@ -51,11 +51,11 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
       <div className="p-6 space-y-6">
         {/* Top Info */}
         <div className="flex flex-col items-center text-center space-y-3">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${badgeBg} shadow-inner mb-2`}>
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center ${badgeBg} shadow-inner mb-2 border-4 border-white dark:border-dark-card ring-2 ring-slate-100 dark:ring-slate-800`}>
                 {isStandard ? (
-                    <span className="text-4xl font-black">{product.stage}</span>
+                    <span className="text-5xl font-black">{product.stage}</span>
                 ) : (
-                    <div className="w-10 h-10"><BabyBottleIcon /></div>
+                    <div className="w-12 h-12"><BabyBottleIcon /></div>
                 )}
             </div>
             
@@ -63,7 +63,7 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
             
             <div className="flex flex-wrap justify-center gap-2">
                 {!isStandard && product.specialType && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-purple-100 text-purple-700">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
                         {product.specialType}
                     </span>
                 )}
@@ -83,8 +83,8 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
 
         {/* Detailed Sections */}
         <div className="space-y-4">
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
-                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                     {isStandard ? t('keyFeatures') : t('composition')}
                 </h3>
@@ -93,8 +93,8 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
                 </p>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
-                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                     {t('keyDifferences')}
                 </h3>

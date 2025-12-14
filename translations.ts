@@ -375,6 +375,8 @@ export const translations = {
     standardFormula: 'حليب عادي',
     specialFormula: 'حليب خاص',
     all: 'الكل',
+    loadMore: 'عرض المزيد',
+    loginRequiredForAI: 'يرجى تسجيل الدخول لاستخدام ميزات الذكاء الاصطناعي.',
   },
   en: {
     appTitle: 'PharmaSource',
@@ -751,6 +753,8 @@ export const translations = {
     standardFormula: 'Standard Formula',
     specialFormula: 'Special Formula',
     all: 'All',
+    loadMore: 'Load More',
+    loginRequiredForAI: 'Please log in to use AI features.',
   }
 };
 
