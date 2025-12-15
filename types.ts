@@ -81,24 +81,22 @@ export interface Cosmetic {
   Highlights?: string;
 }
 
-// New Interface for Milk/Formula
+// Updated Interface for Milk/Formula based on user request
 export interface MilkProduct {
   id: string;
-  name: string; // Brand name (e.g., Similac Gold)
-  type: 'Standard' | 'Special';
+  brand: string;
+  productName: string;
+  stageType: string;
+  ageRange: string;
   
-  // Standard Fields
-  stage?: string; // "1", "2", "3"
-  ageRange?: string; // "0-6 Months"
+  // Nutritional Facts (per 100ml usually, or serving)
+  kcal: number;
+  protein: number;
+  fat: number;
+  carb: number;
   
-  // Special Fields
-  specialType?: string; // "AR", "LF", "Pre"
-  indication?: string; // "Regurgitation", "Lactose Intolerance"
-  
-  // Common Fields
-  features: string; // Key Features / Ingredients / Composition
-  differences: string; // Key Differences
-  price?: string;
+  keyFeatures: string;
+  usp: string; // Unique Selling Point / Description
 }
 
 export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';

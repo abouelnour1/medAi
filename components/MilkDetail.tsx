@@ -4,6 +4,7 @@ import { MilkProduct, TFunction, Language } from '../types';
 import BabyBottleIcon from './icons/BabyBottleIcon';
 import CameraIcon from './icons/CameraIcon';
 import BackIcon from './icons/BackIcon';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface MilkDetailProps {
   product: MilkProduct;
@@ -13,94 +14,95 @@ interface MilkDetailProps {
 }
 
 const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack }) => {
-  const isStandard = product.type === 'Standard';
-  const badgeBg = isStandard ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200';
-
   const handleImageSearch = () => {
-    const query = `${product.name} ${product.stage ? `Stage ${product.stage}` : ''} ${product.specialType || ''} milk formula`;
+    const query = `${product.productName} milk formula`;
     const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
     window.open(url, '_blank');
   };
 
+  const FactRow = ({ label, value, unit, isLast = false }: { label: string, value: number, unit: string, isLast?: boolean }) => (
+      <div className={`flex justify-between items-center py-3 ${!isLast ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{label}</span>
+          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{value} <span className="text-xs font-normal text-slate-400">{unit}</span></span>
+      </div>
+  );
+
+  // Determine header color based on stage
+  let headerBg = "bg-slate-50 dark:bg-slate-800";
+  let iconColor = "text-slate-500";
+  const lowerStage = product.stageType.toLowerCase();
+  if (lowerStage.includes('1') && !lowerStage.includes('year')) { headerBg = "bg-blue-50 dark:bg-blue-900/20"; iconColor = "text-blue-500"; }
+  else if (lowerStage.includes('2')) { headerBg = "bg-purple-50 dark:bg-purple-900/20"; iconColor = "text-purple-500"; }
+  else if (lowerStage.includes('3')) { headerBg = "bg-orange-50 dark:bg-orange-900/20"; iconColor = "text-orange-500"; }
+  else { headerBg = "bg-teal-50 dark:bg-teal-900/20"; iconColor = "text-teal-500"; }
+
   return (
-    <div className="animate-fade-in pb-20 bg-white dark:bg-dark-card min-h-full rounded-none sm:rounded-xl">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 p-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2 flex-grow min-w-0">
-            <button 
-                onClick={onBack}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0 text-slate-600 dark:text-slate-300"
-            >
-                <BackIcon />
-            </button>
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white truncate">
-                {product.name}
-            </h2>
+    <div className="animate-fade-in bg-white dark:bg-dark-card min-h-full flex flex-col">
+      {/* Navbar Style Header */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+        <button 
+            onClick={onBack}
+            className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-300"
+        >
+            <BackIcon />
+        </button>
+        <div className="flex-grow">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{product.productName}</h1>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">{product.brand}</p>
         </div>
-        
-        {/* Google Image Search Button - ICON ONLY */}
         <button
             onClick={handleImageSearch}
-            className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-            title="بحث صورة في جوجل"
+            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-500 transition-colors"
         >
             <div className="w-5 h-5"><CameraIcon /></div>
         </button>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Top Info */}
-        <div className="flex flex-col items-center text-center space-y-3">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center ${badgeBg} shadow-inner mb-2 border-4 border-white dark:border-dark-card ring-2 ring-slate-100 dark:ring-slate-800`}>
-                {isStandard ? (
-                    <span className="text-5xl font-black">{product.stage}</span>
-                ) : (
-                    <div className="w-12 h-12"><BabyBottleIcon /></div>
-                )}
+      <div className="p-4 space-y-6 overflow-y-auto">
+        {/* Identity Card */}
+        <div className={`rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 ${headerBg}`}>
+            <div className={`w-20 h-20 mx-auto rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center mb-4 ${iconColor}`}>
+                <div className="w-10 h-10"><BabyBottleIcon /></div>
             </div>
-            
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{product.name}</h1>
-            
-            <div className="flex flex-wrap justify-center gap-2">
-                {!isStandard && product.specialType && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                        {product.specialType}
-                    </span>
-                )}
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                    {isStandard ? product.ageRange : product.indication}
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{product.productName}</h2>
+            <div className="flex justify-center gap-2 mt-3">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-sm text-slate-700 dark:text-slate-200">
+                    {product.stageType}
                 </span>
             </div>
-
-            {product.price && (
-                <div className="text-xl font-bold text-accent">
-                    {product.price} <span className="text-sm font-normal text-slate-500">{t('sar')}</span>
-                </div>
-            )}
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 font-medium">{product.ageRange}</p>
         </div>
 
-        <hr className="border-slate-100 dark:border-slate-800" />
-
-        {/* Detailed Sections */}
-        <div className="space-y-4">
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    {isStandard ? t('keyFeatures') : t('composition')}
+        {/* Nutritional Facts - The Data Table */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+            <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    {t('composition')}
                 </h3>
-                <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
-                    {product.features}
+                <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">per 100ml</span>
+            </div>
+            <div className="px-4 py-1">
+                <FactRow label={t('energy')} value={product.kcal} unit={t('kcal')} />
+                <FactRow label={t('protein')} value={product.protein} unit={t('gm')} />
+                <FactRow label={t('fat')} value={product.fat} unit={t('gm')} />
+                <FactRow label={t('carb')} value={product.carb} unit={t('gm')} isLast />
+            </div>
+        </div>
+
+        {/* Key Features & USP */}
+        <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
+                <h3 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-2 tracking-widest">{t('keyFeatures')}</h3>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+                    {product.keyFeatures}
                 </p>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <h3 className="text-sm font-bold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                    {t('keyDifferences')}
-                </h3>
-                <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
-                    {product.differences}
-                </p>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-black uppercase text-slate-400 mb-3 tracking-widest">{t('usp')} (Pharmacist Note)</h3>
+                <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed ai-response-content">
+                    <MarkdownRenderer content={product.usp} />
+                </div>
             </div>
         </div>
       </div>

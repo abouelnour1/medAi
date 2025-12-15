@@ -1,61 +1,38 @@
 
 import { MilkProduct } from '../types';
 
-// تصحيح الخطأ: استخدام الأقواس المعقوفة {}
-interface RawStandardMilk {
-  "Brand": string;
-  "Stage": string;
-  "Age Range": string;
-  "Key Features / Ingredients": string;
-  "Key Differences": string;
-}
-
 /**
  * بيانات الحليب المخصصة.
- * يمكنك إضافة الحليب العادي في مصفوفة RAW_CUSTOM_STANDARD_MILK بالتنسيق الذي تفضله.
+ * Custom Milk Data. 
+ * Add items here using the new Unified structure.
  */
 
-// 1. ضع بيانات الحليب العادي هنا بنفس التنسيق الذي أرسلته
-const RAW_CUSTOM_STANDARD_MILK: RawStandardMilk[] = [
-    /* مثال:
-    {
-        "Brand": "Primalac 1",
-        "Stage": "1",
-        "Age Range": "0-6 Months",
-        "Key Features / Ingredients": "Swiss quality, contains DHA & ARA.",
-        "Key Differences": "High quality protein source."
-    }
-    */
-];
+// Example:
+// {
+//   "brand": "Primalac",
+//   "productName": "Primalac Premium 1",
+//   "stageType": "Stage 1",
+//   "ageRange": "0-6 Months",
+//   "kcal": 66,
+//   "protein": 1.3,
+//   "fat": 3.5,
+//   "carb": 7.4,
+//   "keyFeatures": "Prebiotics",
+//   "usp": "Quality formula from Switzerland"
+// }
 
-// 2. إذا كان لديك حليب خاص (Special) ضعه هنا بتنسيق التطبيق الداخلي
-const CUSTOM_SPECIAL_MILK: MilkProduct[] = [
-    /*
-    {
-        id: "custom-special-1",
-        name: "Novalac AC",
-        type: "Special",
-        specialType: "Comfort",
-        indication: "Colic",
-        features: "Low lactose",
-        differences: "For colic"
-    }
-    */
-];
+const RAW_CUSTOM_MILK: any[] = [];
 
-// --- لا تقم بتعديل الكود في الأسفل (يقوم بالتحويل تلقائياً) ---
-
-const normalizedCustomStandard: MilkProduct[] = RAW_CUSTOM_STANDARD_MILK.map((item, index) => ({
-    id: `custom-std-${Date.now()}-${index}`,
-    name: item.Brand || 'Unknown Brand',
-    type: 'Standard',
-    stage: item.Stage || '',
-    ageRange: item["Age Range"] || '',
-    features: item["Key Features / Ingredients"] || '',
-    differences: item["Key Differences"] || ''
+export const CUSTOM_MILK_DATA: MilkProduct[] = RAW_CUSTOM_MILK.map((item, index) => ({
+    id: `custom-milk-${Date.now()}-${index}`,
+    brand: item.brand || 'Unknown',
+    productName: item.productName || 'Unknown Product',
+    stageType: item.stageType || '',
+    ageRange: item.ageRange || '',
+    kcal: parseFloat(item.kcal) || 0,
+    protein: parseFloat(item.protein) || 0,
+    fat: parseFloat(item.fat) || 0,
+    carb: parseFloat(item.carb) || 0,
+    keyFeatures: item.keyFeatures || '',
+    usp: item.usp || ''
 }));
-
-export const CUSTOM_MILK_DATA: MilkProduct[] = [
-    ...normalizedCustomStandard,
-    ...CUSTOM_SPECIAL_MILK
-];

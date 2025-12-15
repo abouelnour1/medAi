@@ -2,100 +2,85 @@
 import React from 'react';
 import { MilkProduct, TFunction } from '../types';
 import BabyBottleIcon from './icons/BabyBottleIcon';
-import CameraIcon from './icons/CameraIcon';
 
 interface MilkCardProps {
   product: MilkProduct;
   t: TFunction;
   onClick: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: (e: React.MouseEvent) => void;
 }
 
-const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick }) => {
-  const isStandard = product.type === 'Standard';
+const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick, isSelected, onToggleSelect }) => {
+  
+  // Determine visual style based on stage/type
+  let stageColorClass = "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+  let iconColor = "text-slate-400";
+  let stageLabel = "";
 
-  // Determine styling based on type
-  const cardBorderColor = isStandard ? 'border-blue-100 dark:border-blue-900' : 'border-purple-100 dark:border-purple-900';
-  const badgeBg = isStandard ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200';
+  const lowerStage = product.stageType.toLowerCase();
 
-  const handleImageSearch = (e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent card click
-      const query = `${product.name} ${product.stage ? `Stage ${product.stage}` : ''} ${product.specialType || ''} milk formula`;
-      const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-      window.open(url, '_blank');
-  };
+  // Strict Stage Logic for Visuals
+  if (lowerStage.includes('1') && !lowerStage.includes('year')) {
+      stageColorClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800";
+      iconColor = "text-blue-500";
+      stageLabel = "1";
+  } else if (lowerStage.includes('2')) {
+      stageColorClass = "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800";
+      iconColor = "text-purple-500";
+      stageLabel = "2";
+  } else if (lowerStage.includes('3') || lowerStage.includes('growing')) {
+      stageColorClass = "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800";
+      iconColor = "text-orange-500";
+      stageLabel = "3";
+  } else {
+      // Special Formulas (AR, AC, LF, Pre, etc)
+      stageColorClass = "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800";
+      iconColor = "text-teal-500";
+      // Extract 2 letters for the badge if possible, e.g., AR, LF, AC
+      const match = product.productName.match(/\b(AR|AC|LF|HA|IT|PDF|Pre)\b/i);
+      stageLabel = match ? match[0].toUpperCase() : "SP";
+  }
 
   return (
     <div 
         onClick={onClick}
-        className={`relative bg-white dark:bg-dark-card rounded-xl shadow-sm border ${cardBorderColor} overflow-hidden transition-all duration-200 hover:shadow-md active:scale-[0.99] cursor-pointer group`}
+        className={`relative bg-white dark:bg-dark-card rounded-xl shadow-sm border transition-all duration-200 cursor-pointer group flex items-center p-3 gap-3
+            ${isSelected ? 'ring-2 ring-primary ring-opacity-70 border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}
     >
-      {/* Header Section */}
-      <div className="p-4 pb-2 flex justify-between items-start">
-        <div className="flex items-start gap-3 flex-grow">
-            {/* Type Icon / Stage Number */}
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${badgeBg} shadow-inner`}>
-                {isStandard ? (
-                    <span className="text-2xl font-black">{product.stage}</span>
-                ) : (
-                    <div className="w-6 h-6"><BabyBottleIcon /></div>
-                )}
-            </div>
-
-            <div className="flex-grow">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
-                        {product.name}
-                    </h3>
-                    
-                    {/* Image Search Button inside Card */}
-                    <button
-                        onClick={handleImageSearch}
-                        className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-blue-600 hover:bg-blue-100 transition-colors ml-2"
-                        title="بحث صورة في جوجل"
-                    >
-                        <div className="w-5 h-5"><CameraIcon /></div>
-                    </button>
-                </div>
-
-                {/* Subtitle: Age or Type */}
-                <div className="flex flex-wrap gap-2 mt-1">
-                    {!isStandard && product.specialType && (
-                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-purple-50 text-purple-600 border border-purple-100">
-                            {product.specialType}
-                        </span>
-                    )}
-                    <span className="inline-block text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        {isStandard ? product.ageRange : product.indication}
-                    </span>
-                </div>
-            </div>
-        </div>
+      {/* 1. Stage Badge (Left) */}
+      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center border-2 ${stageColorClass} shadow-sm`}>
+          <span className="text-xl font-black">{stageLabel}</span>
       </div>
 
-      <div className="px-4 py-2 space-y-3">
-        {/* Separator */}
-        <div className="h-px w-full bg-slate-50 dark:bg-slate-800"></div>
+      {/* 2. Main Info (Middle) */}
+      <div className="flex-grow min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+             <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider">{product.brand}</span>
+             {/* Tiny features summary if needed, or keeping it clean */}
+          </div>
+          <h3 className="text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+              {product.productName}
+          </h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              {product.ageRange}
+          </p>
+      </div>
 
-        {/* Features Section */}
-        <div>
-            <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
-                <div className={`w-1.5 h-1.5 rounded-full ${isStandard ? 'bg-blue-400' : 'bg-purple-400'}`}></div>
-                {isStandard ? t('keyFeatures') : t('composition')}
-            </h4>
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-                {product.features}
-            </p>
-        </div>
-
-        {/* Differences Box */}
-        <div className={`p-3 rounded-lg ${isStandard ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-purple-50/50 dark:bg-purple-900/10'}`}>
-            <h4 className={`text-[10px] font-bold uppercase mb-1 ${isStandard ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'}`}>
-                {t('keyDifferences')}
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
-                {product.differences}
-            </p>
-        </div>
+      {/* 3. Action / Selection (Right) */}
+      <div className="flex-shrink-0 flex items-center pl-2 border-l border-slate-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+        {onToggleSelect && (
+            <button
+                onClick={onToggleSelect}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isSelected ? 'bg-primary text-white shadow-md' : 'text-slate-300 hover:text-slate-500 dark:text-slate-600'}`}
+            >
+                {isSelected ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-tighter">VS</span>
+                )}
+            </button>
+        )}
       </div>
     </div>
   );
