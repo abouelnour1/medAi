@@ -84,22 +84,22 @@ const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick, isSelected, on
       </div>
 
       {/* 3. Nutrition Strip (New - Visible on Card) */}
-      <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
-          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
-              <span className="font-bold text-slate-800 dark:text-slate-200">{product.kcal}</span>
-              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('kcal')}</span>
+      <div className="mt-2 grid grid-cols-4 gap-1 text-[10px] text-center bg-slate-50 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col">
+              <span className="font-bold text-slate-700 dark:text-slate-300">{product.kcal}</span>
+              <span className="text-slate-400 text-[8px] uppercase tracking-wide">kcal</span>
           </div>
-          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
-              <span className="font-bold text-slate-800 dark:text-slate-200">{product.protein}g</span>
-              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('protein')}</span>
+          <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-700 dark:text-slate-300">{product.protein}g</span>
+              <span className="text-slate-400 text-[8px] uppercase tracking-wide">Prot</span>
           </div>
-          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
-              <span className="font-bold text-slate-800 dark:text-slate-200">{product.fat}g</span>
-              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('fat')}</span>
+          <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-700 dark:text-slate-300">{product.fat}g</span>
+              <span className="text-slate-400 text-[8px] uppercase tracking-wide">Fat</span>
           </div>
-          <div className="flex flex-col items-center flex-1 px-1">
-              <span className="font-bold text-slate-800 dark:text-slate-200">{product.carb}g</span>
-              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('carb')}</span>
+          <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-700 dark:text-slate-300">{product.carb}g</span>
+              <span className="text-slate-400 text-[8px] uppercase tracking-wide">Carb</span>
           </div>
       </div>
 

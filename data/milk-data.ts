@@ -1,9 +1,9 @@
 
 import { MilkProduct } from '../types';
 
-// Raw data in the format requested by user
+// Raw data based on the user's specific WellGrow example
 const RAW_MILK_DATA = [
-    {
+ {
       "brand": "Nan",
       "productName": "NAN Optipro 1",
       "stageType": "Stage 1 (0-6 months) / Standard",
@@ -5603,7 +5603,7 @@ const RAW_MILK_DATA = [
         "arabic": "\n### Well Grow\n\n**ما هو هذا المنتج؟**\nتركيبة من WellGrow\n\n**متى تستخدمه؟**\nللأطفال الأصحاء الذين لا يعانون من مشاكل هضمية أو حساسية\n\n**المميزات:**\n- نمو طبيعي وتطور سليم\n- المكونات: Growth support\n\n**الملاحظات:**\n- عادة لا توجد مشاكل\n- السعر: معقول\n- الأنسب لـ: الأطفال الأصحاء\n\n**ملاحظة صيدلانية:**\n**Supplement Formula**: Growth support. Designed for 1+ years.\n"
       }
     }
-  ];
+];
 
 export const INITIAL_MILK_DATA: MilkProduct[] = RAW_MILK_DATA.map((item, index) => ({
     id: `milk-${index}-${item.productName.replace(/\s+/g, '-').toLowerCase()}`,
