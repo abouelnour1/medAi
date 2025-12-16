@@ -14,13 +14,6 @@ interface MilkCardProps {
   onRunComparison?: () => void;
 }
 
-const StatBadge = ({ label, value, unit, color = "bg-slate-100 text-slate-700" }: { label: string, value: number, unit: string, color?: string }) => (
-    <div className={`flex flex-col items-center justify-center px-2 py-1 rounded-md ${color} min-w-[50px]`}>
-        <span className="text-[9px] font-bold opacity-70 uppercase">{label}</span>
-        <span className="text-xs font-black leading-none">{value} <span className="text-[8px] font-normal">{unit}</span></span>
-    </div>
-);
-
 const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick, isSelected, onToggleSelect, isSecondSelection, onRunComparison }) => {
   
   // Determine visual style based on stage/type
@@ -49,7 +42,7 @@ const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick, isSelected, on
   return (
     <div 
         onClick={onClick}
-        className={`relative bg-white dark:bg-dark-card rounded-xl shadow-sm border transition-all duration-200 cursor-pointer group flex flex-col p-3 gap-3 overflow-hidden
+        className={`relative bg-white dark:bg-dark-card rounded-xl shadow-sm border transition-all duration-200 cursor-pointer group flex flex-col p-3 gap-2 overflow-hidden
             ${isSelected ? 'ring-2 ring-primary ring-opacity-70 border-primary bg-primary/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600'}`}
     >
       <div className="flex items-start gap-3 relative z-10">
@@ -80,30 +73,49 @@ const MilkCard: React.FC<MilkCardProps> = ({ product, t, onClick, isSelected, on
                   </div>
               </div>
               
-              {/* Nutritional Stats Grid - Directly visible */}
-              <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
-                  <StatBadge label={t('protein')} value={product.protein} unit="g" />
-                  <StatBadge label={t('kcal')} value={product.kcal} unit="" color="bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" />
-                  <StatBadge label={t('fat')} value={product.fat} unit="g" color="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" />
-                  <StatBadge label={t('carb')} value={product.carb} unit="g" color="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" />
-              </div>
+              {/* Key Features (Visible Outside) */}
+              {product.keyFeatures && (
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-md border border-slate-100 dark:border-slate-700">
+                      <span className="font-bold text-slate-600 dark:text-slate-300">Features: </span>
+                      {product.keyFeatures}
+                  </div>
+              )}
           </div>
       </div>
 
-      {/* 3. USP / Explanation (Footer) */}
-      {(product.explanation?.type?.description || product.usp) && !isSecondSelection && (
-          <div className="mt-1 pt-2 border-t border-slate-100 dark:border-slate-800 relative z-10">
-              <div className="flex items-start gap-1.5">
-                  <span className="text-yellow-500 mt-0.5">★</span>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium ai-response-content" dir="auto">
-                      {/* Prefer the detailed Arabic description if available, else USP */}
-                      {product.explanation?.type?.description || <MarkdownRenderer content={product.usp} />}
+      {/* 3. Nutrition Strip (New - Visible on Card) */}
+      <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
+              <span className="font-bold text-slate-800 dark:text-slate-200">{product.kcal}</span>
+              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('kcal')}</span>
+          </div>
+          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
+              <span className="font-bold text-slate-800 dark:text-slate-200">{product.protein}g</span>
+              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('protein')}</span>
+          </div>
+          <div className="flex flex-col items-center flex-1 border-r border-slate-200 dark:border-slate-700 last:border-0 px-1">
+              <span className="font-bold text-slate-800 dark:text-slate-200">{product.fat}g</span>
+              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('fat')}</span>
+          </div>
+          <div className="flex flex-col items-center flex-1 px-1">
+              <span className="font-bold text-slate-800 dark:text-slate-200">{product.carb}g</span>
+              <span className="text-[8px] uppercase tracking-wide opacity-70">{t('carb')}</span>
+          </div>
+      </div>
+
+      {/* 4. Pharmacist Note / USP (English ONLY on Card) */}
+      {(!isSecondSelection) && product.usp && (
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 relative z-10">
+              <div className="flex items-start gap-1.5" dir="ltr">
+                  <span className="text-yellow-500 mt-0.5 text-[10px]">★</span>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium ai-response-content">
+                      <MarkdownRenderer content={product.usp} />
                   </div>
               </div>
           </div>
       )}
 
-      {/* 4. Instant Compare Action (Overlay on Card) */}
+      {/* 5. Instant Compare Action (Overlay on Card) */}
       {isSecondSelection && onRunComparison && (
           <div className="mt-2 pt-2 border-t border-primary/20 relative z-20 animate-fade-in">
               <button 

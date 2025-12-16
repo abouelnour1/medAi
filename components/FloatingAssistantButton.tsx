@@ -87,8 +87,8 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
             onPointerLeave={handlePointerLeave}
             onContextMenu={(e) => e.preventDefault()}
             className={`w-16 h-16 bg-primary text-white rounded-2xl shadow-lg flex items-center justify-center
-                       transform transition-all duration-200 ease-in-out hover:shadow-xl focus:outline-none
-                       ${isPressing ? 'scale-95 bg-primary-dark' : 'scale-100 hover:scale-105'}
+                       transform transition-all duration-300 ease-in-out hover:shadow-xl focus:outline-none backdrop-blur-sm
+                       ${isPressing ? 'scale-95 bg-primary-dark opacity-100' : 'scale-100 hover:scale-105 opacity-60 hover:opacity-100'}
                        disabled:bg-slate-400 disabled:dark:bg-slate-600 disabled:cursor-not-allowed disabled:scale-100 touch-none select-none overflow-hidden p-3`}
             style={{ touchAction: 'none' }} 
             aria-label={t('assistantFabTooltip')}

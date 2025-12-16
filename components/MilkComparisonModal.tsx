@@ -16,11 +16,15 @@ const MilkComparisonModal: React.FC<MilkComparisonModalProps> = ({ products, isO
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Prevent scrolling on the root element as well for mobile safari
+      document.documentElement.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
   }, [isOpen]);
 
@@ -43,11 +47,17 @@ const MilkComparisonModal: React.FC<MilkComparisonModalProps> = ({ products, isO
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4 animate-fade-in backdrop-blur-sm" onClick={onClose} style={{ touchAction: 'none' }}>
-      <div className="bg-white dark:bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-700" onClick={e => e.stopPropagation()}>
+    <div 
+        className="fixed top-0 left-0 right-0 bottom-0 z-[9999] bg-black/80 flex items-center justify-center p-2 sm:p-4 animate-fade-in backdrop-blur-sm touch-none" 
+        onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] h-full sm:h-auto overflow-hidden border border-slate-200 dark:border-slate-700" 
+        onClick={e => e.stopPropagation()}
+      >
         
         {/* Modal Header */}
-        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-20">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-20 flex-shrink-0">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <span className="bg-primary text-white text-xs px-2 py-1 rounded-md font-black">VS</span> {t('compareTitle')}
             </h3>

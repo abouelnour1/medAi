@@ -33,7 +33,7 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
   const lowerStage = product.stageType.toLowerCase();
   if (lowerStage.includes('1') && !lowerStage.includes('year')) { headerBg = "bg-blue-50 dark:bg-blue-900/20"; iconColor = "text-blue-500"; }
   else if (lowerStage.includes('2')) { headerBg = "bg-purple-50 dark:bg-purple-900/20"; iconColor = "text-purple-500"; }
-  else if (lowerStage.includes('3')) { headerBg = "bg-orange-50 dark:bg-orange-900/20"; iconColor = "text-orange-500"; }
+  else if (lowerStage.includes('3') || lowerStage.includes('growing')) { headerBg = "bg-orange-50 dark:bg-orange-900/20"; iconColor = "text-orange-500"; }
   else { headerBg = "bg-teal-50 dark:bg-teal-900/20"; iconColor = "text-teal-500"; }
 
   const explanation = product.explanation?.type;
@@ -94,11 +94,28 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
             </div>
         </div>
 
+        {/* Pharmacist Note / English USP (Always Visible in Details) */}
+        <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
+                <h3 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-2 tracking-widest">{t('keyFeatures')}</h3>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
+                    {product.keyFeatures}
+                </p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xs font-black uppercase text-slate-400 mb-3 tracking-widest">{t('usp')} (Pharmacist Note)</h3>
+                <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed ai-response-content">
+                    <MarkdownRenderer content={product.usp} />
+                </div>
+            </div>
+        </div>
+
         {/* Pharmacist Explanation (Detailed Arabic/Bilingual) */}
         {explanation && (
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm" dir="rtl">
                 <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-100 dark:border-green-800/30">
-                    <h3 className="font-bold text-green-800 dark:text-green-300">الرأي الصيدلاني (Pharmacist View)</h3>
+                    <h3 className="font-bold text-green-800 dark:text-green-300">Detailed View</h3>
                 </div>
                 <div className="p-4 space-y-4 text-sm">
                     {explanation.description && (
@@ -119,25 +136,12 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
                             <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{explanation.benefits}</p>
                         </div>
                     )}
-                </div>
-            </div>
-        )}
-
-        {/* Legacy Key Features & USP (Fallback) */}
-        {!explanation && (
-            <div className="space-y-4">
-                <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
-                    <h3 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-2 tracking-widest">{t('keyFeatures')}</h3>
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {product.keyFeatures}
-                    </p>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-xs font-black uppercase text-slate-400 mb-3 tracking-widest">{t('usp')} (Pharmacist Note)</h3>
-                    <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed ai-response-content">
-                        <MarkdownRenderer content={product.usp} />
-                    </div>
+                    {explanation.side_effects && (
+                        <div>
+                            <p className="font-bold text-slate-700 dark:text-slate-200 mb-1">الآثار الجانبية / ملاحظات:</p>
+                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{explanation.side_effects}</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
