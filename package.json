@@ -1,26 +1,27 @@
+
 {
-  "name": "copy-of-pharmasource--التحويل-لاندرويد",
+  "name": "pharmasource-ksa",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "tsc"
   },
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@google/genai": "0.15.0",
-    "firebase": "^12.6.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.2.6",
-    "@capacitor/cli": "^7.4.4"
+    "@google/genai": "^0.15.0",
+    "firebase": "^10.8.0",
+    "lucide-react": "^0.344.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
   }
 }
