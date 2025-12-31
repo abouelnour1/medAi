@@ -12,11 +12,12 @@ export default defineConfig({
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || process.env.VITE_API_KEY)
   },
   server: {
-    host: true, // Allow access via IP address (fixes "localhost refused" on mobile testing)
+    host: true, // Allow access via IP address
     port: 5173,
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // تم إيقافه لتقليل استهلاك الذاكرة ومنع خطأ الـ Build
+    chunkSizeWarningLimit: 2000, // زيادة حد التحذير للملفات الكبيرة
   },
 });
