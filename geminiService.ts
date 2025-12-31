@@ -1,91 +1,101 @@
 
-import { GoogleGenAI, GenerateContentResponse, Part } from '@google/genai';
+import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage } from './types';
 
-/**
- * دالة للتحقق من توفر الذكاء الاصطناعي
- */
-export const isAIAvailable = (): boolean => {
-  try {
-    // نتحقق أولاً من وجود process و env
-    const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : null;
-    return !!apiKey && apiKey !== 'undefined' && apiKey !== '';
-  } catch (e) {
-    return false;
+const getApiKey = (): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+      if (process.env.API_KEY) return process.env.API_KEY.trim();
   }
+  return undefined;
+}
+
+export const isAIAvailable = (): boolean => {
+  const apiKey = getApiKey();
+  return !!apiKey && apiKey !== 'undefined' && apiKey !== '';
 };
 
-/**
- * دالة موحدة لتشغيل محادثات الذكاء الاصطناعي
- * تدعم استدعاء الدوال (Function Calling) والبحث عبر جوجل (Google Search Grounding)
- */
+const getAiClient = (): GoogleGenAI => {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error('API Key is missing');
+    return new GoogleGenAI({ apiKey });
+}
+
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
-  tools: any[] = [],
-  toolImplementations: { [key: string]: Function } = {},
+  tools: Tool[] = [],
+  toolImplementations: { [key:string]: (...args: any[]) => any } = {},
   modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
-  if (!isAIAvailable()) {
-    throw new Error('API_KEY is missing or invalid. Please check your environment variables.');
-  }
+  const ai = getAiClient();
+  const initialParams = {
+    model: modelName,
+    contents: history.map(msg => ({ role: msg.role, parts: msg.parts })),
+    config: { systemInstruction, tools },
+  };
 
-  try {
-    // إنشاء نسخة جديدة في كل مرة لضمان استخدام المفتاح الأحدث
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const response = await ai.models.generateContent(initialParams);
+
+  if (response.functionCalls && response.functionCalls.length > 0) {
+    const fc = response.functionCalls[0];
+    const implementation = toolImplementations[fc.name];
+    if (implementation) {
+      const functionResult = implementation(fc.args);
+      const toolResponseHistory: ChatMessage[] = [
+        ...history,
+        { role: 'model', parts: [{ functionCall: fc }] },
+        { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
+      ];
+      return await ai.models.generateContent({
+        model: modelName,
+        contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: msg.parts })),
+        config: { systemInstruction, tools },
+      });
+    }
+  }
+  return response;
+};
+
+/**
+ * دالة متخصصة للبحث عن توفر الأدوية في كافة الصيدليات السعودية عبر الإنترنت
+ */
+export const searchPharmacyAvailability = async (medicineName: string): Promise<{ text: string, links: { title: string, url: string }[] }> => {
+    if (!isAIAvailable()) throw new Error('API Key is missing');
+    const ai = getAiClient();
     
-    // تحويل التاريخ لصيغة مقبولة من الموديل
-    const formattedContents = history.map(msg => ({
-      role: msg.role,
-      parts: msg.parts.map(p => {
-        const cleanPart: any = {};
-        if ('text' in p) cleanPart.text = p.text;
-        if ('inlineData' in p) cleanPart.inlineData = p.inlineData;
-        if ('functionCall' in p) cleanPart.functionCall = p.functionCall;
-        if ('functionResponse' in p) cleanPart.functionResponse = p.functionResponse;
-        return cleanPart;
-      })
-    }));
+    const prompt = `ابحث بدقة عن توفر دواء "${medicineName}" في كافة الصيدليات السعودية الكبرى (مثل النهدي، الدواء، ليمون، المتحدة، وايتس، كنوز، أورانج، وغيرها).
+    أجب باختصار شديد جداً عما إذا كان متوفراً أم لا وأين. 
+    مهم جداً: لا تضع روابط المواقع داخل النص الذي تكتبه، سأقوم أنا باستخراج الروابط من مراجع البحث وعرضها بشكل منفصل.`;
 
     const response = await ai.models.generateContent({
-      model: modelName,
-      contents: formattedContents,
-      config: {
-        systemInstruction,
-        tools,
-        temperature: 0.7,
-      },
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+            tools: [{ googleSearch: {} }]
+        }
     });
 
-    // معالجة استدعاء الدوال التلقائي (Automatic Function Call Handling)
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      const functionResponses = [];
-
-      for (const fc of response.functionCalls) {
-        const impl = toolImplementations[fc.name];
-        if (impl) {
-          const result = await impl(fc.args);
-          functionResponses.push({
-            role: 'model',
-            parts: [{ functionCall: fc }]
-          });
-          functionResponses.push({
-            role: 'user',
-            parts: [{ functionResponse: { name: fc.name, response: result, id: fc.id } }]
-          });
-        }
-      }
-
-      if (functionResponses.length > 0) {
-          // دمج النتائج في المحادثة الحالية
-        const newHistory = [...history, ...functionResponses as any];
-        return await runAIChat(newHistory, systemInstruction, tools, toolImplementations, modelName);
-      }
+    const links: { title: string, url: string }[] = [];
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    
+    if (groundingChunks) {
+        groundingChunks.forEach((chunk: any) => {
+            if (chunk.web && chunk.web.uri) {
+                // تنظيف العنوان لإظهار اسم الصيدلية فقط إن أمكن
+                let title = chunk.web.title || 'رابط الصيدلية';
+                if (title.includes('|')) title = title.split('|')[0].trim();
+                if (title.includes('-')) title = title.split('-')[0].trim();
+                
+                // منع التكرار
+                if (!links.find(l => l.url === chunk.web.uri)) {
+                    links.push({ title: title, url: chunk.web.uri });
+                }
+            }
+        });
     }
 
-    return response;
-  } catch (error: any) {
-    console.error("Gemini AI Execution Error:", error);
-    throw error;
-  }
+    return {
+        text: response.text || '',
+        links: links
+    };
 };

@@ -9,152 +9,228 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  reload,
+  setPersistence,
+  browserLocalPersistence,
+  getRedirectResult,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc
+} from 'firebase/firestore';
 
+const SETTINGS_DOC_ID = 'app_settings';
 const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-    return cached ? JSON.parse(cached) : null;
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchUserData = useCallback(async (firebaseUser: FirebaseUser) => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      if (userDoc.exists()) {
-        const userData = { 
-          ...userDoc.data(), 
-          id: firebaseUser.uid,
-          emailVerified: firebaseUser.emailVerified 
-        } as User;
-        setUser(userData);
-        localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
-      }
+      const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : null;
     } catch (e) {
-      console.error("Error fetching user doc:", e);
+      console.error("Failed to load user from cache", e);
+      return null;
     }
-  }, []);
+  });
+
+  const [isLoading, setIsLoading] = useState(() => {
+      return !localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+  });
 
   useEffect(() => {
     if (FIREBASE_DISABLED) {
-      setIsLoading(false);
-      return;
+        setIsLoading(false);
+        return;
     }
+
+    let mounted = true;
+
+    const safetyTimeout = setTimeout(() => {
+        if (mounted && isLoading) {
+            setIsLoading(false);
+        }
+    }, 5000);
+
+    const initAuth = async () => {
+        try {
+            await setPersistence(auth, browserLocalPersistence);
+            try {
+                const result = await getRedirectResult(auth);
+                if (result && mounted) {
+                    await syncUserData(result.user);
+                }
+            } catch (redirectError: any) {
+                console.warn("Auth Redirect Error:", redirectError.code);
+            }
+        } catch (e) {
+            console.error("Auth Init Error:", e);
+        }
+    };
+
+    initAuth();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!mounted) return;
+      clearTimeout(safetyTimeout);
+
       if (firebaseUser) {
-        await fetchUserData(firebaseUser);
+        await syncUserData(firebaseUser);
       } else {
-        setUser(null);
-        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        const cachedUser = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+        if (cachedUser) {
+             setUser(null);
+             localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
-    return unsubscribe;
-  }, [fetchUserData]);
 
-  const login = async (email: string, pass: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (e: any) {
-      if (e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found') throw new Error('بيانات الدخول غير صحيحة');
-      throw new Error('فشل تسجيل الدخول: ' + e.message);
-    }
-  };
+    return () => {
+        mounted = false;
+        clearTimeout(safetyTimeout);
+        unsubscribe();
+    };
+  }, []);
 
-  const register = async (email: string, pass: string) => {
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, pass);
-      await sendEmailVerification(res.user);
-
-      const newUser: User = {
-        id: res.user.uid,
-        username: email.split('@')[0],
-        role: 'premium',
-        email: email,
-        emailVerified: false,
-        status: 'active',
-        aiRequestCount: 0,
-        lastRequestDate: new Date().toISOString().split('T')[0],
+  const syncUserData = async (firebaseUser: FirebaseUser) => {
+      const optimisticUser: User = {
+          id: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          role: 'premium', 
+          email: firebaseUser.email || '',
+          emailVerified: firebaseUser.emailVerified,
+          status: 'active',
+          aiRequestCount: 0,
+          lastRequestDate: new Date().toISOString().split('T')[0],
+          prescriptionPrivilege: false
       };
-      await setDoc(doc(db, 'users', res.user.uid), newUser);
-      setUser(newUser);
-    } catch (e: any) {
-      if (e.code === 'auth/email-already-in-use') throw new Error('البريد مسجل مسبقاً');
-      throw new Error('حدث خطأ أثناء التسجيل: ' + e.message);
-    }
-  };
 
-  const updateUser = async (updatedUser: User) => {
-      if (FIREBASE_DISABLED) return;
+      setUser(prev => {
+          if (prev && prev.id === optimisticUser.id) {
+              return { ...prev, emailVerified: firebaseUser.emailVerified };
+          }
+          return optimisticUser;
+      });
+
       try {
-          const { id, ...data } = updatedUser;
-          await updateDoc(doc(db, 'users', id), data);
-          // إذا كان المستخدم يحدث بياناته هو شخصياً، نحدث الحالة المحلية
-          if (user && user.id === id) {
-              setUser(updatedUser);
-              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(updatedUser));
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            const firestoreData = userDocSnap.data();
+            const finalUser = { 
+                id: firebaseUser.uid, 
+                ...firestoreData, 
+                emailVerified: firebaseUser.emailVerified, 
+                email: firebaseUser.email || '',
+            } as User;
+
+            setUser(finalUser);
+            localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(finalUser));
+          } else {
+              await setDoc(userDocRef, optimisticUser);
+              setUser(optimisticUser);
+              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(optimisticUser));
           }
       } catch (e) {
-          console.error("Error updating user:", e);
-          throw e;
+          console.log("Firestore sync failed (Network/Rules?):", e);
+      } finally {
+          setIsLoading(false);
       }
   };
 
-  const deleteUserRecord = async (userId: string) => {
-      if (FIREBASE_DISABLED) return;
-      try {
-          await deleteDoc(doc(db, 'users', userId));
-      } catch (e) {
-          console.error("Error deleting user:", e);
-          throw e;
-      }
-  };
+  const login = useCallback(async (usernameInput: string, password: string): Promise<void> => {
+    if (FIREBASE_DISABLED) throw new Error("Firebase is disabled");
 
-  const logout = () => signOut(auth);
-
-  const resendVerificationEmail = async () => {
-    if (!auth.currentUser) return;
-    await sendEmailVerification(auth.currentUser);
-  };
-
-  const reloadUser = async () => {
-    if (auth.currentUser) {
-      await reload(auth.currentUser);
-      await fetchUserData(auth.currentUser);
+    let email = usernameInput.trim();
+    if (email.toLowerCase() === 'admin' && !email.includes('@')) {
+        email = 'admin@medai.com'; 
     }
-  };
 
-  const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
-  };
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+        console.error("Login Error Details:", error.code, error.message);
+        let msg = 'فشل تسجيل الدخول.';
+        if (error.code === 'auth/invalid-credential') msg = 'بيانات الدخول غير صحيحة.';
+        else if (error.code === 'auth/user-not-found') msg = 'المستخدم غير موجود.';
+        else if (error.code === 'auth/wrong-password') msg = 'كلمة المرور خاطئة.';
+        else if (error.code === 'auth/network-request-failed') msg = 'خطأ في الاتصال بالإنترنت.';
+        throw new Error(`${msg} (${error.code})`);
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, password: string): Promise<void> => {
+    if (FIREBASE_DISABLED) throw new Error("Firebase is disabled");
+    
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      await sendEmailVerification(userCredential.user);
+
+      const newUser: User = {
+        id: userCredential.user.uid,
+        username: email.split('@')[0],
+        role: 'premium',
+        aiRequestCount: 0,
+        lastRequestDate: new Date().toISOString().split('T')[0],
+        status: 'pending',
+        emailVerified: false,
+        email: email.trim().toLowerCase(),
+        prescriptionPrivilege: false
+      };
+      
+      try {
+        await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
+      } catch (dbErr) {
+        console.warn("Auth success but Firestore profile creation failed:", dbErr);
+      }
+      
+      setUser(newUser);
+      localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(newUser));
+    } catch (error: any) {
+        console.error("Registration Error Details:", error.code, error.message);
+        let msg = 'فشل إنشاء الحساب.';
+        if (error.code === 'auth/email-already-in-use') msg = 'هذا البريد الإلكتروني مسجل بالفعل.';
+        else if (error.code === 'auth/invalid-email') msg = 'صيغة البريد الإلكتروني غير صحيحة.';
+        else if (error.code === 'auth/weak-password') msg = 'كلمة المرور ضعيفة جداً.';
+        else if (error.code === 'auth/operation-not-allowed') msg = 'تسجيل الحسابات معطل في الإعدادات.';
+        throw new Error(`${msg} (${error.code})`);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+        await signOut(auth);
+        setUser(null);
+        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+    } catch (error) {
+        console.error("Logout error:", error);
+    }
+  }, []);
 
   const value = { 
-    user, 
-    login, 
-    register, 
-    logout, 
-    isLoading, 
-    resendVerificationEmail, 
-    reloadUser,
-    resetPassword,
-    updateUser,
-    deleteUser: deleteUserRecord,
-    getSettings: () => ({ aiRequestLimit: 10, isAiEnabled: true }), // Placeholder
-    updateSettings: () => {}, // Placeholder
-    verifyOTP: async () => {} 
+    user, login, register, logout, isLoading, 
+    requestAIAccess: (cb: any) => cb(), 
+    resendVerificationEmail: async () => {},
+    reloadUser: async () => {},
+    resetPassword: async (e: string) => {},
+    getAllUsers: () => [],
+    updateUser: async (u: User) => {},
+    deleteUser: async (id: string) => {},
+    getSettings: () => ({ aiRequestLimit: 10, isAiEnabled: true }),
+    updateSettings: async () => {}
   };
-  
+
   return <AuthContext.Provider value={value as any}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

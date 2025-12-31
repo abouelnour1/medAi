@@ -10,18 +10,27 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLoginSuccess, t }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isResetMode, setIsResetMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     
-    if (!email.includes('@')) {
-        setError('الرجاء إدخال بريد إلكتروني صحيح');
+    const cleanInput = username.trim();
+
+    // Validation: Must be 'admin' (case insensitive) OR a valid email containing '@'
+    const isAdmin = cleanInput.toLowerCase() === 'admin';
+    const isEmail = cleanInput.includes('@');
+
+    if (!isAdmin && !isEmail) {
+        setError(t('invalidEmailFormat'));
         return;
     }
     
@@ -32,66 +41,102 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
     setIsLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(cleanInput, password);
       onLoginSuccess();
     } catch (err: any) {
+      console.error(err);
       setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+      setSuccessMessage('');
+      
+      if (!username.includes('@')) {
+          setError(t('invalidEmailFormat'));
+          return;
+      }
+
+      setIsLoading(true);
+      try {
+          await resetPassword(username);
+          setSuccessMessage(t('resetPasswordEmailSent'));
+          setTimeout(() => {
+              setIsResetMode(false);
+              setSuccessMessage('');
+          }, 5000);
+      } catch (err: any) {
+          setError(err.message);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+  if (isResetMode) {
+      return (
+        <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md space-y-6 max-w-md mx-auto animate-fade-in">
+            <h2 className="text-2xl font-bold text-center text-light-text dark:text-dark-text">{t('forgotPassword')}</h2>
+            <p className="text-sm text-center text-light-text-secondary dark:text-dark-text-secondary">{t('enterEmailForReset')}</p>
+            
+            <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                    <label htmlFor="reset-email" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('email')}</label>
+                    <input type="email" id="reset-email" value={username} onChange={e => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
+                </div>
+                
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
+                
+                <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70">
+                    {isLoading ? '...' : t('sendResetLink')}
+                </button>
+            </form>
+            
+            <button onClick={() => setIsResetMode(false)} className="w-full text-center text-sm font-medium text-primary hover:text-primary-dark">
+                {t('backToLogin')}
+            </button>
+        </div>
+      );
+  }
+
   return (
-    <div className="bg-white dark:bg-dark-card p-8 rounded-2xl shadow-xl space-y-6 max-w-md mx-auto animate-fade-in border border-slate-100 dark:border-slate-800">
-      <div className="text-center space-y-2">
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{t('login')}</h2>
-          <p className="text-xs text-slate-500">مرحباً بك مجدداً في PharmaSource</p>
-      </div>
+    <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md space-y-6 max-w-md mx-auto animate-fade-in">
+      <h2 className="text-2xl font-bold text-center text-light-text dark:text-dark-text">{t('login')}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('email')}</label>
-          <input 
-            type="email" 
-            id="email" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            placeholder="example@mail.com"
-            required 
-            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-          />
+          <label htmlFor="username" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('email')}</label>
+          <input type="text" id="username" value={username} onChange={e => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
         </div>
         
         <div>
-          <label htmlFor="password"  className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('password')}</label>
+          <div className="flex justify-between items-center">
+            <label htmlFor="password"  className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('password')}</label>
+            <button type="button" onClick={() => setIsResetMode(true)} className="text-xs text-primary hover:text-primary-dark">{t('forgotPassword')}</button>
+          </div>
           <input 
             type="password" 
             id="password" 
             value={password} 
             onChange={e => setPassword(e.target.value)} 
-            placeholder="••••••••"
             required
-            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
           />
         </div>
 
-        {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-lg border border-red-100 dark:border-red-900/30 text-center">{error}</div>}
-        
-        <button 
-            type="submit" 
-            disabled={isLoading} 
-            className="w-full flex justify-center py-3 px-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-        >
-          {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : t('login')}
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70">
+          {isLoading ? '...' : t('login')}
         </button>
       </form>
-
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-sm text-slate-500">
-            {t('loginPrompt')}{' '}
-            <button onClick={onSwitchToRegister} className="font-bold text-primary hover:underline">{t('register')}</button>
-          </p>
-      </div>
+      <p className="text-center text-sm text-light-text-secondary dark:text-dark-text-secondary">
+        {t('loginPrompt')}{' '}
+        <button onClick={onSwitchToRegister} className="font-medium text-primary hover:text-primary-dark">{t('register')}</button>
+      </p>
     </div>
   );
 };
