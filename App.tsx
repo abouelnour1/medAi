@@ -200,6 +200,7 @@ const App: React.FC = () => {
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
             setIsDataLoaded(true);
 
+            // Cloud Fetch with robust error handling for permissions
             if (!FIREBASE_DISABLED) {
                 try {
                     const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
@@ -217,8 +218,12 @@ const App: React.FC = () => {
                             return mergedArray;
                         });
                     }
-                } catch (err) {
-                    console.warn("Background fetch failed:", err);
+                } catch (err: any) {
+                    if (err.code === 'permission-denied') {
+                        console.warn("Cloud access denied. Using local data only. Please check Firestore security rules.");
+                    } else {
+                        console.warn("Background fetch failed:", err);
+                    }
                 }
             }
 
