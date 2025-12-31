@@ -42,7 +42,6 @@ import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 import { GoogleGenAI } from "@google/genai";
-import { isAIAvailable } from './geminiService';
 
 // Icons
 import MoonIcon from './components/MoonIcon';
@@ -201,6 +200,7 @@ const App: React.FC = () => {
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
             setIsDataLoaded(true);
 
+            // Cloud Fetch with robust error handling for permissions
             if (!FIREBASE_DISABLED) {
                 try {
                     const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
@@ -220,7 +220,7 @@ const App: React.FC = () => {
                     }
                 } catch (err: any) {
                     if (err.code === 'permission-denied') {
-                        console.warn("Cloud access denied. Using local data only.");
+                        console.warn("Cloud access denied. Using local data only. Please check Firestore security rules.");
                     } else {
                         console.warn("Background fetch failed:", err);
                     }
@@ -274,7 +274,7 @@ const App: React.FC = () => {
   const toggleFavorite = useCallback((id: string) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]), []);
 
   const handleCheckAvailability = useCallback(async (medicine: Medicine) => {
-    if (!isAIAvailable()) {
+    if (!process.env.API_KEY) {
         alert(t('aiUnavailableMessage'));
         return;
     }
@@ -283,7 +283,6 @@ const App: React.FC = () => {
     setAvailabilityResult(null);
 
     try {
-        // إنشاء مثيل جديد في كل طلب لضمان استخدام أحدث مفتاح من البيئة
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const prompt = `Is the medication "${medicine['Trade Name']}" (Scientific: ${medicine['Scientific Name']}) available in Saudi Arabia pharmacies right now? Check Nahdi, Al-Dawaa, and other major chains. Provide availability status and price if found. Respond in ${language === 'ar' ? 'Arabic' : 'English'}.`;
         
@@ -302,7 +301,7 @@ const App: React.FC = () => {
             .map((chunk: any) => ({ title: chunk.web.title, uri: chunk.web.uri }));
 
         setAvailabilityResult({ text, sources });
-    } catch (e: any) {
+    } catch (e) {
         console.error("Availability check error:", e);
         alert(t('geminiError'));
     } finally {
