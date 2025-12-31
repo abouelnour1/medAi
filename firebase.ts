@@ -12,8 +12,10 @@ import { getMessaging, Messaging } from "firebase/messaging";
 import { getFunctions, Functions } from "firebase/functions";
 
 // --- FIREBASE SWITCH ---
+// Set this to TRUE to disconnect Firebase completely.
 export const FIREBASE_DISABLED = false;
 
+// 1. Web Configuration (Default for JS SDK)
 const firebaseWebConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
   authDomain: "medainew-fa6a2.firebaseapp.com",
@@ -24,6 +26,7 @@ const firebaseWebConfig = {
   measurementId: "G-J06N12MDW0"
 };
 
+// 2. Android Configuration
 const firebaseAndroidConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
   authDomain: "medainew-fa6a2.firebaseapp.com",
@@ -41,18 +44,35 @@ let analytics: any = null;
 let messaging: Messaging | null = null;
 let functions: Functions | null = null;
 
+// Robust check for Capacitor Android Environment
 const isAndroidEnvironment = () => {
   if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      return (window as any).Capacitor.getPlatform() === 'android';
+      const platform = (window as any).Capacitor.getPlatform();
+      if (platform === 'android') return true;
+  }
+  if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('android') && (ua.includes('wv') || ua.includes('capacitor') || window.location.protocol.includes('http'))) {
+          if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+              return true;
+          }
+      }
   }
   return false;
 };
 
 if (!FIREBASE_DISABLED) {
   try {
-    const activeConfig = isAndroidEnvironment() ? firebaseAndroidConfig : firebaseWebConfig;
+    let activeConfig = firebaseWebConfig;
+    
+    if (isAndroidEnvironment()) {
+        activeConfig = firebaseAndroidConfig;
+    }
+
     app = initializeApp(activeConfig);
     
+    // Modern Firestore Initialization with Persistent Cache
+    // experimentalAutoDetectLongPolling helps resolve connection timeouts in restricted networks
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
@@ -61,20 +81,39 @@ if (!FIREBASE_DISABLED) {
     });
 
     auth = getAuth(app);
-    functions = getFunctions(app);
+    
+    try {
+        functions = getFunctions(app);
+    } catch (err) {
+        console.error("Firebase Functions Initialization failed.", err);
+    }
 
-    if (typeof window !== 'undefined') {
+  } catch (e) {
+    console.error("Firebase Core Initialization failed:", e);
+  }
+
+  if (typeof window !== 'undefined' && app) {
+    try {
       analytics = getAnalytics(app);
+    } catch (e) {
+      console.warn("Firebase Analytics failed to initialize:", e);
+    }
+
+    try {
       if ('serviceWorker' in navigator) {
         messaging = getMessaging(app);
       }
+    } catch (e) {
+      console.warn("Firebase Messaging failed to initialize:", e);
     }
-  } catch (e) {
-    console.error("Firebase Initialization failed:", e);
   }
 } else {
-  db = null as any;
-  auth = null as any;
+  app = null;
+  db = null as unknown as Firestore;
+  auth = null as unknown as Auth;
+  analytics = null;
+  messaging = null;
+  functions = null;
 }
 
 export { app, db, auth, analytics, messaging, functions };
