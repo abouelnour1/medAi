@@ -31,40 +31,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            if (userDoc.exists()) {
-              const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
-              setUser(userData);
-              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
-            } else {
-              // User exists in Auth but not in Firestore yet
-              const partialUser: User = {
-                  id: firebaseUser.uid,
-                  username: firebaseUser.email?.split('@')[0] || 'User',
-                  role: 'premium',
-                  email: firebaseUser.email || '',
-                  emailVerified: firebaseUser.emailVerified,
-                  status: 'active',
-                  aiRequestCount: 0,
-                  lastRequestDate: new Date().toISOString().split('T')[0]
-              };
-              setUser(partialUser);
-            }
-        } catch (err: any) {
-            console.warn("Firestore user fetch failed (Permissions?):", err);
-            // Fallback to minimal user info from Auth if Firestore fails
-            const fallbackUser: User = {
-                id: firebaseUser.uid,
-                username: firebaseUser.email?.split('@')[0] || 'User',
-                role: 'premium',
-                email: firebaseUser.email || '',
-                emailVerified: firebaseUser.emailVerified,
-                status: 'active',
-                aiRequestCount: 0,
-                lastRequestDate: new Date().toISOString().split('T')[0]
-            };
-            setUser(fallbackUser);
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
+          setUser(userData);
+          localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
         }
       } else {
         setUser(null);
@@ -97,13 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         aiRequestCount: 0,
         lastRequestDate: new Date().toISOString().split('T')[0]
       };
-      
-      try {
-          await setDoc(doc(db, 'users', res.user.uid), newUser);
-      } catch (firestoreErr) {
-          console.error("User created in Auth but failed to save in Firestore. Check Rules.", firestoreErr);
-      }
-      
+      await setDoc(doc(db, 'users', res.user.uid), newUser);
       setUser(newUser);
     } catch (e: any) {
       if (e.code === 'auth/email-already-in-use') throw new Error('البريد مسجل مسبقاً');
