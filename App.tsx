@@ -38,61 +38,49 @@ import GlobeIcon from './components/icons/GlobeIcon';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
 import { useAuth } from './components/auth/AuthContext';
 
-// Data imports from initial data files
+// Data imports
 import { MEDICINE_DATA } from './data/data';
 import { INITIAL_INSURANCE_DATA } from './data/insurance-data';
 import { INITIAL_COSMETICS_DATA } from './data/cosmetics-data';
 import { INITIAL_MILK_DATA } from './data/milk-data';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 
-/**
- * Main application component.
- * Orchestrates views, handles global state, and manages data flow.
- */
 const App: React.FC = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   
-  // Basic Navigation and Layout State
   const [view, setView] = useState<View>('search');
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [language, setLanguage] = useState<Language>('ar');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
-  // Search state for Medicines
   const [searchTerm, setSearchTerm] = useState('');
   const [forceSearch, setForceSearch] = useState(false);
   const [textSearchMode, setTextSearchMode] = useState<'tradeName' | 'scientificName'>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [resultsLimit, setResultsLimit] = useState(20);
   
-  // Master data state
   const [medicines, setMedicines] = useState<Medicine[]>(MEDICINE_DATA);
   const [insuranceData, setInsuranceData] = useState(INITIAL_INSURANCE_DATA);
   const [cosmetics, setCosmetics] = useState(INITIAL_COSMETICS_DATA);
   const [milkProducts] = useState(INITIAL_MILK_DATA);
   
-  // Selection and context state
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [sourceMedicine, setSourceMedicine] = useState<Medicine | null>(null);
   const [selectedCosmetic, setSelectedCosmetic] = useState<Cosmetic | null>(null);
   const [selectedInsuranceData, setSelectedInsuranceData] = useState<SelectedInsuranceData | null>(null);
   
-  // Favorites and Modal UI state
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   
-  // Online Availability (AI/Search simulation) state
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityResult, setAvailabilityResult] = useState<{ text: string, sources: any[] } | null>(null);
 
-  // Tab-specific search filters
   const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
 
-  // Multi-language translation engine
   const t: TFunction = useCallback((key, replacements) => {
     let text = translations[language][key] || key;
     if (replacements) {
@@ -109,14 +97,12 @@ const App: React.FC = () => {
 
   const handleCheckAvailability = (termOrMed: string | Medicine) => {
     setIsCheckingAvailability(true);
-    // Simulate real-time online pharmacy availability check
     setTimeout(() => {
-        setAvailabilityResult({ text: "Information retrieved from Nahdi and Al-Dawaa indicates current stock is available for pickup or delivery.", sources: [] });
+        setAvailabilityResult({ text: "المعلومات المستردة من صيدليات النهدي والدواء تشير إلى توفر المخزون الحالي للاستلام أو التوصيل.", sources: [] });
         setIsCheckingAvailability(false);
     }, 1200);
   };
 
-  // Medicine search filtering logic
   const filteredMedicines = useMemo(() => {
     let filtered = medicines;
     if (searchTerm) {
@@ -129,7 +115,6 @@ const App: React.FC = () => {
     return filtered;
   }, [medicines, searchTerm, textSearchMode]);
 
-  // Sync visual theme with root document element
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -139,14 +124,12 @@ const App: React.FC = () => {
   }, [theme]);
 
   const renderContent = () => {
-      // Authentication and Access Control checks
       if (isAuthLoading) return <div className="py-20 text-center">جاري التحميل...</div>;
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); setActiveTab('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (user && !user.emailVerified) return <VerifyEmailView user={user} t={t} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} />;
 
-      // Search Tab Logic
       if (activeTab === 'search') {
           const isSearchActive = searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch;
           return (
@@ -185,14 +168,12 @@ const App: React.FC = () => {
                 </div>
                 {view === 'details' && selectedMedicine && <MedicineDetail medicine={selectedMedicine} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onCheckAvailability={() => handleCheckAvailability(selectedMedicine)} isCheckingAvailability={isCheckingAvailability} availabilityResult={availabilityResult} />}
                 {view === 'alternatives' && sourceMedicine && <AlternativesView sourceMedicine={sourceMedicine} alternatives={{direct: medicines.filter(m => m['Scientific Name'] === sourceMedicine['Scientific Name'] && m.RegisterNumber !== sourceMedicine.RegisterNumber), therapeutic: []}} onMedicineSelect={m => { setSelectedMedicine(m); setView('details'); }} onMedicineLongPress={m => { setSelectedMedicine(m); setView('details'); }} onFindAlternative={m => { setSourceMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />}
-              </>
+              </div>
           );
       }
       
-      // Milk Formula Tab
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} />;
       
-      // Cosmetics Tab
       if (activeTab === 'cosmetics') {
           if (view === 'cosmeticDetails' && selectedCosmetic) {
               return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} />;
@@ -200,7 +181,6 @@ const App: React.FC = () => {
           return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={c => { setSelectedCosmetic(c); setView('cosmeticDetails'); }} searchTerm={cosmeticsSearchTerm} setSearchTerm={setCosmeticsSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} />;
       }
       
-      // Insurance Coverage Tab
       if (activeTab === 'insurance') {
            if (view === 'insuranceDetails' && selectedInsuranceData) {
                return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
@@ -208,7 +188,6 @@ const App: React.FC = () => {
            return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={d => { setSelectedInsuranceData(d); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       
-      // Profile and Settings Tab
       if (activeTab === 'settings') return (
         <SettingsView 
             t={t} 
