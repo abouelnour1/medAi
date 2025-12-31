@@ -1,6 +1,18 @@
-
 export const translations = {
   ar: {
+    // ... (النصوص السابقة)
+    verifyEmailTitle: 'تفعيل الحساب',
+    verifyEmailDesc: 'لقد أرسلنا رابط تفعيل إلى بريدك الإلكتروني:',
+    resendVerificationEmail: 'إعادة إرسال الرابط',
+    iHaveVerified: 'تم التفعيل، حدث الصفحة',
+    verificationEmailSent: 'تم إرسال رابط جديد.',
+    invalidCodeError: 'حدث خطأ، حاول مرة أخرى.',
+    otpPlaceholder: '',
+    verifyingCode: 'جاري التحديث...',
+    verificationSuccess: 'تم تفعيل حسابك بنجاح!',
+    enterFullCode: '',
+    emailVerificationRequired: 'يجب تفعيل البريد للاستخدام.',
+    // ... (بقية النصوص)
     appTitle: 'PharmaSource',
     search: 'بحث',
     searchPlaceholder: 'ابحث باسم تجاري أو علمي...',
@@ -307,12 +319,6 @@ export const translations = {
     addGuidelinesDataTitle: 'إضافة إرشادات',
     addGuidelinesDataDescription: 'أضف ملف JSON للإرشادات.',
     clinicalAssistantWelcome: 'مرحباً في المساعد السريري.',
-    verifyEmailTitle: 'تفعيل البريد',
-    verifyEmailDesc: 'تأكد من بريدك الإلكتروني:',
-    resendVerificationEmail: 'إعادة إرسال الرابط',
-    iHaveVerified: 'تم التفعيل، حدث الصفحة',
-    verificationEmailSent: 'تم الإرسال.',
-    emailVerificationRequired: 'يجب تفعيل البريد للاستخدام.',
     forgotPassword: 'نسيت كلمة المرور؟',
     sendResetLink: 'إرسال رابط الاستعادة',
     backToLogin: 'العودة للدخول',
@@ -400,6 +406,19 @@ export const translations = {
     availabilityStatus: 'حالة التوفر الحالية',
   },
   en: {
+    // ... (نفس التغييرات للإنجليزية)
+    verifyEmailTitle: 'Account Verification',
+    verifyEmailDesc: 'We sent a verification link to your email:',
+    resendVerificationEmail: 'Resend Link',
+    iHaveVerified: 'I have verified, Reload',
+    verificationEmailSent: 'New link sent.',
+    invalidCodeError: 'Error occurred, try again.',
+    otpPlaceholder: '',
+    verifyingCode: 'Reloading...',
+    verificationSuccess: 'Account verified!',
+    enterFullCode: '',
+    emailVerificationRequired: 'Verification required.',
+    // ...
     appTitle: 'PharmaSource',
     search: 'Search',
     searchPlaceholder: 'Search by trade or scientific name...',
@@ -706,12 +725,6 @@ export const translations = {
     addGuidelinesDataTitle: 'Add Guidelines',
     addGuidelinesDataDescription: 'JSON for guidelines.',
     clinicalAssistantWelcome: 'Clinical Assistant.',
-    verifyEmailTitle: 'Verify Email',
-    verifyEmailDesc: 'Check email:',
-    resendVerificationEmail: 'Resend',
-    iHaveVerified: 'Verified, Reload',
-    verificationEmailSent: 'Sent.',
-    emailVerificationRequired: 'Verify required.',
     forgotPassword: 'Forgot Pass?',
     sendResetLink: 'Reset Link',
     backToLogin: 'Back to Login',
@@ -800,4 +813,8 @@ export const translations = {
   }
 };
 
+/**
+ * Type derived from the keys of the Arabic translations.
+ * These keys represent all available translation strings in the app.
+ */
 export type TranslationKeys = keyof typeof translations.ar;

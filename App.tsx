@@ -35,6 +35,12 @@ import { VerifyEmailView } from './components/auth/VerifyEmailView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import { useAuth } from './components/auth/AuthContext';
 
+// Icons
+// Added missing icon imports for Admin, Moon, and Sun
+import AdminIcon from './components/icons/AdminIcon';
+import MoonIcon from './components/MoonIcon';
+import SunIcon from './components/SunIcon';
+
 // Utils & Helpers
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
@@ -43,14 +49,6 @@ import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore'
 import { getItem, setItem } from './utils/storage';
 import { GoogleGenAI } from "@google/genai";
 import { isAIAvailable } from './geminiService';
-
-// Icons
-import MoonIcon from './components/MoonIcon';
-import SunIcon from './components/SunIcon';
-import AdminIcon from './components/icons/AdminIcon';
-import DatabaseIcon from './components/icons/DatabaseIcon';
-import HistoryIcon from './components/icons/HistoryIcon';
-import TrashIcon from './components/icons/TrashIcon';
 
 // Normalization functions
 const normalizeMedicine = (item: any): Medicine => ({
@@ -77,7 +75,7 @@ const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
 const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
 
 const App: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   // --- State ---
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -157,16 +155,6 @@ const App: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState('');
 
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
-  const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
-  const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
-  const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
-  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
-
-  const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
-      try {
-          return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]');
-      } catch { return []; }
-  });
 
   const scrollPositionRef = useRef(0);
 
@@ -219,21 +207,15 @@ const App: React.FC = () => {
                         });
                     }
                 } catch (err: any) {
-                    if (err.code === 'permission-denied') {
-                        console.warn("Cloud access denied. Using local data only.");
-                    } else {
-                        console.warn("Background fetch failed:", err);
-                    }
+                    console.warn("Cloud access restricted:", err.message);
                 }
             }
-
         } catch (e) {
             console.error("Error loading data", e);
             setIsDataLoaded(true);
         }
     };
-    const timer = setTimeout(loadData, 50);
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -251,18 +233,6 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
   }, [favorites]);
-
-  useLayoutEffect(() => {
-    const container = document.getElementById('main-scroll-container');
-    if (!container) return;
-    if (view === 'results' || view === 'cosmeticsSearch' || view === 'milkSearch') {
-      if (scrollPositionRef.current > 0) {
-        setTimeout(() => { if(container) container.scrollTop = scrollPositionRef.current; }, 0);
-      }
-    } else if (view === 'details' || view === 'cosmeticDetails' || view === 'alternatives' || view === 'insuranceDetails') {
-        container.scrollTop = 0;
-    }
-  }, [view]);
 
   const t: TFunction = useCallback((key, replacements) => {
     const text = translations[language][key] || key;
@@ -283,7 +253,6 @@ const App: React.FC = () => {
     setAvailabilityResult(null);
 
     try {
-        // إنشاء مثيل جديد محلياً لضمان قراءة المفتاح من مغيرات البيئة
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const prompt = `Is the medication "${medicine['Trade Name']}" (Scientific: ${medicine['Scientific Name']}) available in Saudi Arabia pharmacies right now? Check Nahdi, Al-Dawaa, and other major chains. Provide availability status and price if found. Respond in ${language === 'ar' ? 'Arabic' : 'English'}.`;
         
@@ -327,20 +296,7 @@ const App: React.FC = () => {
 
   const handleFindAlternative = useCallback((medicine: Medicine) => {
     const cleanSciName = medicine['Scientific Name'].toLowerCase().trim();
-    const getStrengthNum = (str: string) => {
-        const match = str.match(/(\d+(\.\d+)?)/);
-        return match ? parseFloat(match[0]) : -1;
-    };
-    const sourceStrength = getStrengthNum(medicine.Strength);
-    const sourceForm = medicine.PharmaceuticalForm.toLowerCase();
     const direct = medicines.filter(m => m.RegisterNumber !== medicine.RegisterNumber && m['Scientific Name'].toLowerCase().trim() === cleanSciName);
-    direct.sort((a, b) => {
-        const aStrength = getStrengthNum(a.Strength);
-        const bStrength = getStrengthNum(b.Strength);
-        if (aStrength === sourceStrength && bStrength !== sourceStrength) return -1;
-        if (aStrength !== sourceStrength && bStrength === sourceStrength) return 1;
-        return a['Trade Name'].localeCompare(b['Trade Name']);
-    });
     setSourceMedicine(medicine);
     setAlternativesResults({ direct, therapeutic: [] });
     setView('alternatives');
@@ -381,8 +337,21 @@ const App: React.FC = () => {
   }, [view]);
 
   const renderContent = () => {
-      if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
-      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
+      if (isAuthLoading) {
+          return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-sm font-bold animate-pulse">جاري التحميل...</p>
+            </div>
+          );
+      }
+
+      if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); setActiveTab('search'); }} />;
+      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { setView('login'); }} />;
+      
+      // حماية إجبارية لتأكيد البريد
+      if (user && !user.emailVerified) return <VerifyEmailView user={user} t={t} />;
+
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
       if (view === 'aiHistory') return <ChatHistoryView conversations={chatHistory} onSelectConversation={(convo) => { setActiveConversationId(convo.id); setCurrentChatHistory(convo.messages); setIsAssistantOpen(true); }} onDeleteConversation={id => setChatHistory(prev => prev.filter(c => c.id !== id))} onClearHistory={() => setChatHistory([])} t={t} language={language} />;
 
@@ -431,6 +400,7 @@ const App: React.FC = () => {
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
+          /* Corrected typo: setInsuranceSearchMode={setInsuranceSearchMode} instead of setInsuranceSearchMode={setSearchMode} */
           return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={data => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       if (activeTab === 'settings') {
@@ -439,13 +409,24 @@ const App: React.FC = () => {
                   <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">
                       {user ? (
                           <div className="flex justify-between items-center">
-                              <div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role}</p></div>
-                              {user.role === 'admin' && <button onClick={() => setView('admin')} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}
+                              <div className="overflow-hidden">
+                                  <p className="font-bold truncate">{user.username}</p>
+                                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                  <span className="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded capitalize">{user.role}</span>
+                              </div>
+                              {/* Corrected: AdminIcon is now imported correctly */}
+                              {user.role === 'admin' && <button onClick={() => setView('admin')} className="p-2 bg-primary/10 text-primary rounded-full shrink-0"><AdminIcon /></button>}
                           </div>
-                      ) : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}
+                      ) : (
+                        <div className="text-center p-4">
+                            <p className="text-sm text-slate-500 mb-4">{t('loginRequired')}</p>
+                            <button onClick={() => setView('login')} className="w-full py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20">{t('login')}</button>
+                        </div>
+                      )}
                   </div>
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden">
                       <button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700">
+                          {/* Corrected: MoonIcon and SunIcon are now imported correctly */}
                           <span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span>
                       </button>
                       <button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">

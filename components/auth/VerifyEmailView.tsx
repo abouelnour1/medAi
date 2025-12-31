@@ -9,99 +9,78 @@ interface VerifyEmailViewProps {
 }
 
 export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({ user, t }) => {
-  const { resendVerificationEmail, reloadUser, logout } = useAuth();
+  const { resendVerificationEmail, logout, reloadUser } = useAuth();
   const [isResending, setIsResending] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
-  // Automatically check for verification periodically and on window focus
-  useEffect(() => {
-      // 1. Check immediately on mount
-      reloadUser();
-
-      // 2. Check every 3 seconds
-      const interval = setInterval(() => {
-          reloadUser();
-      }, 3000);
-
-      // 3. Check when the user switches back to this tab
-      const handleVisibilityChange = () => {
-          if (document.visibilityState === 'visible') {
-              reloadUser();
-          }
-      };
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-
-      return () => {
-          clearInterval(interval);
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
-  }, [reloadUser]);
+  const handleReload = async () => {
+    setIsReloading(true);
+    setError('');
+    try {
+      await reloadUser();
+    } catch (err: any) {
+      setError(t('invalidCodeError'));
+    } finally {
+      setIsReloading(false);
+    }
+  };
 
   const handleResend = async () => {
     setIsResending(true);
     setMessage('');
+    setError('');
     try {
       await resendVerificationEmail();
       setMessage(t('verificationEmailSent'));
     } catch (error: any) {
-      if (error.code === 'auth/too-many-requests') {
-          setMessage('الرجاء الانتظار قليلاً قبل إعادة الإرسال.');
-      } else {
-          setMessage('حدث خطأ أثناء الإرسال.');
-      }
+      setError('حدث خطأ أثناء الإرسال.');
     } finally {
       setIsResending(false);
     }
   };
 
-  const handleReload = async () => {
-      await reloadUser();
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 animate-fade-in">
-      <div className="bg-white dark:bg-dark-card p-8 rounded-2xl shadow-lg max-w-md w-full text-center space-y-6">
-        <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto text-yellow-600 dark:text-yellow-400 animate-pulse">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="bg-white dark:bg-dark-card p-8 rounded-2xl shadow-lg max-w-md w-full text-center space-y-8 border border-slate-100 dark:border-slate-800">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
         </div>
         
-        <div>
-            <h2 className="text-2xl font-bold text-light-text dark:text-dark-text mb-2">{t('verifyEmailTitle')}</h2>
-            <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                {t('verifyEmailDesc')} <span className="font-semibold text-light-text dark:text-dark-text">{user.email}</span>
-            </p>
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-2">
-                يتم التحقق تلقائياً...
+        <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white">{t('verifyEmailTitle')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                {t('verifyEmailDesc')} <br/>
+                <span className="font-bold text-slate-800 dark:text-white block mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">{user.email}</span>
             </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
             <button 
                 onClick={handleReload}
-                className="w-full py-3 px-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition-colors shadow-md hover:shadow-lg"
+                disabled={isReloading}
+                className="w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-black rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
             >
-                {t('iHaveVerified')}
+                {isReloading ? t('verifyingCode') : t('iHaveVerified')}
             </button>
             
             <button 
                 onClick={handleResend}
-                disabled={isResending}
-                className="w-full py-2 px-4 text-primary hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold rounded-lg transition-colors disabled:opacity-50"
+                disabled={isResending || isReloading}
+                className="text-sm font-bold text-primary hover:underline transition-all disabled:opacity-50"
             >
                 {isResending ? '...' : t('resendVerificationEmail')}
             </button>
         </div>
 
-        {message && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
-                {message}
-            </div>
-        )}
+        {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/30">{error}</div>}
+        {message && <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl text-xs font-bold border border-green-100 dark:border-green-900/30">{message}</div>}
         
-        <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
-             <button onClick={logout} className="text-sm text-red-500 hover:text-red-600 font-medium">
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+             <button onClick={logout} className="text-xs text-slate-400 hover:text-red-500 font-bold uppercase tracking-widest">
                  {t('logout')}
              </button>
         </div>

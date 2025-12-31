@@ -167,6 +167,8 @@ export type AuthContextType = {
   resendVerificationEmail: () => Promise<void>;
   reloadUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  // Added verifyOTP to the interface
+  verifyOTP: (code: string) => Promise<void>;
   isLoading: boolean;
   getAllUsers: () => User[];
   updateUser: (user: User) => void;
