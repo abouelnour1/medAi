@@ -2,43 +2,21 @@
 import React from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
-import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
+import PillIcon from './icons/PillIcon';
+import GlobeIcon from './icons/GlobeIcon';
+import MarkdownRenderer from './MarkdownRenderer';
 
-const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
+const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '') return null;
   return (
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
       <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{label}</dt>
-      <dd className={`mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0 ${valueClassName || ''}`}>{value}</dd>
+      <dd className={`mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0`}>{value}</dd>
     </div>
   );
 };
-
-const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
-  if (!status) return null;
-
-  const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
-  
-  let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
-  if (status === 'OTC') {
-    colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
-  } else if (status === 'Prescription') {
-    colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
-  }
-  
-  const sizeClasses = size === 'sm' 
-    ? 'px-2.5 py-1 text-xs' 
-    : 'px-3 py-1 text-sm';
-
-  return (
-    <span className={`inline-block font-semibold rounded-full ${sizeClasses} ${colorClasses}`}>
-      {statusText}
-    </span>
-  );
-};
-
 
 interface MedicineDetailProps {
     medicine: Medicine;
@@ -47,149 +25,115 @@ interface MedicineDetailProps {
     isFavorite: boolean;
     onToggleFavorite: (medicineId: string) => void;
     user?: User | null;
-    onEdit?: (medicine: Medicine) => void;
-    onOpenAssistant?: () => void;
+    onCheckAvailability?: () => void;
+    isCheckingAvailability?: boolean;
+    availabilityResult?: { text: string, sources: { title: string, uri: string }[] } | null;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ 
+    medicine, t, language, isFavorite, onToggleFavorite, user, 
+    onCheckAvailability, isCheckingAvailability, availabilityResult 
+}) => {
   const price = parseFloat(medicine['Public price']);
-  const scientificName = medicine['Scientific Name'] || '';
-  const strengths = String(medicine.Strength || '');
-  const strengthUnit = String(medicine.StrengthUnit || '');
-
-  const strengthValues = strengths ? strengths.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const strengthUnitValues = strengthUnit ? strengthUnit.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-  const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
-
-  const handleImageSearch = () => {
-      const tradeName = medicine['Trade Name'] || '';
-      let query = tradeName;
-      
-      if (tradeName.trim().split(/\s+/).length === 1) {
-          const strength = medicine.Strength || '';
-          const form = medicine.PharmaceuticalForm || '';
-          query = `${tradeName} ${strength} ${form}`;
-      }
-      
-      const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-      window.open(url, '_blank');
-  };
-
-  const productControl = medicine['Product Control'] || '';
-  const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
-  const isRestricted = productControl.toLowerCase().includes('restricted');
+  
+  const scientificName = String(medicine['Scientific Name'] || '');
+  const ingredients = scientificName.split(',').map(s => s.trim()).filter(Boolean);
+  const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+  const units = String(medicine.StrengthUnit || '').split(',').map(s => s.trim());
 
   return (
-    <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-8">
-      <div>
-        <div className="px-2 sm:px-0">
-          <div className="flex items-center justify-between gap-4">
-              <button 
-                onClick={onOpenAssistant}
-                className="group flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
-                title={t('assistantFabTooltip')}
-              >
-                  <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text group-hover:text-primary dark:group-hover:text-primary-light underline decoration-dotted decoration-gray-300 dark:decoration-slate-600 underline-offset-4">
-                      {medicine['Trade Name'] || 'Unknown Name'}
-                  </h2>
-                  <span className="text-primary dark:text-primary-light opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleImageSearch}
-                    className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                    title={t('searchImage')}
-                  >
-                      <div className="h-6 w-6">
-                        <CameraIcon />
-                      </div>
-                  </button>
-                  {user?.role === 'admin' && onEdit && (
-                      <button
-                          onClick={() => onEdit(medicine)}
-                          className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary hover:bg-primary/10"
-                          title={t('editMedicine')}
-                      >
-                          <div className="h-6 w-6">
-                              <EditIcon />
-                          </div>
-                      </button>
-                  )}
-                  <button
-                    onClick={() => onToggleFavorite(medicine.RegisterNumber)}
-                    className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}
-                    title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
-                  >
-                      <div className="h-6 w-6">
-                        <StarIcon isFilled={isFavorite} />
-                      </div>
-                  </button>
-              </div>
-          </div>
-          
-          {hasMultipleIngredients ? (
-            <div className="mt-3">
-              <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-2">{t('scientificName')}:</p>
-              <ul className="space-y-1.5">
-                {ingredients.map((ingredient, index) => {
-                  let unit = '';
-                  if (strengthUnitValues.length === strengthValues.length) {
-                    unit = strengthUnitValues[index] || '';
-                  } else if (strengthUnitValues.length === 1) {
-                    unit = strengthUnitValues[0];
-                  }
-                  const strengthDisplay = `${strengthValues[index] || ''}${unit ? ` ${unit}` : ''}`.trim();
-
-                  return (
-                    <li key={index} className="flex justify-between items-baseline">
-                      <span className="text-sm text-light-text dark:text-dark-text">{ingredient}</span>
-                      <span className="font-bold text-light-text dark:text-dark-text whitespace-nowrap">
-                        {strengthDisplay}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+    <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
+      <div className="px-1">
+        <div className="flex items-start justify-between gap-4">
+            <div className="flex-grow min-w-0">
+                <h2 className="text-2xl font-black text-light-text dark:text-dark-text leading-tight">
+                    {medicine['Trade Name']}
+                </h2>
+                <div className="flex flex-wrap gap-2 mt-2">
+                   <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-md">{medicine['Legal Status'] || 'OTC'}</span>
+                   <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-md">{medicine.DrugType}</span>
+                </div>
             </div>
-          ) : (
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-light-text-secondary dark:text-dark-text-secondary">
-              {`${scientificName}${strengths ? ` ${strengths}` : ''}${strengthUnit ? ` ${strengthUnit}` : ''}`.trim()}
-            </p>
-          )}
-
-          {!isNaN(price) && (
-              <div className="mt-4 text-accent text-2xl font-bold">
-                {`${price.toFixed(2)} ${t('sar')}`}
-              </div>
-          )}
+            <div className="flex flex-col gap-2 shrink-0 items-end">
+                <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2.5 rounded-xl ${isFavorite ? 'bg-accent/10 text-accent' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                    <div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div>
+                </button>
+                {!isNaN(price) && price > 0 && (
+                    <div className="text-right">
+                        <span className="text-2xl font-black text-accent">{price.toFixed(2)}</span>
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-tighter">{t('sar')}</span>
+                    </div>
+                )}
+            </div>
         </div>
-        <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
-          <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-            <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
-            <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
-            
-            {(medicine['Legal Status'] || isControlled || isRestricted) && (
-              <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('legalStatus')}</dt>
-                <dd className="mt-1 text-sm leading-6 sm:col-span-2 sm:mt-0">
-                  { (isControlled || isRestricted) ? (
-                      <span className={`inline-block font-bold rounded-full px-3 py-1 text-sm text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>
-                          {isControlled ? 'CONTROLLED' : 'RESTRICTED'}
-                      </span>
-                  ) : (
-                      <LegalStatusBadge status={medicine['Legal Status']} size="base" t={t} />
-                  )}
-                </dd>
-              </div>
+
+        {/* Real-time Availability Feature - Minimized Button */}
+        <div className="mt-4 flex flex-col items-center">
+            <button 
+                onClick={onCheckAvailability}
+                disabled={isCheckingAvailability}
+                className="w-fit px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-full text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-primary/20 transition-all disabled:opacity-70 active:scale-95"
+            >
+                {isCheckingAvailability ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : <div className="w-4 h-4"><GlobeIcon /></div>}
+                {t('checkAvailability')}
+            </button>
+
+            {isCheckingAvailability && (
+                <p className="text-[10px] text-center text-primary font-medium mt-2 animate-pulse">
+                    {t('searchingPharmacies')}
+                </p>
             )}
 
+            {availabilityResult && (
+                <div className="w-full mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 animate-fade-in">
+                    <h4 className="text-sm font-black text-primary dark:text-primary-light uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <AssistantIcon /> {t('availabilityStatus')}
+                    </h4>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 ai-response-content prose prose-sm dark:prose-invert">
+                        <MarkdownRenderer content={availabilityResult.text} />
+                    </div>
+                    {availabilityResult.sources.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">{t('foundInSources')}</p>
+                            <div className="flex flex-wrap gap-2">
+                                {availabilityResult.sources.map((source, i) => (
+                                    <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 truncate max-w-[150px]">
+                                        {source.title}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+
+        <div className="mt-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 flex items-center gap-2">
+                <div className="w-4 h-4 text-primary"><PillIcon /></div>
+                <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400">{t('scientificName')}</h3>
+            </div>
+            <div className="p-1">
+                {ingredients.map((ing, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{ing}</span>
+                        <div className="text-right">
+                            <span className="text-sm font-black text-primary">{strengths[idx] || strengths[0] || ''}</span>
+                            <span className="text-[10px] ml-1 font-bold text-slate-400">{units[idx] || units[0] || ''}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div className="mt-8 border-t border-slate-100 dark:border-slate-800">
+          <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+            <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
+            <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`} />
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
-            <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />
-            <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
             <DetailRow label={t('registrationNumber')} value={medicine.RegisterNumber} />
           </dl>
         </div>
