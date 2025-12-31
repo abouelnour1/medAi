@@ -1,6 +1,6 @@
+
 export const translations = {
   ar: {
-    // ... (النصوص السابقة)
     verifyEmailTitle: 'تفعيل الحساب',
     verifyEmailDesc: 'لقد أرسلنا رابط تفعيل إلى بريدك الإلكتروني:',
     resendVerificationEmail: 'إعادة إرسال الرابط',
@@ -12,15 +12,15 @@ export const translations = {
     verificationSuccess: 'تم تفعيل حسابك بنجاح!',
     enterFullCode: '',
     emailVerificationRequired: 'يجب تفعيل البريد للاستخدام.',
-    // ... (بقية النصوص)
     appTitle: 'PharmaSource',
     search: 'بحث',
     searchPlaceholder: 'ابحث باسم تجاري أو علمي...',
     tradeName: 'الاسم التجاري',
     scientificName: 'المادة الفعالة',
     clearSearch: 'إلغاء البحث',
-    noResultsTitle: 'لا توجد نتائج بحث مطابقة.',
-    noResultsSubtitle: 'جرّب تغيير مصطلحات البحث أو تعديل الفلاتر.',
+    noResultsTitle: 'لم نجد هذا الدواء في السجل المحلي',
+    noResultsSubtitle: 'يمكنك المحاولة بالبحث المتقدم عبر الذكاء الاصطناعي في الصيدليات السعودية.',
+    searchOnlineBtn: 'ابحث الآن في الصيدليات السعودية (Online)',
     filters: 'الفلاتر',
     allPharmaceuticalForms: 'كل الأشكال الصيدلانية',
     filterByPharmaceuticalForm: 'فلترة حسب الشكل الصيدلاني',
@@ -406,7 +406,6 @@ export const translations = {
     availabilityStatus: 'حالة التوفر الحالية',
   },
   en: {
-    // ... (نفس التغييرات للإنجليزية)
     verifyEmailTitle: 'Account Verification',
     verifyEmailDesc: 'We sent a verification link to your email:',
     resendVerificationEmail: 'Resend Link',
@@ -418,15 +417,15 @@ export const translations = {
     verificationSuccess: 'Account verified!',
     enterFullCode: '',
     emailVerificationRequired: 'Verification required.',
-    // ...
     appTitle: 'PharmaSource',
     search: 'Search',
     searchPlaceholder: 'Search by trade or scientific name...',
     tradeName: 'Trade Name',
     scientificName: 'Active Ingredient',
     clearSearch: 'Clear Search',
-    noResultsTitle: 'No matching results found.',
-    noResultsSubtitle: 'Try changing search terms or adjusting filters.',
+    noResultsTitle: 'Not found in local directory',
+    noResultsSubtitle: 'Try advanced AI search in Saudi pharmacies.',
+    searchOnlineBtn: 'Search Saudi Pharmacies (Online)',
     filters: 'Filters',
     allPharmaceuticalForms: 'All Pharmaceutical Forms',
     filterByPharmaceuticalForm: 'Pharmaceutical Form',
@@ -813,8 +812,4 @@ export const translations = {
   }
 };
 
-/**
- * Type derived from the keys of the Arabic translations.
- * These keys represent all available translation strings in the app.
- */
 export type TranslationKeys = keyof typeof translations.ar;
