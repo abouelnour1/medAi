@@ -42,6 +42,7 @@ import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 import { GoogleGenAI } from "@google/genai";
+import { isAIAvailable } from './geminiService';
 
 // Icons
 import MoonIcon from './components/MoonIcon';
@@ -217,8 +218,12 @@ const App: React.FC = () => {
                             return mergedArray;
                         });
                     }
-                } catch (err) {
-                    console.warn("Background fetch failed:", err);
+                } catch (err: any) {
+                    if (err.code === 'permission-denied') {
+                        console.warn("Cloud access denied. Using local data only.");
+                    } else {
+                        console.warn("Background fetch failed:", err);
+                    }
                 }
             }
 
@@ -269,7 +274,7 @@ const App: React.FC = () => {
   const toggleFavorite = useCallback((id: string) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]), []);
 
   const handleCheckAvailability = useCallback(async (medicine: Medicine) => {
-    if (!process.env.API_KEY) {
+    if (!isAIAvailable()) {
         alert(t('aiUnavailableMessage'));
         return;
     }
@@ -278,6 +283,7 @@ const App: React.FC = () => {
     setAvailabilityResult(null);
 
     try {
+        // إنشاء مثيل جديد في كل طلب لضمان استخدام أحدث مفتاح من البيئة
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const prompt = `Is the medication "${medicine['Trade Name']}" (Scientific: ${medicine['Scientific Name']}) available in Saudi Arabia pharmacies right now? Check Nahdi, Al-Dawaa, and other major chains. Provide availability status and price if found. Respond in ${language === 'ar' ? 'Arabic' : 'English'}.`;
         
@@ -296,7 +302,7 @@ const App: React.FC = () => {
             .map((chunk: any) => ({ title: chunk.web.title, uri: chunk.web.uri }));
 
         setAvailabilityResult({ text, sources });
-    } catch (e) {
+    } catch (e: any) {
         console.error("Availability check error:", e);
         alert(t('geminiError'));
     } finally {
