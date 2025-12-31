@@ -87,8 +87,7 @@ const App: React.FC = () => {
 
   const [language, setLanguage] = useState<Language>(() => {
       const saved = localStorage.getItem('language');
-      // Set 'en' as default if nothing is saved
-      return (saved === 'ar' || saved === 'en') ? saved : 'en';
+      return (saved === 'ar' || saved === 'en') ? saved : 'ar';
   });
 
   const [activeTab, setActiveTab] = useState<Tab>('search');

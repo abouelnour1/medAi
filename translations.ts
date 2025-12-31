@@ -1,7 +1,6 @@
 
 export const translations = {
   ar: {
-    // ... بقية النصوص السابقة
     appTitle: 'PharmaSource',
     search: 'بحث',
     searchPlaceholder: 'ابحث باسم تجاري أو علمي...',
@@ -193,7 +192,7 @@ export const translations = {
     quickActionUpselling: 'البيع الأعلى (Upsell)',
     quickActionCrossSelling: '🛍️ البيع المتقاطع (Cross-sell)',
     quickActionHowToSell: 'كيفية البيع والمميزات',
-    welcomeTitle: 'PharmaSource',
+    welcomeTitle: 'مرحباً بك في PharmaSource',
     welcomeSubtitle: 'ابحث عن الأدوية والمكملات، تحقق من تغطية التأمين، أو اسأل المساعد الذكي.',
     scanBarcode: 'مسح الباركود',
     insuranceCoverageDetails: "تفاصيل تغطية التأمين",
@@ -222,7 +221,7 @@ export const translations = {
     installApp: 'تثبيت التطبيق على جهازك',
     installNotAvailable: 'التثبيت غير متاح حالياً. استمر في استخدام التطبيق لتفعيله.',
     aiAccessControlTitle: 'الوصول مطلوب',
-    aiAccessControlMessage: 'لاستخدام هذه الميزة، يرجى إدخل المفتاح السري.',
+    aiAccessControlMessage: 'لاستخدام هذه الميزة، يرجى إدخال المفتاح السري.',
     secretKey: 'المفتاح السري',
     secretKeyPlaceholder: 'أدخل المفتاح السري هنا...',
     unlock: 'فتح',
@@ -283,7 +282,7 @@ export const translations = {
     adminPanelInsurance: 'إدارة التأمين',
     insuranceManagementTitle: 'إدارة بيانات التأمين',
     addInsuranceItem: 'إضافة بند تأمين',
-    editInsuranceItem: 'تعديل بند تأمين',
+    editInsuranceItem: 'تعديل بند التأمين',
     confirmDeleteInsurance: 'هل أنت متأكد أنك تريد حذف بند التأمين هذا؟',
     strengthUnit: 'وحدة التركيز',
     packageType: 'نوع العبوة',
@@ -358,7 +357,7 @@ export const translations = {
     addNew: 'إضافة جديد',
     enterNewValue: 'أدخل القيمة الجديدة',
     manageUser: 'إدارة المستخدم',
-    aiUsage: 'اي استخدام الذكاء الاصطناعي',
+    aiUsage: 'استهلاك الذكاء الاصطناعي',
     resetAiUsage: 'تصفير العداد',
     grantPrescriptionAccess: 'منح صلاحية الوصفات',
     confirmDeleteCosmetic: 'هل أنت متأكد من حذف هذا المنتج التجميلي؟',
@@ -370,7 +369,7 @@ export const translations = {
     resetSuccess: 'تمت استعادة البيانات بنجاح.',
     navMilk: 'حليب الأطفال',
     searchMilkPlaceholder: 'ابحث باسم الحليب أو الخصائص...',
-    keyFeatures: 'Features',
+    keyFeatures: 'المميزات الرئيسية',
     keyDifferences: 'أهم الفروقات',
     composition: 'التركيبة',
     standardFormula: 'حليب عادي',
@@ -395,15 +394,8 @@ export const translations = {
     stage3: 'رقم 3 (1-3 سنوات)',
     special: 'تركيبات خاصة',
     filterByStage: 'تصفية حسب المرحلة',
-    pharmacyAvailability: 'التوفر في الصيدليات الكبرى',
-    checkAvailability: 'تحقق من التوفر في الصيدليات',
-    nearestBranch: 'أقرب فرع',
-    foundInSources: 'مصادر خارجية:',
-    availabilityStatus: 'حالة التوفر الحية',
-    searchOnlineBtn: 'ابحث أونلاين عن المنتج',
   },
   en: {
-    // ... بقية النصوص السابقة
     appTitle: 'PharmaSource',
     search: 'Search',
     searchPlaceholder: 'Search by trade or scientific name...',
@@ -471,7 +463,7 @@ export const translations = {
     geminiError: 'Sorry, an error occurred. Please try again.',
     assistantFabTooltip: 'Ask AI Assistant',
     assistantModalTitle: 'Smart Medical Assistant',
-    assistantWelcomeMessage: 'Welcome. I am your medical assistant. How can I help today?',
+    assistantWelcomeMessage: 'Welcome. I am your medical assistant. How can I help you today?',
     uploadPrescription: 'Upload Prescription',
     or: 'or',
     promptAvailability: 'Is {name} available?',
@@ -772,7 +764,7 @@ export const translations = {
     resetSuccess: 'Data reset successfully.',
     navMilk: 'Formula',
     searchMilkPlaceholder: 'Search formula name or features...',
-    keyFeatures: 'Features',
+    keyFeatures: 'Key Features',
     keyDifferences: 'Key Differences',
     composition: 'Composition',
     standardFormula: 'Standard Formula',
@@ -797,14 +789,7 @@ export const translations = {
     stage3: 'Stage 3 (1-3 Years)',
     special: 'Special Formula',
     filterByStage: 'Filter by Stage',
-    pharmacyAvailability: 'Pharmacy Availability',
-    checkAvailability: 'Check Availability',
-    nearestBranch: 'Nearest Branch',
-    foundInSources: 'Sources:',
-    availabilityStatus: 'Live Availability',
-    searchOnlineBtn: 'Search Product Online',
   }
 };
 
-// Fix: Export TranslationKeys derived from translations object
-export type TranslationKeys = keyof typeof translations['en'];
+export type TranslationKeys = keyof typeof translations.ar;

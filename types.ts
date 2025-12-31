@@ -2,8 +2,86 @@
 import { TranslationKeys } from './translations';
 import { Part } from '@google/genai';
 
-// ... (بقية الواجهات تبقى كما هي)
+export interface Medicine {
+  RegisterNumber: string;
+  ReferenceNumber: string;
+  "Old register Number": string;
+  "Product type": string;
+  DrugType: string;
+  "Sub-Type": string;
+  "Scientific Name": string;
+  "Trade Name": string;
+  Strength: string;
+  StrengthUnit: string;
+  PharmaceuticalForm: string;
+  AdministrationRoute: string;
+  AtcCode1: string;
+  AtcCode2: string;
+  Size: string;
+  SizeUnit: string;
+  PackageTypes: string;
+  PackageSize: string;
+  "Legal Status": string;
+  "Product Control": string;
+  "Distribute area": string;
+  "Public price": string;
+  shelfLife: string;
+  "Storage conditions": string;
+  "Storage Condition Arabic": string;
+  "Marketing Company": string;
+  "Marketing Country": string;
+  "Manufacture Name": string;
+  "Manufacture Country": string;
+  "Secondry package  manufacture": string;
+  "Main Agent": string;
+  "Secosnd Agent": string;
+  "Third agent": string;
+  "Description Code": string;
+  "Authorization Status": string;
+  "Last Update": string;
+}
 
+export interface InsuranceDrug {
+  id?: string;
+  indication: string;
+  icd10Code: string;
+  drugClass: string;
+  drugSubclass: string;
+  scientificName: string;
+  atcCode: string;
+  form: string;
+  strength: string;
+  strengthUnit: string;
+  notes: string;
+  administrationRoute?: string;
+  substitutable?: string;
+  prescribingEdits?: string;
+  mddAdults?: string;
+  mddPediatrics?: string;
+  appendix?: string;
+  patientType?: string;
+  descriptionCode?: string;
+  sfdaRegistrationStatus?: string;
+}
+
+export interface Cosmetic {
+  id: string;
+  BrandName: string;
+  SpecificName: string;
+  SpecificNameAr?: string;
+  FirstSubCategoryAr?: string;
+  FirstSubCategoryEn?: string;
+  SecondSubCategoryAr?: string;
+  SecondSubCategoryEn?: string;
+  manufacturerNameEn: string;
+  manufacturerCountryAr?: string;
+  manufacturerCountryEn: string;
+  "Active ingredient"?: string;
+  "Key Ingredients"?: string;
+  Highlights?: string;
+}
+
+// Updated Interface for Milk/Formula based on user request
 export interface MilkProduct {
   id: string;
   brand: string;
@@ -11,26 +89,16 @@ export interface MilkProduct {
   stageType: string;
   ageRange: string;
   
-  // Nutritional Facts (Numeric for comparison/charts)
+  // Nutritional Facts (per 100ml usually, or serving)
   kcal: number;
   protein: number;
   fat: number;
   carb: number;
   
-  // Full composition text (Vitamins, Minerals, etc.)
-  concentration?: string;
-  
-  // New Detailed Fields
-  ingredients?: string;
   keyFeatures: string;
-  benefits?: string;
-  preparation?: string;
-  storage?: string;
-  manufacturer?: string;
-  usp: string; 
+  usp: string; // Unique Selling Point / Description
   
-  // Advanced Explanation / Markdown
-  detailedMarkdown?: string;
+  // Advanced Explanation (Arabic/Bilingual support)
   explanation?: {
     type?: {
       title: string;
@@ -42,27 +110,14 @@ export interface MilkProduct {
   };
 }
 
-export interface Cosmetic {
-  id: string;
-  BrandName: string;
-  SpecificName: string;
-  SpecificNameAr: string;
-  FirstSubCategoryAr: string;
-  FirstSubCategoryEn: string;
-  SecondSubCategoryAr: string;
-  SecondSubCategoryEn: string;
-  manufacturerNameEn: string;
-  manufacturerCountryAr: string;
-  manufacturerCountryEn: string;
-  "Active ingredient": string;
-  "Key Ingredients": string;
-  Highlights: string;
-}
-
 export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
-export type View = 'home' | 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch';
+
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch';
+
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
+
 export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
+
 export interface Filters {
   productType: ProductTypeFilter;
   priceMin: string;
@@ -71,9 +126,12 @@ export interface Filters {
   manufactureName: string[];
   legalStatus: string;
 }
+
 export type Language = 'ar' | 'en';
 export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
-export type Tab = 'home' | 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
+
+export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
+
 export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
 
 export interface ChatMessage {
@@ -168,6 +226,7 @@ export type AuthContextType = {
   reloadUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isLoading: boolean;
+  // Admin functions
   getAllUsers: () => User[];
   updateUser: (user: User) => void;
   deleteUser: (userId: string) => void;
@@ -186,66 +245,4 @@ export interface Recommendation {
   category: string;
   rationale: string;
   products: ProductSuggestion[];
-}
-
-export interface Medicine {
-  RegisterNumber: string;
-  ReferenceNumber: string;
-  "Old register Number": string;
-  "Product type": string;
-  DrugType: string;
-  "Sub-Type": string;
-  "Scientific Name": string;
-  "Trade Name": string;
-  Strength: string;
-  StrengthUnit: string;
-  PharmaceuticalForm: string;
-  AdministrationRoute: string;
-  AtcCode1: string;
-  AtcCode2: string;
-  Size: string;
-  SizeUnit: string;
-  PackageTypes: string;
-  PackageSize: string;
-  "Legal Status": string;
-  "Product Control": string;
-  "Distribute area": string;
-  "Public price": string;
-  shelfLife: string;
-  "Storage conditions": string;
-  "Storage Condition Arabic": string;
-  "Marketing Company": string;
-  "Marketing Country": string;
-  "Manufacture Name": string;
-  "Manufacture Country": string;
-  "Secondry package  manufacture": string;
-  "Main Agent": string;
-  "Secosnd Agent": string;
-  "Third agent": string;
-  "Description Code": string;
-  "Authorization Status": string;
-  "Last Update": string;
-}
-
-export interface InsuranceDrug {
-  id?: string;
-  indication: string;
-  icd10Code: string;
-  drugClass: string;
-  drugSubclass: string;
-  scientificName: string;
-  atcCode: string;
-  form: string;
-  strength: string;
-  strengthUnit: string;
-  notes: string;
-  administrationRoute?: string;
-  substitutable?: string;
-  prescribingEdits?: string;
-  mddAdults?: string;
-  mddPediatrics?: string;
-  appendix?: string;
-  patientType?: string;
-  descriptionCode?: string;
-  sfdaRegistrationStatus?: string;
 }
