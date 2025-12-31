@@ -204,7 +204,7 @@ const App: React.FC = () => {
   };
 
   return (
-      <div className={`min-h-screen bg-light-bg dark:bg-dark-bg font-tajawal transition-colors duration-300 ${language === 'ar' ? 'rtl' : 'ltr'}`}>
+      <div className={`h-screen flex flex-col bg-light-bg dark:bg-dark-bg font-tajawal transition-colors duration-300 ${language === 'ar' ? 'rtl' : 'ltr'}`}>
         <Header 
             title="PharmaSource" 
             showBack={view !== 'search' && activeTab === 'search'} 
@@ -216,8 +216,10 @@ const App: React.FC = () => {
             onAdminClick={() => setView('admin')} 
             view={view}
         />
-        <main className="container mx-auto px-4 pt-24 pb-28 max-w-2xl min-h-screen">
-            {renderContent()}
+        <main id="main-scroll-container" className="flex-grow overflow-y-auto no-scrollbar pt-20 pb-32">
+            <div className="container mx-auto px-4 max-w-2xl min-h-full">
+                {renderContent()}
+            </div>
         </main>
         <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView('search'); }} t={t} user={user} view={view} />
         
