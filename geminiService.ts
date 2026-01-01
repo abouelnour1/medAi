@@ -1,15 +1,36 @@
 
 import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
-import { ChatMessage } from './types';
+import { ChatMessage } from '../types';
 
-// الأساس: إنشاء كائن AI باستخدام مفتاح البيئة حصراً
-const getAiClient = (): GoogleGenAI => {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
+// --- Security Note ---
+// This file handles all interactions with the Google Gemini API.
+// The API key is sourced from environment variables.
+// In a production environment, this should be a backend proxy.
+
+const getApiKey = (): string | undefined => {
+  // Vite (used for web/android builds) REQUIRES variables to start with VITE_ to be exposed to the client.
+  
+  // 1. Try Vite env (Standard for React/Vite apps)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      const viteKey = import.meta.env.VITE_API_KEY;
+      if (viteKey && typeof viteKey === 'string' && viteKey.length > 0) {
+          return viteKey.trim();
+      }
+  }
+
+  // 2. Fallback: Check Process Environment (Legacy/Node/Vercel)
+  if (typeof process !== 'undefined' && process.env) {
+      if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY.trim();
+      if (process.env.API_KEY) return process.env.API_KEY.trim();
+  }
+
+  return undefined;
+}
 
 export const isAIAvailable = (): boolean => {
-  // نتحقق من وجود المفتاح في بيئة النظام
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   let isAiEnabled = true;
   try {
     const settingsString = localStorage.getItem('mock_app_settings');
@@ -20,10 +41,33 @@ export const isAIAvailable = (): boolean => {
       }
     }
   } catch (e) {
-    console.error("Could not parse AI settings", e);
+    console.error("Could not parse AI settings from localStorage", e);
   }
-  return !!apiKey && isAiEnabled;
+  
+  // Simple check: if we have a key and it's not a placeholder, AI is available
+  return !!apiKey && !apiKey.includes('PLACEHOLDER') && isAiEnabled;
 };
+
+const getAiClient = (): GoogleGenAI => {
+    const apiKey = getApiKey();
+    
+    if (!apiKey) {
+        console.error("API Key is completely missing.");
+        throw new Error(
+            'API Key is missing.\n' +
+            '1. Open your .env.local file.\n' +
+            '2. Ensure the variable is named exactly: VITE_API_KEY\n' +
+            '3. Example: VITE_API_KEY=AIza...\n' +
+            '4. Restart the app/server.'
+        );
+    }
+
+    if (apiKey.includes('PLACEHOLDER')) {
+        throw new Error('Invalid API Key: You are using a PLACEHOLDER key. Please edit your .env file and paste the real key from Google AI Studio (starting with AIza...).');
+    }
+
+    return new GoogleGenAI({ apiKey });
+}
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -35,20 +79,29 @@ const generateContentWithRetry = async (
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
-      // استخدام الطريقة الموحدة لإرسال المحتوى
       const response = await ai.models.generateContent(params);
       return response;
     } catch (error: any) {
       attempt++;
       const errorMessage = error.toString().toLowerCase();
       
+      // Check if it's an API Key error specifically
+      if (errorMessage.includes('api key not valid') || errorMessage.includes('api_key_invalid') || errorMessage.includes('400')) {
+          console.error("Critical API Key Error:", error);
+          throw new Error("API Key Rejected by Google (400). Please check your .env.local file. Ensure the key is named 'VITE_API_KEY' and has no extra spaces.");
+      }
+
       const isRetryable = errorMessage.includes('503') || 
                           errorMessage.includes('500') || 
-                          errorMessage.includes('unavailable');
+                          errorMessage.includes('unavailable') || 
+                          errorMessage.includes('internal error');
       
       if (isRetryable && attempt < maxRetries) {
-        await sleep(Math.pow(2, attempt - 1) * 1000);
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        console.warn(`Attempt ${attempt} failed with a retryable error. Retrying in ${delay}ms...`, error);
+        await sleep(delay);
       } else {
+        console.error(`Attempt ${attempt} failed.`, error);
         throw error;
       }
     }
@@ -56,12 +109,13 @@ const generateContentWithRetry = async (
   throw new Error('Exceeded max retries for AI request.');
 }
 
+// General-purpose AI chat function
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
   tools: Tool[],
   toolImplementations: { [key:string]: (...args: any[]) => any },
-  modelName: string = 'gemini-3-flash-preview'
+  modelName: string = 'gemini-2.5-flash'
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
@@ -95,7 +149,8 @@ export const runAIChat = async (
         config: { systemInstruction, tools },
       };
 
-      return await generateContentWithRetry(ai, secondParams);
+      const secondResponse = await generateContentWithRetry(ai, secondParams);
+      return secondResponse;
     }
   }
 
