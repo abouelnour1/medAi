@@ -1,4 +1,4 @@
-import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
+import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage } from './types';
 
 export const isAIAvailable = (): boolean => {
