@@ -1,12 +1,22 @@
 import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage } from './types';
 
+const getApiKey = (): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+      if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY.trim();
+      if (process.env.API_KEY) return process.env.API_KEY.trim();
+  }
+  return undefined;
+}
+
 export const isAIAvailable = (): boolean => {
-  return !!process.env.API_KEY;
+  return !!getApiKey();
 };
 
 const getAiClient = (): GoogleGenAI => {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error('API Key is missing.');
+    return new GoogleGenAI({ apiKey });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
