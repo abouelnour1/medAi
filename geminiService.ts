@@ -1,44 +1,12 @@
-
 import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage } from './types';
 
-const getApiKey = (): string | undefined => {
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-      const viteKey = import.meta.env.VITE_API_KEY;
-      if (viteKey && typeof viteKey === 'string' && viteKey.length > 0) {
-          return viteKey.trim();
-      }
-  }
-  if (typeof process !== 'undefined' && process.env) {
-      if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY.trim();
-      if (process.env.API_KEY) return process.env.API_KEY.trim();
-  }
-  return undefined;
-}
-
 export const isAIAvailable = (): boolean => {
-  const apiKey = getApiKey();
-  let isAiEnabled = true;
-  try {
-    const settingsString = localStorage.getItem('mock_app_settings');
-    if (settingsString) {
-      const settings = JSON.parse(settingsString);
-      if (typeof settings.isAiEnabled === 'boolean') {
-        isAiEnabled = settings.isAiEnabled;
-      }
-    }
-  } catch (e) {
-    console.error("Could not parse AI settings from localStorage", e);
-  }
-  return !!apiKey && !apiKey.includes('PLACEHOLDER') && isAiEnabled;
+  return !!process.env.API_KEY;
 };
 
 const getAiClient = (): GoogleGenAI => {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        throw new Error('API Key is missing. Please set VITE_API_KEY in your environment.');
-    }
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -55,10 +23,6 @@ const generateContentWithRetry = async (
       return response;
     } catch (error: any) {
       attempt++;
-      const errorMessage = error.toString().toLowerCase();
-      if (errorMessage.includes('400') || errorMessage.includes('key not valid')) {
-          throw new Error("Critical API Key Error. Check your configuration.");
-      }
       if (attempt < maxRetries) {
         await sleep(Math.pow(2, attempt - 1) * 1000);
       } else {
@@ -66,7 +30,7 @@ const generateContentWithRetry = async (
       }
     }
   }
-  throw new Error('Exceeded max retries for AI request.');
+  throw new Error('Exceeded max retries');
 }
 
 export const runAIChat = async (
@@ -74,11 +38,9 @@ export const runAIChat = async (
   systemInstruction: string,
   tools: Tool[],
   toolImplementations: { [key:string]: (...args: any[]) => any },
-  modelName: string = 'gemini-3-flash-preview' // Updated to latest Gemini 3
+  modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
-
-  // Add Google Search grounding to make the assistant more aware of real-world Saudi pharmacy context
   const enhancedTools = [...(tools || []), { googleSearch: {} }];
 
   const initialParams = {
