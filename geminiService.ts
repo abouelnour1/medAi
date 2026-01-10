@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage } from '../types';
@@ -6,6 +7,10 @@ import { ChatMessage } from '../types';
 // This file handles all interactions with the Google Gemini API.
 // The API key is sourced from environment variables.
 // In a production environment, this should be a backend proxy.
+=======
+import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
+import { ChatMessage } from './types';
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
 
 const getApiKey = (): string | undefined => {
   // Vite (used for web/android builds) REQUIRES variables to start with VITE_ to be exposed to the client.
@@ -30,6 +35,7 @@ const getApiKey = (): string | undefined => {
 }
 
 export const isAIAvailable = (): boolean => {
+<<<<<<< HEAD
   const apiKey = getApiKey();
   let isAiEnabled = true;
   try {
@@ -46,10 +52,14 @@ export const isAIAvailable = (): boolean => {
   
   // Simple check: if we have a key and it's not a placeholder, AI is available
   return !!apiKey && !apiKey.includes('PLACEHOLDER') && isAiEnabled;
+=======
+  return !!getApiKey();
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
 };
 
 const getAiClient = (): GoogleGenAI => {
     const apiKey = getApiKey();
+<<<<<<< HEAD
     
     if (!apiKey) {
         console.error("API Key is completely missing.");
@@ -66,6 +76,9 @@ const getAiClient = (): GoogleGenAI => {
         throw new Error('Invalid API Key: You are using a PLACEHOLDER key. Please edit your .env file and paste the real key from Google AI Studio (starting with AIza...).');
     }
 
+=======
+    if (!apiKey) throw new Error('API Key is missing.');
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
     return new GoogleGenAI({ apiKey });
 }
 
@@ -83,6 +96,7 @@ const generateContentWithRetry = async (
       return response;
     } catch (error: any) {
       attempt++;
+<<<<<<< HEAD
       const errorMessage = error.toString().toLowerCase();
       
       // Check if it's an API Key error specifically
@@ -102,29 +116,51 @@ const generateContentWithRetry = async (
         await sleep(delay);
       } else {
         console.error(`Attempt ${attempt} failed.`, error);
+=======
+      if (attempt < maxRetries) {
+        await sleep(Math.pow(2, attempt - 1) * 1000);
+      } else {
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
         throw error;
       }
     }
   }
+<<<<<<< HEAD
   throw new Error('Exceeded max retries for AI request.');
 }
 
 // General-purpose AI chat function
+=======
+  throw new Error('Exceeded max retries');
+}
+
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
   tools: Tool[],
   toolImplementations: { [key:string]: (...args: any[]) => any },
+<<<<<<< HEAD
   modelName: string = 'gemini-2.5-flash'
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
+=======
+  modelName: string = 'gemini-3-flash-preview'
+): Promise<GenerateContentResponse> => {
+  const ai = getAiClient();
+  const enhancedTools = [...(tools || []), { googleSearch: {} }];
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
 
   const initialParams = {
     model: modelName,
     contents: history.map(msg => ({ role: msg.role, parts: msg.parts })),
     config: {
       systemInstruction,
+<<<<<<< HEAD
       tools,
+=======
+      tools: enhancedTools,
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
     },
   };
 
@@ -142,6 +178,7 @@ export const runAIChat = async (
         { role: 'model', parts: [{ functionCall: fc }] },
         { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult } }] }
       ];
+<<<<<<< HEAD
 
       const secondParams = {
         model: modelName,
@@ -151,6 +188,14 @@ export const runAIChat = async (
 
       const secondResponse = await generateContentWithRetry(ai, secondParams);
       return secondResponse;
+=======
+      const secondParams = {
+        model: modelName,
+        contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: msg.parts })),
+        config: { systemInstruction, tools: enhancedTools },
+      };
+      return await generateContentWithRetry(ai, secondParams);
+>>>>>>> c0a8bee591a916f5a206218e52a238c533f3e924
     }
   }
 
