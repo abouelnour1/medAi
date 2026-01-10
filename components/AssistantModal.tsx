@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type, Part } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage, Cosmetic } from '../types';
+import { TranslationKeys } from '../translations';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';
 import MarkdownRenderer from './MarkdownRenderer';

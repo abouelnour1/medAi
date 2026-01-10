@@ -363,33 +363,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                   onChange={(e) => setUserSearchTerm(e.target.value)}
               />
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+          {/* User Table Wrapper with Horizontal Scroll for Mobile */}
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-x-auto no-scrollbar border border-slate-200 dark:border-slate-700">
+              <table className="min-w-[650px] w-full divide-y divide-slate-200 dark:divide-slate-700">
                   <thead className="bg-slate-50 dark:bg-slate-900/50">
                       <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('username')}</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('role')}</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Requests</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('actions')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('username')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('role')}</th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Requests</th>
+                          <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('actions')}</th>
                       </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                       {filteredUsers.map(user => (
                           <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
-                                  {user.username}
-                                  <span className="block text-xs text-slate-400 font-normal">{user.email}</span>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[180px]">{user.username}</div>
+                                  <div className="text-xs text-slate-400 font-normal truncate max-w-[180px]">{user.email}</div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                  <span className={`px-2 py-0.5 inline-flex text-[10px] leading-5 font-bold rounded-full border ${user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800' : 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'}`}>
                                       {user.role === 'admin' ? t('adminRole') : t('premiumRole')}
                                   </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
-                                  {user.aiRequestCount || 0} / {user.customAiLimit || appSettings.aiRequestLimit || 3}
+                              <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-semibold">
+                                  <span className={user.aiRequestCount >= (user.customAiLimit || appSettings.aiRequestLimit) ? 'text-red-500' : 'text-slate-600 dark:text-slate-400'}>
+                                      {user.aiRequestCount || 0}
+                                  </span>
+                                  <span className="text-slate-300 dark:text-slate-600 mx-1">/</span>
+                                  <span className="text-slate-400">{user.customAiLimit || appSettings.aiRequestLimit || 3}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                  <button onClick={() => handleEditUserClick(user)} className="text-primary hover:text-primary-dark font-bold px-3 py-1 bg-primary/10 rounded-lg transition-colors">
+                              <td className="px-4 py-4 whitespace-nowrap text-right">
+                                  <button onClick={() => handleEditUserClick(user)} className="text-primary hover:text-primary-dark font-bold text-xs px-3 py-1.5 bg-primary/10 rounded-lg transition-colors border border-primary/20">
                                       {t('manageUser')}
                                   </button>
                               </td>
