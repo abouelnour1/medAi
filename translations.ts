@@ -318,7 +318,7 @@ export const translations = {
     backToLogin: 'العودة لتسجيل الدخول',
     resetPasswordEmailSent: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. الرجاء التحقق من صندوق الوارد.',
     enterEmailForReset: 'أدخل بريدك الإلكتروني لاستلام رابط إعادة التعيين',
-    invalidEmailFormat: 'الرجاء إدخال بريد إلكتروني صحيح.',
+    invalidEmailFormat: 'الرجاء إدخل بريد إلكتروني صحيح.',
     broadcastTitle: 'إشعارات عامة',
     notificationTitle: 'عنوان الإشعار',
     notificationBody: 'نص الإشعار',
@@ -407,6 +407,10 @@ export const translations = {
     stripImage: 'صورة الشريط',
     pillImage: 'صورة الحبة',
     noPhysicalData: 'لم يتم إضافة تفاصيل مادية لهذا المنتج بعد.',
+    notifications: 'الإشعارات',
+    noNotifications: 'لا توجد إشعارات حالياً.',
+    markAllRead: 'تحديد الكل كمقروء',
+    newNotification: 'إشعار جديد',
   },
   en: {
     appTitle: 'PharmaSource',
@@ -815,6 +819,10 @@ export const translations = {
     stripImage: 'Strip Image',
     pillImage: 'Pill Image',
     noPhysicalData: 'No physical details added yet.',
+    notifications: 'Notifications',
+    noNotifications: 'No notifications at this time.',
+    markAllRead: 'Mark all as read',
+    newNotification: 'New Notification',
   }
 };
 

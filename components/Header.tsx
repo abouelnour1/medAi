@@ -1,6 +1,7 @@
 
 import React, { forwardRef, useState, useRef, useEffect } from 'react';
 import BackIcon from './icons/BackIcon';
+import BellIcon from './icons/BellIcon';
 import { TFunction, View } from '../types';
 import { useAuth } from './auth/AuthContext';
 
@@ -13,10 +14,12 @@ interface HeaderProps {
   t: TFunction;
   onLoginClick: () => void;
   onAdminClick: () => void;
+  onNotificationsClick: () => void;
   view: View;
+  hasNewNotifications?: boolean;
 }
 
-const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, theme, toggleTheme, t, onLoginClick, onAdminClick, view }, ref) => {
+const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, theme, toggleTheme, t, onLoginClick, onAdminClick, onNotificationsClick, view, hasNewNotifications }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -42,7 +45,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         className="bg-gradient-to-b from-[#2dd4bf] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 shadow-lg h-auto min-h-[calc(env(safe-area-inset-top)+60px)] flex items-center border-b border-primary-dark/30"
     >
       <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full">
-        <div className="flex-1 flex justify-start min-w-0">
+        <div className="flex-1 flex justify-start items-center gap-1 min-w-0">
           {showBack && (
             <button
               onClick={onBack}
@@ -53,6 +56,15 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                  <BackIcon />
               </span>
             </button>
+          )}
+          {user && view !== 'notifications' && (
+              <button 
+                onClick={onNotificationsClick}
+                className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"
+                aria-label={t('notifications')}
+              >
+                  <BellIcon hasNew={hasNewNotifications} />
+              </button>
           )}
         </div>
         

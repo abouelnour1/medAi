@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, 
-  InsuranceSearchMode, Cosmetic, MilkProduct
+  InsuranceSearchMode, Cosmetic, MilkProduct, Notification
 } from './types';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
@@ -27,6 +27,7 @@ import AddCosmeticsDataView from './components/AddCosmeticsDataView';
 import FavoritesView from './components/FavoritesView';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
 import MilkView from './components/MilkView';
+import NotificationsView from './components/NotificationsView';
 
 // --- Fix: Import missing icons ---
 import AdminIcon from './components/icons/AdminIcon';
@@ -47,7 +48,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 // Normalization functions
@@ -84,6 +85,7 @@ const normalizeMedicine = (item: any): Medicine => ({
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
 const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
+const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 
 const App: React.FC = () => {
   const { user } = useAuth();
@@ -111,6 +113,12 @@ const App: React.FC = () => {
   const [milkProducts, setMilkProducts] = useState<MilkProduct[]>([]);
   const [clinicalGuidelines, setClinicalGuidelines] = useState<any>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  // Notifications
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
+      try { return JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]'); } catch { return []; }
+  });
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -266,6 +274,20 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Sync Notifications from Cloud
+  useEffect(() => {
+      if (FIREBASE_DISABLED) return;
+      const q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+          const fetched: Notification[] = [];
+          snapshot.forEach(doc => {
+              fetched.push({ id: doc.id, ...doc.data() } as Notification);
+          });
+          setNotifications(fetched);
+      });
+      return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
@@ -281,6 +303,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('saved_prescriptions', JSON.stringify(prescriptions)); }, [prescriptions]);
   useEffect(() => { localStorage.setItem('chat_history', JSON.stringify(chatHistory)); }, [chatHistory]);
+  useEffect(() => { localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(readNotificationIds)); }, [readNotificationIds]);
 
   useLayoutEffect(() => {
     const container = document.getElementById('main-scroll-container');
@@ -431,7 +454,7 @@ const App: React.FC = () => {
       if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
       else if (view === 'insuranceDetails') setView('insuranceSearch');
-      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail'].includes(view)) setView('settings');
+      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView('settings');
       else if (view === 'results') { setView('search'); setSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
   }, [view]);
@@ -469,11 +492,28 @@ const App: React.FC = () => {
       <h4 className="text-sm font-bold text-primary dark:text-primary-light uppercase tracking-wider border-b border-gray-100 dark:border-slate-700 pb-2 mb-4 mt-6">{title}</h4>
   );
 
+  const notificationsWithReadStatus = useMemo(() => {
+      return notifications.map(n => ({
+          ...n,
+          isRead: readNotificationIds.includes(n.id)
+      }));
+  }, [notifications, readNotificationIds]);
+
+  const hasNewNotifications = useMemo(() => {
+      return notifications.some(n => !readNotificationIds.includes(n.id));
+  }, [notifications, readNotificationIds]);
+
+  const handleMarkAllRead = useCallback(() => {
+      const allIds = notifications.map(n => n.id);
+      setReadNotificationIds(allIds);
+  }, [notifications]);
+
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
       if (view === 'aiHistory') return <ChatHistoryView conversations={chatHistory} onSelectConversation={(convo) => { setActiveConversationId(convo.id); setCurrentChatHistory(convo.messages); setIsAssistantOpen(true); }} onDeleteConversation={(id) => setChatHistory(prev => prev.filter(c => c.id !== id))} onClearHistory={() => setChatHistory([])} t={t} language={language} />;
+      if (view === 'notifications') return <NotificationsView notifications={notificationsWithReadStatus} onMarkAllRead={handleMarkAllRead} t={t} language={language} />;
       if (activeTab === 'search') {
           return (
               <>
@@ -524,7 +564,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} view={view} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} hasNewNotifications={hasNewNotifications} />
       <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>{renderContent()}</main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={handleOpenAssistant} onLongPress={handleOpenPrescriptionAssistant} t={t} language={language} /></div>

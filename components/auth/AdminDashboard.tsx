@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { TFunction, User, Medicine, AppSettings, InsuranceDrug, Cosmetic } from '../../types';
+import { TFunction, User, Medicine, AppSettings, InsuranceDrug, Cosmetic, Notification } from '../../types';
 import { useAuth } from './AuthContext';
 import ChartIcon from '../icons/ChartIcon';
 import UsersIcon from '../icons/UsersIcon';
@@ -14,15 +14,16 @@ import CosmeticsIcon from '../icons/CosmeticsIcon';
 import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import DownloadIcon from '../icons/DownloadIcon';
+import BellIcon from '../icons/BellIcon';
 import SearchableDropdown from '../SearchableDropdown';
 import { db, FIREBASE_DISABLED } from '../../firebase';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, setDoc, addDoc } from 'firebase/firestore';
 import { setItem } from '../../utils/storage';
 
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
 const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
 
-type Panel = 'menu' | 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration' | 'addItem';
+type Panel = 'menu' | 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration' | 'addItem' | 'notifications';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl flex items-center gap-4 border border-slate-200 dark:border-slate-700">
@@ -72,6 +73,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   // Settings State
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   
+  // Broadcast State
+  const [bcTitle, setBcTitle] = useState('');
+  const [bcBody, setBcBody] = useState('');
+  const [isSendingBc, setIsSendingBc] = useState(false);
+
   // Migration State
   const [migrationLogs, setMigrationLogs] = useState<string[]>([]);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -143,6 +149,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             setEditingUser(null);
         }
     }
+  };
+
+  const handleSendBroadcast = async () => {
+      if (!bcTitle || !bcBody || FIREBASE_DISABLED) return;
+      setIsSendingBc(true);
+      try {
+          const notification: Omit<Notification, 'id'> = {
+              title: bcTitle,
+              body: bcBody,
+              timestamp: Date.now(),
+              type: 'update'
+          };
+          await addDoc(collection(db, 'notifications'), notification);
+          alert(t('sendBroadcast') + " - Success!");
+          setBcTitle('');
+          setBcBody('');
+      } catch (e) {
+          console.error("Broadcast failed", e);
+          alert("Failed to send broadcast");
+      } finally {
+          setIsSendingBc(false);
+      }
   };
 
   // Derived Data for Dropdowns
@@ -685,6 +713,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
       </div>
   );
 
+  const renderNotifications = () => (
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm space-y-6 animate-fade-in">
+          <h3 className="text-lg font-bold">{t('broadcastTitle')}</h3>
+          <div className="space-y-4">
+              <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('notificationTitle')}</label>
+                  <input 
+                    type="text" 
+                    value={bcTitle} 
+                    onChange={e => setBcTitle(e.target.value)} 
+                    className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" 
+                    placeholder="Enter title..."
+                  />
+              </div>
+              <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('notificationBody')}</label>
+                  <textarea 
+                    value={bcBody} 
+                    onChange={e => setBcBody(e.target.value)} 
+                    className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" 
+                    rows={4}
+                    placeholder="Type message here..."
+                  />
+              </div>
+              <button 
+                onClick={handleSendBroadcast} 
+                disabled={isSendingBc || !bcTitle || !bcBody || FIREBASE_DISABLED}
+                className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors disabled:opacity-50"
+              >
+                  {isSendingBc ? '...' : t('sendBroadcast')}
+              </button>
+          </div>
+      </div>
+  );
+
   const renderSettings = () => (
       <div className="space-y-6 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm animate-fade-in">
           <div>
@@ -887,6 +950,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     <MenuCard title={t('adminPanelOverview')} icon={<ChartIcon />} onClick={() => setActivePanel('overview')} colorClass="bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800" />
                     <MenuCard title={t('userManagementTitle')} icon={<UsersIcon />} onClick={() => setActivePanel('users')} colorClass="bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:border-green-800" />
                     <MenuCard title={t('addNewItem')} icon={<div className="text-xl font-bold">+</div>} onClick={() => setActivePanel('addItem')} colorClass="bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800" />
+                    <MenuCard title={t('broadcastTitle')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:border-red-800" />
                     <MenuCard title={t('appSettingsTitle')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" />
                     <MenuCard title="Migration" icon={<DatabaseIcon />} onClick={() => setActivePanel('migration')} colorClass="bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800" />
                 </div>
@@ -897,6 +961,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             {activePanel === 'addItem' && renderAddSingleItem()}
             {activePanel === 'settings' && renderSettings()}
             {activePanel === 'migration' && renderMigration()}
+            {activePanel === 'notifications' && renderNotifications()}
             {(activePanel === 'medicines' || activePanel === 'insurance' || activePanel === 'cosmetics') && (
                 <div className="text-center p-8 text-gray-500">
                     Use standard search/edit flow or Migration tool.

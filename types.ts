@@ -2,6 +2,15 @@
 import { TranslationKeys } from './translations';
 import { Part } from '@google/genai';
 
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: number;
+  type: 'info' | 'alert' | 'update';
+  isRead?: boolean;
+}
+
 export interface Medicine {
   RegisterNumber: string;
   ReferenceNumber: string;
@@ -122,7 +131,7 @@ export interface MilkProduct {
 
 export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
 
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch';
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications';
 
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 
