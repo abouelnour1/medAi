@@ -217,7 +217,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
               "Third agent": newItemData['Third agent'] || '',
               "Description Code": newItemData['Description Code'] || '',
               "Authorization Status": newItemData['Authorization Status'] || 'Valid',
-              "Last Update": new Date().toISOString()
+              "Last Update": new Date().toISOString(),
+
+              // New physical fields
+              imgBox: newItemData.imgBox || '',
+              imgStrip: newItemData.imgStrip || '',
+              imgPill: newItemData.imgPill || '',
+              pillShape: newItemData.pillShape || '',
+              pillScored: newItemData.pillScored || '',
+              pillMarkings: newItemData.pillMarkings || '',
+              liquidTaste: newItemData.liquidTaste || '',
+              liquidColor: newItemData.liquidColor || '',
+              physicalNotes: newItemData.physicalNotes || ''
           };
           
           setMedicines(prev => {
@@ -470,7 +481,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                             </div>
                         </div>
 
-                        {/* 3. Regulatory */}
+                        {/* 3. Physical Specs & Images (New Section) */}
+                        <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4"><SectionTitle title={t('physicalDetails')} /></div>
+                        
+                        <div className="col-span-1 sm:col-span-2">
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('boxImage')} (Firebase URL)</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.imgBox || ''} onChange={e => setNewItemData({...newItemData, imgBox: e.target.value})} placeholder="https://firebasestorage..." />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2">
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('stripImage')} (Firebase URL)</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.imgStrip || ''} onChange={e => setNewItemData({...newItemData, imgStrip: e.target.value})} placeholder="https://firebasestorage..." />
+                        </div>
+                        <div className="col-span-1 sm:col-span-2">
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('pillImage')} (Firebase URL)</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.imgPill || ''} onChange={e => setNewItemData({...newItemData, imgPill: e.target.value})} placeholder="https://firebasestorage..." />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('pillShape')}</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.pillShape || ''} onChange={e => setNewItemData({...newItemData, pillShape: e.target.value})} placeholder="Round, Oval..." />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('scored')}</label>
+                            <select className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.pillScored || ''} onChange={e => setNewItemData({...newItemData, pillScored: e.target.value})}>
+                                <option value="">Unknown</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('markings')}</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.pillMarkings || ''} onChange={e => setNewItemData({...newItemData, pillMarkings: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('taste')}</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.liquidTaste || ''} onChange={e => setNewItemData({...newItemData, liquidTaste: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('liquidColor')}</label>
+                            <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.liquidColor || ''} onChange={e => setNewItemData({...newItemData, liquidColor: e.target.value})} />
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-2">
+                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Physical Notes</label>
+                             <textarea className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.physicalNotes || ''} onChange={e => setNewItemData({...newItemData, physicalNotes: e.target.value})} rows={2} />
+                        </div>
+
+                        {/* 4. Regulatory */}
                         <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4"><SectionTitle title="Regulatory & Classification" /></div>
 
                         <div>
@@ -499,7 +556,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                             <input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData['Old register Number'] || ''} onChange={e => setNewItemData({...newItemData, 'Old register Number': e.target.value})} />
                         </div>
 
-                        {/* 4. Manufacturer & Logistics */}
+                        {/* 5. Manufacturer & Logistics */}
                         <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4"><SectionTitle title="Manufacturer & Logistics" /></div>
 
                         <div className="col-span-1 sm:col-span-2">
@@ -527,7 +584,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                             </div>
                         </div>
 
-                        {/* 5. Storage & Codes */}
+                        {/* 6. Storage & Codes */}
                         <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4"><SectionTitle title="Storage & Codes" /></div>
 
                         <div className="col-span-1 sm:col-span-2">

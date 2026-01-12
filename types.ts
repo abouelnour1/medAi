@@ -39,6 +39,17 @@ export interface Medicine {
   "Description Code": string;
   "Authorization Status": string;
   "Last Update": string;
+  
+  // --- New Physical & Image Fields ---
+  imgBox?: string;       // URL for Box image
+  imgStrip?: string;     // URL for Strip/Blister image
+  imgPill?: string;      // URL for Pill/Capsule image
+  pillShape?: string;    // Shape (Round, Oval, etc.)
+  pillScored?: string;   // Is it scored (Yes/No)
+  pillMarkings?: string; // Markings on the pill (e.g., P 500)
+  liquidTaste?: string;  // For syrups/liquids
+  liquidColor?: string;  // For syrups/liquids
+  physicalNotes?: string;
 }
 
 export interface InsuranceDrug {
@@ -81,24 +92,23 @@ export interface Cosmetic {
   Highlights?: string;
 }
 
-// Updated Interface for Milk/Formula based on user request
 export interface MilkProduct {
   id: string;
   brand: string;
   productName: string;
   stageType: string;
   ageRange: string;
+  image?: string; // Added image field
   
-  // Nutritional Facts (per 100ml usually, or serving)
+  // Nutritional Facts
   kcal: number;
   protein: number;
   fat: number;
   carb: number;
   
   keyFeatures: string;
-  usp: string; // Unique Selling Point / Description
+  usp: string; 
   
-  // Advanced Explanation (Arabic/Bilingual support)
   explanation?: {
     type?: {
       title: string;

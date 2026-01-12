@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -18,27 +19,13 @@ const DetailRow: React.FC<{ label: string; value?: string | number | null; value
 
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
-
   const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Prescription' : status;
-  
   let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
-  if (status === 'OTC') {
-    colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
-  } else if (status === 'Prescription') {
-    colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
-  }
-  
-  const sizeClasses = size === 'sm' 
-    ? 'px-2.5 py-1 text-xs' 
-    : 'px-3 py-1 text-sm';
-
-  return (
-    <span className={`inline-block font-semibold rounded-full ${sizeClasses} ${colorClasses}`}>
-      {statusText}
-    </span>
-  );
+  if (status === 'OTC') colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
+  else if (status === 'Prescription') colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
+  const sizeClasses = size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1 text-sm';
+  return <span className={`inline-block font-semibold rounded-full ${sizeClasses} ${colorClasses}`}>{statusText}</span>;
 };
-
 
 interface MedicineDetailProps {
     medicine: Medicine;
@@ -52,6 +39,11 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant }) => {
+  const hasImages = !!(medicine.imgBox || medicine.imgStrip || medicine.imgPill);
+  const hasPhysicalProps = !!(medicine.pillShape || medicine.pillScored || medicine.pillMarkings || medicine.liquidTaste || medicine.liquidColor);
+  
+  const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(hasImages || hasPhysicalProps);
+
   const price = parseFloat(medicine['Public price']);
   const scientificName = medicine['Scientific Name'] || '';
   const strengths = String(medicine.Strength || '');
@@ -66,13 +58,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const handleImageSearch = () => {
       const tradeName = medicine['Trade Name'] || '';
       let query = tradeName;
-      
       if (tradeName.trim().split(/\s+/).length === 1) {
           const strength = medicine.Strength || '';
           const form = medicine.PharmaceuticalForm || '';
           query = `${tradeName} ${strength} ${form}`;
       }
-      
       const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
       window.open(url, '_blank');
   };
@@ -81,111 +71,114 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
   const isRestricted = productControl.toLowerCase().includes('restricted');
 
+  const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
+    if (!src) return null;
+    return (
+        <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
+            <div 
+                className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-3 shadow-sm overflow-hidden flex items-center justify-center transition-all"
+            >
+                <img src={src} alt={label} className="max-w-full max-h-full object-contain pointer-events-none" />
+            </div>
+        </div>
+    );
+  };
+
   return (
-    <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-8">
-      <div>
+    <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
+      <div className="space-y-4">
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
-              <button 
-                onClick={onOpenAssistant}
-                className="group flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
-                title={t('assistantFabTooltip')}
-              >
-                  <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text group-hover:text-primary dark:group-hover:text-primary-light underline decoration-dotted decoration-gray-300 dark:decoration-slate-600 underline-offset-4">
+              <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left hover:opacity-80 transition-opacity">
+                  <h2 className="text-xl md:text-2xl font-bold leading-7 text-light-text dark:text-dark-text group-hover:text-primary underline decoration-dotted decoration-gray-300 underline-offset-4">
                       {medicine['Trade Name'] || 'Unknown Name'}
                   </h2>
-                  <span className="text-primary dark:text-primary-light opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
               </button>
-
               <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleImageSearch}
-                    className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                    title={t('searchImage')}
-                  >
-                      <div className="h-6 w-6">
-                        <CameraIcon />
-                      </div>
-                  </button>
+                  <button onClick={handleImageSearch} className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500" title={t('searchImage')}><div className="h-6 w-6"><CameraIcon /></div></button>
                   {user?.role === 'admin' && onEdit && (
-                      <button
-                          onClick={() => onEdit(medicine)}
-                          className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary hover:bg-primary/10"
-                          title={t('editMedicine')}
-                      >
-                          <div className="h-6 w-6">
-                              <EditIcon />
-                          </div>
-                      </button>
+                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full transition-colors text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('editMedicine')}><div className="h-6 w-6"><EditIcon /></div></button>
                   )}
-                  <button
-                    onClick={() => onToggleFavorite(medicine.RegisterNumber)}
-                    className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}
-                    title={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
-                  >
-                      <div className="h-6 w-6">
-                        <StarIcon isFilled={isFavorite} />
-                      </div>
-                  </button>
+                  <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}><div className="h-6 w-6"><StarIcon isFilled={isFavorite} /></div></button>
               </div>
           </div>
           
           {hasMultipleIngredients ? (
             <div className="mt-3">
-              <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-2">{t('scientificName')}:</p>
-              <ul className="space-y-1.5">
-                {ingredients.map((ingredient, index) => {
-                  let unit = '';
-                  if (strengthUnitValues.length === strengthValues.length) {
-                    unit = strengthUnitValues[index] || '';
-                  } else if (strengthUnitValues.length === 1) {
-                    unit = strengthUnitValues[0];
-                  }
+              <p className="text-xs font-semibold text-light-text-secondary mb-2">{t('scientificName')}:</p>
+              <ul className="space-y-1.5">{ingredients.map((ingredient, index) => {
+                  let unit = strengthUnitValues.length === strengthValues.length ? strengthUnitValues[index] : (strengthUnitValues.length === 1 ? strengthUnitValues[0] : '');
                   const strengthDisplay = `${strengthValues[index] || ''}${unit ? ` ${unit}` : ''}`.trim();
-
-                  return (
-                    <li key={index} className="flex justify-between items-baseline">
-                      <span className="text-sm text-light-text dark:text-dark-text">{ingredient}</span>
-                      <span className="font-bold text-light-text dark:text-dark-text whitespace-nowrap">
-                        {strengthDisplay}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+                  return (<li key={index} className="flex justify-between items-baseline"><span className="text-sm text-light-text dark:text-dark-text">{ingredient}</span><span className="font-bold text-light-text dark:text-dark-text whitespace-nowrap">{strengthDisplay}</span></li>);
+                })}</ul>
             </div>
           ) : (
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-light-text-secondary dark:text-dark-text-secondary">
-              {`${scientificName}${strengths ? ` ${strengths}` : ''}${strengthUnit ? ` ${strengthUnit}` : ''}`.trim()}
-            </p>
+            <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${scientificName}${strengths ? ` ${strengths}` : ''}${strengthUnit ? ` ${strengthUnit}` : ''}`.trim()}</p>
           )}
 
-          {!isNaN(price) && (
-              <div className="mt-4 text-accent text-2xl font-bold">
-                {`${price.toFixed(2)} ${t('sar')}`}
-              </div>
-          )}
+          {!isNaN(price) && <div className="mt-4 text-accent text-2xl font-bold">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
+
+        {/* Physical Details Accordion */}
+        <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
+            <button 
+                onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
+                className="w-full flex justify-between items-center py-4 text-primary font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span>{t('physicalDetails')}</span>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transform transition-transform duration-300 ${isPhysicalExpanded ? 'rotate-180 text-primary' : 'text-slate-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+
+            {isPhysicalExpanded && (
+                <div className="pb-6 px-1 animate-fade-in space-y-6">
+                    {/* عرض الصور داخل القسم بحجم كبير ومباشر بدون إمكانية التكبير */}
+                    {hasImages && (
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
+                            <div className="snap-center"><PhysicalImage src={medicine.imgBox} label={t('boxImage')} /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgStrip} label={t('stripImage')} /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgPill} label={t('pillImage')} /></div>
+                        </div>
+                    )}
+
+                    {/* الخصائص المادية */}
+                    {(hasImages || hasPhysicalProps) ? (
+                        <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800">
+                            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+                                <DetailRow label={t('pillShape')} value={medicine.pillShape} />
+                                <DetailRow label={t('scored')} value={medicine.pillScored} />
+                                <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                                <DetailRow label={t('taste')} value={medicine.liquidTaste} />
+                                <DetailRow label={t('liquidColor')} value={medicine.liquidColor} />
+                            </dl>
+                            {medicine.physicalNotes && (
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{t('notes')}</p>
+                                    <div className="text-sm text-slate-600 dark:text-slate-300 ai-response-content leading-relaxed"><MarkdownRenderer content={medicine.physicalNotes} /></div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 text-slate-400 italic text-sm bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800">{t('noPhysicalData')}</div>
+                    )}
+                </div>
+            )}
+        </div>
+
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
-            
             {(medicine['Legal Status'] || isControlled || isRestricted) && (
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('legalStatus')}</dt>
-                <dd className="mt-1 text-sm leading-6 sm:col-span-2 sm:mt-0">
-                  { (isControlled || isRestricted) ? (
-                      <span className={`inline-block font-bold rounded-full px-3 py-1 text-sm text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>
-                          {isControlled ? 'CONTROLLED' : 'RESTRICTED'}
-                      </span>
-                  ) : (
-                      <LegalStatusBadge status={medicine['Legal Status']} size="base" t={t} />
-                  )}
-                </dd>
+                <dt className="text-sm font-medium leading-6 text-light-text-secondary">{t('legalStatus')}</dt>
+                <dd className="mt-1 text-sm leading-6 sm:col-span-2 sm:mt-0">{ (isControlled || isRestricted) ? (<span className={`inline-block font-bold rounded-full px-3 py-1 text-sm text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>{isControlled ? 'CONTROLLED' : 'RESTRICTED'}</span>) : (<LegalStatusBadge status={medicine['Legal Status']} size="base" t={t} />)}</dd>
               </div>
             )}
-
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
             <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />

@@ -61,11 +61,17 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
       </div>
 
       <div className="p-4 space-y-6 overflow-y-auto">
-        {/* Identity Card */}
+        {/* Identity Card & Image */}
         <div className={`rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 ${headerBg}`}>
-            <div className={`w-20 h-20 mx-auto rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center mb-4 ${iconColor}`}>
-                <div className="w-10 h-10"><BabyBottleIcon /></div>
-            </div>
+            {product.image ? (
+                <div className="w-32 h-32 mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-md p-2 mb-4 flex items-center justify-center overflow-hidden">
+                    <img src={product.image} alt={product.productName} className="max-w-full max-h-full object-contain" />
+                </div>
+            ) : (
+                <div className={`w-20 h-20 mx-auto rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center mb-4 ${iconColor}`}>
+                    <div className="w-10 h-10"><BabyBottleIcon /></div>
+                </div>
+            )}
             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{product.productName}</h2>
             {explanation?.title && (
                 <p className="text-lg font-bold text-primary dark:text-primary-light mt-1" dir="rtl">{explanation.title}</p>
@@ -78,7 +84,7 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 font-medium">{product.ageRange}</p>
         </div>
 
-        {/* Nutritional Facts - The Data Table */}
+        {/* Nutritional Facts */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
             <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -94,7 +100,7 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
             </div>
         </div>
 
-        {/* Pharmacist Note / English USP (Always Visible in Details) */}
+        {/* Pharmacist Note */}
         <div className="space-y-4">
             <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
                 <h3 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-2 tracking-widest">{t('keyFeatures')}</h3>
@@ -111,7 +117,7 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
             </div>
         </div>
 
-        {/* Pharmacist Explanation (Detailed Arabic/Bilingual) */}
+        {/* Detailed Explanation */}
         {explanation && (
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm" dir="rtl">
                 <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-100 dark:border-green-800/30">

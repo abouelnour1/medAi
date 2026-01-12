@@ -12,7 +12,7 @@ export const translations = {
     filters: 'الفلاتر',
     allPharmaceuticalForms: 'كل الأشكال الصيدلانية',
     filterByPharmaceuticalForm: 'فلترة حسب الشكل الصيدلاني',
-    allManufacturers: 'كل الشركات المصنّعة',
+    allManufacturers: 'كل الأطباء المصنّعة',
     filterByManufacturer: 'فلترة حسب الشركة المصنّعة',
     allLegalStatuses: 'كل الحالات القانونية',
     filterByLegalStatus: 'فلترة حسب الحالة القانونية',
@@ -162,7 +162,7 @@ export const translations = {
     simpleSearch: 'بحث سريع',
     aiGuide: 'الدليل الذكي',
     insuranceSimpleSearchPlaceholder: 'ابحث بالمرض، الكود، أو المادة الفعالة...',
-    drugClass: 'الفئة الدوائية',
+    drugClass: 'الفتة الدوائية',
     drugSubclass: 'الفئة الفرعية',
     notes: 'ملاحظات',
     icd10Code: 'كود ICD-10',
@@ -394,6 +394,19 @@ export const translations = {
     stage3: 'رقم 3 (1-3 سنوات)',
     special: 'تركيبات خاصة',
     filterByStage: 'تصفية حسب المرحلة',
+    
+    // --- New Fields ---
+    moreDetails: 'تفاصيل أكثر عن المنتج',
+    physicalDetails: 'الخصائص المادية والصور',
+    pillShape: 'شكل الحبة/الكبسولة',
+    scored: 'هل الحبة مقسومة؟',
+    markings: 'علامات مميزة على الحبة',
+    taste: 'الطعم',
+    liquidColor: 'لون المحلول',
+    boxImage: 'صورة العلبة',
+    stripImage: 'صورة الشريط',
+    pillImage: 'صورة الحبة',
+    noPhysicalData: 'لم يتم إضافة تفاصيل مادية لهذا المنتج بعد.',
   },
   en: {
     appTitle: 'PharmaSource',
@@ -463,7 +476,7 @@ export const translations = {
     geminiError: 'Sorry, an error occurred. Please try again.',
     assistantFabTooltip: 'Ask AI Assistant',
     assistantModalTitle: 'Smart Medical Assistant',
-    assistantWelcomeMessage: 'Welcome. I am your medical assistant. How can I help you today?',
+    assistantWelcomeMessage: 'Welcome. I am your medical assistant. How can I help today?',
     uploadPrescription: 'Upload Prescription',
     or: 'or',
     promptAvailability: 'Is {name} available?',
@@ -789,6 +802,19 @@ export const translations = {
     stage3: 'Stage 3 (1-3 Years)',
     special: 'Special Formula',
     filterByStage: 'Filter by Stage',
+    
+    // --- New Fields ---
+    moreDetails: 'More Product Details',
+    physicalDetails: 'Physical Specs & Images',
+    pillShape: 'Pill/Capsule Shape',
+    scored: 'Is the pill Scored?',
+    markings: 'Physical Markings',
+    taste: 'Taste/Flavor',
+    liquidColor: 'Liquid Color',
+    boxImage: 'Box Image',
+    stripImage: 'Strip Image',
+    pillImage: 'Pill Image',
+    noPhysicalData: 'No physical details added yet.',
   }
 };
 
