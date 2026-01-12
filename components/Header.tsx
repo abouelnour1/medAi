@@ -36,7 +36,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
     };
   }, [menuRef]);
 
-  // Always display "PharmaSource" as requested by the user ("fixed in the whole app")
   const displayTitle = 'PharmaSource';
   
   return (
@@ -57,7 +56,8 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
               </span>
             </button>
           )}
-          {user && view !== 'notifications' && (
+          {/* تم إزالة شرط وجود المستخدم ليظهر الجرس للجميع */}
+          {view !== 'notifications' && (
               <button 
                 onClick={onNotificationsClick}
                 className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"

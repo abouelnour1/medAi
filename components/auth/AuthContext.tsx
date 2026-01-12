@@ -27,7 +27,7 @@ const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.Node }> = ({ children }) => {
   // 1. Initialize State DIRECTLY from Local Storage (Synchronous)
   const [user, setUser] = useState<User | null>(() => {
     try {
@@ -283,6 +283,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   }, []);
 
+  /**
+   * Fix: Add translation keys for requestAIAccess feedback.
+   */
   const requestAIAccess = useCallback(async (callback: () => void, t: TFunction) => {
     if (!user) { alert(t('loginRequired')); return; }
     if (user.role !== 'admin' && !user.emailVerified) { alert(t('emailVerificationRequired')); return; }

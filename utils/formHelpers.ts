@@ -1,3 +1,4 @@
+
 import { TFunction } from '../types';
 
 interface FormGroup {
@@ -6,6 +7,9 @@ interface FormGroup {
 }
 
 export const groupPharmaceuticalForms = (forms: string[], t: TFunction) => {
+  /**
+   * Fix: Ensure categories use keys that exist in the translations file.
+   */
   const formGroups: FormGroup[] = [
     { label: t('solidDosageForms'), keywords: ['tablet', 'capsule', 'powder', 'lozenge', 'granules', 'sachet', 'f.c. tablet', 'film-coated', 'أقراص', 'كبسولات'] },
     { label: t('liquidDosageForms'), keywords: ['syrup', 'suspension', 'solution', 'emulsion', 'drops', 'oral', 'شراب', 'معلق', 'محلول', 'نقط'] },
@@ -44,6 +48,9 @@ export const groupPharmaceuticalForms = (forms: string[], t: TFunction) => {
     }));
 
   if (uncategorized.length > 0) {
+    /**
+     * Fix: Ensure "otherForms" key exists in translations.
+     */
     result.push({
       label: t('otherForms'),
       options: uncategorized.sort(),
