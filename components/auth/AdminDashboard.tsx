@@ -483,7 +483,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                       <li>The broadcast will appear in the "Bell" icon for all users.</li>
                       <li>"Registered Devices" shows how many people allowed notifications.</li>
                       <li>If device count is 0, refresh your browser to re-register.</li>
-                      <li>Manual testing via <strong>Firebase Console > Cloud Messaging</strong> is recommended for full Push testing.</li>
+                      <li>Manual testing via <strong>Firebase Console &gt; Cloud Messaging</strong> is recommended for full Push testing.</li>
                   </ul>
               </div>
           </div>
@@ -497,7 +497,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
               <div className="grid grid-cols-1 gap-6">
                   <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('aiRequestLimit')}</label>
-                      <input type="number" value={appSettings.aiRequestLimit ?? 3} onChange={(e) => setAppSettings({ ...appSettings, aiRequestLimit: parseInt(e.target.value) })} className="mt-1 block w-full border border-slate-300 dark:border-slate-600 rounded-md shadow-sm p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
+                      <input type="number" value={appSettings.aiRequestLimit ?? 3} onChange={(e) => setAppSettings({ ...appSettings, aiRequestLimit: parseInt(e.target.value) })} className="mt-1 block w-full border border-slate-300 dark:border-slate-600 rounded-md shadow-sm p-2 bg-white dark:bg-slate-700 text-slate-900 dark:white" />
                       <p className="mt-2 text-sm text-slate-500">{t('aiRequestLimitDescription')}</p>
                   </div>
                   <div className="flex items-center">
