@@ -103,10 +103,9 @@ const App: React.FC = () => {
 
             if (permission === 'granted') {
                 // 2. Register Service Worker and get Token
-                // Note: The VAPID key is necessary for Web Push. 
-                // You can get this from Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates
+                // Updated with the user-provided VAPID key
                 const token = await getToken(messaging, {
-                    vapidKey: 'BMX-vWvGv8-vWvGv8-vWvGv8-vWvGv8-vWvGv8' 
+                    vapidKey: 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHCIOk3x8bDgM' 
                 });
                 
                 if (token) {

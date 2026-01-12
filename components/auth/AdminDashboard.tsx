@@ -60,7 +60,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const { updateUser, deleteUser, getSettings, updateSettings } = useAuth();
   const [activePanel, setActivePanel] = useState<Panel>('menu');
   
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -75,29 +75,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const [isPushEnabled, setIsPushEnabled] = useState(true);
   const [isSendingBc, setIsSendingBc] = useState(false);
 
-  const [migrationLogs, setMigrationLogs] = useState<string[]>([]);
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [isMigrationLocked, setIsMigrationLocked] = useState(true);
-  const logContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-      if (logContainerRef.current) {
-          logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-      }
-  }, [migrationLogs]);
-
-  const addLog = (msg: string) => {
-      const time = new Date().toLocaleTimeString();
-      setMigrationLogs(prev => [...prev, `[${time}] ${msg}`]);
-  };
+  // Stats for Notifications
+  const totalRegisteredTokens = useMemo(() => {
+      let count = 0;
+      users.forEach(u => {
+          if (u.fcmTokens && Array.isArray(u.fcmTokens)) count += u.fcmTokens.length;
+      });
+      return count;
+  }, [users]);
 
   const fetchUsers = async () => {
       if (FIREBASE_DISABLED) return;
       try {
           const querySnapshot = await getDocs(collection(db, 'users'));
-          const usersList: User[] = [];
+          const usersList: any[] = [];
           querySnapshot.forEach((doc) => {
-              usersList.push({ id: doc.id, ...doc.data() } as User);
+              usersList.push({ id: doc.id, ...doc.data() });
           });
           setUsers(usersList);
       } catch (e) {
@@ -106,16 +99,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   };
 
   useEffect(() => {
-    if (activePanel === 'users' || activePanel === 'overview') {
-        fetchUsers();
-    }
+    fetchUsers();
   }, [activePanel]);
   
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm) return users;
     const lowerTerm = userSearchTerm.toLowerCase();
     return users.filter(u => 
-        u.username.toLowerCase().includes(lowerTerm) || 
+        (u.username || '').toLowerCase().includes(lowerTerm) || 
         (u.email && u.email.toLowerCase().includes(lowerTerm))
     );
   }, [users, userSearchTerm]);
@@ -148,7 +139,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
       if (!bcTitle || !bcBody || FIREBASE_DISABLED) return;
       setIsSendingBc(true);
       try {
-          // 1. Add to In-app Notifications list (Database)
           const notification: Omit<AppNotification, 'id'> = {
               title: bcTitle,
               body: bcBody,
@@ -157,7 +147,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           };
           await addDoc(collection(db, 'notifications'), notification);
 
-          // 2. Trigger System-Level Push Notification (Cloud Function)
           if (isPushEnabled && functions) {
               const sendPush = httpsCallable(functions, 'sendBroadcastPush');
               await sendPush({ title: bcTitle, body: bcBody });
@@ -168,7 +157,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           setBcBody('');
       } catch (e) {
           console.error("Broadcast failed", e);
-          alert("Success in database, but Push failed. (Cloud Function might not be deployed)");
+          alert("Success in database, but Push failed. (This button requires a Cloud Function. Try Firebase Console for manual testing)");
       } finally {
           setIsSendingBc(false);
       }
@@ -402,7 +391,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                         <div className="col-span-1 sm:col-span-2"><SmartSelect label={t('pharmaceuticalForm')} value={newItemData['PharmaceuticalForm'] || ''} onChange={val => setNewItemData({...newItemData, 'PharmaceuticalForm': val})} options={uniqueForms} /></div>
                         <div className="col-span-1 sm:col-span-2"><label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('strength')}</label><div className="flex gap-2"><input type="text" placeholder="Val" className="w-2/3 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['Strength'] || ''} onChange={e => setNewItemData({...newItemData, 'Strength': e.target.value})} /><input type="text" placeholder="Unit" className="w-1/3 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['StrengthUnit'] || ''} onChange={e => setNewItemData({...newItemData, 'StrengthUnit': e.target.value})} /></div></div>
                         <div><label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('packageSize')}</label><div className="flex gap-2"><input type="text" placeholder="Size" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['PackageSize'] || ''} onChange={e => setNewItemData({...newItemData, 'PackageSize': e.target.value})} /><input type="text" placeholder="Type" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['PackageTypes'] || ''} onChange={e => setNewItemData({...newItemData, 'PackageTypes': e.target.value})} /></div></div>
-                        <div><label className="block text-xs font-bold uppercase text-slate-500 mb-1">Container</label><div className="flex gap-2"><input type="text" placeholder="Val" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['Size'] || ''} onChange={e => setNewItemData({...newItemData, 'Size': e.target.value})} /><input type="text" placeholder="Unit" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['SizeUnit'] || ''} onChange={e => setNewItemData({...newItemData, 'SizeUnit': e.target.value})} /></div></div>
+                        <div><label className="block text-xs font-bold uppercase text-slate-500 mb-1">Container</label><div className="flex gap-2"><input type="text" placeholder="Val" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:bg-slate-600 focus:outline-none" value={newItemData['Size'] || ''} onChange={e => setNewItemData({...newItemData, 'Size': e.target.value})} /><input type="text" placeholder="Unit" className="w-1/2 p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 focus:outline-none" value={newItemData['SizeUnit'] || ''} onChange={e => setNewItemData({...newItemData, 'SizeUnit': e.target.value})} /></div></div>
                         <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4"><SectionTitle title={t('physicalDetails')} /></div>
                         <div className="col-span-1 sm:col-span-2"><label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('boxImage')} (Firebase URL)</label><input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.imgBox || ''} onChange={e => setNewItemData({...newItemData, imgBox: e.target.value})} placeholder="https://firebasestorage..." /></div>
                         <div className="col-span-1 sm:col-span-2"><label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('stripImage')} (Firebase URL)</label><input type="text" className="w-full p-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" value={newItemData.imgStrip || ''} onChange={e => setNewItemData({...newItemData, imgStrip: e.target.value})} placeholder="https://firebasestorage..." /></div>
@@ -462,7 +451,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
 
   const renderNotifications = () => (
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm space-y-6 animate-fade-in">
-          <h3 className="text-lg font-bold">{t('broadcastTitle')}</h3>
+          <div className="flex justify-between items-center border-b pb-3 dark:border-slate-700">
+             <h3 className="text-lg font-bold">{t('broadcastTitle')}</h3>
+             <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                <span className="text-xs font-bold text-primary">Registered Devices:</span>
+                <span className="text-sm font-black text-primary">{totalRegisteredTokens}</span>
+             </div>
+          </div>
           <div className="space-y-4">
               <div>
                   <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{t('notificationTitle')}</label>
@@ -478,10 +473,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     Send System Push (Banner & Sound)
                   </label>
               </div>
-              <button onClick={handleSendBroadcast} disabled={isSendingBc || !bcTitle || !bcBody || FIREBASE_DISABLED} className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors disabled:opacity-50">
+              <button onClick={handleSendBroadcast} disabled={isSendingBc || !bcTitle || !bcBody || FIREBASE_DISABLED} className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors disabled:opacity-50 shadow-lg shadow-primary/20">
                   {isSendingBc ? '...' : t('sendBroadcast')}
               </button>
-              <p className="text-[10px] text-slate-400 italic">Note: System Push requires Cloud Functions or FCM server key.</p>
+              
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 mt-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Help & Status</h4>
+                  <ul className="text-[10px] text-slate-500 space-y-1 list-disc pl-4">
+                      <li>The broadcast will appear in the "Bell" icon for all users.</li>
+                      <li>"Registered Devices" shows how many people allowed notifications.</li>
+                      <li>If device count is 0, refresh your browser to re-register.</li>
+                      <li>Manual testing via <strong>Firebase Console > Cloud Messaging</strong> is recommended for full Push testing.</li>
+                  </ul>
+              </div>
           </div>
       </div>
   );
@@ -489,7 +493,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const renderSettings = () => (
       <div className="space-y-6 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm animate-fade-in">
           <div>
-              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:text-white mb-4">{t('appSettingsTitle')}</h3>
+              <h3 className="text-lg font-medium leading-6 text-slate-900 dark:white mb-4">{t('appSettingsTitle')}</h3>
               <div className="grid grid-cols-1 gap-6">
                   <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('aiRequestLimit')}</label>
@@ -506,98 +510,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
       </div>
   );
 
-  const uploadBatch = async (collectionName: string, data: any[], idField?: string) => {
-      const CHUNK_SIZE = 450;
-      let processed = 0;
-      addLog(`Preparing to upload ${data.length} items to '${collectionName}'...`);
-      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-          const chunk = data.slice(i, i + CHUNK_SIZE);
-          const batch = writeBatch(db);
-          chunk.forEach((item) => {
-              const docRef = idField && item[idField] ? doc(db, collectionName, String(item[idField])) : doc(collection(db, collectionName));
-              batch.set(docRef, item);
-          });
-          try {
-              await batch.commit();
-              processed += chunk.length;
-              addLog(`✓ Batch success: ${processed} / ${data.length} items synced.`);
-          } catch (e: any) { addLog(`❌ Error in batch ${i}: ${e.message}`); }
-      }
-      addLog(`🎉 Migration for '${collectionName}' COMPLETED.`);
-  };
-
-  const handleMigration = async (type: 'medicines' | 'insurance' | 'cosmetics') => {
-      if (!isMigrating && window.confirm(`Start uploading ${type} to Cloud?`)) {
-          setIsMigrating(true);
-          try {
-              if (type === 'medicines') {
-                  const { MEDICINE_DATA } = await import('../../data/data');
-                  await uploadBatch('medicines', MEDICINE_DATA, 'RegisterNumber');
-              } else if (type === 'insurance') {
-                  const { INITIAL_INSURANCE_DATA } = await import('../../data/insurance-data');
-                  const dataWithIds = INITIAL_INSURANCE_DATA.map(item => ({ ...item, _id: `${item.scientificName}-${item.strength}-${item.form}`.replace(/[\/\s\.]/g, '_') }));
-                  await uploadBatch('insurance', dataWithIds, '_id');
-              } else {
-                  const { INITIAL_COSMETICS_DATA } = await import('../../data/cosmetics-data');
-                  await uploadBatch('cosmetics', INITIAL_COSMETICS_DATA, 'id');
-              }
-          } catch (e: any) { addLog(`CRITICAL ERROR: ${e.message}`); } finally { setIsMigrating(false); }
-      }
-  };
-
-  const handleExport = (type: 'medicines' | 'insurance' | 'cosmetics') => {
-      addLog(`Preparing to export ${type}...`);
-      let dataToExport: any[] = [];
-      if (type === 'medicines') dataToExport = allMedicines;
-      else if (type === 'insurance') dataToExport = insuranceData;
-      else if (type === 'cosmetics') dataToExport = cosmetics;
-      if (dataToExport.length === 0) { addLog(`⚠️ No data found for ${type} to export.`); return; }
-      try {
-          const jsonString = JSON.stringify(dataToExport, null, 2);
-          const blob = new Blob([jsonString], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `pharmasource_${type}_export_${new Date().toISOString().slice(0,10)}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          addLog(`✅ Exported ${dataToExport.length} items to file.`);
-      } catch (e: any) { addLog(`❌ Export failed: ${e.message}`); }
-  };
-
-  const renderMigration = () => (
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm space-y-6 animate-fade-in">
-          <div className="flex justify-between items-center"><h3 className="text-lg font-bold text-red-600">Migration Control Panel</h3><div className="flex items-center gap-2"><label className="flex items-center cursor-pointer text-sm text-red-600 font-semibold"><input type="checkbox" checked={!isMigrationLocked} onChange={e => setIsMigrationLocked(!e.target.checked)} className="mr-2" />Unlock Dangerous Actions</label></div></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3 border p-4 rounded-lg border-slate-200 dark:border-slate-700">
-                  <h4 className="font-bold text-sm text-slate-500 uppercase">Cloud Sync (Upload)</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                      <button onClick={() => handleMigration('medicines')} disabled={isMigrationLocked || isMigrating} className="p-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1 disabled:opacity-50"><div className="h-5 w-5"><PillBottleIcon /></div> Meds</button>
-                      <button onClick={() => handleMigration('insurance')} disabled={isMigrationLocked || isMigrating} className="p-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1 disabled:opacity-50"><div className="h-5 w-5"><HealthInsuranceIcon /></div> Insur</button>
-                      <button onClick={() => handleMigration('cosmetics')} disabled={isMigrationLocked || isMigrating} className="p-2 bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1 disabled:opacity-50"><div className="h-5 w-5"><CosmeticsIcon /></div> Cosm</button>
-                  </div>
-              </div>
-              <div className="space-y-3 border p-4 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
-                  <h4 className="font-bold text-sm text-slate-500 uppercase">Extract Data (Download JSON)</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                      <button onClick={() => handleExport('medicines')} className="p-2 bg-white dark:bg-slate-700 border hover:bg-gray-50 text-slate-700 dark:text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1"><div className="h-5 w-5"><DownloadIcon /></div> Meds</button>
-                      <button onClick={() => handleExport('insurance')} className="p-2 bg-white dark:bg-slate-700 border hover:bg-gray-50 text-slate-700 dark:text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1"><div className="h-5 w-5"><DownloadIcon /></div> Insur</button>
-                      <button onClick={() => handleExport('cosmetics')} className="p-2 bg-white dark:bg-slate-700 border hover:bg-gray-50 text-slate-700 dark:text-white text-xs font-bold rounded flex flex-col items-center justify-center gap-1"><div className="h-5 w-5"><DownloadIcon /></div> Cosm</button>
-                  </div>
-              </div>
-          </div>
-          <div className="mt-4 bg-black text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto shadow-inner" ref={logContainerRef}><div className="flex justify-between items-center border-b border-green-900/50 pb-2 mb-2 sticky top-0 bg-black"><span>&gt;_ System Log</span><button onClick={() => setMigrationLogs([])} className="text-[10px] hover:text-white">CLEAR</button></div>{migrationLogs.length === 0 && <span className="opacity-50">Ready for command...</span>}{migrationLogs.map((log, idx) => (<div key={idx} className="mb-1 break-words">{log}</div>))}{isMigrating && <div className="animate-pulse">_</div>}</div>
-      </div>
-  );
-
   return (
     <div className="flex flex-col h-full bg-light-bg dark:bg-dark-bg">
         {activePanel !== 'menu' && (
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center gap-2 sticky top-0 z-20">
                 <button onClick={() => setActivePanel('menu')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><BackIcon /></button>
-                <h2 className="text-xl font-bold capitalize">{activePanel === 'addItem' ? t('addNewItem') : activePanel}</h2>
+                <h2 className="text-xl font-bold capitalize">{activePanel === 'addItem' ? t('addNewItem') : activePanel === 'notifications' ? t('broadcastTitle') : activePanel}</h2>
             </div>
         )}
         <div className="flex-grow p-4 overflow-y-auto">
@@ -608,14 +526,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     <MenuCard title={t('addNewItem')} icon={<div className="text-xl font-bold">+</div>} onClick={() => setActivePanel('addItem')} colorClass="bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800" />
                     <MenuCard title={t('broadcastTitle')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:border-red-800" />
                     <MenuCard title={t('appSettingsTitle')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" />
-                    <MenuCard title="Migration" icon={<DatabaseIcon />} onClick={() => setActivePanel('migration')} colorClass="bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800" />
                 </div>
             )}
             {activePanel === 'overview' && renderOverview()}
             {activePanel === 'users' && renderUsers()}
             {activePanel === 'addItem' && renderAddSingleItem()}
             {activePanel === 'settings' && renderSettings()}
-            {activePanel === 'migration' && renderMigration()}
             {activePanel === 'notifications' && renderNotifications()}
         </div>
         {isEditUserModalOpen && editingUser && (
