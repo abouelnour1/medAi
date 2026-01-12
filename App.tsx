@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, 
-  InsuranceSearchMode, Cosmetic, MilkProduct, Notification
+  InsuranceSearchMode, Cosmetic, MilkProduct, Notification as AppNotification
 } from './types';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
@@ -29,7 +29,7 @@ import BarcodeScannerModal from './components/BarcodeScannerModal';
 import MilkView from './components/MilkView';
 import NotificationsView from './components/NotificationsView';
 
-// --- Fix: Import missing icons ---
+// Icons
 import AdminIcon from './components/icons/AdminIcon';
 import HistoryIcon from './components/icons/HistoryIcon';
 import MoonIcon from './components/MoonIcon';
@@ -47,11 +47,10 @@ import { useAuth } from './components/auth/AuthContext';
 // Utils & Helpers
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
-import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db, FIREBASE_DISABLED, messaging, getToken, onMessage } from './firebase';
+import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
-// Normalization functions
 const normalizeMedicine = (item: any): Medicine => ({
   ...item,
   RegisterNumber: String(item.RegisterNumber || item.Id || Math.random()),
@@ -69,17 +68,15 @@ const normalizeMedicine = (item: any): Medicine => ({
   "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
   "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
   "Main Agent": String(item["Main Agent"] || item.Agent || ''),
-  
-  // دمج الحقول المادية مع دعم أسماء مختلفة للحقول لضمان عدم فقدان البيانات من فايربيز
-  imgBox: item.imgBox || item.boxImage || item.img_box || item.box_img || item.box_image || '',
-  imgStrip: item.imgStrip || item.stripImage || item.img_strip || item.strip_img || item.strip_image || '',
-  imgPill: item.imgPill || item.pillImage || item.img_pill || item.pill_img || item.pill_image || '',
-  pillShape: item.pillShape || item.pill_shape || '',
-  pillScored: item.pillScored || item.pill_scored || '',
-  pillMarkings: item.pillMarkings || item.pill_markings || '',
-  liquidTaste: item.liquidTaste || item.taste || '',
-  liquidColor: item.liquidColor || item.color || '',
-  physicalNotes: item.physicalNotes || item.notes || ''
+  imgBox: item.imgBox || item.boxImage || '',
+  imgStrip: item.imgStrip || item.stripImage || '',
+  imgPill: item.imgPill || item.pillImage || '',
+  pillShape: item.pillShape || '',
+  pillScored: item.pillScored || '',
+  pillMarkings: item.pillMarkings || '',
+  liquidTaste: item.liquidTaste || '',
+  liquidColor: item.liquidColor || '',
+  physicalNotes: item.physicalNotes || ''
 });
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
@@ -89,6 +86,63 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 
 const App: React.FC = () => {
   const { user } = useAuth();
+
+  // --- Push Notifications Setup ---
+  useEffect(() => {
+    // Only attempt setup if messaging is supported and user is logged in
+    if (!messaging || !user || FIREBASE_DISABLED) return;
+
+    const setupPushNotifications = async () => {
+        try {
+            // 1. Check current permission status
+            let permission = Notification.permission;
+            
+            if (permission === 'default') {
+                permission = await Notification.requestPermission();
+            }
+
+            if (permission === 'granted') {
+                // 2. Register Service Worker and get Token
+                // Note: The VAPID key is necessary for Web Push. 
+                // You can get this from Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates
+                const token = await getToken(messaging, {
+                    vapidKey: 'BMX-vWvGv8-vWvGv8-vWvGv8-vWvGv8-vWvGv8' 
+                });
+                
+                if (token) {
+                    const userRef = doc(db, 'users', user.id);
+                    await updateDoc(userRef, {
+                        fcmTokens: arrayUnion(token)
+                    });
+                    console.log('FCM Device Token registered:', token);
+                }
+            }
+        } catch (err) {
+            console.error("FCM Registration Error:", err);
+        }
+    };
+
+    setupPushNotifications();
+
+    // 3. Foreground Message Listener (When the app is open)
+    const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Message received in foreground:', payload);
+        
+        // Play notification sound
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play().catch(e => console.log('Audio play blocked by browser policy until user interaction'));
+
+        // Show standard browser notification if permission allows, or a custom toast
+        if (Notification.permission === 'granted') {
+            new Notification(payload.notification?.title || 'PharmaSource', {
+                body: payload.notification?.body,
+                icon: '/logo.png'
+            });
+        }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // --- State ---
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -106,7 +160,6 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
   
-  // Data
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
@@ -114,13 +167,11 @@ const App: React.FC = () => {
   const [clinicalGuidelines, setClinicalGuidelines] = useState<any>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Notifications
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
       try { return JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]'); } catch { return []; }
   });
 
-  // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
@@ -138,7 +189,6 @@ const App: React.FC = () => {
   const [resultsLimit, setResultsLimit] = useState(20);
   const [cosmeticsLimit, setResultsLimitCosm] = useState(20);
 
-  // Selections
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [selectedCosmetic, setSelectedCosmetic] = useState<Cosmetic | null>(null);
   const [selectedInsuranceData, setSelectedInsuranceData] = useState<SelectedInsuranceData | null>(null);
@@ -146,7 +196,6 @@ const App: React.FC = () => {
   const [sourceMedicine, setSourceMedicine] = useState<Medicine | null>(null);
   const [alternativesResults, setAlternativesResults] = useState<{ direct: Medicine[], therapeutic: Medicine[] } | null>(null);
 
-  // Favorites
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]');
@@ -155,7 +204,6 @@ const App: React.FC = () => {
     }
   });
 
-  // Assistant
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [chatHistory, setChatHistory] = useState<Conversation[]>(() => {
@@ -166,18 +214,14 @@ const App: React.FC = () => {
   const [currentChatHistory, setCurrentChatHistory] = useState<ChatMessage[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
-  // Insurance Search
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
 
-  // Cosmetics Search
   const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
 
-  // Barcode
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
 
-  // Modals
   const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
   const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
@@ -190,8 +234,6 @@ const App: React.FC = () => {
   });
 
   const scrollPositionRef = useRef(0);
-
-  // --- Effects ---
 
   useEffect(() => {
     const loadData = async () => {
@@ -224,10 +266,8 @@ const App: React.FC = () => {
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
             setIsDataLoaded(true);
 
-            // جلب البيانات من السحابة في الخلفية
             if (!FIREBASE_DISABLED) {
                 try {
-                    // 1. جلب الأدوية من السحابة
                     const medicinesSnapshot = await getDocs(collection(db, 'medicines'));
                     const cloudMedicines: Medicine[] = [];
                     medicinesSnapshot.forEach((doc) => {
@@ -244,7 +284,6 @@ const App: React.FC = () => {
                         });
                     }
 
-                    // 2. جلب مستحضرات التجميل من السحابة
                     const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
                     const cloudCosmetics: Cosmetic[] = [];
                     cosmeticsSnapshot.forEach((doc) => {
@@ -264,7 +303,6 @@ const App: React.FC = () => {
                     console.warn("Background fetch failed:", err);
                 }
             }
-
         } catch (e) {
             console.error("Error loading data", e);
             setIsDataLoaded(true);
@@ -274,14 +312,13 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Sync Notifications from Cloud
   useEffect(() => {
       if (FIREBASE_DISABLED) return;
       const q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
-          const fetched: Notification[] = [];
+          const fetched: AppNotification[] = [];
           snapshot.forEach(doc => {
-              fetched.push({ id: doc.id, ...doc.data() } as Notification);
+              fetched.push({ id: doc.id, ...doc.data() } as AppNotification);
           });
           setNotifications(fetched);
       });
@@ -326,6 +363,7 @@ const App: React.FC = () => {
   const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), []);
   const toggleFavorite = useCallback((id: string) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]), []);
   const handleAdminClick = useCallback(() => { if (user?.role === 'admin') { setView('admin'); setActiveTab('settings'); } }, [user]);
+  
   const handleMedicineSelect = useCallback((medicine: Medicine) => { 
       const container = document.getElementById('main-scroll-container');
       if(container) scrollPositionRef.current = container.scrollTop;
@@ -345,7 +383,6 @@ const App: React.FC = () => {
         return match ? parseFloat(match[0]) : -1;
     };
     const sourceStrength = getStrengthNum(medicine.Strength);
-    const sourceForm = medicine.PharmaceuticalForm.toLowerCase();
     const direct = medicines.filter(m => m.RegisterNumber !== medicine.RegisterNumber && m['Scientific Name'].toLowerCase().trim() === cleanSciName);
     direct.sort((a, b) => {
         const aStrength = getStrengthNum(a.Strength);
@@ -360,8 +397,6 @@ const App: React.FC = () => {
         therapeutic.sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
     }
     setSourceMedicine(medicine); setAlternativesResults({ direct, therapeutic });
-    const container = document.getElementById('main-scroll-container');
-    if (container) scrollPositionRef.current = container.scrollTop;
     setView('alternatives');
   }, [medicines]);
 
@@ -405,7 +440,6 @@ const App: React.FC = () => {
 
   const handleSaveEditedMedicine = useCallback(async (syncToCloud: boolean) => {
       if (!editingMedicine) return;
-      // Normalize images before saving
       const normalized = normalizeMedicine(editingMedicine);
       setMedicines(prev => {
           const updated = prev.map(m => m.RegisterNumber === normalized.RegisterNumber ? normalized : m);
@@ -441,7 +475,6 @@ const App: React.FC = () => {
   const handleClearFilters = useCallback(() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' }), []);
   const handleClearSearch = useCallback(() => { setSearchTerm(''); setTextSearchMode('tradeName'); handleClearFilters(); setSortBy('alphabetical'); setView('search'); setForceSearch(false); }, [handleClearFilters]);
   const handleClearSearchOnly = useCallback(() => { setSearchTerm(''); setView('search'); setForceSearch(false); }, []);
-  const handleClearSearchOnlyWithRedirect = useCallback(() => { setSearchTerm(''); setView('search'); setForceSearch(false); }, []);
   const handleForceSearch = useCallback(() => { if (searchTerm.trim().length > 0) setForceSearch(true); }, [searchTerm]);
   const handleFilterChange = useCallback(<K extends keyof Filters>(filterName: K, value: Filters[K]) => setFilters(prevFilters => ({ ...prevFilters, [filterName]: value })), []);
 
