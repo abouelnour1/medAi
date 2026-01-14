@@ -59,20 +59,17 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     // Logic Update: Ensure 3 chars NOT counting the wildcard %
     const effectiveLength = trimmedSearchTerm.replace(/%/g, '').length;
-    if (effectiveLength < 3) return [];
+    if (effectiveLength < 2) return []; // Reduced slightly to be more permissive
     
     const lowerSearchTerm = trimmedSearchTerm.toLowerCase();
-    const searchKeywords = lowerSearchTerm.split(/\s+/).filter(Boolean);
-    const normalizeSciName = (name: string) => (name || '').toLowerCase().split(',').map(s => s.trim()).sort().join(',');
+    
+    const normalizeSciName = (name: string) => (name || '').toLowerCase().split(/[\s,]+/).map(s => s.trim()).filter(s => s.length > 2).sort().join(',');
 
     let matchingPolicies: InsuranceDrug[] = [];
-    
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
     
-    // Build Regex for strict/wildcard matching
     const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const parts = lowerSearchTerm.split('%').map(escapeRegExp);
-    // If no wildcard, force start-of-string match. If wildcard exists, use standard regex matching.
     const prefix = lowerSearchTerm.includes('%') ? '' : '^';
     const pattern = prefix + parts.join('.*');
     
@@ -89,21 +86,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 return searchRegex.test((m['Trade Name'] || '').toLowerCase());
             }
             if (searchMode === 'scientificName') {
-                return searchRegex.test((m['Scientific Name'] || '').toLowerCase());
+                return (m['Scientific Name'] || '').toLowerCase().includes(lowerSearchTerm.replace(/%/g, ''));
             }
-            // Fallback (though select only allows specific modes)
-            const tName = (m['Trade Name'] || '').toLowerCase();
-            const sName = (m['Scientific Name'] || '').toLowerCase();
-            return searchRegex.test(tName) || searchRegex.test(sName);
+            return false;
         })
         : [];
 
     const sciNameToTradeNames = new Map<string, Set<string>>();
     if (searchMode === 'tradeName') {
         matchingMeds.forEach(med => {
-            const tName = (med['Trade Name'] || '').toLowerCase();
-            // Only count it as a "match" for highlighting purposes if it matches the regex
-            if (searchRegex.test(tName)) {
+            if (searchRegex.test(med['Trade Name'] || '')) {
                 const sciName = normalizeSciName(med['Scientific Name']);
                 if (!sciNameToTradeNames.has(sciName)) {
                     sciNameToTradeNames.set(sciName, new Set());
@@ -113,22 +105,24 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
-    // Find all policies that match the search criteria.
     if (searchMode === 'scientificName') {
-        matchingPolicies = insuranceData.filter(p => searchRegex.test(p.scientificName || ''));
+        matchingPolicies = insuranceData.filter(p => (p.scientificName || '').toLowerCase().includes(lowerSearchTerm.replace(/%/g, '')));
     } else if (searchMode === 'tradeName') {
         const sciNamesFromMeds = new Set(matchingMeds.map(m => normalizeSciName(m['Scientific Name'])));
-        matchingPolicies = insuranceData.filter(p => sciNamesFromMeds.has(normalizeSciName(p.scientificName)));
+        matchingPolicies = insuranceData.filter(p => {
+            const normPolicyName = normalizeSciName(p.scientificName);
+            // Check if policy name exists in meds or vice-versa (partial overlap)
+            return Array.from(sciNamesFromMeds).some(medSci => medSci.includes(normPolicyName) || normPolicyName.includes(medSci));
+        });
     } else { // indication or icd10Code
+        const searchKeywords = lowerSearchTerm.split(/\s+/).filter(Boolean);
         matchingPolicies = insuranceData.filter(p => {
             const field = searchMode === 'indication' ? p.indication : p.icd10Code;
-            return searchKeywords.every(kw => (field || '').toLowerCase().replace(/[,-]/g, ' ').includes(kw.replace(/%/g, '')));
+            return searchKeywords.every(kw => (field || '').toLowerCase().includes(kw.replace(/%/g, '')));
         });
     }
 
     const results: SearchResult[] = [];
-
-    // TRACKER: Keep track of which scientific names are actually covered in this search result.
     const actuallyCoveredSciNames = new Set<string>();
     matchingPolicies.forEach(p => {
         if (p.scientificName) {
@@ -136,14 +130,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         }
     });
 
-    // Handle non-covered items for name searches
     if (isNameSearch) {
         const notCoveredMeds = matchingMeds.filter(m => {
-            const normName = normalizeSciName(m['Scientific Name']);
-            if (actuallyCoveredSciNames.has(normName)) {
-                return false; // Covered
-            }
-            return true;
+            const normMedName = normalizeSciName(m['Scientific Name']);
+            return !Array.from(actuallyCoveredSciNames).some(covered => normMedName.includes(covered) || covered.includes(normMedName));
         });
 
         notCoveredMeds.forEach(med => {
@@ -151,10 +141,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
-    // --- GROUPING LOGIC START ---
-
     if (isNameSearch) {
-        // Group by Scientific Name (Drug-Centric View)
         const groupedByDrug = new Map<string, InsuranceDrug[]>();
         matchingPolicies.forEach(policy => {
             const key = normalizeSciName(policy.scientificName);
@@ -162,11 +149,15 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             groupedByDrug.get(key)!.push(policy);
         });
 
-        groupedByDrug.forEach((policies, sciNameKey) => {
-            const realSciName = policies[0].scientificName || sciNameKey;
-            
+        // Fix: Use for...of to ensure correct type inference for sciNameKey and policies
+        // This avoids issues where sciNameKey might be treated as 'unknown' in a .forEach callback.
+        for (const [sciNameKey, policies] of groupedByDrug.entries()) {
+            const realSciName = policies[0].scientificName;
             const availableMedicines = allMedicines
-                .filter(m => normalizeSciName(m['Scientific Name']) === sciNameKey)
+                .filter(m => {
+                    const normM = normalizeSciName(m['Scientific Name']);
+                    return normM.includes(sciNameKey) || sciNameKey.includes(normM);
+                })
                 .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
             results.push({
@@ -176,10 +167,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 policies: policies,
                 availableMedicines: availableMedicines
             });
-        });
+        }
 
     } else {
-        // Group covered policies by INDICATION (Legacy Indication View)
         const groupedByIndication = new Map<string, InsuranceDrug[]>();
         matchingPolicies.forEach(policy => {
             const key = policy.indication || 'Unknown';
@@ -191,7 +181,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
         groupedByIndication.forEach((policies, indication) => {
             const scientificGroupsMap = new Map<string, ScientificGroupData>();
-            
             const allIcd10Codes = new Set<string>();
             policies.forEach(p => {
                 if (p.icd10Code) {
@@ -206,7 +195,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 const sciName = policy.scientificName || 'Unknown';
                 if (!scientificGroupsMap.has(sciName)) {
                      const availableMedicines = allMedicines
-                        .filter(m => normalizeSciName(m['Scientific Name']) === normalizeSciName(sciName))
+                        .filter(m => normalizeSciName(m['Scientific Name']).includes(normalizeSciName(sciName)))
                         .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
                     scientificGroupsMap.set(sciName, {
@@ -229,12 +218,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
     
-    return results.sort((a, b) => {
-      if (a.type === 'not-covered' && b.type !== 'not-covered') return 1;
-      if (a.type !== 'not-covered' && b.type === 'not-covered') return -1;
-      return 0; // Keep roughly grouped
-    });
-
+    return results;
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
 
 
@@ -244,13 +228,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
       case 'tradeName': return t('searchPlaceholder').replace('...', ` ${t('tradeName')}...`);
       case 'indication': return t('searchPlaceholder').replace('...', ` ${t('indication')}...`);
       case 'icd10Code': return t('searchPlaceholder').replace('...', ` ${t('icd10Code')}...`);
-      default: return t('insuranceSimpleSearchPlaceholder');
+      default: return t('insuranceSearchPlaceholder');
     }
   }, [searchMode, t]);
 
   const renderResults = () => {
-    // Logic Update: Check effective length excluding wildcard
-    if (searchTerm.replace(/%/g, '').trim().length < 3) return null;
+    if (searchTerm.replace(/%/g, '').trim().length < 2) return null;
     
     if (searchResults.length === 0) {
        return (
@@ -297,7 +280,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         </select>
         <div className="pointer-events-none absolute inset-y-0 ltr:right-0 rtl:left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
             <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
         </div>
       </div>

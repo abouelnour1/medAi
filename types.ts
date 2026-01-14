@@ -1,3 +1,4 @@
+
 import { TranslationKeys } from './translations';
 
 export interface Notification {
@@ -49,7 +50,8 @@ export interface Medicine {
   
   // --- New Physical & Image Fields ---
   imgBox?: string;
-  imgStrip?: string;
+  imgIndex1?: string;
+  imgIndex2?: string;
   imgPill?: string;
   pillShape?: string;
   pillScored?: string;

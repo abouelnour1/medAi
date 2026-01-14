@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
+import ClearIcon from './icons/ClearIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -39,10 +40,11 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant }) => {
-  const hasImages = !!(medicine.imgBox || medicine.imgStrip || medicine.imgPill);
+  const hasImages = !!(medicine.imgBox || medicine.imgIndex1 || medicine.imgIndex2 || medicine.imgPill);
   const hasPhysicalProps = !!(medicine.pillShape || medicine.pillScored || medicine.pillMarkings || medicine.liquidTaste || medicine.liquidColor);
   
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(hasImages || hasPhysicalProps);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const price = parseFloat(medicine['Public price']);
   const scientificName = medicine['Scientific Name'] || '';
@@ -71,16 +73,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
   const isRestricted = productControl.toLowerCase().includes('restricted');
 
-  const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
+  const PhysicalImage = ({ src, label, zoomable = false }: { src?: string, label: string, zoomable?: boolean }) => {
     if (!src) return null;
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
             <div 
-                className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-3 shadow-sm overflow-hidden flex items-center justify-center transition-all"
+                onClick={() => zoomable && setZoomedImage(src)}
+                className={`w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-3 shadow-sm overflow-hidden flex items-center justify-center transition-all ${zoomable ? 'cursor-zoom-in hover:border-primary/50' : ''}`}
             >
                 <img src={src} alt={label} className="max-w-full max-h-full object-contain pointer-events-none" />
             </div>
+            {zoomable && <span className="text-[9px] text-primary font-bold">{language === 'ar' ? 'اضغط للتكبير' : 'Click to zoom'}</span>}
         </div>
     );
   };
@@ -136,16 +140,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
             {isPhysicalExpanded && (
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {/* عرض الصور داخل القسم بحجم كبير ومباشر بدون إمكانية التكبير */}
+                    {/* Image Carousel */}
                     {hasImages && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             <div className="snap-center"><PhysicalImage src={medicine.imgBox} label={t('boxImage')} /></div>
-                            <div className="snap-center"><PhysicalImage src={medicine.imgStrip} label={t('stripImage')} /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex1} label={language === 'ar' ? 'صورة الفهرس 1' : 'Index Image 1'} zoomable /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex2} label={language === 'ar' ? 'صورة الفهرس 2' : 'Index Image 2'} zoomable /></div>
                             <div className="snap-center"><PhysicalImage src={medicine.imgPill} label={t('pillImage')} /></div>
                         </div>
                     )}
 
-                    {/* الخصائص المادية */}
+                    {/* Physical Properties */}
                     {(hasImages || hasPhysicalProps) ? (
                         <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800">
                             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
@@ -187,6 +192,34 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           </dl>
         </div>
       </div>
+
+      {/* Image Zoom Overlay */}
+      {zoomedImage && (
+          <div 
+            className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center animate-fade-in p-4"
+            onClick={() => setZoomedImage(null)}
+          >
+              <button 
+                onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+                className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all shadow-xl backdrop-blur-md"
+              >
+                  <ClearIcon />
+              </button>
+              
+              <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={zoomedImage} 
+                    className="max-w-full max-h-full object-contain shadow-2xl transition-transform animate-zoom-in" 
+                    alt="Zoomed View" 
+                    onClick={e => e.stopPropagation()}
+                  />
+              </div>
+
+              <p className="mt-4 text-white/60 text-xs font-bold uppercase tracking-widest animate-pulse">
+                {language === 'ar' ? 'اسحب للتنقل أو اضغط للإغلاق' : 'Pinch to zoom or tap to close'}
+              </p>
+          </div>
+      )}
     </div>
   );
 };

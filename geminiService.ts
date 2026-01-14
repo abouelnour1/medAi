@@ -9,6 +9,7 @@ const getApiKey = (): string | undefined => {
 
 export const isAIAvailable = (): boolean => {
   const apiKey = getApiKey();
+  // Assume AI is enabled unless explicitly disabled in settings
   let isAiEnabled = true;
   try {
     const settingsString = localStorage.getItem('mock_app_settings');
@@ -18,26 +19,69 @@ export const isAIAvailable = (): boolean => {
         isAiEnabled = settings.isAiEnabled;
       }
     }
-  } catch (e) {
-    console.error("Could not parse AI settings from localStorage", e);
-  }
+  } catch (e) {}
   
-  return !!apiKey && !apiKey.includes('PLACEHOLDER') && isAiEnabled;
+  return !!apiKey && isAiEnabled;
 };
 
-// Fix: Always use process.env.API_KEY directly in initialization as per guidelines
+// Fix: Always use process.env.API_KEY directly in initialization
 const getAiClient = (): GoogleGenAI => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
         throw new Error('API Key is missing. Please ensure process.env.API_KEY is configured.');
     }
-    if (apiKey.includes('PLACEHOLDER')) {
-        throw new Error('Invalid API Key: You are using a PLACEHOLDER key.');
-    }
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper to deep-clone objects without internal SDK prototypes/circularity
+const safeClone = (obj: any): any => {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(safeClone);
+    
+    const clone: any = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const val = obj[key];
+            // Skip functions and complicated internal symbols
+            if (typeof val === 'function') continue;
+            clone[key] = safeClone(val);
+        }
+    }
+    return clone;
+};
+
+// Utility to convert SDK parts to plain serializable objects
+export const sanitizeParts = (parts: any[]): SerializablePart[] => {
+    if (!parts || !Array.isArray(parts)) return [];
+    
+    return parts.map(p => {
+        const part: SerializablePart = {};
+        if (p.text) part.text = p.text;
+        if (p.inlineData) {
+            part.inlineData = {
+                mimeType: p.inlineData.mimeType,
+                data: p.inlineData.data
+            };
+        }
+        if (p.functionCall) {
+            part.functionCall = {
+                name: p.functionCall.name,
+                args: safeClone(p.functionCall.args),
+                id: p.functionCall.id
+            };
+        }
+        if (p.functionResponse) {
+            part.functionResponse = {
+                name: p.functionResponse.name,
+                response: safeClone(p.functionResponse.response),
+                id: p.functionResponse.id
+            };
+        }
+        return part;
+    });
+};
 
 const generateContentWithRetry = async (
   ai: GoogleGenAI,
@@ -47,7 +91,6 @@ const generateContentWithRetry = async (
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
-      // Fix: Call generateContent directly with parameters that include the model name
       const response = await ai.models.generateContent(params);
       return response;
     } catch (error: any) {
@@ -74,40 +117,11 @@ const generateContentWithRetry = async (
   throw new Error('Exceeded max retries for AI request.');
 }
 
-// Utility to convert SDK parts to plain serializable objects
-export const sanitizeParts = (parts: any[]): SerializablePart[] => {
-    return parts.map(p => {
-        const part: SerializablePart = {};
-        if (p.text) part.text = p.text;
-        if (p.inlineData) {
-            part.inlineData = {
-                mimeType: p.inlineData.mimeType,
-                data: p.inlineData.data
-            };
-        }
-        if (p.functionCall) {
-            part.functionCall = {
-                name: p.functionCall.name,
-                args: p.functionCall.args ? JSON.parse(JSON.stringify(p.functionCall.args)) : {},
-                id: p.functionCall.id
-            };
-        }
-        if (p.functionResponse) {
-            part.functionResponse = {
-                name: p.functionResponse.name,
-                response: p.functionResponse.response ? JSON.parse(JSON.stringify(p.functionResponse.response)) : {},
-                id: p.functionResponse.id
-            };
-        }
-        return part;
-    });
-};
-
 // General-purpose AI chat function
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
-  tools: Tool[],
+  tools: any[],
   toolImplementations: { [key:string]: (...args: any[]) => any },
   modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
@@ -117,15 +131,7 @@ export const runAIChat = async (
     model: modelName,
     contents: history.map(msg => ({ 
         role: msg.role, 
-        // Ensure inputs are also clean
-        parts: msg.parts.map(p => {
-            const clean: any = {};
-            if (p.text) clean.text = p.text;
-            if (p.inlineData) clean.inlineData = p.inlineData;
-            if (p.functionCall) clean.functionCall = p.functionCall;
-            if (p.functionResponse) clean.functionResponse = p.functionResponse;
-            return clean;
-        })
+        parts: sanitizeParts(msg.parts)
     })),
     config: {
       systemInstruction,
@@ -142,15 +148,21 @@ export const runAIChat = async (
     if (implementation) {
       const functionResult = implementation(fc.args);
 
+      // Sanitize the function call data before adding to history
+      const cleanFcArgs = safeClone(fc.args);
+      
       const toolResponseHistory: ChatMessage[] = [
         ...history,
-        { role: 'model', parts: [{ functionCall: { name: fc.name, args: fc.args, id: fc.id } }] },
+        { role: 'model', parts: [{ functionCall: { name: fc.name, args: cleanFcArgs, id: fc.id } }] },
         { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
       ];
 
       const secondParams = {
         model: modelName,
-        contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: msg.parts })),
+        contents: toolResponseHistory.map(msg => ({ 
+            role: msg.role, 
+            parts: sanitizeParts(msg.parts)
+        })),
         config: { systemInstruction, tools },
       };
 

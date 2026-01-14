@@ -169,8 +169,12 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
                </div>
                <div>
-                 <label className={labelClass}>{t('stripImage')} URL</label>
-                 <input type="text" name="imgStrip" value={formData.imgStrip || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+                 <label className={labelClass}>صورة الفهرس 1 (Index 1) URL</label>
+                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>صورة الفهرس 2 (Index 2) URL</label>
+                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
                </div>
                <div>
                  <label className={labelClass}>{t('pillImage')} URL</label>

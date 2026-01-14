@@ -72,7 +72,8 @@ const normalizeMedicine = (item: any): Medicine => ({
   "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
   "Main Agent": String(item["Main Agent"] || item.Agent || ''),
   imgBox: item.imgBox || item.boxImage || '',
-  imgStrip: item.imgStrip || item.stripImage || '',
+  imgIndex1: item.imgIndex1 || item.imgStrip || item.stripImage || '', // Migration path
+  imgIndex2: item.imgIndex2 || '',
   imgPill: item.imgPill || item.pillImage || '',
   pillShape: item.pillShape || '',
   pillScored: item.pillScored || '',
@@ -109,7 +110,6 @@ const App: React.FC = () => {
                     await updateDoc(userRef, {
                         fcmTokens: arrayUnion(token)
                     });
-                    console.log('FCM Device Token registered:', token);
                 }
             }
         } catch (err) {
@@ -119,7 +119,6 @@ const App: React.FC = () => {
     setupPushNotifications();
 
     const unsubscribe = onMessage(messaging, (payload) => {
-        console.log('Message received in foreground:', payload);
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.play().catch(e => console.log('Audio play blocked'));
         if (Notification.permission === 'granted') {
@@ -148,7 +147,6 @@ const App: React.FC = () => {
               notifs.push({ id: doc.id, ...doc.data() } as AppNotification);
           });
           setNotifications(notifs);
-          console.log("Real-time notifications updated:", notifs.length);
       }, (error) => {
           console.error("Notifications listener error:", error);
       });
@@ -293,7 +291,17 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('saved_prescriptions', JSON.stringify(prescriptions)); }, [prescriptions]);
-  useEffect(() => { localStorage.setItem('chat_history', JSON.stringify(chatHistory)); }, [chatHistory]);
+  
+  // Safe storage logic to avoid circular structure errors
+  useEffect(() => { 
+      try {
+          const safeHistory = JSON.stringify(chatHistory);
+          localStorage.setItem('chat_history', safeHistory); 
+      } catch (e) {
+          console.error("Failed to save chat history due to circular data:", e);
+      }
+  }, [chatHistory]);
+
   useEffect(() => { localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(readNotificationIds)); }, [readNotificationIds]);
 
   useLayoutEffect(() => {
@@ -374,7 +382,7 @@ const App: React.FC = () => {
 
   const filteredMedicines = useMemo(() => {
       if (!isDataLoaded) return [];
-      let results = medicines;
+      let results = [...medicines];
       const trimmedTerm = searchTerm.trim();
       if (trimmedTerm && (searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch)) {
           const lowerTerm = trimmedTerm.toLowerCase();
@@ -456,7 +464,7 @@ const App: React.FC = () => {
           "AtcCode2", "shelfLife", "Storage conditions", "Storage Condition Arabic", 
           "Marketing Company", "Marketing Country", "AdministrationRoute",
           "Product type", "DrugType", "Sub-Type", "Description Code",
-          "imgBox", "imgStrip", "imgPill", 
+          "imgBox", "imgIndex1", "imgIndex2", "imgPill", 
           "pillShape", "pillScored", "pillMarkings", 
           "liquidTaste", "liquidColor", "physicalNotes"
       ];
@@ -551,7 +559,7 @@ const App: React.FC = () => {
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       if (activeTab === 'settings') {
           return (
