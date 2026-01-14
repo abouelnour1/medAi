@@ -16,10 +16,10 @@ interface HeaderProps {
   onAdminClick: () => void;
   onNotificationsClick: () => void;
   view: View;
-  hasNewNotifications?: boolean;
+  unreadCount?: number;
 }
 
-const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, theme, toggleTheme, t, onLoginClick, onAdminClick, onNotificationsClick, view, hasNewNotifications }, ref) => {
+const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, theme, toggleTheme, t, onLoginClick, onAdminClick, onNotificationsClick, view, unreadCount = 0 }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -56,14 +56,13 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
               </span>
             </button>
           )}
-          {/* تم إزالة شرط وجود المستخدم ليظهر الجرس للجميع */}
           {view !== 'notifications' && (
               <button 
                 onClick={onNotificationsClick}
                 className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"
                 aria-label={t('notifications')}
               >
-                  <BellIcon hasNew={hasNewNotifications} />
+                  <BellIcon unreadCount={unreadCount} />
               </button>
           )}
         </div>

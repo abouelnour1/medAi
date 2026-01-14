@@ -148,10 +148,11 @@ const App: React.FC = () => {
   const [clinicalGuidelines, setClinicalGuidelines] = useState<any>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  // Fix: Explicitly cast JSON.parse result to string[] to avoid unknown[] type error in strict TypeScript environments.
+  
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
       try { return JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]') as string[]; } catch { return []; }
   });
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
@@ -172,7 +173,6 @@ const App: React.FC = () => {
   const [selectedInsuranceData, setSelectedInsuranceData] = useState<SelectedInsuranceData | null>(null);
   const [sourceMedicine, setSourceMedicine] = useState<Medicine | null>(null);
   const [alternativesResults, setAlternativesResults] = useState<{ direct: Medicine[], therapeutic: Medicine[] } | null>(null);
-  // Fix: Explicitly cast JSON.parse result to string[] to avoid unknown[] type error.
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]') as string[];
@@ -182,7 +182,6 @@ const App: React.FC = () => {
   });
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState('');
-  // Fix: Explicitly cast JSON.parse result to Conversation[] to avoid unknown[] type error.
   const [chatHistory, setChatHistory] = useState<Conversation[]>(() => {
       try {
           return JSON.parse(localStorage.getItem('chat_history') || '[]') as Conversation[];
@@ -199,7 +198,6 @@ const App: React.FC = () => {
   const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
-  // Fix: Explicitly cast JSON.parse result to PrescriptionData[] to avoid unknown[] type error.
   const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
       try {
           return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]') as PrescriptionData[];
@@ -372,6 +370,7 @@ const App: React.FC = () => {
       if (filters.priceMax !== '') results = results.filter(m => parseFloat(m['Public price']) <= parseFloat(filters.priceMax));
       if (filters.legalStatus !== '') results = results.filter(m => m['Legal Status'] === filters.legalStatus);
       if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
+      // Sort results based on the selected criteria
       results.sort((a, b) => sortBy === 'priceAsc' ? parseFloat(a['Public price']) - parseFloat(b['Public price']) : sortBy === 'priceDesc' ? parseFloat(b['Public price']) - parseFloat(a['Public price']) : sortBy === 'scientificName' ? a['Scientific Name'].localeCompare(b['Scientific Name']) : a['Trade Name'].localeCompare(b['Trade Name']));
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
@@ -397,45 +396,38 @@ const App: React.FC = () => {
       return notifications.map(n => ({ ...n, isRead: readNotificationIds.includes(n.id) }));
   }, [notifications, readNotificationIds]);
 
-  const hasNewNotifications = useMemo(() => {
-      return notifications.some(n => !readNotificationIds.includes(n.id));
+  const unreadCount = useMemo(() => {
+      return notifications.filter(n => !readNotificationIds.includes(n.id)).length;
   }, [notifications, readNotificationIds]);
 
+  const handleMarkAsRead = useCallback((id: string) => {
+      setReadNotificationIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  }, []);
+
   const handleMarkAllRead = useCallback(() => {
-      const allIds = notifications.map(n => n.id);
-      setReadNotificationIds(allIds);
+    // Fixed: Explicitly cast the mapped results to string[] to resolve the TypeScript error where map result was inferred as unknown[]
+    const allIds: string[] = (notifications as AppNotification[]).map((n) => String(n.id)) as string[];
+    setReadNotificationIds(allIds);
   }, [notifications]);
 
   // --- Computed values for filters ---
-  /**
-   * Fix: Compute unique manufacturer names from the medicine list.
-   */
   const uniqueManufactureNames = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Manufacture Name']) set.add(m['Manufacture Name']); });
       return Array.from(set).sort();
   }, [medicines]);
 
-  /**
-   * Fix: Compute unique legal statuses from the medicine list.
-   */
   const uniqueLegalStatuses = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Legal Status']) set.add(m['Legal Status']); });
       return Array.from(set).sort();
   }, [medicines]);
 
-  /**
-   * Fix: Group pharmaceutical forms using the helper function.
-   */
   const groupedPharmaceuticalForms = useMemo(() => {
       const forms = Array.from(new Set(medicines.map(m => m.PharmaceuticalForm))).filter(Boolean);
       return groupPharmaceuticalForms(forms, t);
   }, [medicines, t]);
 
-  /**
-   * Fix: Add handleSaveAssistantHistory to save AI chat sessions to local storage.
-   */
   const handleSaveAssistantHistory = useCallback((history: ChatMessage[]) => {
       if (!user || history.length <= 1) { 
           setIsAssistantOpen(false);
@@ -469,7 +461,7 @@ const App: React.FC = () => {
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
       if (view === 'aiHistory') return <ChatHistoryView conversations={chatHistory} onSelectConversation={(convo) => { setActiveConversationId(convo.id); setCurrentChatHistory(convo.messages); setIsAssistantOpen(true); }} onDeleteConversation={(id) => setChatHistory(prev => prev.filter(c => c.id !== id))} onClearHistory={() => setChatHistory([])} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={notificationsWithReadStatus} onMarkAllRead={handleMarkAllRead} onDeleteNotification={handleDeleteNotification} isAdmin={user?.role === 'admin'} t={t} language={language} />;
+      if (view === 'notifications') return <NotificationsView notifications={notificationsWithReadStatus} onMarkAllRead={handleMarkAllRead} onMarkAsRead={handleMarkAsRead} onDeleteNotification={handleDeleteNotification} isAdmin={user?.role === 'admin'} t={t} language={language} />;
       if (activeTab === 'search') {
           return (
               <>
@@ -515,13 +507,69 @@ const App: React.FC = () => {
       return null;
   };
 
+  const handleAssistantLaunch = useCallback(() => {
+      if (!user) {
+          alert(t('loginRequired'));
+          setView('login');
+          return;
+      }
+      setSelectedMedicine(null);
+      setSelectedCosmetic(null);
+      setAssistantPrompt('');
+      setActiveConversationId(null);
+      setIsAssistantOpen(true);
+  }, [user, t]);
+
+  const handlePrescriptionLaunch = useCallback(() => {
+      if (!user) {
+          alert(t('loginRequired'));
+          setView('login');
+          return;
+      }
+      // التحقق من الصلاحيات
+      if (user.role !== 'admin' && !user.prescriptionPrivilege) {
+          alert(t('accessDeniedPrescription'));
+          return;
+      }
+      
+      // تهيئة المساعد لوضع الوصفة
+      setSelectedMedicine(null);
+      setSelectedCosmetic(null);
+      setActiveConversationId(null);
+      setAssistantPrompt('##PRESCRIPTION_MODE##');
+      setIsAssistantOpen(true);
+  }, [user, t]);
+
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} hasNewNotifications={hasNewNotifications} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={unreadCount} />
       <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>{renderContent()}</main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
-      <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={() => { if (user) { setSelectedMedicine(null); setSelectedCosmetic(null); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onLongPress={() => { if (user) { if (user.role !== 'admin' && !user.prescriptionPrivilege) { alert(t('accessDeniedPrescription')); return; } setAssistantPrompt('##PRESCRIPTION_MODE##'); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} t={t} language={language} /></div>
-      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
+      
+      {/* FAB Button Wrapper */}
+      <div className="fixed bottom-24 right-4 z-30">
+          <FloatingAssistantButton 
+            onClick={handleAssistantLaunch} 
+            onLongPress={handlePrescriptionLaunch} 
+            t={t} 
+            language={language} 
+          />
+      </div>
+
+      <AssistantModal 
+        isOpen={isAssistantOpen} 
+        onSaveAndClose={handleSaveAssistantHistory} 
+        contextMedicine={selectedMedicine} 
+        contextCosmetic={selectedCosmetic} 
+        allMedicines={medicines} 
+        favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} 
+        initialPrompt={assistantPrompt} 
+        initialHistory={currentChatHistory} 
+        t={t} 
+        language={language} 
+        onShowAlternatives={handleShowAlternativesFromAssistant} 
+      />
+      
       <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
       <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={(code) => { setSearchTerm(code); setIsBarcodeScannerOpen(false); }} t={t} />
     </div>

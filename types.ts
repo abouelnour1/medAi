@@ -1,6 +1,4 @@
-
 import { TranslationKeys } from './translations';
-import { Part } from '@google/genai';
 
 export interface Notification {
   id: string;
@@ -50,14 +48,14 @@ export interface Medicine {
   "Last Update": string;
   
   // --- New Physical & Image Fields ---
-  imgBox?: string;       // URL for Box image
-  imgStrip?: string;     // URL for Strip/Blister image
-  imgPill?: string;      // URL for Pill/Capsule image
-  pillShape?: string;    // Shape (Round, Oval, etc.)
-  pillScored?: string;   // Is it scored (Yes/No)
-  pillMarkings?: string; // Markings on the pill (e.g., P 500)
-  liquidTaste?: string;  // For syrups/liquids
-  liquidColor?: string;  // For syrups/liquids
+  imgBox?: string;
+  imgStrip?: string;
+  imgPill?: string;
+  pillShape?: string;
+  pillScored?: string;
+  pillMarkings?: string;
+  liquidTaste?: string;
+  liquidColor?: string;
   physicalNotes?: string;
 }
 
@@ -107,9 +105,8 @@ export interface MilkProduct {
   productName: string;
   stageType: string;
   ageRange: string;
-  image?: string; // Added image field
+  image?: string;
   
-  // Nutritional Facts
   kcal: number;
   protein: number;
   fat: number;
@@ -153,9 +150,28 @@ export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk
 
 export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
 
+// Serializable Part interface to avoid circular reference errors from GenAI SDK
+export interface SerializablePart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+  functionCall?: {
+    name: string;
+    args: any;
+    id?: string;
+  };
+  functionResponse?: {
+    name: string;
+    response: any;
+    id?: string;
+  };
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
-  parts: Part[];
+  parts: SerializablePart[];
 }
 
 export interface Conversation {
@@ -245,7 +261,6 @@ export type AuthContextType = {
   reloadUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isLoading: boolean;
-  // Admin functions
   getAllUsers: () => User[];
   updateUser: (user: User) => void;
   deleteUser: (userId: string) => void;

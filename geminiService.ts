@@ -1,13 +1,7 @@
-
-import { GoogleGenAI, Part, GenerateContentResponse, Tool } from '@google/genai';
-import { ChatMessage } from './types';
-
-// --- Security Note ---
-// This file handles all interactions with the Google Gemini API.
-// The API key is obtained exclusively from process.env.API_KEY.
+import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
+import { ChatMessage, SerializablePart } from './types';
 
 const getApiKey = (): string | undefined => {
-  // Try to get from process.env (Standard requirement)
   if (typeof process !== 'undefined' && process.env.API_KEY) {
       return process.env.API_KEY.trim();
   }
@@ -42,15 +36,12 @@ export const isAIAvailable = (): boolean => {
 
 const getAiClient = (): GoogleGenAI => {
     const apiKey = getApiKey();
-    
     if (!apiKey) {
         throw new Error('API Key is missing. Please ensure process.env.API_KEY is configured.');
     }
-
     if (apiKey.includes('PLACEHOLDER')) {
         throw new Error('Invalid API Key: You are using a PLACEHOLDER key.');
     }
-
     return new GoogleGenAI({ apiKey });
 }
 
@@ -90,19 +81,59 @@ const generateContentWithRetry = async (
   throw new Error('Exceeded max retries for AI request.');
 }
 
+// Utility to convert SDK parts to plain serializable objects
+export const sanitizeParts = (parts: any[]): SerializablePart[] => {
+    return parts.map(p => {
+        const part: SerializablePart = {};
+        if (p.text) part.text = p.text;
+        if (p.inlineData) {
+            part.inlineData = {
+                mimeType: p.inlineData.mimeType,
+                data: p.inlineData.data
+            };
+        }
+        if (p.functionCall) {
+            part.functionCall = {
+                name: p.functionCall.name,
+                args: p.functionCall.args ? JSON.parse(JSON.stringify(p.functionCall.args)) : {},
+                id: p.functionCall.id
+            };
+        }
+        if (p.functionResponse) {
+            part.functionResponse = {
+                name: p.functionResponse.name,
+                response: p.functionResponse.response ? JSON.parse(JSON.stringify(p.functionResponse.response)) : {},
+                id: p.functionResponse.id
+            };
+        }
+        return part;
+    });
+};
+
 // General-purpose AI chat function
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
   tools: Tool[],
   toolImplementations: { [key:string]: (...args: any[]) => any },
-  modelName: string = 'gemini-3-flash-preview' // Updated to latest stable preview
+  modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
   const initialParams = {
     model: modelName,
-    contents: history.map(msg => ({ role: msg.role, parts: msg.parts })),
+    contents: history.map(msg => ({ 
+        role: msg.role, 
+        // Ensure inputs are also clean
+        parts: msg.parts.map(p => {
+            const clean: any = {};
+            if (p.text) clean.text = p.text;
+            if (p.inlineData) clean.inlineData = p.inlineData;
+            if (p.functionCall) clean.functionCall = p.functionCall;
+            if (p.functionResponse) clean.functionResponse = p.functionResponse;
+            return clean;
+        })
+    })),
     config: {
       systemInstruction,
       tools,
@@ -120,8 +151,8 @@ export const runAIChat = async (
 
       const toolResponseHistory: ChatMessage[] = [
         ...history,
-        { role: 'model', parts: [{ functionCall: fc }] },
-        { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult } }] }
+        { role: 'model', parts: [{ functionCall: { name: fc.name, args: fc.args, id: fc.id } }] },
+        { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
       ];
 
       const secondParams = {

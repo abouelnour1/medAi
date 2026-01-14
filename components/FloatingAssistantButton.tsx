@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { TFunction, Language } from '../types';
 import { isAIAvailable } from '../geminiService';
@@ -20,29 +19,30 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
 
     const handlePointerDown = (e: React.PointerEvent) => {
         if (!aiAvailable) return;
+        
+        // منع السلوك الافتراضي للمتصفح (مثل اختيار النص)
         setIsPressing(true);
         isLongPressTriggered.current = false;
         startPos.current = { x: e.clientX, y: e.clientY };
         
-        // Clear any existing timer just in case
         if (pressTimer.current) clearTimeout(pressTimer.current);
 
-        // Increased timeout to 800ms for safety against accidental presses during scroll
+        // تقليل الزمن إلى 600ms ليكون أسرع وأكثر استجابة
         pressTimer.current = window.setTimeout(() => {
+            if (navigator.vibrate) navigator.vibrate([60]); // اهتزاز خفيف للتأكيد
             onLongPress();
             isLongPressTriggered.current = true;
-            setIsPressing(false); 
-            // Haptic feedback
-            if (navigator.vibrate) navigator.vibrate(50);
-        }, 800);
+            setIsPressing(false);
+        }, 600);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (pressTimer.current) {
             const moveX = Math.abs(e.clientX - startPos.current.x);
             const moveY = Math.abs(e.clientY - startPos.current.y);
-            // Sensitive threshold (10px) to detect scrolling intent early
-            if (moveX > 10 || moveY > 10) {
+            
+            // زيادة الحد المسموح به للحركة (Tolerance) إلى 25 بكسل لمنع الإلغاء العشوائي
+            if (moveX > 25 || moveY > 25) {
                 clearTimeout(pressTimer.current);
                 pressTimer.current = undefined;
                 setIsPressing(false);
@@ -51,11 +51,17 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
-        setIsPressing(false);
         if (pressTimer.current) {
             clearTimeout(pressTimer.current);
             pressTimer.current = undefined;
         }
+        
+        // إذا رفع إصبعه قبل اكتمال الضغطة المطولة، نعتبرها ضغطة عادية
+        if (isPressing && !isLongPressTriggered.current) {
+            onClick();
+        }
+        
+        setIsPressing(false);
     };
     
     const handlePointerLeave = () => {
@@ -66,38 +72,30 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
         }
     };
 
-    const handleClick = (e: React.MouseEvent) => {
-        // If long press was triggered, don't fire click
-        if (isLongPressTriggered.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-        if (aiAvailable) {
-            onClick();
-        }
-    };
-
     return (
         <button
-            onClick={handleClick}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
-            onContextMenu={(e) => e.preventDefault()}
-            className={`w-16 h-16 bg-primary text-white rounded-2xl shadow-lg flex items-center justify-center
-                       transform transition-all duration-300 ease-in-out hover:shadow-xl focus:outline-none backdrop-blur-sm
-                       ${isPressing ? 'scale-95 bg-primary-dark opacity-100' : 'scale-100 hover:scale-105 opacity-60 hover:opacity-100'}
+            onContextMenu={(e) => e.preventDefault()} // منع قائمة المتصفح الافتراضية
+            className={`w-16 h-16 bg-primary text-white rounded-2xl shadow-xl flex items-center justify-center
+                       transform transition-all duration-200 ease-in-out
+                       ${isPressing ? 'scale-90 bg-primary-dark shadow-inner brightness-90' : 'scale-100 hover:scale-105 opacity-90 hover:opacity-100'}
                        disabled:bg-slate-400 disabled:dark:bg-slate-600 disabled:cursor-not-allowed disabled:scale-100 touch-none select-none overflow-hidden p-3`}
             style={{ touchAction: 'none' }} 
             aria-label={t('assistantFabTooltip')}
             title={aiAvailable ? t('assistantFabTooltip') : t('aiUnavailableShort')}
             disabled={!aiAvailable}
         >
-            <div className="w-8 h-8">
+            <div className={`w-8 h-8 transition-transform ${isPressing ? 'scale-110 rotate-12' : ''}`}>
                 <AssistantIcon />
             </div>
+            
+            {/* مؤشر بصري بسيط أثناء الضغط */}
+            {isPressing && (
+                <div className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-ping pointer-events-none"></div>
+            )}
         </button>
     );
 };

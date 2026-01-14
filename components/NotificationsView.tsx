@@ -8,13 +8,14 @@ import BackIcon from './icons/BackIcon';
 interface NotificationsViewProps {
   notifications: Notification[];
   onMarkAllRead: () => void;
+  onMarkAsRead: (id: string) => void;
   onDeleteNotification: (id: string) => void;
   isAdmin: boolean;
   t: TFunction;
   language: Language;
 }
 
-const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, onMarkAllRead, onDeleteNotification, isAdmin, t, language }) => {
+const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, onMarkAllRead, onMarkAsRead, onDeleteNotification, isAdmin, t, language }) => {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   const formatDate = (timestamp: number) => {
@@ -22,6 +23,14 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(timestamp));
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+      setSelectedNotification(notification);
+      // التحديد كمقروء آلياً بمجرد الفتح
+      if (!notification.isRead) {
+          onMarkAsRead(notification.id);
+      }
   };
 
   const sortedNotifications = [...notifications].sort((a, b) => b.timestamp - a.timestamp);
@@ -82,7 +91,7 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
           {sortedNotifications.map(notification => (
             <div 
               key={notification.id}
-              onClick={() => setSelectedNotification(notification)}
+              onClick={() => handleNotificationClick(notification)}
               className={`p-4 rounded-xl border transition-all cursor-pointer relative group ${
                 notification.isRead 
                   ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-slate-800 opacity-80' 

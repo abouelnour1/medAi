@@ -1,11 +1,9 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { FunctionDeclaration, Type, Part, GenerateContentResponse } from '@google/genai';
-import { Medicine, TFunction, Language, ChatMessage } from '../types';
-import SearchIcon from './icons/SearchIcon';
+import { FunctionDeclaration, Type, Tool } from '@google/genai';
+import { Medicine, TFunction, Language, ChatMessage, SerializablePart } from '../types';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
-import { runAIChat, isAIAvailable } from '../geminiService';
+import { runAIChat, isAIAvailable, sanitizeParts } from '../geminiService';
 
 interface InsuranceAiGuideProps {
   t: TFunction;
@@ -25,7 +23,6 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
   const aiAvailable = isAIAvailable();
 
   useEffect(() => {
-    // Set initial welcome message
     setChatHistory([
       {
         role: 'model',
@@ -42,10 +39,8 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
   const searchDrugDatabase = useCallback((args: {
     tradeName?: string;
     scientificName?: string;
-    // Add other potential filter fields here if needed in the future
   }) => {
     let results = [...allMedicines];
-
     if (args.tradeName) {
         results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
     }
@@ -59,7 +54,7 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
     
     return {
         count: results.length,
-        results: results.slice(0, 15).map(r => ({ // return top 15 results
+        results: results.slice(0, 15).map(r => ({
             tradeName: r['Trade Name'],
             scientificName: r['Scientific Name'],
             price: r['Public price'],
@@ -91,70 +86,7 @@ const InsuranceAiGuide: React.FC<InsuranceAiGuideProps> = ({
     setUserInput('');
     setIsLoading(true);
 
-    const systemInstruction = language === 'ar' ? 
-`أنت مساعد ذكاء اصطناعي متخصص في دليل التأمين الطبي السعودي. دورك هو مساعدة المتخصصين في الرعاية الصحية على فهم تغطية الأدوية بناءً على الحالات الطبية وأكواد ICD-10.
-لديك مصدران للمعلومات:
-1.  مجموعة من قواعد التغطية المعروفة (أمثلة أدناه).
-2.  أداة اسمها \`searchDrugDatabase\` للبحث عن معلومات الأدوية المتوفرة في السوق السعودي (مثل الأسماء التجارية، الأسماء العلمية، الأسعار، إلخ).
-
-**مهمتك:**
-أجب على سؤال المستخدم بوضوح وشمولية. قد يسأل المستخدم عن:
-- حالة طبية (مثل "ارتفاع ضغط الدم"، "السكري")
-- كود ICD-10 (مثل "I10")
-- المادة الفعالة لدواء (مثل "أملوديبين")
-- الاسم التجاري لدواء (مثل "كونكور")
-
-**مثال على قواعد التغطية:**
-- **الحالة:** ارتفاع ضغط الدم (HYPERTENSION)
-- **أكواد ICD-10:** I10, I11, I12, I13, I15
-- **الفئة الدوائية المغطاة:** حاصرات مستقبلات الأنجيوتنسين II مع حاصرات قنوات الكالسيوم
-- **المواد الفعالة المغطاة:**
-    - كانديسارتان سيليكسيتيل + أملوديبين بيسيلات (تركيزات: 8/2.5مجم، 8/5مجم)
-- **الفئة الدوائية المغطاة:** حاصرات بيتا مع حاصرات قنوات الكالسيوم
-- **المواد الفعالة المغطاة:**
-    - بيسوبرولول فومارات + أملوديبين بيسيلات (تركيزات: 5/5مجم، 5/10مجم)
-- **ملاحظة:** العلاجات المركبة كهذه تُستخدم عادة للمرحلتين الثانية والثالثة من ارتفاع ضغط الدم، وليست كخط أول للمرحلة الأولى.
-
-**كيفية الإجابة:**
-1.  حلل استعلام المستخدم لفهم القصد منه.
-2.  استخدم الأمثلة ومعرفتك العامة للعثور على المعلومات ذات الصلة (مثل أكواد ICD المرتبطة، والفئات الدوائية).
-3.  **الأهم**، إذا كان استعلام المستخدم يتضمن أدوية، استخدم أداة \`searchDrugDatabase\` للعثور على منتجات محددة متوفرة في السوق السعودي تطابق المواد الفعالة المغطاة. هذا يجعل إجابتك عملية.
-4.  قدم المعلومات بتنسيق markdown واضح ومنظم. **اجعل التشخيص (Indication) ورمز ICD-10 بالخط العريض** لتسهيل القراءة. استخدم العناوين والقوائم والنص العريض.
-5.  إذا وجدت أدوية ذات صلة باستخدام الأداة، اذكر أسماءها التجارية، وأسماءها العلمية، وأسعارها.
-6.  إذا لم يتم العثور على دواء معين في قواعد التغطية، يجب أن تذكر أنه غير مغطى. **لا تقترح أدوية بديلة.** إذا لم تتمكن من العثور على معلومات حول حالة ما، وضح ذلك بصراحة.
-7.  أجب دائمًا بلغة استعلام المستخدم (العربية/الإنجليزية).`
-:
-`You are a specialized AI assistant acting as a Saudi Arabian Medical Insurance Guide. Your role is to help healthcare professionals understand drug coverage based on medical indications and ICD-10 codes.
-You have two sources of information:
-1.  A set of known coverage rules (examples provided below).
-2.  A tool called \`searchDrugDatabase\` to look up information on drugs available in the Saudi market (like trade names, scientific names, prices, etc.).
-
-**Your Task:**
-Answer the user's question clearly and comprehensively. The user might ask about:
-- A medical condition (e.g., "Hypertension", "السكري")
-- An ICD-10 code (e.g., "I10")
-- A drug's active ingredient (e.g., "Amlodipine")
-- A drug's trade name (e.g., "Concor")
-
-**Example Coverage Rules:**
-- **Indication:** HYPERTENSION
-- **ICD-10 Codes:** I10, I11, I12, I13, I15
-- **Covered Drug Class:** ANGIOTENSIN II ANTAGONISTS AND CALCIUM CHANNEL BLOCKERS
-- **Covered Active Ingredients:**
-    - Candesartan Cilexetil + Amlodipine Besilate (Strengths: 8/2.5mg, 8/5mg)
-- **Covered Drug Class:** BETA BLOCKING AGENTS AND CALCIUM CHANNEL BLOCKERS
-- **Covered Active Ingredients:**
-    - Bisoprolol Fumarate + Amlodipine Besilate (Strengths: 5/5mg, 5/10mg)
-- **Note:** Combination therapies like these are typically used for Stage 2 and Stage 3 hypertension, not as a first-line for Stage 1.
-
-**How to answer:**
-1.  Analyze the user's query to understand their intent.
-2.  Use the example rules and your general knowledge to find relevant information (like associated ICD codes, drug classes, etc.).
-3.  **Crucially**, if the user's query involves drugs, use the \`searchDrugDatabase\` tool to find specific products available in the Saudi market that match the covered active ingredients. This makes your answer practical.
-4.  Present the information in a clear, structured markdown format. **Bold the Indication/Diagnosis and the ICD-10 Code** for readability. Use headings, lists, and bold text.
-5.  If you find relevant drugs using the tool, list their trade names, scientific names, and prices.
-6.  If a specific drug is not found in the coverage rules, you should state that it is not covered. **Do not suggest alternative medications.** If you can't find information about a condition, state that clearly.
-7.  Always respond in the language of the user's query (Arabic/English).`;
+    const systemInstruction = language === 'ar' ? `أنت مساعد ذكاء اصطناعي متخصص في دليل التأمين الطبي السعودي.` : `You are a specialized AI assistant acting as a Saudi Arabian Medical Insurance Guide.`;
 
     try {
       const toolImplementations = { searchDrugDatabase: searchDrugDatabase };
@@ -163,61 +95,18 @@ Answer the user's question clearly and comprehensively. The user might ask about
         systemInstruction, 
         [{ functionDeclarations: [searchDrugDatabaseTool] }], 
         toolImplementations,
-        'gemini-2.5-flash'
+        'gemini-3-flash-preview'
       );
       const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
 
       if (responsePartsFromApi && responsePartsFromApi.length > 0) {
-          // Strictly sanitize response parts
-          const responseParts = responsePartsFromApi.map(p => {
-            const part: Part = {};
-            if (p.text) part.text = p.text;
-            if (p.inlineData) {
-                part.inlineData = {
-                    mimeType: p.inlineData.mimeType,
-                    data: p.inlineData.data
-                };
-            }
-            if (p.functionCall) {
-                part.functionCall = {
-                    name: p.functionCall.name,
-                    args: p.functionCall.args ? JSON.parse(JSON.stringify(p.functionCall.args)) : {},
-                    id: p.functionCall.id
-                };
-            }
-            if (p.functionResponse) {
-                part.functionResponse = {
-                    name: p.functionResponse.name,
-                    response: p.functionResponse.response ? JSON.parse(JSON.stringify(p.functionResponse.response)) : {},
-                    id: p.functionResponse.id
-                };
-            }
-            return part;
-          });
-          setChatHistory(prev => [...prev, { role: 'model', parts: responseParts }]);
+          const sanitizedParts = sanitizeParts(responsePartsFromApi);
+          setChatHistory(prev => [...prev, { role: 'model', parts: sanitizedParts }]);
       } else {
-          let errorMessage = t('geminiError');
-          if (finalResponse?.promptFeedback?.blockReason) {
-              errorMessage = `Request blocked: ${finalResponse.promptFeedback.blockReason}`;
-          } else if (!finalResponse.text && (!finalResponse.candidates || finalResponse.candidates.length === 0)) {
-              errorMessage = t('noResultsFromAI');
-          }
-          console.error("AI response was empty or blocked. Full response:", finalResponse);
-          setChatHistory(prev => [...prev, { role: 'model', parts: [{text: errorMessage}] }]);
+          setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
       }
     } catch (err) {
-      console.error("AI service error:", err);
-      let errorMessage = t('geminiError'); // Default generic error
-      if (err instanceof Error) {
-        if (err.message.includes('API_KEY is missing')) {
-          errorMessage = t('aiUnavailableMessage');
-        } else {
-          // Provide more specific feedback from the API error
-          errorMessage = `${t('geminiError')} \n\n**Details:** ${err.message}`;
-        }
-      }
-      const errorMsg = { role: 'model', parts: [{ text: errorMessage }] } as ChatMessage;
-      setChatHistory(prev => [...prev, errorMsg]);
+      setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: t('geminiError') }] }]);
     } finally {
       setIsLoading(false);
     }
@@ -230,7 +119,6 @@ Answer the user's question clearly and comprehensively. The user might ask about
 
   return (
     <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm flex flex-col h-[calc(100vh-220px)]">
-        {/* Chat Body */}
         <div className="flex-grow p-4 overflow-y-auto space-y-4">
           {!aiAvailable && (
             <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg m-4">
@@ -239,7 +127,6 @@ Answer the user's question clearly and comprehensively. The user might ask about
             </div>
           )}
           {aiAvailable && chatHistory.map((msg, index) => {
-             // Safe navigation using optional chaining
              const textPart = msg.parts?.find(p => 'text' in p) as { text: string } | undefined;
              const textContent = textPart?.text || '';
 
@@ -247,16 +134,7 @@ Answer the user's question clearly and comprehensively. The user might ask about
                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'model' && <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary"><AssistantIcon /></div>}
                   <div className={`max-w-md rounded-2xl shadow-sm p-3 ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-gray-100 dark:bg-slate-700 text-light-text dark:text-dark-text rounded-bl-none'}`}>
-                      <div 
-                          className="text-sm prose prose-sm dark:prose-invert max-w-none ai-response-content"
-                          style={{
-                              '--tw-prose-body': 'inherit',
-                              '--tw-prose-headings': 'inherit',
-                              '--tw-prose-bold': 'inherit',
-                              '--tw-prose-bullets': 'inherit',
-                              '--tw-prose-counters': 'inherit',
-                          } as React.CSSProperties}
-                      >
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none ai-response-content">
                           <MarkdownRenderer content={textContent} />
                       </div>
                   </div>
@@ -273,11 +151,9 @@ Answer the user's question clearly and comprehensively. The user might ask about
                  </div>
               </div>
           )}
-
           <div ref={chatEndRef} />
         </div>
 
-        {/* Footer / Input */}
         <footer className="p-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0">
              <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
                 <textarea
