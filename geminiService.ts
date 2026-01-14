@@ -1,15 +1,13 @@
 
-import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
+import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
-// Fix: API key must be obtained exclusively from process.env.API_KEY
-const getApiKey = (): string | undefined => {
-  return process.env.API_KEY;
-}
-
 export const isAIAvailable = (): boolean => {
-  const apiKey = getApiKey();
-  // Assume AI is enabled unless explicitly disabled in settings
+  // CRITICAL: Exclusively check process.env.API_KEY
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.includes('PLACEHOLDER')) return false;
+
+  // Check user settings toggle
   let isAiEnabled = true;
   try {
     const settingsString = localStorage.getItem('mock_app_settings');
@@ -21,7 +19,7 @@ export const isAIAvailable = (): boolean => {
     }
   } catch (e) {}
   
-  return !!apiKey && isAiEnabled;
+  return isAiEnabled;
 };
 
 // Fix: Always use process.env.API_KEY directly in initialization
@@ -30,7 +28,7 @@ const getAiClient = (): GoogleGenAI => {
     if (!apiKey) {
         throw new Error('API Key is missing. Please ensure process.env.API_KEY is configured.');
     }
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    return new GoogleGenAI({ apiKey });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -44,7 +42,6 @@ const safeClone = (obj: any): any => {
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
-            // Skip functions and complicated internal symbols
             if (typeof val === 'function') continue;
             clone[key] = safeClone(val);
         }
@@ -117,7 +114,6 @@ const generateContentWithRetry = async (
   throw new Error('Exceeded max retries for AI request.');
 }
 
-// General-purpose AI chat function
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
@@ -147,8 +143,6 @@ export const runAIChat = async (
     
     if (implementation) {
       const functionResult = implementation(fc.args);
-
-      // Sanitize the function call data before adding to history
       const cleanFcArgs = safeClone(fc.args);
       
       const toolResponseHistory: ChatMessage[] = [

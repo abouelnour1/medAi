@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
-import SearchIcon from './icons/SearchIcon';
 import ClearIcon from './icons/ClearIcon';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -21,7 +20,6 @@ interface InsuranceSimpleSearchProps {
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
 
-
 const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({ 
     t, 
     insuranceData, 
@@ -34,20 +32,15 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
 
-  // Debounce effect to update the parent search term
   useEffect(() => {
     const handler = setTimeout(() => {
       if (inputValue !== searchTerm) {
         setSearchTerm(inputValue);
       }
-    }, 300); // 300ms delay
-
-    return () => {
-      clearTimeout(handler);
-    };
+    }, 300);
+    return () => clearTimeout(handler);
   }, [inputValue, searchTerm, setSearchTerm]);
 
-  // Effect to sync input value if parent term changes (e.g., from a global clear)
   useEffect(() => {
     if (searchTerm !== inputValue) {
       setInputValue(searchTerm);
@@ -56,14 +49,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   const searchResults = useMemo((): SearchResult[] => {
     const trimmedSearchTerm = searchTerm.trim();
-    
-    // Logic Update: Ensure 3 chars NOT counting the wildcard %
     const effectiveLength = trimmedSearchTerm.replace(/%/g, '').length;
-    if (effectiveLength < 2) return []; // Reduced slightly to be more permissive
+    if (effectiveLength < 2) return [];
     
     const lowerSearchTerm = trimmedSearchTerm.toLowerCase();
     
-    const normalizeSciName = (name: string) => (name || '').toLowerCase().split(/[\s,]+/).map(s => s.trim()).filter(s => s.length > 2).sort().join(',');
+    // Fix: Allow 1-char components but ensure result isn't empty string
+    const normalizeSciName = (name: string) => {
+        const parts = (name || '').toLowerCase().split(/[\s,]+/).map(s => s.trim()).filter(s => s.length > 0).sort();
+        return parts.length > 0 ? parts.join(',') : 'INVALID_NAME_' + Math.random();
+    };
 
     let matchingPolicies: InsuranceDrug[] = [];
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
@@ -96,25 +91,26 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     if (searchMode === 'tradeName') {
         matchingMeds.forEach(med => {
             if (searchRegex.test(med['Trade Name'] || '')) {
-                const sciName = normalizeSciName(med['Scientific Name']);
-                if (!sciNameToTradeNames.has(sciName)) {
-                    sciNameToTradeNames.set(sciName, new Set());
+                const sciNameKey = normalizeSciName(med['Scientific Name']);
+                if (!sciNameToTradeNames.has(sciNameKey)) {
+                    sciNameToTradeNames.set(sciNameKey, new Set());
                 }
-                sciNameToTradeNames.get(sciName)!.add(med['Trade Name']);
+                sciNameToTradeNames.get(sciNameKey)!.add(med['Trade Name']);
             }
         });
     }
 
     if (searchMode === 'scientificName') {
-        matchingPolicies = insuranceData.filter(p => (p.scientificName || '').toLowerCase().includes(lowerSearchTerm.replace(/%/g, '')));
+        const queryPart = lowerSearchTerm.replace(/%/g, '');
+        matchingPolicies = insuranceData.filter(p => (p.scientificName || '').toLowerCase().includes(queryPart));
     } else if (searchMode === 'tradeName') {
         const sciNamesFromMeds = new Set(matchingMeds.map(m => normalizeSciName(m['Scientific Name'])));
         matchingPolicies = insuranceData.filter(p => {
             const normPolicyName = normalizeSciName(p.scientificName);
-            // Check if policy name exists in meds or vice-versa (partial overlap)
-            return Array.from(sciNamesFromMeds).some(medSci => medSci.includes(normPolicyName) || normPolicyName.includes(medSci));
+            // Fix: Explicitly cast 'medSci' as string to avoid 'unknown' type errors
+            return Array.from(sciNamesFromMeds).some(medSci => (medSci as string) === normPolicyName || (medSci as string).includes(normPolicyName) || normPolicyName.includes(medSci as string));
         });
-    } else { // indication or icd10Code
+    } else {
         const searchKeywords = lowerSearchTerm.split(/\s+/).filter(Boolean);
         matchingPolicies = insuranceData.filter(p => {
             const field = searchMode === 'indication' ? p.indication : p.icd10Code;
@@ -133,9 +129,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     if (isNameSearch) {
         const notCoveredMeds = matchingMeds.filter(m => {
             const normMedName = normalizeSciName(m['Scientific Name']);
-            return !Array.from(actuallyCoveredSciNames).some(covered => normMedName.includes(covered) || covered.includes(normMedName));
+            // Fix: Explicitly cast 'covered' as string to avoid 'unknown' type errors on line 110
+            return !Array.from(actuallyCoveredSciNames).some(covered => normMedName === (covered as string) || normMedName.includes(covered as string) || (covered as string).includes(normMedName));
         });
 
+        // Add not covered results first or last? Let's put covered ones first usually.
+        // Actually, we'll keep the previous order.
         notCoveredMeds.forEach(med => {
             results.push({ type: 'not-covered', medicine: med });
         });
@@ -149,14 +148,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             groupedByDrug.get(key)!.push(policy);
         });
 
-        // Fix: Use for...of to ensure correct type inference for sciNameKey and policies
-        // This avoids issues where sciNameKey might be treated as 'unknown' in a .forEach callback.
         for (const [sciNameKey, policies] of groupedByDrug.entries()) {
             const realSciName = policies[0].scientificName;
             const availableMedicines = allMedicines
                 .filter(m => {
                     const normM = normalizeSciName(m['Scientific Name']);
-                    return normM.includes(sciNameKey) || sciNameKey.includes(normM);
+                    return normM === sciNameKey || normM.includes(sciNameKey) || sciNameKey.includes(normM);
                 })
                 .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
@@ -194,8 +191,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             policies.forEach(policy => {
                 const sciName = policy.scientificName || 'Unknown';
                 if (!scientificGroupsMap.has(sciName)) {
-                     const availableMedicines = allMedicines
-                        .filter(m => normalizeSciName(m['Scientific Name']).includes(normalizeSciName(sciName)))
+                    const normSciName = normalizeSciName(sciName);
+                    const availableMedicines = allMedicines
+                        .filter(m => {
+                            const normM = normalizeSciName(m['Scientific Name']);
+                            return normM === normSciName || normM.includes(normSciName) || normSciName.includes(normM);
+                        })
                         .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
                     scientificGroupsMap.set(sciName, {
@@ -221,7 +222,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     return results;
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
 
-
   const placeholderText = useMemo(() => {
     switch (searchMode) {
       case 'scientificName': return t('searchPlaceholder').replace('...', ` ${t('scientificName')}...`);
@@ -233,7 +233,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
   }, [searchMode, t]);
 
   const renderResults = () => {
-    if (searchTerm.replace(/%/g, '').trim().length < 2) return null;
+    const effectiveLength = searchTerm.replace(/%/g, '').trim().length;
+    if (effectiveLength < 2) return null;
     
     if (searchResults.length === 0) {
        return (
@@ -246,13 +247,13 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
     return searchResults.map((result, index) => {
       if (result.type === 'covered') {
-        return <IndicationCard key={result.indication} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+        return <IndicationCard key={result.indication + index} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
       }
       if (result.type === 'drug-grouped') {
-          return <DrugPolicyCard key={result.scientificName} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />
+          return <DrugPolicyCard key={result.scientificName + index} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />
       }
       if (result.type === 'not-covered') {
-        return <NotCoveredCard key={result.medicine.RegisterNumber} medicine={result.medicine} t={t} />;
+        return <NotCoveredCard key={result.medicine.RegisterNumber + index} medicine={result.medicine} t={t} />;
       }
       return null;
     });
