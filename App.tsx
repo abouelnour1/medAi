@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -27,6 +28,7 @@ import FavoritesView from './components/FavoritesView';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
 import MilkView from './components/MilkView';
 import NotificationsView from './components/NotificationsView';
+import EditMedicineModal from './components/EditMedicineModal';
 
 // Icons
 import AdminIcon from './components/icons/AdminIcon';
@@ -194,8 +196,6 @@ const App: React.FC = () => {
   const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
-  const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
-  const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
@@ -245,35 +245,12 @@ const App: React.FC = () => {
                             return mergedArray;
                         });
                     }
-                    const cosmeticsSnapshot = await getDocs(collection(db, 'cosmetics'));
-                    const cloudCosmetics: Cosmetic[] = [];
-                    cosmeticsSnapshot.forEach((doc) => { cloudCosmetics.push({ id: doc.id, ...doc.data() } as Cosmetic); });
-                    if (cloudCosmetics.length > 0) {
-                        setCosmetics(prev => {
-                            const mergedMap = new Map(prev.map(c => [c.id, c]));
-                            cloudCosmetics.forEach(c => mergedMap.set(c.id, c));
-                            const mergedArray = Array.from(mergedMap.values());
-                            setItem(COSMETICS_CACHE_KEY, mergedArray).catch(console.error);
-                            return mergedArray;
-                        });
-                    }
                 } catch (err) { console.warn("Background fetch failed:", err); }
             }
         } catch (e) { console.error("Error loading data", e); setIsDataLoaded(true); }
     };
     const timer = setTimeout(loadData, 50);
     return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-      if (FIREBASE_DISABLED) return;
-      const q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-          const fetched: AppNotification[] = [];
-          snapshot.forEach(doc => { fetched.push({ id: doc.id, ...doc.data() } as AppNotification); });
-          setNotifications(fetched);
-      });
-      return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -324,6 +301,20 @@ const App: React.FC = () => {
       if(container) scrollPositionRef.current = container.scrollTop;
       setSelectedCosmetic(cosmetic); setView('cosmeticDetails'); 
   }, []);
+
+  const handleUpdateMedicine = useCallback((updatedMed: Medicine) => {
+      setMedicines(prev => {
+          const updated = prev.map(m => m.RegisterNumber === updatedMed.RegisterNumber ? updatedMed : m);
+          setItem(MEDICINES_CACHE_KEY, updated).catch(console.error);
+          return updated;
+      });
+      if (selectedMedicine?.RegisterNumber === updatedMed.RegisterNumber) {
+          setSelectedMedicine(updatedMed);
+      }
+      if (!FIREBASE_DISABLED) {
+          setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }).catch(console.error);
+      }
+  }, [selectedMedicine]);
 
   const handleFindAlternative = useCallback((medicine: Medicine) => {
     const cleanSciName = medicine['Scientific Name'].toLowerCase().trim();
@@ -387,6 +378,7 @@ const App: React.FC = () => {
       if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
       else if (view === 'insuranceDetails') setView('insuranceSearch');
+      /* Fix: Change 'tab' to 'activeTab' in the handleBack function to resolve the 'Cannot find name tab' error */
       else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
       else if (view === 'results') { setView('search'); setSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
@@ -405,8 +397,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    // Fixed: Explicitly cast the mapped results to string[] to resolve the TypeScript error where map result was inferred as unknown[]
-    const allIds: string[] = (notifications as AppNotification[]).map((n) => String(n.id)) as string[];
+    const allIds: string[] = notifications.map(n => String(n.id));
     setReadNotificationIds(allIds);
   }, [notifications]);
 
@@ -414,17 +405,20 @@ const App: React.FC = () => {
   const uniqueManufactureNames = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Manufacture Name']) set.add(m['Manufacture Name']); });
-      return Array.from(set).sort();
+      // Fix: Use spread operator for better type inference from Set<string> to string[]
+      return [...set].sort();
   }, [medicines]);
 
   const uniqueLegalStatuses = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Legal Status']) set.add(m['Legal Status']); });
-      return Array.from(set).sort();
+      // Fix: Use spread operator for better type inference from Set<string> to string[]
+      return [...set].sort();
   }, [medicines]);
 
   const groupedPharmaceuticalForms = useMemo(() => {
-      const forms = Array.from(new Set(medicines.map(m => m.PharmaceuticalForm))).filter(Boolean);
+      // Fix: Use spread operator and explicit type guard for filter to ensure forms is inferred as string[]
+      const forms = [...new Set(medicines.map(m => m.PharmaceuticalForm))].filter((f): f is string => Boolean(f));
       return groupPharmaceuticalForms(forms, t);
   }, [medicines, t]);
 
@@ -484,12 +478,12 @@ const App: React.FC = () => {
       }
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} />;
       if (activeTab === 'cosmetics') {
-          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { setEditingCosmetic({...c}); setIsEditCosmeticModalOpen(true); }} />;
+          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { alert("Cosmetic editing not yet implemented in detail view."); }} />;
           return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />;
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       if (activeTab === 'settings') {
           return (
@@ -498,9 +492,6 @@ const App: React.FC = () => {
                   <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={() => { if(user) setView('aiHistory'); else { alert(t('loginRequired')); setView('login'); } }} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-3"><div className="w-5 h-5 text-primary"><HistoryIcon /></div> {t('aiActivityLog')}</span></button></div>
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span></button><button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"><span>{t('language')}</span><span className="font-bold">{language === 'ar' ? 'العربية' : 'English'}</span></button></div>
-                  {user?.role === 'admin' && (
-                    <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><h3 className="p-4 text-sm font-bold text-gray-500 uppercase">{t('dataManagement')}</h3><button onClick={() => setView('addData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addData')}</button><button onClick={() => setView('addInsuranceData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addInsuranceData')}</button><button onClick={() => setView('addCosmeticsData')} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"><div className="w-5 h-5"><DatabaseIcon /></div> {t('addCosmeticsData')}</button></div>
-                  )}
               </div>
           );
       }
@@ -526,13 +517,10 @@ const App: React.FC = () => {
           setView('login');
           return;
       }
-      // التحقق من الصلاحيات
       if (user.role !== 'admin' && !user.prescriptionPrivilege) {
           alert(t('accessDeniedPrescription'));
           return;
       }
-      
-      // تهيئة المساعد لوضع الوصفة
       setSelectedMedicine(null);
       setSelectedCosmetic(null);
       setActiveConversationId(null);
@@ -546,30 +534,14 @@ const App: React.FC = () => {
       <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>{renderContent()}</main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
       
-      {/* FAB Button Wrapper */}
       <div className="fixed bottom-24 right-4 z-30">
-          <FloatingAssistantButton 
-            onClick={handleAssistantLaunch} 
-            onLongPress={handlePrescriptionLaunch} 
-            t={t} 
-            language={language} 
-          />
+          <FloatingAssistantButton onClick={handleAssistantLaunch} onLongPress={handlePrescriptionLaunch} t={t} language={language} />
       </div>
 
-      <AssistantModal 
-        isOpen={isAssistantOpen} 
-        onSaveAndClose={handleSaveAssistantHistory} 
-        contextMedicine={selectedMedicine} 
-        contextCosmetic={selectedCosmetic} 
-        allMedicines={medicines} 
-        favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} 
-        initialPrompt={assistantPrompt} 
-        initialHistory={currentChatHistory} 
-        t={t} 
-        language={language} 
-        onShowAlternatives={handleShowAlternativesFromAssistant} 
-      />
+      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
       
+      <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={handleUpdateMedicine} t={t} />
+
       <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
       <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={(code) => { setSearchTerm(code); setIsBarcodeScannerOpen(false); }} t={t} />
     </div>
