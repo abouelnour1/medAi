@@ -2,12 +2,15 @@
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
+// الحصول على المفتاح حصرياً من process.env.API_KEY وفقاً لتعليمات النظام
+const getApiKey = (): string => {
+  return process.env.API_KEY || '';
+};
+
 export const isAIAvailable = (): boolean => {
-  // CRITICAL: Exclusively check process.env.API_KEY
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   if (!apiKey || apiKey.includes('PLACEHOLDER')) return false;
 
-  // Check user settings toggle
   let isAiEnabled = true;
   try {
     const settingsString = localStorage.getItem('mock_app_settings');
@@ -22,22 +25,19 @@ export const isAIAvailable = (): boolean => {
   return isAiEnabled;
 };
 
-// Fix: Always use process.env.API_KEY directly in initialization
 const getAiClient = (): GoogleGenAI => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = getApiKey();
     if (!apiKey) {
-        throw new Error('API Key is missing. Please ensure process.env.API_KEY is configured.');
+        throw new Error('API Key is missing.');
     }
     return new GoogleGenAI({ apiKey });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper to deep-clone objects without internal SDK prototypes/circularity
 const safeClone = (obj: any): any => {
     if (obj === null || typeof obj !== 'object') return obj;
     if (Array.isArray(obj)) return obj.map(safeClone);
-    
     const clone: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -49,10 +49,8 @@ const safeClone = (obj: any): any => {
     return clone;
 };
 
-// Utility to convert SDK parts to plain serializable objects
 export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     if (!parts || !Array.isArray(parts)) return [];
-    
     return parts.map(p => {
         const part: SerializablePart = {};
         if (p.text) part.text = p.text;
@@ -93,19 +91,12 @@ const generateContentWithRetry = async (
     } catch (error: any) {
       attempt++;
       const errorMessage = error.toString().toLowerCase();
-      
       if (errorMessage.includes('400') || errorMessage.includes('key not valid')) {
-          throw new Error("API Key Invalid (400). Please check your API configuration.");
+          throw new Error("API Key Invalid. Please check your configuration.");
       }
-
-      const isRetryable = errorMessage.includes('503') || 
-                          errorMessage.includes('500') || 
-                          errorMessage.includes('unavailable') || 
-                          errorMessage.includes('internal error');
-      
+      const isRetryable = errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable');
       if (isRetryable && attempt < maxRetries) {
-        const delay = Math.pow(2, attempt - 1) * 1000;
-        await sleep(delay);
+        await sleep(Math.pow(2, attempt - 1) * 1000);
       } else {
         throw error;
       }
@@ -122,48 +113,33 @@ export const runAIChat = async (
   modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
-
   const initialParams = {
     model: modelName,
     contents: history.map(msg => ({ 
         role: msg.role, 
         parts: sanitizeParts(msg.parts)
     })),
-    config: {
-      systemInstruction,
-      tools,
-    },
+    config: { systemInstruction, tools },
   };
 
   const response = await generateContentWithRetry(ai, initialParams);
-
   if (response.functionCalls && response.functionCalls.length > 0) {
     const fc = response.functionCalls[0];
     const implementation = toolImplementations[fc.name];
-    
     if (implementation) {
       const functionResult = implementation(fc.args);
-      const cleanFcArgs = safeClone(fc.args);
-      
       const toolResponseHistory: ChatMessage[] = [
         ...history,
-        { role: 'model', parts: [{ functionCall: { name: fc.name, args: cleanFcArgs, id: fc.id } }] },
+        { role: 'model', parts: [{ functionCall: { name: fc.name, args: safeClone(fc.args), id: fc.id } }] },
         { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
       ];
-
       const secondParams = {
         model: modelName,
-        contents: toolResponseHistory.map(msg => ({ 
-            role: msg.role, 
-            parts: sanitizeParts(msg.parts)
-        })),
+        contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: sanitizeParts(msg.parts) })),
         config: { systemInstruction, tools },
       };
-
-      const secondResponse = await generateContentWithRetry(ai, secondParams);
-      return secondResponse;
+      return await generateContentWithRetry(ai, secondParams);
     }
   }
-
   return response;
 };

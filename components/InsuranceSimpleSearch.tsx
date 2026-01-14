@@ -6,6 +6,9 @@ import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
 import DrugPolicyCard, { DrugGroup } from './DrugPolicyCard';
 
+// وحدات القياس والكلمات الشائعة التي يجب استبعادها من منطق البحث لضمان الدقة
+const IGNORED_SEARCH_TOKENS = new Set(['mg', 'ml', 'g', 'mcg', 'iu', 'kg', 'tab', 'caps', 'solution', 'suspension', 'oral', 'intravenous', 'vial', 'ampoule', 'pre-filled', 'syringe', 'powder', 'sachet', 'tablet', 'capsule', 'cap', 'softgel']);
+
 interface InsuranceSimpleSearchProps {
   t: TFunction;
   language: Language;
@@ -54,10 +57,25 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const lowerSearchTerm = trimmedSearchTerm.toLowerCase();
     
-    // Fix: Allow 1-char components but ensure result isn't empty string
+    // دالة محسنة جداً لاستخراج المادة الفعالة فقط مع حذف mg وأي أرقام أو وحدات قياس
     const normalizeSciName = (name: string) => {
-        const parts = (name || '').toLowerCase().split(/[\s,]+/).map(s => s.trim()).filter(s => s.length > 0).sort();
-        return parts.length > 0 ? parts.join(',') : 'INVALID_NAME_' + Math.random();
+        if (!name) return 'INVALID_' + Math.random();
+        
+        const clean = name.toLowerCase()
+            // حذف أي نمط يحتوي على أرقام متبوعة بوحدات مثل 500mg أو 10ml
+            .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
+            // حذف الوحدات المستقلة
+            .replace(/\b(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel|oral|vial|ampoule|pre-filled|syringe|solution|suspension|powder|sachet)\b/g, ' ')
+            // حذف الأرقام والرموز والإبقاء على الحروف فقط للمقارنة العلمية
+            .replace(/[^a-z]/g, ' ');
+
+        const parts = clean.split(/\s+/)
+            .map(s => s.trim())
+            // تجاهل الكلمات القصيرة جداً (مثل الوحدات المتبقية) والكلمات المستبعدة
+            .filter(s => s.length >= 3 && !IGNORED_SEARCH_TOKENS.has(s))
+            .sort();
+            
+        return parts.length > 0 ? parts.join(',') : 'INVALID_' + Math.random();
     };
 
     let matchingPolicies: InsuranceDrug[] = [];
@@ -81,7 +99,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 return searchRegex.test((m['Trade Name'] || '').toLowerCase());
             }
             if (searchMode === 'scientificName') {
-                return (m['Scientific Name'] || '').toLowerCase().includes(lowerSearchTerm.replace(/%/g, ''));
+                const queryPart = lowerSearchTerm.replace(/%/g, '');
+                return (m['Scientific Name'] || '').toLowerCase().includes(queryPart);
             }
             return false;
         })
@@ -90,13 +109,11 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     const sciNameToTradeNames = new Map<string, Set<string>>();
     if (searchMode === 'tradeName') {
         matchingMeds.forEach(med => {
-            if (searchRegex.test(med['Trade Name'] || '')) {
-                const sciNameKey = normalizeSciName(med['Scientific Name']);
-                if (!sciNameToTradeNames.has(sciNameKey)) {
-                    sciNameToTradeNames.set(sciNameKey, new Set());
-                }
-                sciNameToTradeNames.get(sciNameKey)!.add(med['Trade Name']);
+            const sciNameKey = normalizeSciName(med['Scientific Name']);
+            if (!sciNameToTradeNames.has(sciNameKey)) {
+                sciNameToTradeNames.set(sciNameKey, new Set());
             }
+            sciNameToTradeNames.get(sciNameKey)!.add(med['Trade Name']);
         });
     }
 
@@ -107,8 +124,11 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         const sciNamesFromMeds = new Set(matchingMeds.map(m => normalizeSciName(m['Scientific Name'])));
         matchingPolicies = insuranceData.filter(p => {
             const normPolicyName = normalizeSciName(p.scientificName);
-            // Fix: Explicitly cast 'medSci' as string to avoid 'unknown' type errors
-            return Array.from(sciNamesFromMeds).some(medSci => (medSci as string) === normPolicyName || (medSci as string).includes(normPolicyName) || normPolicyName.includes(medSci as string));
+            return Array.from(sciNamesFromMeds).some(medSci => {
+                const medTokens = (medSci as string).split(',');
+                const policyTokens = normPolicyName.split(',');
+                return policyTokens.some(pt => medTokens.includes(pt));
+            });
         });
     } else {
         const searchKeywords = lowerSearchTerm.split(/\s+/).filter(Boolean);
@@ -129,12 +149,13 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     if (isNameSearch) {
         const notCoveredMeds = matchingMeds.filter(m => {
             const normMedName = normalizeSciName(m['Scientific Name']);
-            // Fix: Explicitly cast 'covered' as string to avoid 'unknown' type errors on line 110
-            return !Array.from(actuallyCoveredSciNames).some(covered => normMedName === (covered as string) || normMedName.includes(covered as string) || (covered as string).includes(normMedName));
+            return !Array.from(actuallyCoveredSciNames).some(covered => {
+                const medTokens = normMedName.split(',');
+                const coveredTokens = (covered as string).split(',');
+                return coveredTokens.some(ct => medTokens.includes(ct));
+            });
         });
 
-        // Add not covered results first or last? Let's put covered ones first usually.
-        // Actually, we'll keep the previous order.
         notCoveredMeds.forEach(med => {
             results.push({ type: 'not-covered', medicine: med });
         });
@@ -153,7 +174,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             const availableMedicines = allMedicines
                 .filter(m => {
                     const normM = normalizeSciName(m['Scientific Name']);
-                    return normM === sciNameKey || normM.includes(sciNameKey) || sciNameKey.includes(normM);
+                    const medTokens = normM.split(',');
+                    const keyTokens = sciNameKey.split(',');
+                    return keyTokens.some(kt => medTokens.includes(kt));
                 })
                 .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
@@ -195,14 +218,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                     const availableMedicines = allMedicines
                         .filter(m => {
                             const normM = normalizeSciName(m['Scientific Name']);
-                            return normM === normSciName || normM.includes(normSciName) || normSciName.includes(normM);
+                            const medTokens = normM.split(',');
+                            const policyTokens = normSciName.split(',');
+                            return policyTokens.some(pt => medTokens.includes(pt));
                         })
                         .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
 
                     scientificGroupsMap.set(sciName, {
+                        scientificName: sciName,
                         policies: [],
                         availableMedicines: availableMedicines,
-                        scientificName: sciName,
                         matchingTradeNames: undefined
                     });
                 }
