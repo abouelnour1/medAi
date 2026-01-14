@@ -382,13 +382,23 @@ const App: React.FC = () => {
           const searchRegex = new RegExp(lowerTerm.includes('%') ? lowerTerm.split('%').map(escapeRegExp).join('.*') : '^' + escapeRegExp(lowerTerm), 'i');
           results = results.filter(m => textSearchMode === 'tradeName' ? searchRegex.test(m['Trade Name'].toLowerCase()) : textSearchMode === 'scientificName' ? searchRegex.test(m['Scientific Name'].toLowerCase()) : searchRegex.test(m['Trade Name'].toLowerCase()) || searchRegex.test(m['Scientific Name'].toLowerCase()));
       } else if (trimmedTerm && searchTerm.replace(/%/g, '').trim().length < 3 && !forceSearch) return [];
-      if (filters.productType !== 'all') results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
+      
+      if (filters.productType !== 'all') {
+          results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
+      }
       if (filters.priceMin !== '') results = results.filter(m => parseFloat(m['Public price']) >= parseFloat(filters.priceMin));
       if (filters.priceMax !== '') results = results.filter(m => parseFloat(m['Public price']) <= parseFloat(filters.priceMax));
       if (filters.legalStatus !== '') results = results.filter(m => m['Legal Status'] === filters.legalStatus);
       if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
+      
       // Sort results based on the selected criteria
-      results.sort((a, b) => sortBy === 'priceAsc' ? parseFloat(a['Public price']) - parseFloat(b['Public price']) : sortBy === 'priceDesc' ? parseFloat(b['Public price']) - parseFloat(a['Public price']) : sortBy === 'scientificName' ? a['Scientific Name'].localeCompare(b['Scientific Name']) : a['Trade Name'].localeCompare(b['Trade Name']);
+      results.sort((a, b) => {
+          if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
+          if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
+          if (sortBy === 'scientificName') return a['Scientific Name'].localeCompare(b['Scientific Name']);
+          return a['Trade Name'].localeCompare(b['Trade Name']);
+      });
+      
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
 
