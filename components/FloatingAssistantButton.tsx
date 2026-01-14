@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { TFunction, Language } from '../types';
 import { isAIAvailable } from '../geminiService';
@@ -18,20 +19,18 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
     const aiAvailable = isAIAvailable();
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        if (!aiAvailable) return;
-        
-        // منع السلوك الافتراضي للمتصفح (مثل اختيار النص)
         setIsPressing(true);
         isLongPressTriggered.current = false;
         startPos.current = { x: e.clientX, y: e.clientY };
         
         if (pressTimer.current) clearTimeout(pressTimer.current);
 
-        // تقليل الزمن إلى 600ms ليكون أسرع وأكثر استجابة
         pressTimer.current = window.setTimeout(() => {
-            if (navigator.vibrate) navigator.vibrate([60]); // اهتزاز خفيف للتأكيد
-            onLongPress();
-            isLongPressTriggered.current = true;
+            if (aiAvailable) {
+                if (navigator.vibrate) navigator.vibrate([60]);
+                onLongPress();
+                isLongPressTriggered.current = true;
+            }
             setIsPressing(false);
         }, 600);
     };
@@ -40,8 +39,6 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
         if (pressTimer.current) {
             const moveX = Math.abs(e.clientX - startPos.current.x);
             const moveY = Math.abs(e.clientY - startPos.current.y);
-            
-            // زيادة الحد المسموح به للحركة (Tolerance) إلى 25 بكسل لمنع الإلغاء العشوائي
             if (moveX > 25 || moveY > 25) {
                 clearTimeout(pressTimer.current);
                 pressTimer.current = undefined;
@@ -56,9 +53,12 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
             pressTimer.current = undefined;
         }
         
-        // إذا رفع إصبعه قبل اكتمال الضغطة المطولة، نعتبرها ضغطة عادية
         if (isPressing && !isLongPressTriggered.current) {
-            onClick();
+            if (!aiAvailable) {
+                alert(t('aiKeyMissingInstruction'));
+            } else {
+                onClick();
+            }
         }
         
         setIsPressing(false);
@@ -78,22 +78,20 @@ const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onCli
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
-            onContextMenu={(e) => e.preventDefault()} // منع قائمة المتصفح الافتراضية
+            onContextMenu={(e) => e.preventDefault()}
             className={`w-16 h-16 bg-primary text-white rounded-2xl shadow-xl flex items-center justify-center
                        transform transition-all duration-200 ease-in-out
                        ${isPressing ? 'scale-90 bg-primary-dark shadow-inner brightness-90' : 'scale-100 hover:scale-105 opacity-90 hover:opacity-100'}
-                       disabled:bg-slate-400 disabled:dark:bg-slate-600 disabled:cursor-not-allowed disabled:scale-100 touch-none select-none overflow-hidden p-3`}
+                       ${!aiAvailable ? 'grayscale-[0.5] opacity-70' : 'animate-bounce-subtle'} 
+                       touch-none select-none overflow-hidden p-3`}
             style={{ touchAction: 'none' }} 
             aria-label={t('assistantFabTooltip')}
-            title={aiAvailable ? t('assistantFabTooltip') : t('aiUnavailableShort')}
-            disabled={!aiAvailable}
         >
             <div className={`w-8 h-8 transition-transform ${isPressing ? 'scale-110 rotate-12' : ''}`}>
                 <AssistantIcon />
             </div>
             
-            {/* مؤشر بصري بسيط أثناء الضغط */}
-            {isPressing && (
+            {isPressing && aiAvailable && (
                 <div className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-ping pointer-events-none"></div>
             )}
         </button>

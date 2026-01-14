@@ -9,7 +9,8 @@ const getApiKey = (): string => {
 
 export const isAIAvailable = (): boolean => {
   const apiKey = getApiKey();
-  if (!apiKey || apiKey.includes('PLACEHOLDER')) return false;
+  // إذا كان المفتاح غير موجود نهائياً نعتبره غير متوفر
+  if (!apiKey || apiKey === '') return false;
 
   let isAiEnabled = true;
   try {
@@ -28,7 +29,7 @@ export const isAIAvailable = (): boolean => {
 const getAiClient = (): GoogleGenAI => {
     const apiKey = getApiKey();
     if (!apiKey) {
-        throw new Error('API Key is missing.');
+        throw new Error('API_KEY_MISSING');
     }
     return new GoogleGenAI({ apiKey });
 }
@@ -92,7 +93,7 @@ const generateContentWithRetry = async (
       attempt++;
       const errorMessage = error.toString().toLowerCase();
       if (errorMessage.includes('400') || errorMessage.includes('key not valid')) {
-          throw new Error("API Key Invalid. Please check your configuration.");
+          throw new Error("API_KEY_INVALID");
       }
       const isRetryable = errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable');
       if (isRetryable && attempt < maxRetries) {

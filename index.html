@@ -36,7 +36,6 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         background-color: #f8fafc; /* Match light-bg */
-        /* Removed touch-action: none; to improve responsiveness */
       }
       * {
         -webkit-tap-highlight-color: transparent;
@@ -61,11 +60,18 @@
         from { opacity: 0; transform: scale(0.95); }
         to { opacity: 1; transform: scale(1); }
       }
+      @keyframes bounceSubtle {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+      }
       .animate-fade-in {
         animation: fadeIn 0.3s ease-out forwards;
       }
       .animate-zoom-in {
         animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-bounce-subtle {
+        animation: bounceSubtle 3s ease-in-out infinite;
       }
       /* Hide scrollbar for webkit-based browsers */
       .no-scrollbar::-webkit-scrollbar {
@@ -161,9 +167,7 @@
         background-color: #334155; /* slate-700 */
       }
       
-      /* Smooth scrolling for the main container */
       #main-scroll-container {
-        /* Removed scroll-behavior: smooth; to fix ghost scrolling/jumping on navigation */
         -webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
         touch-action: pan-y; /* Allow vertical scrolling */
         overscroll-behavior-y: auto; /* Allow bounce */

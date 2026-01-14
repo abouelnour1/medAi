@@ -27,7 +27,8 @@ const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.Node }> = ({ children }) => {
+// Fix: Changed React.Node to React.ReactNode
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // 1. Initialize State DIRECTLY from Local Storage (Synchronous)
   const [user, setUser] = useState<User | null>(() => {
     try {
