@@ -1,6 +1,10 @@
 
 export const translations = {
   ar: {
+    exportData: 'تصدير البيانات',
+    exportMedicines: 'تصدير الأدوية (Human)',
+    exportSupplements: 'تصدير المكملات (Supplements)',
+    exportSuccess: 'تم تصدير البيانات بنجاح!',
     notifications: 'الإشعارات',
     noNotifications: 'لا توجد إشعارات حالياً.',
     markAllRead: 'تحديد الكل كمقروء',
@@ -172,6 +176,10 @@ export const translations = {
     assistantModalTitle: 'المساعد الذكي PharmaSource',
   },
   en: {
+    exportData: 'Export Data',
+    exportMedicines: 'Export Medicines (Human)',
+    exportSupplements: 'Export Supplements',
+    exportSuccess: 'Data exported successfully!',
     notifications: 'Notifications',
     noNotifications: 'No notifications at this time.',
     markAllRead: 'Mark all as read',
@@ -222,7 +230,7 @@ export const translations = {
     emptyHistorySubtitle: 'Start a conversation with AI Assistant',
     clearHistory: 'Clear History',
     prescription: 'Prescription',
-    deleteConversation: 'Delete Conversation',
+    deleteConversation: 'Delete chat?',
     expandPrescription: 'Expand Prescription',
     patientName: 'Patient Name',
     date: 'Date',
@@ -344,4 +352,4 @@ export const translations = {
   }
 };
 
-export type TranslationKeys = keyof typeof translations.ar;
+export type TranslationKeys = keyof typeof translations.en;

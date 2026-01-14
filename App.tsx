@@ -37,6 +37,8 @@ import MoonIcon from './components/MoonIcon';
 import SunIcon from './components/SunIcon';
 import DatabaseIcon from './components/icons/DatabaseIcon';
 import TrashIcon from './components/icons/TrashIcon';
+import DownloadIcon from './components/icons/DownloadIcon';
+import PillBottleIcon from './components/icons/PillBottleIcon';
 
 // Auth Components
 import { LoginView } from './components/auth/LoginView';
@@ -49,7 +51,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED, messaging, getToken, onMessage } from './firebase';
-import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc, limit as firestoreLimit } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => ({
@@ -129,6 +131,30 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, [user]);
+
+  // --- Real-time Notifications Listener ---
+  useEffect(() => {
+      if (FIREBASE_DISABLED) return;
+
+      const q = query(
+          collection(db, 'notifications'), 
+          orderBy('timestamp', 'desc'),
+          firestoreLimit(50)
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+          const notifs: AppNotification[] = [];
+          snapshot.forEach((doc) => {
+              notifs.push({ id: doc.id, ...doc.data() } as AppNotification);
+          });
+          setNotifications(notifs);
+          console.log("Real-time notifications updated:", notifs.length);
+      }, (error) => {
+          console.error("Notifications listener error:", error);
+      });
+
+      return () => unsubscribe();
+  }, []);
 
   // --- State ---
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -362,7 +388,7 @@ const App: React.FC = () => {
       if (filters.legalStatus !== '') results = results.filter(m => m['Legal Status'] === filters.legalStatus);
       if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
       // Sort results based on the selected criteria
-      results.sort((a, b) => sortBy === 'priceAsc' ? parseFloat(a['Public price']) - parseFloat(b['Public price']) : sortBy === 'priceDesc' ? parseFloat(b['Public price']) - parseFloat(a['Public price']) : sortBy === 'scientificName' ? a['Scientific Name'].localeCompare(b['Scientific Name']) : a['Trade Name'].localeCompare(b['Trade Name']));
+      results.sort((a, b) => sortBy === 'priceAsc' ? parseFloat(a['Public price']) - parseFloat(b['Public price']) : sortBy === 'priceDesc' ? parseFloat(b['Public price']) - parseFloat(a['Public price']) : sortBy === 'scientificName' ? a['Scientific Name'].localeCompare(b['Scientific Name']) : a['Trade Name'].localeCompare(b['Trade Name']);
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
 
@@ -378,7 +404,6 @@ const App: React.FC = () => {
       if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
       else if (view === 'insuranceDetails') setView('insuranceSearch');
-      /* Fix: Change 'tab' to 'activeTab' in the handleBack function to resolve the 'Cannot find name tab' error */
       else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
       else if (view === 'results') { setView('search'); setSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
@@ -401,23 +426,65 @@ const App: React.FC = () => {
     setReadNotificationIds(allIds);
   }, [notifications]);
 
+  // وظيفة التصدير المباشرة من الإعدادات مع فصل الأدوية عن المكملات وشمول كافة الحقول
+  const handleExportByTypeFromSettings = useCallback((type: 'Human' | 'Supplement') => {
+      const dataToExport = medicines.filter(m => {
+          if (type === 'Human') return m['Product type'] === 'Human';
+          return m['Product type'] === 'Supplement' || m.DrugType === 'Health' || m.DrugType === 'Herbal';
+      });
+
+      if (dataToExport.length === 0) {
+        alert("No data available to export in this category.");
+        return;
+      }
+
+      const headers = [
+          "RegisterNumber", "Trade Name", "Scientific Name", "Public price", 
+          "PharmaceuticalForm", "Strength", "StrengthUnit", "PackageSize", 
+          "PackageTypes", "Manufacture Name", "Manufacture Country", 
+          "Main Agent", "Legal Status", "Product Control", "AtcCode1", 
+          "AtcCode2", "shelfLife", "Storage conditions", "Storage Condition Arabic", 
+          "Marketing Company", "Marketing Country", "AdministrationRoute",
+          "Product type", "DrugType", "Sub-Type", "Description Code",
+          "imgBox", "imgStrip", "imgPill", 
+          "pillShape", "pillScored", "pillMarkings", 
+          "liquidTaste", "liquidColor", "physicalNotes"
+      ];
+      const rows = dataToExport.map(m => {
+          return headers.map(header => {
+              let cell = (m as any)[header] || '';
+              // تنظيف النص لضمان توافقه مع إكسيل وشمول الروابط والملاحظات بشكل سليم
+              cell = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
+              return `"${cell}"`;
+          }).join(',');
+      });
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `PharmaSource_${type}_Export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      alert(t('exportSuccess'));
+  }, [medicines, t]);
+
   // --- Computed values for filters ---
   const uniqueManufactureNames = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Manufacture Name']) set.add(m['Manufacture Name']); });
-      // Fix: Use spread operator for better type inference from Set<string> to string[]
       return [...set].sort();
   }, [medicines]);
 
   const uniqueLegalStatuses = useMemo(() => {
       const set = new Set<string>();
       medicines.forEach(m => { if (m['Legal Status']) set.add(m['Legal Status']); });
-      // Fix: Use spread operator for better type inference from Set<string> to string[]
       return [...set].sort();
   }, [medicines]);
 
   const groupedPharmaceuticalForms = useMemo(() => {
-      // Fix: Use spread operator and explicit type guard for filter to ensure forms is inferred as string[]
       const forms = [...new Set(medicines.map(m => m.PharmaceuticalForm))].filter((f): f is string => Boolean(f));
       return groupPharmaceuticalForms(forms, t);
   }, [medicines, t]);
@@ -427,24 +494,15 @@ const App: React.FC = () => {
           setIsAssistantOpen(false);
           return;
       }
-      
       const convoId = activeConversationId || `convo-${Date.now()}`;
       const firstUserMsg = history.find(m => m.role === 'user');
       const textPart = firstUserMsg?.parts.find(p => 'text' in p) as { text: string } | undefined;
       const title = textPart?.text.substring(0, 35) || t('aiActivityLog');
-
-      const newConvo: Conversation = {
-          id: convoId,
-          title: title,
-          messages: history,
-          timestamp: Date.now()
-      };
-
+      const newConvo: Conversation = { id: convoId, title: title, messages: history, timestamp: Date.now() };
       setChatHistory(prev => {
           const filtered = prev.filter(c => c.id !== convoId);
           return [newConvo, ...filtered];
       });
-
       setIsAssistantOpen(false);
       setActiveConversationId(null);
       setCurrentChatHistory([]);
@@ -487,9 +545,32 @@ const App: React.FC = () => {
       }
       if (activeTab === 'settings') {
           return (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-4 animate-fade-in pb-10">
                   <h2 className="text-xl font-bold">{t('navSettings')}</h2>
                   <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
+                  
+                  {user?.role === 'admin' && (
+                      <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-xl shadow-sm border border-teal-100 dark:border-teal-800 animate-fade-in space-y-4">
+                          <p className="font-bold text-teal-800 dark:text-teal-400 text-xs uppercase tracking-widest">{t('exportData')}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                              <button 
+                                onClick={() => handleExportByTypeFromSettings('Human')}
+                                className="p-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
+                              >
+                                  <div className="w-5 h-5"><PillBottleIcon /></div>
+                                  <span className="text-[10px] font-bold">الأدوية (CSV)</span>
+                              </button>
+                              <button 
+                                onClick={() => handleExportByTypeFromSettings('Supplement')}
+                                className="p-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
+                              >
+                                  <div className="w-5 h-5"><DatabaseIcon /></div>
+                                  <span className="text-[10px] font-bold">المكملات (CSV)</span>
+                              </button>
+                          </div>
+                      </div>
+                  )}
+
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={() => { if(user) setView('aiHistory'); else { alert(t('loginRequired')); setView('login'); } }} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-3"><div className="w-5 h-5 text-primary"><HistoryIcon /></div> {t('aiActivityLog')}</span></button></div>
                   <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span></button><button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"><span>{t('language')}</span><span className="font-bold">{language === 'ar' ? 'العربية' : 'English'}</span></button></div>
               </div>

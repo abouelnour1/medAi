@@ -24,7 +24,7 @@ import { setItem } from '../../utils/storage';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
 const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
 
-type Panel = 'menu' | 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration' | 'addItem' | 'notifications';
+type Panel = 'menu' | 'overview' | 'users' | 'medicines' | 'insurance' | 'cosmetics' | 'settings' | 'migration' | 'addItem' | 'notifications' | 'export';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl flex items-center gap-4 border border-slate-200 dark:border-slate-700">
@@ -75,7 +75,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
   const [isPushEnabled, setIsPushEnabled] = useState(true);
   const [isSendingBc, setIsSendingBc] = useState(false);
 
-  // Stats for Notifications
   const totalRegisteredTokens = useMemo(() => {
       let count = 0;
       users.forEach(u => {
@@ -145,22 +144,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
               timestamp: Date.now(),
               type: 'update'
           };
+          
+          // 1. Save to Database (Internal Notifications list)
           await addDoc(collection(db, 'notifications'), notification);
 
+          let pushSuccess = true;
+          // 2. Try to send Push Notification
           if (isPushEnabled && functions) {
-              const sendPush = httpsCallable(functions, 'sendBroadcastPush');
-              await sendPush({ title: bcTitle, body: bcBody });
+              try {
+                const sendPush = httpsCallable(functions, 'sendBroadcastPush');
+                await sendPush({ title: bcTitle, body: bcBody });
+              } catch (pushError: any) {
+                console.warn("Push delivery internal error:", pushError);
+                pushSuccess = false;
+              }
           }
 
-          alert(t('sendBroadcast') + " - Success!");
+          if (pushSuccess) {
+              alert(t('sendBroadcast') + " - Success!");
+          } else {
+              alert("⚠️ تم حفظ الإشعار في قائمة التطبيق بنجاح، ولكن ميزة الإشعارات المنبثقة (Push) لم تعمل حالياً.");
+          }
+          
           setBcTitle('');
           setBcBody('');
       } catch (e) {
-          console.error("Broadcast failed", e);
-          alert("Success in database, but Push failed. (This button requires a Cloud Function. Try Firebase Console for manual testing)");
+          console.error("Critical Broadcast failed", e);
+          alert("حدث خطأ أساسي أثناء الحفظ: " + (e instanceof Error ? e.message : 'Unknown error'));
       } finally {
           setIsSendingBc(false);
       }
+  };
+
+  // وظيفة تصدير شاملة مخصصة حسب النوع مع شمول الملاحظات الفيزيائية وكافة الروابط
+  const handleExportByType = (type: 'Human' | 'Supplement') => {
+      const dataToExport = allMedicines.filter(m => {
+          if (type === 'Human') return m['Product type'] === 'Human';
+          return m['Product type'] === 'Supplement' || m.DrugType === 'Health' || m.DrugType === 'Herbal';
+      });
+
+      if (dataToExport.length === 0) {
+          alert("No data to export for this category.");
+          return;
+      }
+
+      // كافة الأعمدة المطلوبة بما فيها الحقول الجديدة والفيزيائية
+      const headers = [
+          "RegisterNumber", "Trade Name", "Scientific Name", "Public price", 
+          "PharmaceuticalForm", "Strength", "StrengthUnit", "PackageSize", 
+          "PackageTypes", "Manufacture Name", "Manufacture Country", 
+          "Main Agent", "Legal Status", "Product Control", "AtcCode1", 
+          "AtcCode2", "shelfLife", "Storage conditions", "Storage Condition Arabic", 
+          "Marketing Company", "Marketing Country", "AdministrationRoute",
+          "Product type", "DrugType", "Sub-Type", "Description Code",
+          "imgBox", "imgStrip", "imgPill", 
+          "pillShape", "pillScored", "pillMarkings", 
+          "liquidTaste", "liquidColor", "physicalNotes"
+      ];
+
+      const rows = dataToExport.map(m => {
+          return headers.map(header => {
+              let cell = (m as any)[header] || '';
+              // معالجة النصوص: تغليف الحقول بـ "، تحويل " إلى ""، استبدال الأسطر بمسافات لعدم كسر الجدول في إكسيل
+              cell = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
+              return `"${cell}"`;
+          }).join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      // إضافة BOM لدعم العربية في إكسيل
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `PharmaSource_${type}_Export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(t('exportSuccess'));
   };
 
   const uniqueManufacturers = useMemo(() => {
@@ -319,8 +383,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard title={t('totalUsers')} value={users.length} icon={<UsersIcon />} />
               <StatCard title={t('premiumUsers')} value={users.filter(u => u.role === 'premium').length} icon={<UsersIcon />} />
-              <StatCard title={t('medicines')} value={allMedicines.length} icon={<PillBottleIcon />} />
-              <StatCard title={t('aiRequestsToday')} value={users.reduce((acc, u) => acc + (u.aiRequestCount || 0), 0)} icon={<ChartIcon />} />
+              <StatCard title={t('medicines')} value={allMedicines.filter(m => m['Product type'] === 'Human').length} icon={<PillBottleIcon />} />
+              <StatCard title={t('supplements')} value={allMedicines.filter(m => m['Product type'] !== 'Human').length} icon={<DatabaseIcon />} />
           </div>
       </div>
   );
@@ -476,16 +540,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
               <button onClick={handleSendBroadcast} disabled={isSendingBc || !bcTitle || !bcBody || FIREBASE_DISABLED} className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors disabled:opacity-50 shadow-lg shadow-primary/20">
                   {isSendingBc ? '...' : t('sendBroadcast')}
               </button>
-              
-              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 mt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Help & Status</h4>
-                  <ul className="text-[10px] text-slate-500 space-y-1 list-disc pl-4">
-                      <li>The broadcast will appear in the "Bell" icon for all users.</li>
-                      <li>"Registered Devices" shows how many people allowed notifications.</li>
-                      <li>If device count is 0, refresh your browser to re-register.</li>
-                      <li>Manual testing via <strong>Firebase Console &gt; Cloud Messaging</strong> is recommended for full Push testing.</li>
-                  </ul>
-              </div>
+          </div>
+      </div>
+  );
+
+  const renderExport = () => (
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm space-y-6 animate-fade-in">
+          <h3 className="text-lg font-bold border-b pb-3 dark:border-slate-700">{t('exportData')}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+              قم بتصدير البيانات الحالية بشكل منفصل إلى ملفات CSV متوافقة مع برنامج إكسيل (تشمل الملاحظات والروابط والصور).
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button 
+                onClick={() => handleExportByType('Human')}
+                className="py-4 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
+              >
+                  <PillBottleIcon />
+                  {t('exportMedicines')}
+              </button>
+              <button 
+                onClick={() => handleExportByType('Supplement')}
+                className="py-4 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
+              >
+                  <DatabaseIcon />
+                  {t('exportSupplements')}
+              </button>
           </div>
       </div>
   );
@@ -515,7 +594,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
         {activePanel !== 'menu' && (
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center gap-2 sticky top-0 z-20">
                 <button onClick={() => setActivePanel('menu')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><BackIcon /></button>
-                <h2 className="text-xl font-bold capitalize">{activePanel === 'addItem' ? t('addNewItem') : activePanel === 'notifications' ? t('broadcastTitle') : activePanel}</h2>
+                <h2 className="text-xl font-bold capitalize">{activePanel === 'addItem' ? t('addNewItem') : activePanel === 'notifications' ? t('broadcastTitle') : activePanel === 'export' ? t('exportData') : activePanel}</h2>
             </div>
         )}
         <div className="flex-grow p-4 overflow-y-auto">
@@ -524,6 +603,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
                     <MenuCard title={t('adminPanelOverview')} icon={<ChartIcon />} onClick={() => setActivePanel('overview')} colorClass="bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800" />
                     <MenuCard title={t('userManagementTitle')} icon={<UsersIcon />} onClick={() => setActivePanel('users')} colorClass="bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:border-green-800" />
                     <MenuCard title={t('addNewItem')} icon={<div className="text-xl font-bold">+</div>} onClick={() => setActivePanel('addItem')} colorClass="bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800" />
+                    <MenuCard title={t('exportData')} icon={<DownloadIcon />} onClick={() => setActivePanel('export')} colorClass="bg-teal-50 text-teal-600 border-teal-100 dark:bg-teal-900/20 dark:border-teal-800" />
                     <MenuCard title={t('broadcastTitle')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:border-red-800" />
                     <MenuCard title={t('appSettingsTitle')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" />
                 </div>
@@ -533,6 +613,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ t, allMedicines,
             {activePanel === 'addItem' && renderAddSingleItem()}
             {activePanel === 'settings' && renderSettings()}
             {activePanel === 'notifications' && renderNotifications()}
+            {activePanel === 'export' && renderExport()}
         </div>
         {isEditUserModalOpen && editingUser && (
             <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsEditUserModalOpen(false)}>

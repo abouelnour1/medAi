@@ -1,19 +1,10 @@
+
 import { GoogleGenAI, GenerateContentResponse, Tool } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
+// Fix: API key must be obtained exclusively from process.env.API_KEY
 const getApiKey = (): string | undefined => {
-  if (typeof process !== 'undefined' && process.env.API_KEY) {
-      return process.env.API_KEY.trim();
-  }
-  
-  // Fallback for Vite-based environments
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY.trim();
-  }
-
-  return undefined;
+  return process.env.API_KEY;
 }
 
 export const isAIAvailable = (): boolean => {
@@ -34,15 +25,16 @@ export const isAIAvailable = (): boolean => {
   return !!apiKey && !apiKey.includes('PLACEHOLDER') && isAiEnabled;
 };
 
+// Fix: Always use process.env.API_KEY directly in initialization as per guidelines
 const getAiClient = (): GoogleGenAI => {
-    const apiKey = getApiKey();
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
         throw new Error('API Key is missing. Please ensure process.env.API_KEY is configured.');
     }
     if (apiKey.includes('PLACEHOLDER')) {
         throw new Error('Invalid API Key: You are using a PLACEHOLDER key.');
     }
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -55,6 +47,7 @@ const generateContentWithRetry = async (
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
+      // Fix: Call generateContent directly with parameters that include the model name
       const response = await ai.models.generateContent(params);
       return response;
     } catch (error: any) {
