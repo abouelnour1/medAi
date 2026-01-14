@@ -2,15 +2,10 @@
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
-// الحصول على المفتاح حصرياً من process.env.API_KEY وفقاً لتعليمات النظام
-const getApiKey = (): string => {
-  return process.env.API_KEY || '';
-};
-
 export const isAIAvailable = (): boolean => {
-  const apiKey = getApiKey();
-  // إذا كان المفتاح غير موجود نهائياً نعتبره غير متوفر
-  if (!apiKey || apiKey === '') return false;
+  // التحقق مما إذا كان المفتاح موجوداً في كود المتصفح بعد الحقن من Vite
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === '' || apiKey === 'undefined') return false;
 
   let isAiEnabled = true;
   try {
@@ -25,14 +20,6 @@ export const isAIAvailable = (): boolean => {
   
   return isAiEnabled;
 };
-
-const getAiClient = (): GoogleGenAI => {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        throw new Error('API_KEY_MISSING');
-    }
-    return new GoogleGenAI({ apiKey });
-}
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -79,33 +66,6 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     });
 };
 
-const generateContentWithRetry = async (
-  ai: GoogleGenAI,
-  params: any,
-  maxRetries: number = 3
-): Promise<GenerateContentResponse> => {
-  let attempt = 0;
-  while (attempt < maxRetries) {
-    try {
-      const response = await ai.models.generateContent(params);
-      return response;
-    } catch (error: any) {
-      attempt++;
-      const errorMessage = error.toString().toLowerCase();
-      if (errorMessage.includes('400') || errorMessage.includes('key not valid')) {
-          throw new Error("API_KEY_INVALID");
-      }
-      const isRetryable = errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('unavailable');
-      if (isRetryable && attempt < maxRetries) {
-        await sleep(Math.pow(2, attempt - 1) * 1000);
-      } else {
-        throw error;
-      }
-    }
-  }
-  throw new Error('Exceeded max retries for AI request.');
-}
-
 export const runAIChat = async (
   history: ChatMessage[],
   systemInstruction: string,
@@ -113,7 +73,9 @@ export const runAIChat = async (
   toolImplementations: { [key:string]: (...args: any[]) => any },
   modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
-  const ai = getAiClient();
+  // استخدام التهيئة المباشرة المطلوبة في التعليمات
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  
   const initialParams = {
     model: modelName,
     contents: history.map(msg => ({ 
@@ -123,24 +85,30 @@ export const runAIChat = async (
     config: { systemInstruction, tools },
   };
 
-  const response = await generateContentWithRetry(ai, initialParams);
-  if (response.functionCalls && response.functionCalls.length > 0) {
-    const fc = response.functionCalls[0];
-    const implementation = toolImplementations[fc.name];
-    if (implementation) {
-      const functionResult = implementation(fc.args);
-      const toolResponseHistory: ChatMessage[] = [
-        ...history,
-        { role: 'model', parts: [{ functionCall: { name: fc.name, args: safeClone(fc.args), id: fc.id } }] },
-        { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
-      ];
-      const secondParams = {
-        model: modelName,
-        contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: sanitizeParts(msg.parts) })),
-        config: { systemInstruction, tools },
-      };
-      return await generateContentWithRetry(ai, secondParams);
+  try {
+    const response = await ai.models.generateContent(initialParams);
+    
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      const fc = response.functionCalls[0];
+      const implementation = toolImplementations[fc.name];
+      if (implementation) {
+        const functionResult = implementation(fc.args);
+        const toolResponseHistory: ChatMessage[] = [
+          ...history,
+          { role: 'model', parts: [{ functionCall: { name: fc.name, args: safeClone(fc.args), id: fc.id } }] },
+          { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
+        ];
+        
+        return await ai.models.generateContent({
+          model: modelName,
+          contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: sanitizeParts(msg.parts) })),
+          config: { systemInstruction, tools },
+        });
+      }
     }
+    return response;
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    throw error;
   }
-  return response;
 };
