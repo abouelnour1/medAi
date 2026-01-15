@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
@@ -7,6 +7,8 @@ import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
 import ClearIcon from './icons/ClearIcon';
+import DownloadIcon from './icons/DownloadIcon';
+import GlobeIcon from './icons/GlobeIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -46,54 +48,38 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(hasImages || hasPhysicalProps);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  // --- High-Resolution (Raw Mode) State ---
-  const [isRawMode, setIsRawMode] = useState(false);
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const lastTouchRef = useRef<{ x: number, y: number, dist: number } | null>(null);
-
   useEffect(() => {
     if (zoomedImage) {
       document.body.style.overflow = 'hidden';
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
-      setIsRawMode(false);
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
   }, [zoomedImage]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      lastTouchRef.current = { x: 0, y: 0, dist };
-    } else if (e.touches.length === 1) {
-      lastTouchRef.current = { x: e.touches[0].pageX, y: e.touches[0].pageY, dist: 0 };
+  // وظيفة التحميل المحسنة
+  const handleDownload = async (url: string) => {
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error('CORS limitation');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `PharmaSource_HQ_${medicine['Trade Name']}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      // إذا فشل التحميل البرمجي بسبب حقوق الموقع، نفتح الصورة في نافذة جديدة بأعلى جودة
+      window.open(url, '_blank');
     }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!lastTouchRef.current) return;
-
-    if (e.touches.length === 2 && lastTouchRef.current.dist > 0) {
-      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      const zoomFactor = dist / lastTouchRef.current.dist;
-      const newScale = Math.min(Math.max(scale * zoomFactor, 0.4), 10);
-      setScale(newScale);
-      lastTouchRef.current.dist = dist;
-    } else if (e.touches.length === 1) {
-      const deltaX = e.touches[0].pageX - lastTouchRef.current.x;
-      const deltaY = e.touches[0].pageY - lastTouchRef.current.y;
-      setPosition(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
-      lastTouchRef.current.x = e.touches[0].pageX;
-      lastTouchRef.current.y = e.touches[0].pageY;
-    }
+  const handleOpenOriginal = (url: string) => {
+      window.open(url, '_blank');
   };
-
-  const productControl = medicine['Product Control'] || '';
-  const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
-  const isRestricted = productControl.toLowerCase().includes('restricted');
 
   const handleImageSearch = () => {
       const tradeName = medicine['Trade Name'] || '';
@@ -114,13 +100,19 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
             <div 
                 onClick={() => setZoomedImage(src)}
-                className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-2 shadow-sm overflow-hidden flex items-center justify-center transition-all cursor-zoom-in hover:border-primary/50"
+                className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-2 shadow-sm overflow-hidden flex items-center justify-center transition-all cursor-zoom-in hover:border-primary/50 group"
             >
-                <img src={src} alt={label} className="max-w-full max-h-full object-contain pointer-events-none" />
+                <img 
+                    src={src} 
+                    alt={label} 
+                    className="max-w-full max-h-full object-contain pointer-events-none transition-transform group-hover:scale-105" 
+                    style={{ 
+                        imageRendering: 'auto',
+                        WebkitBackfaceVisibility: 'hidden'
+                    }}
+                />
             </div>
-            <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-primary font-bold">{language === 'ar' ? 'افتح بالجودة الكاملة' : 'Open Full Quality'}</span>
-            </div>
+            <span className="text-[9px] text-primary/60 font-bold uppercase">{language === 'ar' ? 'انقر لعرض الجودة الأصلية' : 'Tap for Full Resolution'}</span>
         </div>
     );
   };
@@ -185,7 +177,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
             {isPhysicalExpanded && (
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {/* Image Carousel */}
                     {hasImages && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             <div className="snap-center"><PhysicalImage src={medicine.imgBox} label={t('boxImage')} /></div>
@@ -195,7 +186,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                         </div>
                     )}
 
-                    {/* Physical Properties */}
                     {(hasImages || hasPhysicalProps) ? (
                         <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800">
                             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
@@ -223,12 +213,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
-            {(medicine['Legal Status'] || isControlled || isRestricted) && (
-              <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm font-medium leading-6 text-light-text-secondary">{t('legalStatus')}</dt>
-                <dd className="mt-1 text-sm leading-6 sm:col-span-2 sm:mt-0">{ (isControlled || isRestricted) ? (<span className={`inline-block font-bold rounded-full px-3 py-1 text-sm text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>{isControlled ? 'CONTROLLED' : 'RESTRICTED'}</span>) : (<LegalStatusBadge status={medicine['Legal Status']} size="base" t={t} />)}</dd>
-              </div>
-            )}
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
             <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />
@@ -238,72 +222,74 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
         </div>
       </div>
 
-      {/* --- Immersive RAW Quality Image Viewer --- */}
+      {/* --- عارض الصور فائق الدقة (Ultra High Resolution Viewer) --- */}
       {zoomedImage && (
           <div 
-            className="fixed inset-0 z-[9999] bg-black flex flex-col animate-fade-in touch-none select-none overflow-hidden"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
+            className="fixed inset-0 z-[9999] bg-black flex flex-col animate-fade-in overflow-hidden touch-none"
           >
-              {/* Header Controls */}
-              <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50 bg-gradient-to-b from-black/90 to-transparent">
-                  <div className="flex gap-2">
-                    <button 
-                        onClick={() => setIsRawMode(!isRawMode)}
-                        className={`text-white/90 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-white/20 backdrop-blur-md transition-all ${isRawMode ? 'bg-primary border-primary shadow-[0_0_15px_rgba(45,212,191,0.5)]' : 'bg-white/10'}`}
-                    >
-                        {isRawMode ? (language === 'ar' ? 'الدقة الخام نشطة' : 'RAW PIXELS ACTIVE') : (language === 'ar' ? 'تفعيل الجودة الكاملة' : 'FORCE FULL QUALITY')}
-                    </button>
-                    {isRawMode && (
-                        <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 text-white/70 text-[9px] font-bold flex items-center">
-                            {Math.round(scale * 100)}%
-                        </div>
-                    )}
+              {/* شريط التحكم العلوي المطور */}
+              <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 bg-gradient-to-b from-black/90 to-transparent">
+                  <div className="flex flex-col">
+                    <span className="text-white font-black text-xs uppercase tracking-tighter">Raw Pixel View</span>
+                    <span className="text-[9px] text-primary-light font-bold">Max clarity for small text</span>
                   </div>
-                  <button 
-                    onClick={() => { setZoomedImage(null); setIsRawMode(false); }}
-                    className="p-3 bg-white/10 hover:bg-white/20 active:scale-90 rounded-full text-white transition-all shadow-xl backdrop-blur-md border border-white/20"
-                  >
-                      <ClearIcon />
-                  </button>
+                  
+                  <div className="flex items-center gap-2">
+                      {/* خيار 1: التحميل البرمجي */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDownload(zoomedImage); }}
+                        className="p-3 bg-white/10 hover:bg-primary/20 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10"
+                        title="Download"
+                      >
+                          <div className="w-5 h-5"><DownloadIcon /></div>
+                      </button>
+
+                      {/* خيار 2: فتح المصدر الأصلي (الأكثر ضماناً للجودة) */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleOpenOriginal(zoomedImage); }}
+                        className="p-3 bg-white/10 hover:bg-blue-500/20 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10 flex items-center gap-2"
+                        title="Open Original"
+                      >
+                          <div className="w-5 h-5"><GlobeIcon /></div>
+                          <span className="text-[9px] font-black uppercase hidden sm:inline">Source</span>
+                      </button>
+
+                      {/* إغلاق */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+                        className="p-3 bg-red-500/20 hover:bg-red-500/40 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-red-500/20"
+                      >
+                          <ClearIcon />
+                      </button>
+                  </div>
               </div>
               
-              {/* Image Rendering Logic - RAW MODE BYPASSES BROWSER DOWNSCALING */}
+              {/* منطقة عرض الصورة - محسن للنصوص الصغيرة */}
               <div 
-                className={`w-full h-full flex items-center justify-center ${isRawMode ? 'overflow-auto no-scrollbar touch-auto' : 'pointer-events-none'}`}
-                onClick={(e) => { if (!isRawMode) setZoomedImage(null); }}
+                className="w-full h-full flex items-center justify-center overflow-auto p-4 sm:p-10 scrollbar-hide touch-auto" 
+                onClick={() => setZoomedImage(null)}
               >
                   <img 
                     src={zoomedImage} 
-                    className={`transition-transform duration-75 ease-out will-change-transform ${isRawMode ? 'cursor-grab active:cursor-grabbing' : ''}`} 
+                    className="max-w-none md:max-w-full h-auto object-contain cursor-zoom-out" 
                     style={{ 
-                        // The secret for RAW quality: Remove all max constraints and use natural scale
-                        maxWidth: isRawMode ? 'none' : '100%',
-                        maxHeight: isRawMode ? 'none' : '100%',
-                        transform: isRawMode ? `translate(${position.x}px, ${position.y}px) scale(${scale})` : `scale(${scale})`,
-                        
-                        // Force browser to respect every single pixel (Perfect for text in Indexes)
-                        imageRendering: isRawMode ? 'high-quality' : 'auto',
+                        // تحسين حاد جداً لرسم البيكسلات لضمان قراءة النصوص الصغيرة
+                        imageRendering: '-webkit-optimize-contrast',
                         WebkitBackfaceVisibility: 'hidden',
-                        WebkitTransformStyle: 'preserve-3d'
+                        minWidth: '100%',
                     }}
-                    alt="High Resolution Content" 
-                    onLoad={(e) => {
-                        setScale(1);
-                        setPosition({ x: 0, y: 0 });
-                    }}
+                    alt="Original Quality Document" 
+                    onClick={(e) => e.stopPropagation()}
                   />
               </div>
 
-              {/* Enhanced Instructions Footer */}
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full px-10 pointer-events-none text-center">
-                <div className="bg-black/40 backdrop-blur-sm border border-white/10 py-2 px-4 rounded-full inline-block">
-                    <p className="text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">
-                        {isRawMode 
-                            ? (language === 'ar' ? 'حرك بإصبع واحد • كبّر بإصبعين' : '1 FINGER DRAG • 2 FINGER PINCH') 
-                            : (language === 'ar' ? 'اضغط على الزر بالأعلى لرؤية أدق التفاصيل' : 'CLICK BUTTON ABOVE FOR MAXIMUM DETAIL')}
-                    </p>
-                </div>
+              {/* تلميح ذكي */}
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none bg-black/60 px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                <p className="text-white/80 text-[9px] font-bold uppercase tracking-widest text-center">
+                    {language === 'ar' 
+                      ? 'استخدم زر الكرة الأرضية لفتح النسخة الأصلية الخام من بوست إيمدج' 
+                      : 'Use the Globe icon to open the Raw Raw source from PostImage'}
+                </p>
               </div>
           </div>
       )}
