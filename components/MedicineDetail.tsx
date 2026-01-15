@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
@@ -46,16 +46,54 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(hasImages || hasPhysicalProps);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  const price = parseFloat(medicine['Public price']);
-  const scientificName = medicine['Scientific Name'] || '';
-  const strengths = String(medicine.Strength || '');
-  const strengthUnit = String(medicine.StrengthUnit || '');
+  // --- High-Resolution (Raw Mode) State ---
+  const [isRawMode, setIsRawMode] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const lastTouchRef = useRef<{ x: number, y: number, dist: number } | null>(null);
 
-  const strengthValues = strengths ? strengths.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const strengthUnitValues = strengthUnit ? strengthUnit.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
+  useEffect(() => {
+    if (zoomedImage) {
+      document.body.style.overflow = 'hidden';
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+      setIsRawMode(false);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [zoomedImage]);
 
-  const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      lastTouchRef.current = { x: 0, y: 0, dist };
+    } else if (e.touches.length === 1) {
+      lastTouchRef.current = { x: e.touches[0].pageX, y: e.touches[0].pageY, dist: 0 };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!lastTouchRef.current) return;
+
+    if (e.touches.length === 2 && lastTouchRef.current.dist > 0) {
+      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      const zoomFactor = dist / lastTouchRef.current.dist;
+      const newScale = Math.min(Math.max(scale * zoomFactor, 0.4), 10);
+      setScale(newScale);
+      lastTouchRef.current.dist = dist;
+    } else if (e.touches.length === 1) {
+      const deltaX = e.touches[0].pageX - lastTouchRef.current.x;
+      const deltaY = e.touches[0].pageY - lastTouchRef.current.y;
+      setPosition(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+      lastTouchRef.current.x = e.touches[0].pageX;
+      lastTouchRef.current.y = e.touches[0].pageY;
+    }
+  };
+
+  const productControl = medicine['Product Control'] || '';
+  const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
+  const isRestricted = productControl.toLowerCase().includes('restricted');
 
   const handleImageSearch = () => {
       const tradeName = medicine['Trade Name'] || '';
@@ -69,25 +107,32 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
       window.open(url, '_blank');
   };
 
-  const productControl = medicine['Product Control'] || '';
-  const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
-  const isRestricted = productControl.toLowerCase().includes('restricted');
-
-  const PhysicalImage = ({ src, label, zoomable = false }: { src?: string, label: string, zoomable?: boolean }) => {
+  const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
     if (!src) return null;
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
             <div 
-                onClick={() => zoomable && setZoomedImage(src)}
-                className={`w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-3 shadow-sm overflow-hidden flex items-center justify-center transition-all ${zoomable ? 'cursor-zoom-in hover:border-primary/50' : ''}`}
+                onClick={() => setZoomedImage(src)}
+                className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-2 shadow-sm overflow-hidden flex items-center justify-center transition-all cursor-zoom-in hover:border-primary/50"
             >
                 <img src={src} alt={label} className="max-w-full max-h-full object-contain pointer-events-none" />
             </div>
-            {zoomable && <span className="text-[9px] text-primary font-bold">{language === 'ar' ? 'اضغط للتكبير' : 'Click to zoom'}</span>}
+            <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-primary font-bold">{language === 'ar' ? 'افتح بالجودة الكاملة' : 'Open Full Quality'}</span>
+            </div>
         </div>
     );
   };
+
+  const price = parseFloat(medicine['Public price']);
+  const scientificName = medicine['Scientific Name'] || '';
+  const strengths = String(medicine.Strength || '');
+  const strengthUnit = String(medicine.StrengthUnit || '');
+  const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const strengthValues = strengths ? strengths.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const strengthUnitValues = strengthUnit ? strengthUnit.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
@@ -144,8 +189,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                     {hasImages && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             <div className="snap-center"><PhysicalImage src={medicine.imgBox} label={t('boxImage')} /></div>
-                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex1} label={language === 'ar' ? 'صورة الفهرس 1' : 'Index Image 1'} zoomable /></div>
-                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex2} label={language === 'ar' ? 'صورة الفهرس 2' : 'Index Image 2'} zoomable /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex1} label={language === 'ar' ? 'صورة الفهرس 1' : 'Index Image 1'} /></div>
+                            <div className="snap-center"><PhysicalImage src={medicine.imgIndex2} label={language === 'ar' ? 'صورة الفهرس 2' : 'Index Image 2'} /></div>
                             <div className="snap-center"><PhysicalImage src={medicine.imgPill} label={t('pillImage')} /></div>
                         </div>
                     )}
@@ -193,31 +238,73 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
         </div>
       </div>
 
-      {/* Image Zoom Overlay */}
+      {/* --- Immersive RAW Quality Image Viewer --- */}
       {zoomedImage && (
           <div 
-            className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center animate-fade-in p-4"
-            onClick={() => setZoomedImage(null)}
+            className="fixed inset-0 z-[9999] bg-black flex flex-col animate-fade-in touch-none select-none overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
           >
-              <button 
-                onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
-                className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all shadow-xl backdrop-blur-md"
-              >
-                  <ClearIcon />
-              </button>
+              {/* Header Controls */}
+              <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50 bg-gradient-to-b from-black/90 to-transparent">
+                  <div className="flex gap-2">
+                    <button 
+                        onClick={() => setIsRawMode(!isRawMode)}
+                        className={`text-white/90 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-white/20 backdrop-blur-md transition-all ${isRawMode ? 'bg-primary border-primary shadow-[0_0_15px_rgba(45,212,191,0.5)]' : 'bg-white/10'}`}
+                    >
+                        {isRawMode ? (language === 'ar' ? 'الدقة الخام نشطة' : 'RAW PIXELS ACTIVE') : (language === 'ar' ? 'تفعيل الجودة الكاملة' : 'FORCE FULL QUALITY')}
+                    </button>
+                    {isRawMode && (
+                        <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 text-white/70 text-[9px] font-bold flex items-center">
+                            {Math.round(scale * 100)}%
+                        </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => { setZoomedImage(null); setIsRawMode(false); }}
+                    className="p-3 bg-white/10 hover:bg-white/20 active:scale-90 rounded-full text-white transition-all shadow-xl backdrop-blur-md border border-white/20"
+                  >
+                      <ClearIcon />
+                  </button>
+              </div>
               
-              <div className="w-full h-full flex items-center justify-center overflow-hidden">
+              {/* Image Rendering Logic - RAW MODE BYPASSES BROWSER DOWNSCALING */}
+              <div 
+                className={`w-full h-full flex items-center justify-center ${isRawMode ? 'overflow-auto no-scrollbar touch-auto' : 'pointer-events-none'}`}
+                onClick={(e) => { if (!isRawMode) setZoomedImage(null); }}
+              >
                   <img 
                     src={zoomedImage} 
-                    className="max-w-full max-h-full object-contain shadow-2xl transition-transform animate-zoom-in" 
-                    alt="Zoomed View" 
-                    onClick={e => e.stopPropagation()}
+                    className={`transition-transform duration-75 ease-out will-change-transform ${isRawMode ? 'cursor-grab active:cursor-grabbing' : ''}`} 
+                    style={{ 
+                        // The secret for RAW quality: Remove all max constraints and use natural scale
+                        maxWidth: isRawMode ? 'none' : '100%',
+                        maxHeight: isRawMode ? 'none' : '100%',
+                        transform: isRawMode ? `translate(${position.x}px, ${position.y}px) scale(${scale})` : `scale(${scale})`,
+                        
+                        // Force browser to respect every single pixel (Perfect for text in Indexes)
+                        imageRendering: isRawMode ? 'high-quality' : 'auto',
+                        WebkitBackfaceVisibility: 'hidden',
+                        WebkitTransformStyle: 'preserve-3d'
+                    }}
+                    alt="High Resolution Content" 
+                    onLoad={(e) => {
+                        setScale(1);
+                        setPosition({ x: 0, y: 0 });
+                    }}
                   />
               </div>
 
-              <p className="mt-4 text-white/60 text-xs font-bold uppercase tracking-widest animate-pulse">
-                {language === 'ar' ? 'اسحب للتنقل أو اضغط للإغلاق' : 'Pinch to zoom or tap to close'}
-              </p>
+              {/* Enhanced Instructions Footer */}
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full px-10 pointer-events-none text-center">
+                <div className="bg-black/40 backdrop-blur-sm border border-white/10 py-2 px-4 rounded-full inline-block">
+                    <p className="text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">
+                        {isRawMode 
+                            ? (language === 'ar' ? 'حرك بإصبع واحد • كبّر بإصبعين' : '1 FINGER DRAG • 2 FINGER PINCH') 
+                            : (language === 'ar' ? 'اضغط على الزر بالأعلى لرؤية أدق التفاصيل' : 'CLICK BUTTON ABOVE FOR MAXIMUM DETAIL')}
+                    </p>
+                </div>
+              </div>
           </div>
       )}
     </div>
