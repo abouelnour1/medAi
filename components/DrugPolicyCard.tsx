@@ -31,23 +31,29 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
     const primaryPolicy = group.policies[0];
 
     return (
-        <div className="bg-light-card dark:bg-dark-card rounded-lg shadow-sm p-4 animate-fade-in border-l-4 border-primary dark:border-primary-light space-y-3">
-             {/* Header: Drug Name */}
-             <div className="border-b pb-3 border-slate-200 dark:border-slate-800">
+        <div className="bg-light-card dark:bg-dark-card rounded-2xl shadow-sm p-4 animate-fade-in border border-slate-100 dark:border-slate-800 space-y-3">
+             {/* Header: Trade Names (if any) + Scientific Name */}
+             <div className="border-b pb-3 border-slate-100 dark:border-slate-800">
                 <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mt-1 flex-shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary mt-1 flex-shrink-0 shadow-inner">
                         <PillIcon />
                     </div>
-                    <div>
-                        {group.tradeNames.length > 0 && (
-                            <h2 className="text-lg font-bold text-light-text dark:text-dark-text leading-tight">
-                                {group.tradeNames.join(' / ')}
+                    <div className="min-w-0">
+                        {group.tradeNames.length > 0 ? (
+                            <>
+                                <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight mb-1 truncate">
+                                    {group.tradeNames.join(' / ')}
+                                </h2>
+                                <p className="text-xs text-primary font-bold uppercase tracking-tight truncate">
+                                    {group.scientificName}
+                                </p>
+                            </>
+                        ) : (
+                            <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight uppercase">
+                                {group.scientificName}
                             </h2>
                         )}
-                        <p className={`${group.tradeNames.length > 0 ? 'text-sm text-primary font-medium' : 'text-lg font-bold text-light-text dark:text-dark-text'}`}>
-                            {group.scientificName}
-                        </p>
-                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
                             {primaryPolicy.drugClass}
                         </p>
                     </div>
@@ -56,11 +62,10 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
 
             {/* Body: List of Indications */}
             <div className="space-y-2">
-                <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mb-1">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
                     {t('indication')} ({uniqueIndications.length})
                 </p>
                 {uniqueIndications.map(([indication, policies]) => {
-                    // Collect ICD Codes for this indication
                     const icdCodes = Array.from(new Set(policies.map(p => p.icd10Code).flatMap(c => c ? c.split(',') : []).map(c => c.trim()).filter(Boolean)));
                     
                     return (
@@ -75,27 +80,27 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                                     matchingTradeNames: group.tradeNames
                                 } 
                             })}
-                            className="w-full text-left p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex justify-between items-center group"
+                            className="w-full text-left p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-white dark:hover:bg-slate-800 transition-all flex justify-between items-center group"
                         >
-                            <div className="flex-grow">
+                            <div className="flex-grow min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-secondary dark:text-green-400 w-4 h-4"><HealthInsuranceIcon /></span>
-                                    <p className="font-bold text-sm text-secondary dark:text-green-400 group-hover:underline">
+                                    <span className="text-secondary dark:text-green-400 w-4 h-4 shrink-0"><HealthInsuranceIcon /></span>
+                                    <p className="font-bold text-sm text-secondary dark:text-green-400 group-hover:text-primary transition-colors leading-tight">
                                         {indication}
                                     </p>
                                 </div>
                                 {icdCodes.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 ml-6">
+                                    <div className="flex flex-wrap gap-1 mt-1.5 ml-6">
                                         {icdCodes.map(code => (
-                                            <span key={code} className="text-[10px] font-mono bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span key={code} className="text-[9px] font-black bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded shadow-sm text-slate-500">
                                                 {code}
                                             </span>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-primary ltr:rotate-0 rtl:rotate-180 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-300 group-hover:text-primary ltr:rotate-0 rtl:rotate-180 transition-all transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
                     )
