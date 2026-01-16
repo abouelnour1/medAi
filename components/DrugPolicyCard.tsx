@@ -38,22 +38,22 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                     <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary mt-1 flex-shrink-0 shadow-inner">
                         <PillIcon />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-grow">
                         {group.tradeNames.length > 0 ? (
                             <>
-                                <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight mb-1 truncate">
+                                <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight mb-1 break-words">
                                     {group.tradeNames.join(' / ')}
                                 </h2>
-                                <p className="text-xs text-primary font-bold uppercase tracking-tight truncate">
+                                <p className="text-xs text-primary font-bold uppercase tracking-tight break-words">
                                     {group.scientificName}
                                 </p>
                             </>
                         ) : (
-                            <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight uppercase">
+                            <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight uppercase break-words">
                                 {group.scientificName}
                             </h2>
                         )}
-                        <p className="text-[10px] text-slate-400 font-medium mt-1 truncate">
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 break-words">
                             {primaryPolicy.drugClass}
                         </p>
                     </div>
@@ -85,7 +85,7 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                             <div className="flex-grow min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-secondary dark:text-green-400 w-4 h-4 shrink-0"><HealthInsuranceIcon /></span>
-                                    <p className="font-bold text-sm text-secondary dark:text-green-400 group-hover:text-primary transition-colors leading-tight">
+                                    <p className="font-bold text-sm text-secondary dark:text-green-400 group-hover:text-primary transition-colors leading-tight break-words">
                                         {indication}
                                     </p>
                                 </div>
