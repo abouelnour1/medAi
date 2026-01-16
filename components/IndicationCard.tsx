@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { TFunction, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData } from '../types';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
 
-// This is the structure for the whole card, exported for use in the search component
 export interface IndicationGroup {
     type: 'covered';
     indication: string;
@@ -23,40 +23,44 @@ const ScientificInfo: React.FC<{ group: ScientificGroupData, t: TFunction, onCli
     return (
         <button 
             onClick={onClick}
-            className="w-full text-left p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-full text-left p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group"
         >
              {hasMatchingTradeNames && (
-                 <p className="font-bold text-base text-light-text dark:text-dark-text">
+                 <p className="font-black text-sm text-slate-800 dark:text-white mb-1 line-clamp-1">
                     {group.matchingTradeNames!.join(' / ')}
                 </p>
             )}
-             <p className={hasMatchingTradeNames ? "text-sm text-primary dark:text-primary-light font-semibold" : "font-bold text-base text-primary dark:text-primary-light"}>
+             <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight`}>
                 {group.scientificName}
             </p>
-             <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">{commonPolicy.drugClass}</p>
+             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium truncate">{commonPolicy.drugClass}</p>
         </button>
     )
 }
 
 const IndicationCard: React.FC<IndicationCardProps> = ({ group, t, onSelectInsuranceData }) => {
     return (
-        <div className="bg-light-card dark:bg-dark-card rounded-lg shadow-sm p-4 animate-fade-in space-y-3 border-l-4 border-secondary dark:border-green-400">
-             <div className="border-b pb-3 border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 flex-shrink-0 text-secondary dark:text-green-400"><HealthInsuranceIcon /></span>
-                    <h2 className="text-lg font-bold text-secondary dark:text-green-400">{group.indication}</h2>
-                </div>
-                {group.icd10Codes.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                        {group.icd10Codes.map(code => (
-                            <span key={code} className="text-sm font-mono bg-slate-100 dark:bg-slate-700 text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md">
-                                {code}
-                            </span>
-                        ))}
+        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-800 transition-all hover:shadow-md">
+             <div className="p-4 border-b border-slate-50 dark:border-slate-800 bg-green-50/30 dark:bg-green-900/10">
+                <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 text-secondary shrink-0 mt-0.5"><HealthInsuranceIcon /></div>
+                    <div className="flex-grow min-w-0">
+                        <h2 className="text-base font-black text-secondary leading-tight">{group.indication}</h2>
+                        {group.icd10Codes.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                {group.icd10Codes.slice(0, 5).map(code => (
+                                    <span key={code} className="text-[10px] font-black bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md shadow-sm">
+                                        {code}
+                                    </span>
+                                ))}
+                                {group.icd10Codes.length > 5 && <span className="text-[10px] text-slate-400 font-bold">+{group.icd10Codes.length - 5}</span>}
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
-            <div className="space-y-2">
+            <div className="p-3 space-y-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase px-1 tracking-widest">{t('availableProducts')} ({group.scientificGroups.length})</p>
                 {group.scientificGroups.map(sg => 
                     <ScientificInfo 
                         key={sg.scientificName} 

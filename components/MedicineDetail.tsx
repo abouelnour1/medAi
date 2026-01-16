@@ -51,13 +51,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   useEffect(() => {
     if (zoomedImage) {
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => { 
+        document.body.style.overflow = ''; 
+        document.documentElement.style.overflow = '';
+    };
   }, [zoomedImage]);
 
-  // وظيفة التحميل المحسنة
   const handleDownload = async (url: string) => {
     try {
       const response = await fetch(url, { mode: 'cors' });
@@ -72,7 +76,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
-      // إذا فشل التحميل البرمجي بسبب حقوق الموقع، نفتح الصورة في نافذة جديدة بأعلى جودة
       window.open(url, '_blank');
     }
   };
@@ -129,6 +132,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
+        {/* Header Info */}
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
               <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left hover:opacity-80 transition-opacity">
@@ -222,73 +226,74 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
         </div>
       </div>
 
-      {/* --- عارض الصور فائق الدقة (Ultra High Resolution Viewer) --- */}
+      {/* --- عارض الصور فائق الدقة (Ultra Immersive Image Viewer) --- */}
       {zoomedImage && (
           <div 
             className="fixed inset-0 z-[9999] bg-black flex flex-col animate-fade-in overflow-hidden touch-none"
           >
-              {/* شريط التحكم العلوي المطور */}
-              <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 bg-gradient-to-b from-black/90 to-transparent">
-                  <div className="flex flex-col">
-                    <span className="text-white font-black text-xs uppercase tracking-tighter">Raw Pixel View</span>
-                    <span className="text-[9px] text-primary-light font-bold">Max clarity for small text</span>
+              {/* شريط التحكم العلوي - طافي فوق الصورة تماماً */}
+              <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-[10000] pointer-events-none">
+                  <div className="flex flex-col bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 pointer-events-auto">
+                    <span className="text-white font-black text-xs uppercase tracking-tighter">Raw View</span>
+                    <span className="text-[9px] text-primary-light font-bold">Pinch to Zoom</span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                      {/* خيار 1: التحميل البرمجي */}
+                  <div className="flex items-center gap-2 pointer-events-auto">
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleDownload(zoomedImage); }}
-                        className="p-3 bg-white/10 hover:bg-primary/20 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10"
+                        className="p-3 bg-black/40 hover:bg-primary/40 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10"
                         title="Download"
                       >
                           <div className="w-5 h-5"><DownloadIcon /></div>
                       </button>
 
-                      {/* خيار 2: فتح المصدر الأصلي (الأكثر ضماناً للجودة) */}
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleOpenOriginal(zoomedImage); }}
-                        className="p-3 bg-white/10 hover:bg-blue-500/20 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10 flex items-center gap-2"
+                        className="p-3 bg-black/40 hover:bg-blue-500/40 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-white/10"
                         title="Open Original"
                       >
                           <div className="w-5 h-5"><GlobeIcon /></div>
-                          <span className="text-[9px] font-black uppercase hidden sm:inline">Source</span>
                       </button>
 
-                      {/* إغلاق */}
                       <button 
                         onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
-                        className="p-3 bg-red-500/20 hover:bg-red-500/40 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-red-500/20"
+                        className="p-3 bg-red-600/50 hover:bg-red-600 active:scale-90 rounded-xl text-white transition-all shadow-xl backdrop-blur-md border border-red-600/20"
                       >
                           <ClearIcon />
                       </button>
                   </div>
               </div>
               
-              {/* منطقة عرض الصورة - محسن للنصوص الصغيرة */}
+              {/* منطقة عرض الصورة - تملأ الشاشة بالكامل بدون padding */}
               <div 
-                className="w-full h-full flex items-center justify-center overflow-auto p-4 sm:p-10 scrollbar-hide touch-auto" 
+                className="w-full h-full flex items-center justify-center overflow-auto scrollbar-hide touch-auto bg-black" 
                 onClick={() => setZoomedImage(null)}
               >
-                  <img 
-                    src={zoomedImage} 
-                    className="max-w-none md:max-w-full h-auto object-contain cursor-zoom-out" 
-                    style={{ 
-                        // تحسين حاد جداً لرسم البيكسلات لضمان قراءة النصوص الصغيرة
-                        imageRendering: '-webkit-optimize-contrast',
-                        WebkitBackfaceVisibility: 'hidden',
-                        minWidth: '100%',
-                    }}
-                    alt="Original Quality Document" 
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  {/* Container ensuring the image can be larger than screen if scaled by browser or css */}
+                  <div className="min-w-full min-h-full flex items-center justify-center">
+                      <img 
+                        src={zoomedImage} 
+                        className="w-full h-full object-contain cursor-zoom-out select-none" 
+                        style={{ 
+                            imageRendering: '-webkit-optimize-contrast',
+                            WebkitBackfaceVisibility: 'hidden',
+                            touchAction: 'pinch-zoom',
+                            // Ensure the image starts as large as possible within aspect ratio
+                            maxWidth: '100vw',
+                            maxHeight: '100vh'
+                        }}
+                        alt="High Quality Document" 
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                  </div>
               </div>
 
-              {/* تلميح ذكي */}
-              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none bg-black/60 px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
-                <p className="text-white/80 text-[9px] font-bold uppercase tracking-widest text-center">
+              {/* تلميح ذكي في الأسفل */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none bg-black/60 px-5 py-2 rounded-full border border-white/10 backdrop-blur-md z-[10000]">
+                <p className="text-white/90 text-[10px] font-bold uppercase tracking-widest text-center whitespace-nowrap">
                     {language === 'ar' 
-                      ? 'استخدم زر الكرة الأرضية لفتح النسخة الأصلية الخام من بوست إيمدج' 
-                      : 'Use the Globe icon to open the Raw Raw source from PostImage'}
+                      ? 'استخدم إصبعين للتكبير (Pinch to zoom)' 
+                      : 'Use two fingers to zoom & pan'}
                 </p>
               </div>
           </div>
