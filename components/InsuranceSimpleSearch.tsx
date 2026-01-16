@@ -52,10 +52,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   const searchResults = useMemo((): SearchResult[] => {
     const trimmedTerm = searchTerm.trim().toLowerCase();
-    // البحث يبدأ فقط بعد 3 أحرف لضمان الاستقرار والدقة
-    if (trimmedTerm.replace(/%/g, '').length < 3) return [];
+    // البحث يبدأ بعد حرفين على الأقل لضمان الدقة
+    if (trimmedTerm.replace(/%/g, '').length < 2) return [];
     
-    // دالة تنظيف المادة العلمية للمقارنة الدقيقة
+    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // دالة تنظيف المادة العلمية للمقارنة الدقيقة في السياسات
     const cleanScientific = (name: string) => {
         if (!name) return '';
         return name.toLowerCase()
@@ -71,21 +73,23 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     let matchingMeds: Medicine[] = [];
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
 
-    // 1. العثور على الأدوية المطابقة (Strict/Regex)
-    if (searchMode === 'tradeName') {
+    // 1. منطق البحث الجديد: مطابق للبداية إلا لو وجد الرمز %
+    if (isNameSearch) {
+        const field = searchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
+        let pattern = '';
         if (trimmedTerm.includes('%')) {
-            const pattern = trimmedTerm.split('%').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
-            const regex = new RegExp(pattern, 'i');
-            matchingMeds = allMedicines.filter(m => regex.test(m['Trade Name']));
+            // استبدال % بـ .* للبحث في أي مكان
+            pattern = trimmedTerm.split('%').map(escapeRegExp).join('.*');
         } else {
-            // بحث صارم (يحتوي على الكلمة)
-            matchingMeds = allMedicines.filter(m => m['Trade Name'].toLowerCase().includes(trimmedTerm));
+            // البحث من بداية الكلمة فقط ^
+            pattern = '^' + escapeRegExp(trimmedTerm);
         }
-    } else if (searchMode === 'scientificName') {
-        matchingMeds = allMedicines.filter(m => m['Scientific Name'].toLowerCase().includes(trimmedTerm));
+        
+        const regex = new RegExp(pattern, 'i');
+        matchingMeds = allMedicines.filter(m => regex.test(m[field]));
     }
 
-    // 2. استخراج المواد العلمية الصافية من الأدوية المطابقة
+    // 2. استخراج المواد العلمية الصافية من الأدوية المطابقة لربطها بالسياسات
     const matchedScientificKeys = new Set(matchingMeds.map(m => cleanScientific(m['Scientific Name'])));
     const matchedTradeNamesMap = new Map<string, Set<string>>();
     
@@ -95,20 +99,26 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         matchedTradeNamesMap.get(key)!.add(m['Trade Name']);
     });
 
-    // 3. العثور على سياسات التأمين المطابقة (Strictly by Clean Scientific Name)
+    // 3. العثور على سياسات التأمين المطابقة
     let matchingPolicies: InsuranceDrug[] = [];
-    if (searchMode === 'tradeName' || searchMode === 'scientificName') {
+    if (isNameSearch) {
+        // إذا كان البحث بالاسم، نطابق السياسات التي تحتوي على المادة الفعالة للأدوية التي وجدناها
         matchingPolicies = insuranceData.filter(p => {
             const policyKey = cleanScientific(p.scientificName);
-            return matchedScientificKeys.has(policyKey) || 
-                   Array.from(matchedScientificKeys).some(key => key.includes(policyKey) || policyKey.includes(key));
+            return Array.from(matchedScientificKeys).some(key => 
+                key === policyKey || key.includes(policyKey) || policyKey.includes(key)
+            );
         });
     } else {
-        // البحث حسب التشخيص أو الكود (لا يزال يعتمد على الكلمات المفتاحية)
-        const keywords = trimmedTerm.split(/\s+/).filter(k => k.length > 1);
+        // البحث حسب التشخيص أو الكود (مطابقة جزئية مع دعم الرمز %)
+        let pattern = trimmedTerm.includes('%') 
+            ? trimmedTerm.split('%').map(escapeRegExp).join('.*')
+            : escapeRegExp(trimmedTerm);
+        const regex = new RegExp(pattern, 'i');
+
         matchingPolicies = insuranceData.filter(p => {
             const targetField = (searchMode === 'indication' ? p.indication : p.icd10Code || '').toLowerCase();
-            return keywords.every(kw => targetField.includes(kw));
+            return regex.test(targetField);
         });
     }
 
@@ -120,7 +130,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         matchingMeds.forEach(med => {
             const medKey = cleanScientific(med['Scientific Name']);
             if (!coveredScientificKeys.has(medKey)) {
-                // إذا لم تكن المادة العلمية موجودة في أي سياسة تأمين مطابقة
                 results.push({ type: 'not-covered', medicine: med });
             }
         });
@@ -229,7 +238,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 return null;
             })
         ) : (
-            searchTerm.length >= 3 && (
+            searchTerm.length >= 2 && (
                 <div className="text-center py-12 bg-white dark:bg-dark-card rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800">
                     <p className="text-slate-400 font-bold">{t('noResultsTitle')}</p>
                 </div>
