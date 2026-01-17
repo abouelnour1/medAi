@@ -66,6 +66,9 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const strengthValues = String(medicine.Strength || '').split(',').map(s => s.trim()).filter(Boolean);
   const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
 
+  // السماح بالتعديل للأدمن والشركات
+  const canEdit = user?.role === 'admin' || user?.role === 'company';
+
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
@@ -79,8 +82,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
               </button>
               <div className="flex items-center gap-2 shrink-0">
                   <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500"><div className="h-5 w-5"><CameraIcon /></div></button>
-                  {user?.role === 'admin' && onEdit && (
-                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
+                  {canEdit && onEdit && (
+                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-primary bg-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm">
+                          <div className="h-5 w-5"><EditIcon /></div>
+                      </button>
                   )}
                   <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}><div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div></button>
               </div>

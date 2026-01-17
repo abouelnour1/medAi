@@ -6,8 +6,9 @@ export interface Notification {
   title: string;
   body: string;
   timestamp: number;
-  type: 'info' | 'alert' | 'update';
+  type: 'info' | 'alert' | 'update' | 'approval';
   isRead?: boolean;
+  targetUserId?: string; // إشعار موجه لمستخدم محدد
 }
 
 export interface Medicine {
@@ -48,7 +49,6 @@ export interface Medicine {
   "Authorization Status": string;
   "Last Update": string;
   
-  // --- New Physical & Image Fields ---
   imgBox?: string;
   imgIndex1?: string;
   imgIndex2?: string;
@@ -59,6 +59,108 @@ export interface Medicine {
   liquidTaste?: string;
   liquidColor?: string;
   physicalNotes?: string;
+}
+
+export interface PendingMedicineRequest {
+    id: string;
+    type: 'add' | 'edit';
+    medicineData: Medicine;
+    submittedBy: string;
+    submittedByEmail: string;
+    submittedByCompany?: string;
+    timestamp: number;
+    status: 'pending' | 'approved' | 'rejected';
+}
+
+export interface User {
+  id: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'admin' | 'premium' | 'company'; 
+  companyName?: string;
+  aiRequestCount: number;
+  customAiLimit?: number;
+  lastRequestDate: string; 
+  status: 'active' | 'pending';
+  emailVerified: boolean; 
+  email?: string;
+  prescriptionPrivilege?: boolean;
+}
+
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
+
+export interface AppSettings {
+  aiRequestLimit: number;
+  isAiEnabled: boolean;
+}
+
+export type AuthContextType = {
+  user: User | null;
+  login: (username: string, password: string) => Promise<void>;
+  register: (email: string, password: string, role: 'premium' | 'company', companyName?: string) => Promise<void>;
+  logout: () => void;
+  requestAIAccess: (callback: () => void, t: TFunction) => void;
+  resendVerificationEmail: () => Promise<void>;
+  reloadUser: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  isLoading: boolean;
+  getAllUsers: () => User[];
+  updateUser: (user: User) => void;
+  deleteUser: (userId: string) => void;
+  getSettings: () => AppSettings;
+  updateSettings: (settings: AppSettings) => void;
+};
+
+export type Language = 'ar' | 'en';
+export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
+export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
+export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
+export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
+export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
+
+/**
+ * Fix: Define ProductTypeFilter to resolve error in components/FilterModal.tsx.
+ */
+export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
+
+export interface Filters {
+  productType: ProductTypeFilter;
+  priceMin: string;
+  priceMax: string;
+  pharmaceuticalForm: string;
+  manufactureName: string[];
+  legalStatus: string;
+}
+
+export interface SerializablePart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+  functionCall?: {
+    name: string;
+    args: any;
+    id?: string;
+  };
+  functionResponse?: {
+    name: string;
+    response: any;
+    id?: string;
+  };
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  parts: SerializablePart[];
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  timestamp: number;
 }
 
 export interface InsuranceDrug {
@@ -108,15 +210,12 @@ export interface MilkProduct {
   stageType: string;
   ageRange: string;
   image?: string;
-  
   kcal: number;
   protein: number;
   fat: number;
   carb: number;
-  
   keyFeatures: string;
   usp: string; 
-  
   explanation?: {
     type?: {
       title: string;
@@ -126,61 +225,6 @@ export interface MilkProduct {
       side_effects: string;
     }
   };
-}
-
-export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
-
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
-
-export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
-
-export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
-
-export interface Filters {
-  productType: ProductTypeFilter;
-  priceMin: string;
-  priceMax: string;
-  pharmaceuticalForm: string;
-  manufactureName: string[];
-  legalStatus: string;
-}
-
-export type Language = 'ar' | 'en';
-export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
-
-export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
-
-export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
-
-// Serializable Part interface to avoid circular reference errors from GenAI SDK
-export interface SerializablePart {
-  text?: string;
-  inlineData?: {
-    mimeType: string;
-    data: string;
-  };
-  functionCall?: {
-    name: string;
-    args: any;
-    id?: string;
-  };
-  functionResponse?: {
-    name: string;
-    response: any;
-    id?: string;
-  };
-}
-
-export interface ChatMessage {
-  role: 'user' | 'model';
-  parts: SerializablePart[];
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  timestamp: number;
 }
 
 export interface PrescriptionData {
@@ -233,43 +277,9 @@ export interface SelectedInsuranceData {
     scientificGroup: ScientificGroupData;
 }
 
-export interface User {
-  id: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
-  role: 'admin' | 'premium'; 
-  aiRequestCount: number;
-  customAiLimit?: number;
-  lastRequestDate: string; 
-  status: 'active' | 'pending';
-  emailVerified: boolean; 
-  email?: string;
-  prescriptionPrivilege?: boolean;
-}
-
-export interface AppSettings {
-  aiRequestLimit: number;
-  isAiEnabled: boolean;
-}
-
-export type AuthContextType = {
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  requestAIAccess: (callback: () => void, t: TFunction) => void;
-  resendVerificationEmail: () => Promise<void>;
-  reloadUser: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  isLoading: boolean;
-  getAllUsers: () => User[];
-  updateUser: (user: User) => void;
-  deleteUser: (userId: string) => void;
-  getSettings: () => AppSettings;
-  updateSettings: (settings: AppSettings) => void;
-};
-
+/**
+ * Fix: Define Recommendation and ProductSuggestion interfaces to resolve error in components/RecommendationCard.tsx.
+ */
 export interface ProductSuggestion {
   name: string;
   concentration: string;

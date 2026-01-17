@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, 
-  InsuranceSearchMode, Cosmetic, MilkProduct, Notification as AppNotification
+  InsuranceSearchMode, Cosmetic, MilkProduct, Notification as AppNotification,
+  PendingMedicineRequest
 } from './types';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
@@ -31,7 +32,6 @@ import NotificationsView from './components/NotificationsView';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
 
-// Icons
 import AdminIcon from './components/icons/AdminIcon';
 import HistoryIcon from './components/icons/HistoryIcon';
 import MoonIcon from './components/MoonIcon';
@@ -41,18 +41,16 @@ import TrashIcon from './components/icons/TrashIcon';
 import DownloadIcon from './components/icons/DownloadIcon';
 import PillBottleIcon from './components/icons/PillBottleIcon';
 
-// Auth Components
 import { LoginView } from './components/auth/LoginView';
 import { RegisterView } from './components/auth/RegisterView';
 import { VerifyEmailView } from './components/auth/VerifyEmailView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import { useAuth } from './components/auth/AuthContext';
 
-// Utils & Helpers
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED, messaging, getToken, onMessage } from './firebase';
-import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc, limit as firestoreLimit } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc, addDoc, limit as firestoreLimit, where } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => ({
@@ -67,13 +65,14 @@ const normalizeMedicine = (item: any): Medicine => ({
   "Legal Status": String(item["Legal Status"] || item.LegalStatus || ''),
   "Product type": String(item["Product type"] || (item.DrugType === 'Health' ? 'Supplement' : 'Human')),
   DrugType: String(item.DrugType || ''),
+  "Sub-Type": String(item["Sub-Type"] || ''),
   "Manufacture Name": String(item["Manufacture Name"] || item.ManufacturerNameEN || ''),
   "Manufacture Country": String(item["Manufacture Country"] || item.ManufacturerCountry || ''),
   "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
   "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
   "Main Agent": String(item["Main Agent"] || item.Agent || ''),
   imgBox: item.imgBox || item.boxImage || '',
-  imgIndex1: item.imgIndex1 || item.imgStrip || item.stripImage || '', // Migration path
+  imgIndex1: item.imgIndex1 || item.imgStrip || item.stripImage || '', 
   imgIndex2: item.imgIndex2 || '',
   imgPill: item.imgPill || item.pillImage || '',
   pillShape: item.pillShape || '',
@@ -92,7 +91,6 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const App: React.FC = () => {
   const { user } = useAuth();
 
-  // --- Push Notifications Setup ---
   useEffect(() => {
     if (!messaging || !user || FIREBASE_DISABLED) return;
 
@@ -116,7 +114,7 @@ const App: React.FC = () => {
         } catch (err) {
             console.error("FCM Registration Error:", err);
         }
-  };
+    };
     setupPushNotifications();
 
     const unsubscribe = onMessage(messaging, (payload) => {
@@ -132,34 +130,38 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // --- Real-time Notifications Listener ---
   useEffect(() => {
-      if (FIREBASE_DISABLED) return;
+      if (FIREBASE_DISABLED || !user) {
+          setNotifications([]);
+          return;
+      }
 
+      // Filter query by user ID to comply with standard individual access security rules
       const q = query(
           collection(db, 'notifications'), 
-          orderBy('timestamp', 'desc'),
+          where('targetUserId', '==', user.id),
+          orderBy('timestamp', 'desc'), 
           firestoreLimit(50)
       );
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-          const notifs: AppNotification[] = [];
-          snapshot.forEach((doc) => {
-              notifs.push({ id: doc.id, ...doc.data() } as AppNotification);
-          });
-          setNotifications(notifs);
-      }, (error) => {
-          console.error("Notifications listener error:", error);
-      });
-
+      const unsubscribe = onSnapshot(q, 
+          (snapshot) => {
+              const notifs: AppNotification[] = [];
+              snapshot.forEach((doc) => {
+                  notifs.push({ id: doc.id, ...doc.data() } as AppNotification);
+              });
+              setNotifications(notifs);
+          },
+          (error) => {
+              console.warn("Notification stream permission error:", error.message);
+              // Gracefully handle permission errors without crashing
+          }
+      );
       return () => unsubscribe();
-  }, []);
+  }, [user]);
 
-  // --- State ---
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-        return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
-    }
+    if (typeof window !== 'undefined') return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
     return 'light';
   });
   const [language, setLanguage] = useState<Language>(() => {
@@ -201,18 +203,12 @@ const App: React.FC = () => {
   const [sourceMedicine, setSourceMedicine] = useState<Medicine | null>(null);
   const [alternativesResults, setAlternativesResults] = useState<{ direct: Medicine[], therapeutic: Medicine[] } | null>(null);
   const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]') as string[];
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]') as string[]; } catch { return []; }
   });
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [chatHistory, setChatHistory] = useState<Conversation[]>(() => {
-      try {
-          return JSON.parse(localStorage.getItem('chat_history') || '[]') as Conversation[];
-      } catch { return []; }
+      try { return JSON.parse(localStorage.getItem('chat_history') || '[]') as Conversation[]; } catch { return []; }
   });
   const [currentChatHistory, setCurrentChatHistory] = useState<ChatMessage[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -228,9 +224,7 @@ const App: React.FC = () => {
   const [isZoomImageIndex, setIsZoomImageIndex] = useState(false);
   
   const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
-      try {
-          return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]') as PrescriptionData[];
-      } catch { return []; }
+      try { return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]') as PrescriptionData[]; } catch { return []; }
   });
   const scrollPositionRef = useRef(0);
 
@@ -274,7 +268,7 @@ const App: React.FC = () => {
                             return mergedArray;
                         });
                     }
-                } catch (err) { console.warn("Background fetch failed:", err); }
+                } catch (err) { console.warn("Background fetch failed (likely permissions):", err); }
             }
         } catch (e) { console.error("Error loading data", e); setIsDataLoaded(true); }
     };
@@ -297,27 +291,14 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('saved_prescriptions', JSON.stringify(prescriptions)); }, [prescriptions]);
   
-  // Safe storage logic to avoid circular structure errors
   useEffect(() => { 
       try {
           const safeHistory = JSON.stringify(chatHistory);
           localStorage.setItem('chat_history', safeHistory); 
-      } catch (e) {
-          console.error("Failed to save chat history due to circular data:", e);
-      }
+      } catch (e) { console.error("Failed to save chat history", e); }
   }, [chatHistory]);
 
   useEffect(() => { localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(readNotificationIds)); }, [readNotificationIds]);
-
-  useLayoutEffect(() => {
-    const container = document.getElementById('main-scroll-container');
-    if (!container) return;
-    if (view === 'results' || view === 'cosmeticsSearch' || view === 'milkSearch') {
-      if (scrollPositionRef.current > 0) { setTimeout(() => { if(container) container.scrollTop = scrollPositionRef.current; }, 0); }
-    } else if (view === 'details' || view === 'cosmeticDetails' || view === 'alternatives' || view === 'insuranceDetails') {
-        container.scrollTop = 0;
-    }
-  }, [view]);
 
   const t: TFunction = useCallback((key, replacements) => {
     const text = translations[language][key] || key;
@@ -334,26 +315,42 @@ const App: React.FC = () => {
       if(container) scrollPositionRef.current = container.scrollTop;
       setSelectedMedicine(medicine); setView('details'); 
   }, []);
-  
-  const handleCosmeticSelect = useCallback((cosmetic: Cosmetic) => { 
-      const container = document.getElementById('main-scroll-container');
-      if(container) scrollPositionRef.current = container.scrollTop;
-      setSelectedCosmetic(cosmetic); setView('cosmeticDetails'); 
-  }, []);
 
-  const handleUpdateMedicine = useCallback((updatedMed: Medicine) => {
-      setMedicines(prev => {
-          const updated = prev.map(m => m.RegisterNumber === updatedMed.RegisterNumber ? updatedMed : m);
-          setItem(MEDICINES_CACHE_KEY, updated).catch(console.error);
-          return updated;
-      });
-      if (selectedMedicine?.RegisterNumber === updatedMed.RegisterNumber) {
-          setSelectedMedicine(updatedMed);
+  const handleUpdateMedicine = useCallback(async (updatedMed: Medicine) => {
+      if (!user) return;
+
+      try {
+          // إذا كان المستخدم أدمن، يتم التعديل فوراً
+          if (user.role === 'admin') {
+              setMedicines(prev => {
+                  const updated = prev.map(m => m.RegisterNumber === updatedMed.RegisterNumber ? updatedMed : m);
+                  setItem(MEDICINES_CACHE_KEY, updated).catch(console.error);
+                  return updated;
+              });
+              if (selectedMedicine?.RegisterNumber === updatedMed.RegisterNumber) setSelectedMedicine(updatedMed);
+              if (!FIREBASE_DISABLED) await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
+          } 
+          // إذا كان المستخدم شركة، يتم إرسال طلب اعتماد للأدمن
+          else if (user.role === 'company') {
+              const request: Omit<PendingMedicineRequest, 'id'> = {
+                  type: 'edit',
+                  medicineData: updatedMed,
+                  submittedBy: user.id,
+                  submittedByEmail: user.email || '',
+                  submittedByCompany: user.companyName || '',
+                  timestamp: Date.now(),
+                  status: 'pending'
+              };
+              if (!FIREBASE_DISABLED) {
+                  await addDoc(collection(db, 'pending_requests'), request);
+                  alert(t('requestSubmitted'));
+              }
+          }
+      } catch (err) {
+          console.error("Permission or update error:", err);
+          alert("Insufficient permissions or database error. Please contact administrator.");
       }
-      if (!FIREBASE_DISABLED) {
-          setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }).catch(console.error);
-      }
-  }, [selectedMedicine]);
+  }, [selectedMedicine, user, t]);
 
   const handleFindAlternative = useCallback((medicine: Medicine) => {
     const cleanSciName = medicine['Scientific Name'].toLowerCase().trim();
@@ -379,11 +376,7 @@ const App: React.FC = () => {
     setView('alternatives');
   }, [medicines]);
 
-  const handleShowAlternativesFromAssistant = useCallback((medicine: Medicine) => { setIsAssistantOpen(false); handleFindAlternative(medicine); }, [handleFindAlternative]);
   const isSearchActive = (searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch || filters.productType !== 'all' || filters.priceMin !== '' || filters.priceMax !== '' || filters.pharmaceuticalForm !== '' || filters.manufactureName.length > 0 || filters.legalStatus !== '');
-
-  useEffect(() => { setResultsLimit(20); }, [searchTerm, filters, sortBy, textSearchMode, forceSearch]);
-  useEffect(() => { setResultsLimitCosm(20); }, [cosmeticsSearchTerm, selectedBrand]);
 
   const filteredMedicines = useMemo(() => {
       if (!isDataLoaded) return [];
@@ -395,33 +388,19 @@ const App: React.FC = () => {
           const searchRegex = new RegExp(lowerTerm.includes('%') ? lowerTerm.split('%').map(escapeRegExp).join('.*') : '^' + escapeRegExp(lowerTerm), 'i');
           results = results.filter(m => textSearchMode === 'tradeName' ? searchRegex.test(m['Trade Name'].toLowerCase()) : textSearchMode === 'scientificName' ? searchRegex.test(m['Scientific Name'].toLowerCase()) : searchRegex.test(m['Trade Name'].toLowerCase()) || searchRegex.test(m['Scientific Name'].toLowerCase()));
       } else if (trimmedTerm && searchTerm.replace(/%/g, '').trim().length < 3 && !forceSearch) return [];
-      
-      if (filters.productType !== 'all') {
-          results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
-      }
+      if (filters.productType !== 'all') results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
       if (filters.priceMin !== '') results = results.filter(m => parseFloat(m['Public price']) >= parseFloat(filters.priceMin));
       if (filters.priceMax !== '') results = results.filter(m => parseFloat(m['Public price']) <= parseFloat(filters.priceMax));
       if (filters.legalStatus !== '') results = results.filter(m => m['Legal Status'] === filters.legalStatus);
       if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
-      
-      // Sort results based on the selected criteria
       results.sort((a, b) => {
           if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
           if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
           if (sortBy === 'scientificName') return a['Scientific Name'].localeCompare(b['Scientific Name']);
           return a['Trade Name'].localeCompare(b['Trade Name']);
       });
-      
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
-
-  const handleDeleteNotification = useCallback(async (id: string) => {
-      if (!window.confirm(t('confirmDeleteNotification'))) return;
-      if (!FIREBASE_DISABLED) {
-          try { await deleteDoc(doc(db, 'notifications', id)); }
-          catch (e) { console.error("Failed to delete notification", e); }
-      }
-  }, [t]);
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
@@ -433,235 +412,56 @@ const App: React.FC = () => {
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab]);
 
-  const notificationsWithReadStatus = useMemo(() => {
-      return notifications.map(n => ({ ...n, isRead: readNotificationIds.includes(n.id) }));
-  }, [notifications, readNotificationIds]);
-
-  const unreadCount = useMemo(() => {
-      return notifications.filter(n => !readNotificationIds.includes(n.id)).length;
-  }, [notifications, readNotificationIds]);
-
-  const handleMarkAsRead = useCallback((id: string) => {
-      setReadNotificationIds(prev => prev.includes(id) ? prev : [...prev, id]);
-  }, []);
-
-  const handleMarkAllRead = useCallback(() => {
-    const allIds: string[] = notifications.map(n => String(n.id));
-    setReadNotificationIds(allIds);
-  }, [notifications]);
-
-  // وظيفة التصدير المباشرة من الإعدادات مع فصل الأدوية عن المكملات وشمول كافة الحقول
-  const handleExportByTypeFromSettings = useCallback((type: 'Human' | 'Supplement') => {
-      const dataToExport = medicines.filter(m => {
-          if (type === 'Human') return m['Product type'] === 'Human';
-          return m['Product type'] === 'Supplement' || m.DrugType === 'Health' || m.DrugType === 'Herbal';
-      });
-
-      if (dataToExport.length === 0) {
-        alert("No data available to export in this category.");
-        return;
-      }
-
-      const headers = [
-          "RegisterNumber", "Trade Name", "Scientific Name", "Public price", 
-          "PharmaceuticalForm", "Strength", "StrengthUnit", "PackageSize", 
-          "PackageTypes", "Manufacture Name", "Manufacture Country", 
-          "Main Agent", "Legal Status", "Product Control", "AtcCode1", 
-          "AtcCode2", "shelfLife", "Storage conditions", "Storage Condition Arabic", 
-          "Marketing Company", "Marketing Country", "AdministrationRoute",
-          "Product type", "DrugType", "Sub-Type", "Description Code",
-          "imgBox", "imgIndex1", "imgIndex2", "imgPill", 
-          "pillShape", "pillScored", "pillMarkings", 
-          "liquidTaste", "liquidColor", "physicalNotes"
-      ];
-      const rows = dataToExport.map(m => {
-          return headers.map(header => {
-              let cell = (m as any)[header] || '';
-              // تنظيف النص لضمان توافقه مع إكسيل وشمول الروابط والملاحظات بشكل سليم
-              cell = String(cell).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
-              return `"${cell}"`;
-          }).join(',');
-      });
-      const csvContent = [headers.join(','), ...rows].join('\n');
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `PharmaSource_${type}_Export_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      alert(t('exportSuccess'));
-  }, [medicines, t]);
-
-  // --- Computed values for filters ---
-  const uniqueManufactureNames = useMemo(() => {
-      const set = new Set<string>();
-      medicines.forEach(m => { if (m['Manufacture Name']) set.add(m['Manufacture Name']); });
-      return [...set].sort();
-  }, [medicines]);
-
-  const uniqueLegalStatuses = useMemo(() => {
-      const set = new Set<string>();
-      medicines.forEach(m => { if (m['Legal Status']) set.add(m['Legal Status']); });
-      return [...set].sort();
-  }, [medicines]);
-
-  const groupedPharmaceuticalForms = useMemo(() => {
-      const forms = [...new Set(medicines.map(m => m.PharmaceuticalForm))].filter((f): f is string => Boolean(f));
-      return groupPharmaceuticalForms(forms, t);
-  }, [medicines, t]);
-
-  const handleSaveAssistantHistory = useCallback((history: ChatMessage[]) => {
-      if (!user || history.length <= 1) { 
-          setIsAssistantOpen(false);
-          return;
-      }
-      const convoId = activeConversationId || `convo-${Date.now()}`;
-      const firstUserMsg = history.find(m => m.role === 'user');
-      const textPart = firstUserMsg?.parts.find(p => 'text' in p) as { text: string } | undefined;
-      const title = textPart?.text.substring(0, 35) || t('aiActivityLog');
-      const newConvo: Conversation = { id: convoId, title: title, messages: history, timestamp: Date.now() };
-      setChatHistory(prev => {
-          const filtered = prev.filter(c => c.id !== convoId);
-          return [newConvo, ...filtered];
-      });
-      setIsAssistantOpen(false);
-      setActiveConversationId(null);
-      setCurrentChatHistory([]);
-  }, [user, activeConversationId, t]);
-
-  const handleImageZoom = useCallback((url: string, title: string, isIndex: boolean = false) => {
-    setZoomImageUrl(url);
-    setZoomImageTitle(title);
-    setIsZoomImageIndex(isIndex);
-    setView('imageView');
-  }, []);
-
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
       if (view === 'aiHistory') return <ChatHistoryView conversations={chatHistory} onSelectConversation={(convo) => { setActiveConversationId(convo.id); setCurrentChatHistory(convo.messages); setIsAssistantOpen(true); }} onDeleteConversation={(id) => setChatHistory(prev => prev.filter(c => c.id !== id))} onClearHistory={() => setChatHistory([])} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={notificationsWithReadStatus} onMarkAllRead={handleMarkAllRead} onMarkAsRead={handleMarkAsRead} onDeleteNotification={handleDeleteNotification} isAdmin={user?.role === 'admin'} t={t} language={language} />;
+      if (view === 'notifications') return <NotificationsView notifications={notifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => setReadNotificationIds(notifications.map(n => n.id))} onMarkAsRead={(id) => setReadNotificationIds(p => p.includes(id) ? p : [...p, id])} onDeleteNotification={async (id) => { if (!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id)); }} isAdmin={user?.role === 'admin'} t={t} language={language} />;
+      
       if (activeTab === 'search') {
           return (
               <>
                 <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                     <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={() => { setSearchTerm(''); setView('search'); setForceSearch(false); }} onForceSearch={() => { if (searchTerm.trim().length > 0) setForceSearch(true); }} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
-                    {!isDataLoaded && <div className="w-full h-1 bg-gray-100 overflow-hidden mt-1 rounded-full"><div className="h-full bg-primary/50 animate-progress origin-left w-full"></div></div>}
                     <div className="flex gap-2 mt-2">
                         <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={(filters.productType !== 'all' ? 1 : 0) + (filters.priceMin !== '' ? 1 : 0) + (filters.priceMax !== '' ? 1 : 0) + (filters.pharmaceuticalForm !== '' ? 1 : 0) + (filters.manufactureName.length > 0 ? 1 : 0) + (filters.legalStatus !== '' ? 1 : 0)} t={t} />
                         <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                     </div>
                     <div className="mt-4">
-                        {isSearchActive && <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (user) { setSelectedMedicine(m); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState={isDataLoaded ? (filteredMedicines.length > 0 ? 'loaded' : 'empty') : 'loading'} limit={resultsLimit} onLoadMore={() => setResultsLimit(prev => prev + 20)} />}
-                        {!isSearchActive && !searchTerm && <div className="flex flex-col items-center justify-center py-20 opacity-80 pointer-events-none select-none"><h2 className="text-xl font-bold text-gray-400 dark:text-slate-600 font-poppins tracking-wide">PharmaSource</h2><div className="h-1 w-12 bg-primary/30 rounded-full mt-2"></div></div>}
+                        {isSearchActive && <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (user) { setSelectedMedicine(m); setIsAssistantOpen(true); } else { setView('login'); } }} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState={isDataLoaded ? (filteredMedicines.length > 0 ? 'loaded' : 'empty') : 'loading'} limit={resultsLimit} onLoadMore={() => setResultsLimit(prev => prev + 20)} />}
                     </div>
                 </div>
-                {view === 'details' && selectedMedicine && <MedicineDetail medicine={selectedMedicine!} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => { if (user) { setSelectedMedicine(selectedMedicine); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onImageZoom={handleImageZoom} />}
-                {view === 'alternatives' && sourceMedicine && alternativesResults && <AlternativesView sourceMedicine={sourceMedicine!} alternatives={alternativesResults!} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={() => {}} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />}
+                {view === 'details' && selectedMedicine && <MedicineDetail medicine={selectedMedicine} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(url, title, isIndex) => { setZoomImageUrl(url); setZoomImageTitle(title); setIsZoomImageIndex(isIndex); setView('imageView'); }} />}
+                {view === 'alternatives' && sourceMedicine && alternativesResults && <AlternativesView sourceMedicine={sourceMedicine} alternatives={alternativesResults} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={() => {}} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />}
               </>
           );
       }
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} />;
-      if (activeTab === 'cosmetics') {
-          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { alert("Cosmetic editing not yet implemented in detail view."); }} />;
-          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />;
-      }
-      if (activeTab === 'insurance') {
-          if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
-      }
-      if (activeTab === 'settings') {
-          return (
-              <div className="space-y-4 animate-fade-in pb-10">
-                  <h2 className="text-xl font-bold">{t('navSettings')}</h2>
-                  <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
-                  
-                  {user?.role === 'admin' && (
-                      <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-xl shadow-sm border border-teal-100 dark:border-teal-800 animate-fade-in space-y-4">
-                          <p className="font-bold text-teal-800 dark:text-teal-400 text-xs uppercase tracking-widest">{t('exportData')}</p>
-                          <div className="grid grid-cols-2 gap-3">
-                              <button 
-                                onClick={() => handleExportByTypeFromSettings('Human')}
-                                className="p-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
-                              >
-                                  <div className="w-5 h-5"><PillBottleIcon /></div>
-                                  <span className="text-[10px] font-bold">الأدوية (CSV)</span>
-                              </button>
-                              <button 
-                                onClick={() => handleExportByTypeFromSettings('Supplement')}
-                                className="p-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
-                              >
-                                  <div className="w-5 h-5"><DatabaseIcon /></div>
-                                  <span className="text-[10px] font-bold">المكملات (CSV)</span>
-                              </button>
-                          </div>
-                      </div>
-                  )}
-
-                  <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={() => { if(user) setView('aiHistory'); else { alert(t('loginRequired')); setView('login'); } }} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-3"><div className="w-5 h-5 text-primary"><HistoryIcon /></div> {t('aiActivityLog')}</span></button></div>
-                  <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span></button><button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"><span>{t('language')}</span><span className="font-bold">{language === 'ar' ? 'العربية' : 'English'}</span></button></div>
-              </div>
-          );
-      }
+      if (activeTab === 'cosmetics') return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={(c) => { setSelectedCosmetic(c); setView('cosmeticDetails'); }} searchTerm={cosmeticsSearchTerm} setSearchTerm={setSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} />;
+      if (activeTab === 'insurance') return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+      if (activeTab === 'settings') return (
+        <div className="space-y-4 animate-fade-in pb-10">
+            <h2 className="text-xl font-bold">{t('navSettings')}</h2>
+            <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.companyName || user.role}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
+            <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm overflow-hidden"><button onClick={toggleTheme} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-slate-700"><span className="flex items-center gap-2"><div className="w-5 h-5">{theme === 'dark' ? <MoonIcon /> : <SunIcon />}</div> {theme === 'dark' ? t('darkMode') : t('lightMode')}</span></button></div>
+        </div>
+      );
       return null;
   };
 
-  const handleAssistantLaunch = useCallback(() => {
-      if (!user) {
-          alert(t('loginRequired'));
-          setView('login');
-          return;
-      }
-      setSelectedMedicine(null);
-      setSelectedCosmetic(null);
-      setAssistantPrompt('');
-      setActiveConversationId(null);
-      setIsAssistantOpen(true);
-  }, [user, t]);
-
-  const handlePrescriptionLaunch = useCallback(() => {
-      if (!user) {
-          alert(t('loginRequired'));
-          setView('login');
-          return;
-      }
-      if (user.role !== 'admin' && !user.prescriptionPrivilege) {
-          alert(t('accessDeniedPrescription'));
-          return;
-      }
-      setSelectedMedicine(null);
-      setSelectedCosmetic(null);
-      setActiveConversationId(null);
-      setAssistantPrompt('##PRESCRIPTION_MODE##');
-      setIsAssistantOpen(true);
-  }, [user, t]);
-
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={unreadCount} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !readNotificationIds.includes(n.id)).length} />
       <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
           {renderContent()}
       </main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
       
-      <div className="fixed bottom-24 right-4 z-30">
-          <FloatingAssistantButton onClick={handleAssistantLaunch} onLongPress={handlePrescriptionLaunch} t={t} language={language} />
-      </div>
-
-      {/* --- مستعرض الصور (تم نقله هنا ليكون فوق كل شيء) --- */}
-      {view === 'imageView' && zoomImageUrl && (
-          <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />
-      )}
-
-      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
-      
+      {view === 'imageView' && zoomImageUrl && <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />}
+      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(h) => setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt={assistantPrompt} t={t} language={language} />
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={handleUpdateMedicine} t={t} />
-
-      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupPharmaceuticalForms([], t)} uniqueManufactureNames={[]} uniqueLegalStatuses={[]} t={t} />
       <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={(code) => { setSearchTerm(code); setIsBarcodeScannerOpen(false); }} t={t} />
     </div>
   );

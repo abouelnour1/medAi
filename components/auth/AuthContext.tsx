@@ -9,8 +9,6 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  setPersistence,
-  browserLocalPersistence,
   reload,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -22,8 +20,6 @@ import {
   deleteDoc,
   collection,
   getDocs,
-  query,
-  where
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
@@ -56,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   id: firebaseUser.uid,
                   username: data.username || firebaseUser.email?.split('@')[0] || 'User',
                   role: data.role || 'premium',
+                  companyName: data.companyName,
                   email: firebaseUser.email || '',
                   emailVerified: firebaseUser.emailVerified,
                   status: data.status || 'active',
@@ -64,12 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   lastRequestDate: data.lastRequestDate || new Date().toISOString().split('T')[0],
                   prescriptionPrivilege: data.prescriptionPrivilege || false
               };
-              // مزامنة حالة تفعيل البريد إذا تغيرت
               if (data.emailVerified !== firebaseUser.emailVerified) {
                   await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified });
               }
           } else {
-              // إنشاء وثيقة مستخدم جديدة إذا لم تكن موجودة
               userData = {
                   id: firebaseUser.uid,
                   username: firebaseUser.email?.split('@')[0] || 'User',
@@ -112,8 +107,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await syncUserData(result.user);
   };
 
-  const register = async (email: string, password: string) => {
+  const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium', companyName?: string) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
+    const userDocRef = doc(db, 'users', result.user.uid);
+    const userData: User = {
+        id: result.user.uid,
+        username: email.split('@')[0],
+        role: role,
+        companyName: companyName,
+        email: email,
+        emailVerified: false,
+        status: 'active',
+        aiRequestCount: 0,
+        lastRequestDate: new Date().toISOString().split('T')[0],
+        prescriptionPrivilege: role === 'company' ? true : false
+    };
+    await setDoc(userDocRef, userData);
     await sendEmailVerification(result.user);
     await syncUserData(result.user);
   };
@@ -142,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getAllUsers = () => {
-      // هذه الوظيفة تستخدم في لوحة الإدارة، الجلب الفعلي يتم داخل AdminDashboard
       return []; 
   };
 
@@ -156,7 +164,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getSettings = (): AppSettings => {
-      // سيتم جلبها في التطبيق عند الحاجة
       return { aiRequestLimit: 5, isAiEnabled: true };
   };
 
@@ -171,7 +178,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const limit = user.customAiLimit || 5;
 
     if (user.lastRequestDate !== today) {
-        // تصفير العداد لليوم الجديد
         const updatedUser = { ...user, aiRequestCount: 1, lastRequestDate: today };
         updateUser(updatedUser);
         callback();
