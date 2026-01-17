@@ -116,7 +116,7 @@ const App: React.FC = () => {
         } catch (err) {
             console.error("FCM Registration Error:", err);
         }
-    };
+  };
     setupPushNotifications();
 
     const unsubscribe = onMessage(messaging, (payload) => {
@@ -225,6 +225,7 @@ const App: React.FC = () => {
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const [zoomImageTitle, setZoomImageTitle] = useState('');
+  const [isZoomImageIndex, setIsZoomImageIndex] = useState(false);
   
   const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
       try {
@@ -531,15 +532,16 @@ const App: React.FC = () => {
       setCurrentChatHistory([]);
   }, [user, activeConversationId, t]);
 
-  const handleImageZoom = useCallback((url: string, title: string) => {
+  const handleImageZoom = useCallback((url: string, title: string, isIndex: boolean = false) => {
     setZoomImageUrl(url);
     setZoomImageTitle(title);
+    setIsZoomImageIndex(isIndex);
     setView('imageView');
   }, []);
 
   const renderContent = () => {
       if (view === 'imageView' && zoomImageUrl) {
-          return <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} />;
+          return <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />;
       }
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;

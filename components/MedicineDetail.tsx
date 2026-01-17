@@ -26,7 +26,7 @@ interface MedicineDetailProps {
     user?: User | null;
     onEdit?: (medicine: Medicine) => void;
     onOpenAssistant?: () => void;
-    onImageZoom: (url: string, title: string) => void;
+    onImageZoom: (url: string, title: string, isIndex: boolean) => void;
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom }) => {
@@ -46,11 +46,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
   const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
     if (!src) return null;
+    const isIndex = label.toLowerCase().includes('index') || label.includes('فهرس');
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
             <div 
-                onClick={() => onImageZoom(src, `${medicine['Trade Name']} - ${label}`)}
+                onClick={() => onImageZoom(src, `${medicine['Trade Name']} - ${label}`, isIndex)}
                 className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-transform"
             >
                 <img src={src} alt={label} className="max-w-full max-h-full object-contain" loading="lazy" />
