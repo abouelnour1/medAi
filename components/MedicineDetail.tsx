@@ -66,7 +66,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const strengthValues = String(medicine.Strength || '').split(',').map(s => s.trim()).filter(Boolean);
   const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
 
-  // السماح بالتعديل للأدمن والشركات
+  // Roles that can edit
   const canEdit = user?.role === 'admin' || user?.role === 'company';
 
   return (
@@ -83,9 +83,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
               <div className="flex items-center gap-2 shrink-0">
                   <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500"><div className="h-5 w-5"><CameraIcon /></div></button>
                   {canEdit && onEdit && (
-                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-primary bg-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm">
-                          <div className="h-5 w-5"><EditIcon /></div>
-                      </button>
+                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
                   )}
                   <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}><div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div></button>
               </div>
@@ -107,7 +105,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           {!isNaN(price) && <div className="mt-4 text-accent text-2xl font-bold">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* Physical Details Section */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}

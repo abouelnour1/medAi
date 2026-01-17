@@ -6,9 +6,23 @@ export interface Notification {
   title: string;
   body: string;
   timestamp: number;
-  type: 'info' | 'alert' | 'update' | 'approval';
+  type: 'info' | 'alert' | 'update' | 'approval_request' | 'request_result';
   isRead?: boolean;
-  targetUserId?: string; // إشعار موجه لمستخدم محدد
+  relatedId?: string; // ID of the medicine or update request
+  targetUserId?: string; // If set, only this user sees it
+}
+
+export interface PendingUpdate {
+  id: string;
+  medicineId?: string; // Empty if it's a new medicine
+  type: 'add' | 'edit';
+  newData: Partial<Medicine>;
+  originalData?: Partial<Medicine>;
+  submittedBy: string;
+  submittedByName: string;
+  timestamp: number;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNotes?: string;
 }
 
 export interface Medicine {
@@ -61,108 +75,6 @@ export interface Medicine {
   physicalNotes?: string;
 }
 
-export interface PendingMedicineRequest {
-    id: string;
-    type: 'add' | 'edit';
-    medicineData: Medicine;
-    submittedBy: string;
-    submittedByEmail: string;
-    submittedByCompany?: string;
-    timestamp: number;
-    status: 'pending' | 'approved' | 'rejected';
-}
-
-export interface User {
-  id: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
-  role: 'admin' | 'premium' | 'company'; 
-  companyName?: string;
-  aiRequestCount: number;
-  customAiLimit?: number;
-  lastRequestDate: string; 
-  status: 'active' | 'pending';
-  emailVerified: boolean; 
-  email?: string;
-  prescriptionPrivilege?: boolean;
-}
-
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
-
-export interface AppSettings {
-  aiRequestLimit: number;
-  isAiEnabled: boolean;
-}
-
-export type AuthContextType = {
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  register: (email: string, password: string, role: 'premium' | 'company', companyName?: string) => Promise<void>;
-  logout: () => void;
-  requestAIAccess: (callback: () => void, t: TFunction) => void;
-  resendVerificationEmail: () => Promise<void>;
-  reloadUser: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  isLoading: boolean;
-  getAllUsers: () => User[];
-  updateUser: (user: User) => void;
-  deleteUser: (userId: string) => void;
-  getSettings: () => AppSettings;
-  updateSettings: (settings: AppSettings) => void;
-};
-
-export type Language = 'ar' | 'en';
-export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
-export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
-export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
-export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
-export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
-
-/**
- * Fix: Define ProductTypeFilter to resolve error in components/FilterModal.tsx.
- */
-export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
-
-export interface Filters {
-  productType: ProductTypeFilter;
-  priceMin: string;
-  priceMax: string;
-  pharmaceuticalForm: string;
-  manufactureName: string[];
-  legalStatus: string;
-}
-
-export interface SerializablePart {
-  text?: string;
-  inlineData?: {
-    mimeType: string;
-    data: string;
-  };
-  functionCall?: {
-    name: string;
-    args: any;
-    id?: string;
-  };
-  functionResponse?: {
-    name: string;
-    response: any;
-    id?: string;
-  };
-}
-
-export interface ChatMessage {
-  role: 'user' | 'model';
-  parts: SerializablePart[];
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  timestamp: number;
-}
-
 export interface InsuranceDrug {
   id?: string;
   indication: string;
@@ -210,12 +122,15 @@ export interface MilkProduct {
   stageType: string;
   ageRange: string;
   image?: string;
+  
   kcal: number;
   protein: number;
   fat: number;
   carb: number;
+  
   keyFeatures: string;
   usp: string; 
+  
   explanation?: {
     type?: {
       title: string;
@@ -227,63 +142,123 @@ export interface MilkProduct {
   };
 }
 
+export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
+
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
+
+export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
+
+export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
+
+export interface Filters {
+  productType: ProductTypeFilter;
+  priceMin: string;
+  priceMax: string;
+  pharmaceuticalForm: string;
+  manufactureName: string[];
+  legalStatus: string;
+}
+
+export type Language = 'ar' | 'en';
+export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
+
+export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
+
+export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
+
+export interface SerializablePart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+  functionCall?: {
+    name: string;
+    args: any;
+    id?: string;
+  };
+  functionResponse?: {
+    name: string;
+    response: any;
+    id?: string;
+  };
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  parts: SerializablePart[];
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  timestamp: number;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'admin' | 'premium' | 'company'; 
+  aiRequestCount: number;
+  customAiLimit?: number;
+  lastRequestDate: string; 
+  status: 'active' | 'pending';
+  emailVerified: boolean; 
+  email?: string;
+  prescriptionPrivilege?: boolean;
+}
+
+export interface AppSettings {
+  aiRequestLimit: number;
+  isAiEnabled: boolean;
+}
+
+// Added: Missing interfaces for prescription and insurance search
+export interface DrugInPrescription {
+  tradeName: string;
+  genericName: string;
+  dosage: string;
+  usageMethod: string;
+  usageMethodAr?: string;
+  quantity: number;
+}
+
 export interface PrescriptionData {
   id: string;
   hospitalName?: string;
   hospitalAddress?: string;
-  crNumber?: string;
-  taxNumber?: string;
-  licenseNumber?: string;
-  patientName?: string;
-  patientNameAr?: string;
+  patientName: string;
   patientId?: string;
-  patientAge?: string;
-  patientGender?: string;
   fileNumber?: string;
-  date?: string;
-  doctorName?: string;
+  date: string;
+  insuranceCompany: string;
+  doctorName: string;
   doctorNameAr?: string;
   doctorSpecialty?: string;
-  policy?: string;
-  insuranceCompany?: string;
-  diagnosisCode?: string;
-  diagnosisDescription?: string;
-  drugs?: {
-      code: string;
-      genericName: string;
-      tradeName: string;
-      dosage: string;
-      usageMethod: string;
-      usageMethodAr: string;
-      quantity: string;
-  }[];
-}
-
-export interface UnifiedSearchResult {
-  scientificName: string;
-  insurancePolicies: InsuranceDrug[];
-  availableMedicines: Medicine[];
+  diagnosisDescription: string;
+  drugs: DrugInPrescription[];
 }
 
 export interface ScientificGroupData {
-    scientificName: string;
-    policies: InsuranceDrug[];
-    availableMedicines: Medicine[];
-    matchingTradeNames?: string[];
+  scientificName: string;
+  policies: InsuranceDrug[];
+  availableMedicines: Medicine[];
+  matchingTradeNames?: string[];
 }
 
 export interface SelectedInsuranceData {
-    indication: string;
-    scientificGroup: ScientificGroupData;
+  indication: string;
+  scientificGroup: ScientificGroupData;
 }
 
-/**
- * Fix: Define Recommendation and ProductSuggestion interfaces to resolve error in components/RecommendationCard.tsx.
- */
+// Added: Missing interfaces for product recommendations from AI
 export interface ProductSuggestion {
   name: string;
   concentration: string;
-  price: string;
+  price?: string;
   selling_point: string;
 }
 
@@ -292,3 +267,20 @@ export interface Recommendation {
   rationale: string;
   products: ProductSuggestion[];
 }
+
+export type AuthContextType = {
+  user: User | null;
+  login: (username: string, password: string) => Promise<void>;
+  register: (email: string, password: string, role?: 'premium' | 'company') => Promise<void>;
+  logout: () => void;
+  requestAIAccess: (callback: () => void, t: TFunction) => void;
+  resendVerificationEmail: () => Promise<void>;
+  reloadUser: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  isLoading: boolean;
+  getAllUsers: () => User[];
+  updateUser: (user: User) => void;
+  deleteUser: (userId: string) => void;
+  getSettings: () => AppSettings;
+  updateSettings: (settings: AppSettings) => void;
+};

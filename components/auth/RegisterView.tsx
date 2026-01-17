@@ -13,7 +13,6 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'premium' | 'company'>('premium');
-  const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -23,21 +22,17 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     setError('');
     
     if (password.length < 6) {
-        setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل.');
+        setError(t('language') === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.' : 'Password must be at least 6 characters.');
         return;
     }
     if (!email.includes('@')) {
-        setError('الرجاء إدخال بريد إلكتروني صحيح.');
-        return;
-    }
-    if (role === 'company' && !companyName.trim()) {
-        setError('الرجاء إدخال اسم الشركة.');
+        setError(t('invalidEmailFormat'));
         return;
     }
 
     setIsLoading(true);
     try {
-      await register(email, password, role, companyName);
+      await register(email, password, role);
       onRegisterSuccess();
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -50,35 +45,33 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md space-y-6 max-w-md mx-auto animate-fade-in">
       <h2 className="text-2xl font-bold text-center text-light-text dark:text-dark-text">{t('register')}</h2>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Account Type Selection */}
-        <div>
-            <label className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2">{t('accountType')}</label>
-            <div className="grid grid-cols-2 gap-2">
-                <button 
-                    type="button" 
-                    onClick={() => setRole('premium')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${role === 'premium' ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
-                >
-                    {t('individual')}
-                </button>
-                <button 
-                    type="button" 
-                    onClick={() => setRole('company')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${role === 'company' ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
-                >
-                    {t('company')}
-                </button>
-            </div>
-        </div>
+      {/* Account Type Selector */}
+      <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest text-center">{t('accountType')}</label>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button 
+                type="button"
+                onClick={() => setRole('premium')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${role === 'premium' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400'}`}
+              >
+                  {t('individualAccount')}
+              </button>
+              <button 
+                type="button"
+                onClick={() => setRole('company')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${role === 'company' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400'}`}
+              >
+                  {t('companyAccount')}
+              </button>
+          </div>
+          {role === 'company' && (
+              <p className="text-[10px] text-center text-slate-400 italic px-2 animate-fade-in">
+                 {t('language') === 'ar' ? '* حساب الشركات يسمح لك باقتراح تعديلات على الأدوية تخضع لموافقة المسؤول.' : '* Company accounts allow you to suggest medicine updates subject to admin approval.'}
+              </p>
+          )}
+      </div>
 
-        {role === 'company' && (
-            <div className="animate-fade-in">
-                <label htmlFor="comp-name" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('companyName')}</label>
-                <input type="text" id="comp-name" value={companyName} onChange={e => setCompanyName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
-            </div>
-        )}
-        
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="reg-email"  className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('email')}</label>
           <input type="email" id="reg-email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
@@ -89,7 +82,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
           <input type="password" id="reg-password" value={password} onChange={e => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
         </div>
         
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {error && <p className="text-red-500 text-sm text-center font-bold">{error}</p>}
         
         <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed">
           {isLoading ? '...' : t('register')}

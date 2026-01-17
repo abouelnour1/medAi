@@ -18,8 +18,6 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc,
-  collection,
-  getDocs,
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
@@ -52,7 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   id: firebaseUser.uid,
                   username: data.username || firebaseUser.email?.split('@')[0] || 'User',
                   role: data.role || 'premium',
-                  companyName: data.companyName,
                   email: firebaseUser.email || '',
                   emailVerified: firebaseUser.emailVerified,
                   status: data.status || 'active',
@@ -107,23 +104,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await syncUserData(result.user);
   };
 
-  const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium', companyName?: string) => {
+  const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    const userDocRef = doc(db, 'users', result.user.uid);
-    const userData: User = {
+    await sendEmailVerification(result.user);
+    
+    // Create initial user doc with selected role
+    const userData: Partial<User> = {
         id: result.user.uid,
         username: email.split('@')[0],
-        role: role,
-        companyName: companyName,
         email: email,
+        role: role,
         emailVerified: false,
         status: 'active',
         aiRequestCount: 0,
-        lastRequestDate: new Date().toISOString().split('T')[0],
-        prescriptionPrivilege: role === 'company' ? true : false
+        lastRequestDate: new Date().toISOString().split('T')[0]
     };
-    await setDoc(userDocRef, userData);
-    await sendEmailVerification(result.user);
+    await setDoc(doc(db, 'users', result.user.uid), userData);
     await syncUserData(result.user);
   };
 
