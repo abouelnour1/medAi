@@ -26,14 +26,14 @@ const ScientificInfo: React.FC<{ group: ScientificGroupData, t: TFunction, onCli
             className="w-full text-left p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group"
         >
              {hasMatchingTradeNames && (
-                 <p className="font-black text-sm text-slate-800 dark:text-white mb-1 line-clamp-1">
+                 <p className="font-black text-sm text-slate-800 dark:text-white mb-1 break-words">
                     {group.matchingTradeNames!.join(' / ')}
                 </p>
             )}
-             <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight`}>
+             <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight break-words`}>
                 {group.scientificName}
             </p>
-             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium truncate">{commonPolicy.drugClass}</p>
+             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium break-words">{commonPolicy.drugClass}</p>
         </button>
     )
 }
@@ -45,7 +45,7 @@ const IndicationCard: React.FC<IndicationCardProps> = ({ group, t, onSelectInsur
                 <div className="flex items-start gap-3">
                     <div className="w-6 h-6 text-secondary shrink-0 mt-0.5"><HealthInsuranceIcon /></div>
                     <div className="flex-grow min-w-0">
-                        <h2 className="text-base font-black text-secondary leading-tight">{group.indication}</h2>
+                        <h2 className="text-base font-black text-secondary leading-tight break-words">{group.indication}</h2>
                         {group.icd10Codes.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                                 {group.icd10Codes.slice(0, 5).map(code => (

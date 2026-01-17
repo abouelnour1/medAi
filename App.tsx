@@ -29,6 +29,7 @@ import BarcodeScannerModal from './components/BarcodeScannerModal';
 import MilkView from './components/MilkView';
 import NotificationsView from './components/NotificationsView';
 import EditMedicineModal from './components/EditMedicineModal';
+import ImageViewer from './components/ImageViewer';
 
 // Icons
 import AdminIcon from './components/icons/AdminIcon';
@@ -222,6 +223,9 @@ const App: React.FC = () => {
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [zoomImageTitle, setZoomImageTitle] = useState('');
+  
   const [prescriptions, setPrescriptions] = useState<PrescriptionData[]>(() => {
       try {
           return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]') as PrescriptionData[];
@@ -419,7 +423,8 @@ const App: React.FC = () => {
   }, [t]);
 
   const handleBack = useCallback(() => {
-      if (view === 'details' || view === 'alternatives') setView('results'); 
+      if (view === 'imageView') setView('details');
+      else if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
       else if (view === 'insuranceDetails') setView('insuranceSearch');
       else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
@@ -526,7 +531,16 @@ const App: React.FC = () => {
       setCurrentChatHistory([]);
   }, [user, activeConversationId, t]);
 
+  const handleImageZoom = useCallback((url: string, title: string) => {
+    setZoomImageUrl(url);
+    setZoomImageTitle(title);
+    setView('imageView');
+  }, []);
+
   const renderContent = () => {
+      if (view === 'imageView' && zoomImageUrl) {
+          return <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} />;
+      }
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
       if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
@@ -547,7 +561,7 @@ const App: React.FC = () => {
                         {!isSearchActive && !searchTerm && <div className="flex flex-col items-center justify-center py-20 opacity-80 pointer-events-none select-none"><h2 className="text-xl font-bold text-gray-400 dark:text-slate-600 font-poppins tracking-wide">PharmaSource</h2><div className="h-1 w-12 bg-primary/30 rounded-full mt-2"></div></div>}
                     </div>
                 </div>
-                {view === 'details' && selectedMedicine && <MedicineDetail medicine={selectedMedicine!} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => { if (user) { setSelectedMedicine(selectedMedicine); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />}
+                {view === 'details' && selectedMedicine && <MedicineDetail medicine={selectedMedicine!} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => { if (user) { setSelectedMedicine(selectedMedicine); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onImageZoom={handleImageZoom} />}
                 {view === 'alternatives' && sourceMedicine && alternativesResults && <AlternativesView sourceMedicine={sourceMedicine!} alternatives={alternativesResults!} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={() => {}} onFindAlternative={handleFindAlternative} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />}
               </>
           );
