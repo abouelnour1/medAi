@@ -76,13 +76,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, title, onBack, t, i
   return (
     <div 
         ref={containerRef}
-        className="fixed inset-0 z-[100] bg-black flex flex-col animate-fade-in overflow-hidden select-none touch-none"
+        className="fixed inset-0 z-[9999] bg-black flex flex-col animate-fade-in overflow-hidden select-none touch-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
     >
       {/* التحكم العلوي */}
-      <header className="flex items-center justify-between p-4 bg-slate-900/90 backdrop-blur-xl border-b border-white/5 pt-[calc(env(safe-area-inset-top)+1rem)] z-20">
+      <header className="flex items-center justify-between p-4 bg-slate-900/90 backdrop-blur-xl border-b border-white/5 pt-[calc(env(safe-area-inset-top)+1rem)] z-[10000]">
         <button 
           onClick={onBack}
           className="p-2 text-white/70 hover:text-white transition-colors rounded-full hover:bg-white/10 active:scale-90"
@@ -142,7 +142,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, title, onBack, t, i
       </div>
 
       {/* التلميح السفلي */}
-      <footer className="p-4 text-center pb-[calc(env(safe-area-inset-bottom)+1rem)] z-10 pointer-events-none">
+      <footer className="p-4 text-center pb-[calc(env(safe-area-inset-bottom)+1rem)] z-[10000] pointer-events-none">
         <div className="inline-flex px-4 py-1.5 bg-white/5 rounded-full border border-white/10 text-white/30 text-[9px] font-black uppercase tracking-[0.4em]">
           {scale > 1 ? 'Drag to Pan' : 'Pinch to zoom'}
         </div>
