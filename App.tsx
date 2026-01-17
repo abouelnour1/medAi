@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -69,7 +70,7 @@ const normalizeMedicine = (item: any): Medicine => ({
   "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
   "Main Agent": String(item["Main Agent"] || item.Agent || ''),
   imgBox: item.imgBox || item.boxImage || '',
-  imgIndex1: item.imgIndex1 || item.imgStrip || item.stripImage || '', 
+  imgIndex1: item.imgIndex1 || item.imgStrip || item.imgStrip || '', 
   imgIndex2: item.imgIndex2 || '',
   imgPill: item.imgPill || item.pillImage || '',
   pillShape: item.pillShape || '',
@@ -141,16 +142,12 @@ const App: React.FC = () => {
           const notifs: AppNotification[] = [];
           snapshot.forEach((doc) => {
               const data = doc.data();
-              // Only show if no targetUserId OR targetUserId matches current user
               if (!data.targetUserId || data.targetUserId === user?.id) {
                   notifs.push({ id: doc.id, ...data } as AppNotification);
               }
           });
           setNotifications(notifs);
       }, (error) => {
-          /**
-           * FIX: Handle snapshot listener error to prevent app crash on unhandled async exceptions.
-           */
           console.error("Firestore Snapshot Error (Notifications):", error);
       });
 
@@ -344,7 +341,6 @@ const App: React.FC = () => {
   const handleUpdateMedicine = useCallback(async (updatedMed: Medicine) => {
       if (!user) return;
 
-      // Logic: Admin updates immediately. Company sends request.
       if (user.role === 'admin') {
           setMedicines(prev => {
               const updated = prev.map(m => m.RegisterNumber === updatedMed.RegisterNumber ? updatedMed : m);
@@ -358,7 +354,6 @@ const App: React.FC = () => {
               await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
           }
       } else if (user.role === 'company') {
-          // Send to pending_updates
           if (!FIREBASE_DISABLED) {
               const original = medicines.find(m => m.RegisterNumber === updatedMed.RegisterNumber);
               const pendingUpdate: Omit<PendingUpdate, 'id'> = {
@@ -373,10 +368,9 @@ const App: React.FC = () => {
               };
               await addDoc(collection(db, 'pending_updates'), pendingUpdate);
               
-              // Also notify the Admin
               await addDoc(collection(db, 'notifications'), {
-                  title: 'طلب تعديل جديد',
-                  body: `قامت شركة ${user.username} بطلب تعديل على دواء ${updatedMed['Trade Name']}`,
+                  title: 'طلب تعديل جديد من شركة',
+                  body: `قامت شركة ${user.username} بطلب تعديل على دواء ${updatedMed['Trade Name']}. يرجى المراجعة من لوحة التحكم.`,
                   timestamp: Date.now(),
                   type: 'approval_request'
               });
@@ -445,19 +439,16 @@ const App: React.FC = () => {
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
 
-  // added: Missing unique manufacturers for filter
   const uniqueManufactureNames = useMemo(() => {
     const names = new Set(medicines.map(m => m['Manufacture Name']).filter(Boolean));
     return Array.from(names).sort();
   }, [medicines]);
 
-  // added: Missing unique legal statuses for filter
   const uniqueLegalStatuses = useMemo(() => {
     const statuses = new Set(medicines.map(m => m['Legal Status']).filter(Boolean));
     return Array.from(statuses).sort();
   }, [medicines]);
 
-  // added: Missing grouped pharmaceutical forms for filter
   const groupedPharmaceuticalForms = useMemo(() => {
     const forms = Array.from(new Set(medicines.map(m => m.PharmaceuticalForm).filter(Boolean)));
     return groupPharmaceuticalForms(forms, t);
@@ -490,15 +481,11 @@ const App: React.FC = () => {
   }, [notifications, readNotificationIds]);
 
   const handleMarkAsRead = useCallback((id: string) => {
-      setReadNotificationIds(prev => prev.includes(id) ? prev : [...prev, id]);
+      // Fix: explicitly typing 'prev' as string[] to resolve the 'unknown[]' assignment error
+      setReadNotificationIds((prev: string[]) => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
-  /**
-   * FIX: Explicitly using type assertion for the map result to ensure it is treated as string[] 
-   * to avoid the 'unknown[]' assignability error.
-   */
   const handleMarkAllRead = useCallback(() => {
-    // Corrected the type assertion to match string[] correctly to resolve assignability error.
     const allIds: string[] = notifications.map((n: AppNotification) => String(n.id));
     setReadNotificationIds(allIds);
   }, [notifications]);
@@ -575,7 +562,7 @@ const App: React.FC = () => {
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => { alert(t('registerSuccessPending')); setView('login'); }} />;
-      if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} insuranceData={insuranceData} setInsuranceData={setInsuranceData} cosmetics={cosmetics} setCosmetics={setCosmetics} /> : null;
+      if (view === 'admin') return user?.role === 'admin' ? <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} /> : null;
       if (view === 'aiHistory') return <ChatHistoryView conversations={chatHistory} onSelectConversation={(convo) => { setActiveConversationId(convo.id); setCurrentChatHistory(convo.messages); setIsAssistantOpen(true); }} onDeleteConversation={(id) => setChatHistory(prev => prev.filter(c => c.id !== id))} onClearHistory={() => setChatHistory([])} t={t} language={language} />;
       if (view === 'notifications') return <NotificationsView notifications={notificationsWithReadStatus} onMarkAllRead={handleMarkAllRead} onMarkAsRead={handleMarkAsRead} onDeleteNotification={handleDeleteNotification} isAdmin={user?.role === 'admin'} t={t} language={language} />;
       if (activeTab === 'search') {
@@ -611,7 +598,7 @@ const App: React.FC = () => {
           return (
               <div className="space-y-4 animate-fade-in pb-10">
                   <h2 className="text-xl font-bold">{t('navSettings')}</h2>
-                  <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
+                  <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm">{user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{user.role === 'admin' ? t('adminRole') : user.role === 'company' ? t('companyRole') : t('premiumRole')}</p></div>{user.role === 'admin' && <button onClick={handleAdminClick} className="p-2 bg-primary/10 text-primary rounded-full"><AdminIcon /></button>}</div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}</div>
                   
                   {user?.role === 'admin' && (
                       <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-xl shadow-sm border border-teal-100 dark:border-teal-800 animate-fade-in space-y-4">

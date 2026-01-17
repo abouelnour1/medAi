@@ -83,7 +83,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                 <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-xl shadow-xl ring-1 ring-black/5 py-1 transition-all duration-200 z-50 divide-y divide-slate-100 dark:divide-slate-700 origin-top-right ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
                     <div className="px-4 py-2">
                         <div className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('role')}</div>
-                        <div className="font-semibold text-xs text-light-text dark:text-dark-text">{user.role === 'admin' ? t('adminRole') : t('premiumRole')}</div>
+                        <div className="font-semibold text-xs text-light-text dark:text-dark-text">
+                            {user.role === 'admin' ? t('adminRole') : user.role === 'company' ? t('companyRole') : t('premiumRole')}
+                        </div>
                     </div>
                     <div className="py-1">
                         {user.role === 'admin' && (
