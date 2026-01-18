@@ -10,6 +10,7 @@ export interface Notification {
   isRead?: boolean;
   relatedId?: string; // ID of the medicine or update request
   targetUserId?: string; // If set, only this user sees it
+  targetRole?: 'admin' | 'premium' | 'company'; // New: If set, only users with this role see it
 }
 
 export interface PendingUpdate {

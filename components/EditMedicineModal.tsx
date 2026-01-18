@@ -95,26 +95,54 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
             </div>
           </div>
 
-          {/* Section: Packaging & Size */}
+          {/* Section: Physical Appearance & Images */}
           <div>
-            <h4 className={sectionTitle}>بيانات العبوة (Packaging)</h4>
+            <h4 className={sectionTitle}>الخصائص المادية والصور (Physical)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                 <label className={labelClass}>حجم العبوة (Package Size)</label>
-                 <input type="text" name="PackageSize" value={formData.PackageSize} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                 <label className={labelClass}>نوع العبوة (Package Type)</label>
-                 <input type="text" name="PackageTypes" value={formData.PackageTypes} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                 <label className={labelClass}>الحجم (Size)</label>
-                 <input type="text" name="Size" value={formData.Size} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                 <label className={labelClass}>وحدة الحجم (Size Unit)</label>
-                 <input type="text" name="SizeUnit" value={formData.SizeUnit} onChange={handleChange} className={inputClass} />
-              </div>
+               <div className="col-span-full">
+                 <label className={labelClass}>{t('boxImage')} URL</label>
+                 <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>صورة الفهرس 1 (Index 1) URL</label>
+                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>صورة الفهرس 2 (Index 2) URL</label>
+                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('pillImage')} URL</label>
+                 <input type="text" name="imgPill" value={formData.imgPill || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('pillShape')}</label>
+                 <input type="text" name="pillShape" value={formData.pillShape || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('scored')}</label>
+                 <select name="pillScored" value={formData.pillScored || ''} onChange={handleChange} className={inputClass}>
+                    <option value="">{t('pleaseSelectOrAdd')}</option>
+                    <option value="Yes">{document.documentElement.lang === 'ar' ? 'نعم' : 'Yes'}</option>
+                    <option value="No">{document.documentElement.lang === 'ar' ? 'لا' : 'No'}</option>
+                 </select>
+               </div>
+               <div>
+                 <label className={labelClass}>العلامات (Markings)</label>
+                 <input type="text" name="pillMarkings" value={formData.pillMarkings || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div>
+                 <label className={labelClass}>الطعم (Taste)</label>
+                 <input type="text" name="liquidTaste" value={formData.liquidTaste || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div>
+                 <label className={labelClass}>لون السائل (Color)</label>
+                 <input type="text" name="liquidColor" value={formData.liquidColor || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div className="col-span-full">
+                 <label className={labelClass}>{t('notes')}</label>
+                 <textarea name="physicalNotes" value={formData.physicalNotes || ''} onChange={handleChange} rows={3} className={inputClass} />
+               </div>
             </div>
           </div>
 
@@ -157,53 +185,6 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <label className={labelClass}>كود ATC</label>
                  <input type="text" name="AtcCode1" value={formData.AtcCode1} onChange={handleChange} className={inputClass} />
               </div>
-            </div>
-          </div>
-
-          {/* Section: Physical Appearance & Images */}
-          <div>
-            <h4 className={sectionTitle}>الخصائص المادية والصور (Physical)</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <div className="col-span-full">
-                 <label className={labelClass}>{t('boxImage')} URL</label>
-                 <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>صورة الفهرس 1 (Index 1) URL</label>
-                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>صورة الفهرس 2 (Index 2) URL</label>
-                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('pillImage')} URL</label>
-                 <input type="text" name="imgPill" value={formData.imgPill || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('pillShape')}</label>
-                 <input type="text" name="pillShape" value={formData.pillShape || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('scored')}</label>
-                 <input type="text" name="pillScored" value={formData.pillScored || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>العلامات (Markings)</label>
-                 <input type="text" name="pillMarkings" value={formData.pillMarkings || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>الطعم (Taste)</label>
-                 <input type="text" name="liquidTaste" value={formData.liquidTaste || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>لون السائل (Color)</label>
-                 <input type="text" name="liquidColor" value={formData.liquidColor || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div className="col-span-full">
-                 <label className={labelClass}>{t('notes')}</label>
-                 <textarea name="physicalNotes" value={formData.physicalNotes || ''} onChange={handleChange} rows={3} className={inputClass} />
-               </div>
             </div>
           </div>
 

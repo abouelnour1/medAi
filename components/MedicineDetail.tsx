@@ -66,12 +66,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const strengthValues = String(medicine.Strength || '').split(',').map(s => s.trim()).filter(Boolean);
   const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
 
-  // Roles that can edit
   const canEdit = user?.role === 'admin' || user?.role === 'company';
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
+        {/* Header Section */}
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
               <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left">
@@ -105,6 +105,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           {!isNaN(price) && <div className="mt-4 text-accent text-2xl font-bold">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
+        {/* Physical Appearance Section (Now First) */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -147,13 +148,24 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
             )}
         </div>
 
+        {/* Main Details List (Including ATC, Shelf Life, etc.) */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
+            
+            {/* Regulatory & Code Fields Merged Here */}
+            <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
+            <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />
+            <DetailRow label={t('shelfLife') || 'مدة الصلاحية'} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
+            <DetailRow label={language === 'ar' ? 'منطقة التوزيع' : 'Distribute Area'} value={medicine['Distribute area']} />
+            <DetailRow label={language === 'ar' ? 'الرقابة' : 'Product Control'} value={medicine['Product Control']} valueClassName={medicine['Product Control']?.toLowerCase().includes('controlled') ? 'text-red-500 font-bold' : ''} />
+            <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
+
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
             <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />
+            <DetailRow label={t('marketingCompany') || 'الشركة المسوقة'} value={medicine['Marketing Company']} />
             <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
             <DetailRow label={t('registrationNumber')} value={medicine.RegisterNumber} />
           </dl>

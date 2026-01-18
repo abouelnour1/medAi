@@ -29,7 +29,6 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
     colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
   
-  // Compact sizes
   const sizeClasses = 'px-1.5 py-0.5 text-[10px]';
 
   return (
@@ -45,9 +44,7 @@ const DrugTypeBadge: React.FC<{ type: string; subType?: string; size?: 'sm' | 'b
     let displayType = '';
     let colorClasses = '';
 
-    // Logic for Brand: NCE or (Biological + Biological)
     const isBrand = type === 'NCE' || (type === 'Biological' && subType === 'Biological');
-    // Logic for Generic: Generic or (Biological + Biosimilar)
     const isGeneric = type === 'Generic' || (type === 'Biological' && subType === 'Biosimilar');
 
     if (isBrand) {
@@ -75,7 +72,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const price = parseFloat(medicine['Public price']);
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
 
-  // --- Simplified Touch Logic with Scroll Detection ---
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
   const startPos = useRef({ x: 0, y: 0 });
@@ -96,7 +92,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
           if (navigator.vibrate) navigator.vibrate(50);
           onLongPress(medicine);
           setIsPressing(false);
-      }, 700); // 700ms for item long press
+      }, 700);
   };
 
   const handleMove = (e: React.TouchEvent | React.MouseEvent) => {
@@ -114,7 +110,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       const moveX = Math.abs(clientX - startPos.current.x);
       const moveY = Math.abs(clientY - startPos.current.y);
 
-      // If moved more than 10px, cancel long press (assume scrolling)
       if (moveX > 10 || moveY > 10) {
           clearTimeout(timerRef.current);
           timerRef.current = undefined;
@@ -131,7 +126,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   };
 
   const handleClick = (e: React.MouseEvent) => {
-      // If long press triggered, prevent default click action
       if (isLongPressTriggered.current) {
           e.preventDefault();
           e.stopPropagation();
@@ -147,25 +141,20 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   return (
     <div
       className={`relative bg-light-card dark:bg-dark-card rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden cursor-pointer select-none transition-all duration-150 ${isPressing ? 'scale-[0.99] bg-slate-50 dark:bg-slate-800' : 'hover:border-primary/30'}`}
-      
       onMouseDown={startPress}
       onMouseMove={handleMove}
       onMouseUp={endPress}
       onMouseLeave={endPress}
-      
       onTouchStart={startPress}
       onTouchMove={handleMove}
       onTouchEnd={endPress}
-      
       onClick={handleClick}
       onContextMenu={(e) => e.preventDefault()}
       role="button"
       tabIndex={0}
     >
-      
       <div className="p-2.5"> 
         <div className="flex items-start justify-between gap-2">
-          {/* Main Info */}
           <div className="flex-grow min-w-0">
               <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary mb-0.5">
                 <FactoryIcon />
@@ -179,7 +168,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
               </p>
           </div>
 
-          {/* Price & Badges Column */}
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {!isNaN(price) && (
               <div className="text-accent text-sm font-bold whitespace-nowrap">
@@ -199,9 +187,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
           </div>
         </div>
 
-        {/* Footer Row */}
         <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"> 
-            <div className="flex items-center gap-1.5 min-w-0 flex-grow">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-grow">
                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">
                     {medicine.Strength} {medicine.StrengthUnit}
                 </span>
@@ -210,13 +197,21 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                     <PillIcon />
                     <span className="truncate" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
                 </div>
+                {medicine.shelfLife && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-blue-500 dark:text-blue-400">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>{medicine.shelfLife}M</span>
+                    </div>
+                  </>
+                )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                     onClick={(e) => {
-                        e.stopPropagation(); // Stop bubbling to card click
+                        e.stopPropagation();
                         onToggleFavorite(medicine.RegisterNumber);
                     }}
                     className={`p-1.5 rounded-full transition-colors ${isFavorite ? 'text-accent hover:text-amber-500 bg-amber-50 dark:bg-amber-900/10' : 'text-gray-300 hover:text-accent'}`}
@@ -225,7 +220,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 </button>
                 <button
                     onClick={(e) => {
-                        e.stopPropagation(); // Stop bubbling to card click
+                        e.stopPropagation();
                         onFindAlternative(medicine);
                     }}
                     className="p-1.5 text-gray-300 hover:text-primary dark:hover:text-primary-light transition-colors rounded-full"

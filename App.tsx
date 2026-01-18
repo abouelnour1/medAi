@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -52,34 +51,48 @@ import { db, FIREBASE_DISABLED, messaging, getToken, onMessage } from './firebas
 import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy, arrayUnion, updateDoc, addDoc, where, limit as firestoreLimit } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
-const normalizeMedicine = (item: any): Medicine => ({
-  ...item,
-  RegisterNumber: String(item.RegisterNumber || item.Id || Math.random()),
-  "Public price": String(item["Public price"] || item.Price || '0'),
-  "Trade Name": String(item["Trade Name"] || item.TradeName || ''),
-  "Scientific Name": String(item["Scientific Name"] || item.ScientificName || ''),
-  PharmaceuticalForm: String(item.PharmaceuticalForm || item.DoesageForm || ''),
-  Strength: String(item.Strength || ''),
-  StrengthUnit: String(item.StrengthUnit || ''),
-  "Legal Status": String(item["Legal Status"] || item.LegalStatus || ''),
-  "Product type": String(item["Product type"] || (item.DrugType === 'Health' ? 'Supplement' : 'Human')),
-  DrugType: String(item.DrugType || ''),
-  "Manufacture Name": String(item["Manufacture Name"] || item.ManufacturerNameEN || ''),
-  "Manufacture Country": String(item["Manufacture Country"] || item.ManufacturerCountry || ''),
-  "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
-  "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
-  "Main Agent": String(item["Main Agent"] || item.Agent || ''),
-  imgBox: item.imgBox || item.boxImage || '',
-  imgIndex1: item.imgIndex1 || item.imgStrip || item.imgStrip || '', 
-  imgIndex2: item.imgIndex2 || '',
-  imgPill: item.imgPill || item.pillImage || '',
-  pillShape: item.pillShape || '',
-  pillScored: item.pillScored || '',
-  pillMarkings: item.pillMarkings || '',
-  liquidTaste: item.liquidTaste || '',
-  liquidColor: item.liquidColor || '',
-  physicalNotes: item.physicalNotes || ''
-});
+const normalizeMedicine = (item: any): Medicine => {
+  // دالة ذكية لإيجاد السعر بأي مسمى وتنظيفه
+  const findPrice = (obj: any) => {
+      const priceKeys = ["Public price", "Price", "public price", "price", "PriceSAR", "CIFPrice"];
+      for (const key of priceKeys) {
+          if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+              // إزالة أي رموز غير رقمية باستثناء النقطة (مثل الفواصل أو كلمة ريال)
+              return String(obj[key]).replace(/[^0-9.]/g, '');
+          }
+      }
+      return '0';
+  };
+
+  return {
+    ...item,
+    RegisterNumber: String(item.RegisterNumber || item.Id || Math.random()),
+    "Public price": findPrice(item),
+    "Trade Name": String(item["Trade Name"] || item.TradeName || ''),
+    "Scientific Name": String(item["Scientific Name"] || item.ScientificName || ''),
+    PharmaceuticalForm: String(item.PharmaceuticalForm || item.DoesageForm || ''),
+    Strength: String(item.Strength || ''),
+    StrengthUnit: String(item.StrengthUnit || ''),
+    "Legal Status": String(item["Legal Status"] || item.LegalStatus || ''),
+    "Product type": String(item["Product type"] || (item.DrugType === 'Health' ? 'Supplement' : 'Human')),
+    DrugType: String(item.DrugType || ''),
+    "Manufacture Name": String(item["Manufacture Name"] || item.ManufacturerNameEN || ''),
+    "Manufacture Country": String(item["Manufacture Country"] || item.ManufacturerCountry || ''),
+    "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
+    "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
+    "Main Agent": String(item["Main Agent"] || item.Agent || ''),
+    imgBox: item.imgBox || item.boxImage || '',
+    imgIndex1: item.imgIndex1 || item.imgStrip || '', 
+    imgIndex2: item.imgIndex2 || '',
+    imgPill: item.imgPill || item.pillImage || '',
+    pillShape: item.pillShape || '',
+    pillScored: item.pillScored || '',
+    pillMarkings: item.pillMarkings || '',
+    liquidTaste: item.liquidTaste || '',
+    liquidColor: item.liquidColor || '',
+    physicalNotes: item.physicalNotes || ''
+  };
+};
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
@@ -141,8 +154,13 @@ const App: React.FC = () => {
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const notifs: AppNotification[] = [];
           snapshot.forEach((doc) => {
-              const data = doc.data();
-              if (!data.targetUserId || data.targetUserId === user?.id) {
+              const data = doc.data() as any;
+              // تصفية: إذا كان مخصصاً لمسؤول والمستخدم آدمن، أو كان مخصصاً للمستخدم بعينه، أو للجميع
+              const isForMe = !data.targetUserId && !data.targetRole;
+              const isDirectlyForMe = data.targetUserId === user?.id;
+              const isForAdminRole = data.targetRole === 'admin' && user?.role === 'admin';
+
+              if (isForMe || isDirectlyForMe || isForAdminRole) {
                   notifs.push({ id: doc.id, ...data } as AppNotification);
               }
           });
@@ -237,6 +255,7 @@ const App: React.FC = () => {
         try {
             let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
             let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
+            
             if (!medicinesData) {
                 const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
                 medicinesData = [...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW].map(normalizeMedicine);
@@ -247,22 +266,29 @@ const App: React.FC = () => {
                 cosmeticsData = INITIAL_COSMETICS_DATA;
                 await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
             }
+
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
             const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
             const { INITIAL_MILK_DATA } = await import('./data/milk-data');
             const { CUSTOM_MILK_DATA } = await import('./data/custom-milk-data');
+            
             setMedicines(medicinesData || []);
             setCosmetics(cosmeticsData || []);
             setMilkProducts([...(INITIAL_MILK_DATA || []), ...(CUSTOM_MILK_DATA || [])]);
             setInsuranceData([...INITIAL_INSURANCE_DATA, ...CUSTOM_INSURANCE_DATA]);
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
             setIsDataLoaded(true);
+
+            // جلب البيانات من Firebase في الخلفية وتحديث القائمة
             if (!FIREBASE_DISABLED) {
                 try {
                     const medicinesSnapshot = await getDocs(collection(db, 'medicines'));
                     const cloudMedicines: Medicine[] = [];
-                    medicinesSnapshot.forEach((doc) => { cloudMedicines.push(normalizeMedicine({ ...doc.data() })); });
+                    medicinesSnapshot.forEach((doc) => {
+                        cloudMedicines.push(normalizeMedicine({ ...doc.data() }));
+                    });
+                    
                     if (cloudMedicines.length > 0) {
                         setMedicines(prev => {
                             const mergedMap = new Map(prev.map(m => [m.RegisterNumber, m]));
@@ -272,9 +298,14 @@ const App: React.FC = () => {
                             return mergedArray;
                         });
                     }
-                } catch (err) { console.warn("Background fetch failed:", err); }
+                } catch (err: any) {
+                    console.warn("Background fetch failed (likely permissions):", err.message);
+                }
             }
-        } catch (e) { console.error("Error loading data", e); setIsDataLoaded(true); }
+        } catch (e) {
+            console.error("Error loading data", e);
+            setIsDataLoaded(true);
+        }
     };
     const timer = setTimeout(loadData, 50);
     return () => clearTimeout(timer);
@@ -356,11 +387,32 @@ const App: React.FC = () => {
       } else if (user.role === 'company') {
           if (!FIREBASE_DISABLED) {
               const original = medicines.find(m => m.RegisterNumber === updatedMed.RegisterNumber);
+              
+              // 1. استخراج الحقول التي تغيرت فقط (Diff)
+              const changedData: any = {};
+              if (original) {
+                  Object.keys(updatedMed).forEach(key => {
+                      const k = key as keyof Medicine;
+                      if (String(updatedMed[k]) !== String((original as any)[k])) {
+                          changedData[k] = updatedMed[k];
+                      }
+                  });
+              } else {
+                  // إذا كان دواءً جديداً تماماً، نرسله كله
+                  Object.assign(changedData, updatedMed);
+              }
+
+              // إذا لم يتغير شيء، لا نرسل طلباً
+              if (Object.keys(changedData).length === 0) {
+                  alert("لم يتم تغيير أي بيانات.");
+                  return;
+              }
+
               const pendingUpdate: Omit<PendingUpdate, 'id'> = {
                   medicineId: updatedMed.RegisterNumber,
-                  type: 'edit',
-                  newData: updatedMed,
-                  originalData: original,
+                  type: original ? 'edit' : 'add',
+                  newData: changedData, // الحقول المتغيرة فقط
+                  originalData: original || {},
                   submittedBy: user.id,
                   submittedByName: user.username,
                   timestamp: Date.now(),
@@ -368,11 +420,13 @@ const App: React.FC = () => {
               };
               await addDoc(collection(db, 'pending_updates'), pendingUpdate);
               
+              // 2. إرسال إشعار للمسؤول فقط
               await addDoc(collection(db, 'notifications'), {
                   title: 'طلب تعديل جديد من شركة',
                   body: `قامت شركة ${user.username} بطلب تعديل على دواء ${updatedMed['Trade Name']}. يرجى المراجعة من لوحة التحكم.`,
                   timestamp: Date.now(),
-                  type: 'approval_request'
+                  type: 'approval_request',
+                  targetRole: 'admin' // سيوجه للمسؤولين فقط
               });
 
               alert(t('requestSubmittedBody'));
@@ -481,12 +535,12 @@ const App: React.FC = () => {
   }, [notifications, readNotificationIds]);
 
   const handleMarkAsRead = useCallback((id: string) => {
-      // Fix: explicitly typing 'prev' as string[] to resolve the 'unknown[]' assignment error
       setReadNotificationIds((prev: string[]) => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    const allIds: string[] = notifications.map((n: AppNotification) => String(n.id));
+    // Explicitly cast the mapped array to string[] to satisfy the state setter and resolve the unknown[] inference issue
+    const allIds = notifications.map((n: AppNotification) => String(n.id)) as string[];
     setReadNotificationIds(allIds);
   }, [notifications]);
 
@@ -532,6 +586,10 @@ const App: React.FC = () => {
       document.body.removeChild(link);
       alert(t('exportSuccess'));
   }, [medicines, t]);
+
+  const handleExportByType = useCallback((type: 'Human' | 'Supplement') => {
+      handleExportByTypeFromSettings(type);
+  }, [handleExportByTypeFromSettings]);
 
   const handleSaveAssistantHistory = useCallback((history: ChatMessage[]) => {
       if (!user || history.length <= 1) { 
@@ -592,7 +650,7 @@ const App: React.FC = () => {
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       if (activeTab === 'settings') {
           return (
@@ -605,14 +663,14 @@ const App: React.FC = () => {
                           <p className="font-bold text-teal-800 dark:text-teal-400 text-xs uppercase tracking-widest">{t('exportData')}</p>
                           <div className="grid grid-cols-2 gap-3">
                               <button 
-                                onClick={() => handleExportByTypeFromSettings('Human')}
+                                onClick={() => handleExportByType('Human')}
                                 className="p-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
                               >
                                   <div className="w-5 h-5"><PillBottleIcon /></div>
                                   <span className="text-[10px] font-bold">الأدوية (CSV)</span>
                               </button>
                               <button 
-                                onClick={() => handleExportByTypeFromSettings('Supplement')}
+                                onClick={() => handleExportByType('Supplement')}
                                 className="p-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all shadow-sm active:scale-95 flex flex-col items-center gap-1"
                               >
                                   <div className="w-5 h-5"><DatabaseIcon /></div>
