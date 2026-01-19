@@ -52,12 +52,10 @@ import { doc, setDoc, deleteDoc, collection, getDocs, onSnapshot, query, orderBy
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => {
-  // دالة ذكية لإيجاد السعر بأي مسمى وتنظيفه
   const findPrice = (obj: any) => {
       const priceKeys = ["Public price", "Price", "public price", "price", "PriceSAR", "CIFPrice"];
       for (const key of priceKeys) {
           if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
-              // إزالة أي رموز غير رقمية باستثناء النقطة (مثل الفواصل أو كلمة ريال)
               return String(obj[key]).replace(/[^0-9.]/g, '');
           }
       }
@@ -155,7 +153,6 @@ const App: React.FC = () => {
           const notifs: AppNotification[] = [];
           snapshot.forEach((doc) => {
               const data = doc.data() as any;
-              // تصفية: إذا كان مخصصاً لمسؤول والمستخدم آدمن، أو كان مخصصاً للمستخدم بعينه، أو للجميع
               const isForMe = !data.targetUserId && !data.targetRole;
               const isDirectlyForMe = data.targetUserId === user?.id;
               const isForAdminRole = data.targetRole === 'admin' && user?.role === 'admin';
@@ -232,9 +229,12 @@ const App: React.FC = () => {
   });
   const [currentChatHistory, setCurrentChatHistory] = useState<ChatMessage[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  
+  // مفاتيح البحث المنفصلة
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
+  
   const [selectedBrand, setSelectedBrand] = useState('');
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
@@ -280,7 +280,6 @@ const App: React.FC = () => {
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
             setIsDataLoaded(true);
 
-            // جلب البيانات من Firebase في الخلفية وتحديث القائمة
             if (!FIREBASE_DISABLED) {
                 try {
                     const medicinesSnapshot = await getDocs(collection(db, 'medicines'));
@@ -371,7 +370,6 @@ const App: React.FC = () => {
 
   const handleUpdateMedicine = useCallback(async (updatedMed: Medicine) => {
       if (!user) return;
-
       if (user.role === 'admin') {
           setMedicines(prev => {
               const updated = prev.map(m => m.RegisterNumber === updatedMed.RegisterNumber ? updatedMed : m);
@@ -387,8 +385,6 @@ const App: React.FC = () => {
       } else if (user.role === 'company') {
           if (!FIREBASE_DISABLED) {
               const original = medicines.find(m => m.RegisterNumber === updatedMed.RegisterNumber);
-              
-              // 1. استخراج الحقول التي تغيرت فقط (Diff)
               const changedData: any = {};
               if (original) {
                   Object.keys(updatedMed).forEach(key => {
@@ -398,20 +394,16 @@ const App: React.FC = () => {
                       }
                   });
               } else {
-                  // إذا كان دواءً جديداً تماماً، نرسله كله
                   Object.assign(changedData, updatedMed);
               }
-
-              // إذا لم يتغير شيء، لا نرسل طلباً
               if (Object.keys(changedData).length === 0) {
                   alert("لم يتم تغيير أي بيانات.");
                   return;
               }
-
               const pendingUpdate: Omit<PendingUpdate, 'id'> = {
                   medicineId: updatedMed.RegisterNumber,
                   type: original ? 'edit' : 'add',
-                  newData: changedData, // الحقول المتغيرة فقط
+                  newData: changedData,
                   originalData: original || {},
                   submittedBy: user.id,
                   submittedByName: user.username,
@@ -419,16 +411,13 @@ const App: React.FC = () => {
                   status: 'pending'
               };
               await addDoc(collection(db, 'pending_updates'), pendingUpdate);
-              
-              // 2. إرسال إشعار للمسؤول فقط
               await addDoc(collection(db, 'notifications'), {
                   title: 'طلب تعديل جديد من شركة',
                   body: `قامت شركة ${user.username} بطلب تعديل على دواء ${updatedMed['Trade Name']}. يرجى المراجعة من لوحة التحكم.`,
                   timestamp: Date.now(),
                   type: 'approval_request',
-                  targetRole: 'admin' // سيوجه للمسؤولين فقط
+                  targetRole: 'admin'
               });
-
               alert(t('requestSubmittedBody'));
           }
       }
@@ -535,12 +524,13 @@ const App: React.FC = () => {
   }, [notifications, readNotificationIds]);
 
   const handleMarkAsRead = useCallback((id: string) => {
-      setReadNotificationIds((prev: string[]) => prev.includes(id) ? prev : [...prev, id]);
+      // Fix: Removed explicit type from functional update to ensure correct inference from useState<string[]>
+      setReadNotificationIds((prev) => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    // Explicitly cast the mapped array to string[] to satisfy the state setter and resolve the unknown[] inference issue
-    const allIds = notifications.map((n: AppNotification) => String(n.id)) as string[];
+    // Fix: Removed redundant cast to string[] and used implicit mapping to avoid potential unknown[] inference
+    const allIds = notifications.map((n: AppNotification) => String(n.id));
     setReadNotificationIds(allIds);
   }, [notifications]);
 
@@ -646,11 +636,11 @@ const App: React.FC = () => {
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} />;
       if (activeTab === 'cosmetics') {
           if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { alert("Cosmetic editing not yet implemented in detail view."); }} />;
-          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setSearchTerm} selectedBrand={setSelectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />;
+          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setCosmeticsSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />;
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
       if (activeTab === 'settings') {
           return (
@@ -689,33 +679,14 @@ const App: React.FC = () => {
   };
 
   const handleAssistantLaunch = useCallback(() => {
-      if (!user) {
-          alert(t('loginRequired'));
-          setView('login');
-          return;
-      }
-      setSelectedMedicine(null);
-      setSelectedCosmetic(null);
-      setAssistantPrompt('');
-      setActiveConversationId(null);
-      setIsAssistantOpen(true);
+      if (!user) { alert(t('loginRequired')); setView('login'); return; }
+      setSelectedMedicine(null); setSelectedCosmetic(null); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true);
   }, [user, t]);
 
   const handlePrescriptionLaunch = useCallback(() => {
-      if (!user) {
-          alert(t('loginRequired'));
-          setView('login');
-          return;
-      }
-      if (user.role !== 'admin' && !user.prescriptionPrivilege) {
-          alert(t('accessDeniedPrescription'));
-          return;
-      }
-      setSelectedMedicine(null);
-      setSelectedCosmetic(null);
-      setActiveConversationId(null);
-      setAssistantPrompt('##PRESCRIPTION_MODE##');
-      setIsAssistantOpen(true);
+      if (!user) { alert(t('loginRequired')); setView('login'); return; }
+      if (user.role !== 'admin' && !user.prescriptionPrivilege) { alert(t('accessDeniedPrescription')); return; }
+      setSelectedMedicine(null); setSelectedCosmetic(null); setActiveConversationId(null); setAssistantPrompt('##PRESCRIPTION_MODE##'); setIsAssistantOpen(true);
   }, [user, t]);
 
   return (
@@ -725,19 +696,10 @@ const App: React.FC = () => {
           {renderContent()}
       </main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
-      
-      <div className="fixed bottom-24 right-4 z-30">
-          <FloatingAssistantButton onClick={handleAssistantLaunch} onLongPress={handlePrescriptionLaunch} t={t} language={language} />
-      </div>
-
-      {view === 'imageView' && zoomImageUrl && (
-          <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />
-      )}
-
+      <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={handleAssistantLaunch} onLongPress={handlePrescriptionLaunch} t={t} language={language} /></div>
+      {view === 'imageView' && zoomImageUrl && <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />}
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
-      
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={handleUpdateMedicine} t={t} />
-
       <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
       <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={(code) => { setSearchTerm(code); setIsBarcodeScannerOpen(false); }} t={t} />
     </div>

@@ -6,7 +6,6 @@ import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
 import DrugPolicyCard, { DrugGroup } from './DrugPolicyCard';
 
-// الكلمات والوحدات التي يجب تجاهلها تماماً لضمان عدم ظهورها كعنوان
 const JUNK_TOKENS = new Set(['mg', 'ml', 'g', 'mcg', 'iu', 'kg', 'tab', 'caps', 'solution', 'suspension', 'oral', 'vial', 'ampoule', 'f.c', 'tablet', 'capsule']);
 
 interface InsuranceSimpleSearchProps {
@@ -56,7 +55,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // دالة لتنظيف الاسم العلمي للمقارنة الصارمة (تزيل المسافات الزائدة والوحدات)
     const normalizeForMatch = (name: string) => {
         if (!name) return '';
         return name.toLowerCase()
@@ -71,42 +69,26 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     let matchingMeds: Medicine[] = [];
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
 
-    // 1. البحث في قائمة الأدوية (Trade or Scientific)
     if (isNameSearch) {
         const field = searchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         let pattern = '';
         if (trimmedTerm.includes('%')) {
             pattern = trimmedTerm.split('%').map(escapeRegExp).join('.*');
         } else {
-            // أولوية المطابقة من البداية ^
             pattern = '^' + escapeRegExp(trimmedTerm);
         }
         
         const regex = new RegExp(pattern, 'i');
         matchingMeds = allMedicines.filter(m => regex.test(m[field]));
-        
-        // ترتيب النتائج: المطابقة من البداية أولاً
-        matchingMeds.sort((a, b) => {
-            const aName = a[field].toLowerCase();
-            const bName = b[field].toLowerCase();
-            const aStarts = aName.startsWith(trimmedTerm.replace(/%/g, ''));
-            const bStarts = bName.startsWith(trimmedTerm.replace(/%/g, ''));
-            if (aStarts && !bStarts) return -1;
-            if (!aStarts && bStarts) return 1;
-            return aName.localeCompare(bName);
-        });
     }
 
-    // 2. تجميع المواد العلمية "الفريدة" للأدوية التي وجدناها
-    // نستخدم خارطة لربط كل "مادة علمية" بمجموعة "الأسماء التجارية" التي تطابقها
     const sciToTradeMap = new Map<string, Set<string>>();
     const scientificToNormalizedMap = new Map<string, string>();
 
     matchingMeds.forEach(m => {
         const fullSci = m['Scientific Name'];
         const normalized = normalizeForMatch(fullSci);
-        if (normalized.length < 2) return; // منع النتائج مثل "mg"
-
+        if (normalized.length < 2) return;
         if (!sciToTradeMap.has(fullSci)) {
             sciToTradeMap.set(fullSci, new Set());
             scientificToNormalizedMap.set(fullSci, normalized);
@@ -117,14 +99,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     const results: SearchResult[] = [];
 
     if (isNameSearch) {
-        // 3. البحث في سياسات التأمين بناءً على المواد العلمية للأدوية التي وجدناها
-        // نقوم بعملية البحث لكل مادة علمية ظهرت لنا في البحث التجاري
-        const processedSciNames = new Set<string>();
-
         sciToTradeMap.forEach((tradeNamesSet, fullSciName) => {
             const normalizedSci = scientificToNormalizedMap.get(fullSciName)!;
-            
-            // البحث عن السياسات التي تطابق هذه المادة العلمية (بشكل صارم)
             const matchedPolicies = insuranceData.filter(p => {
                 const policyNormalized = normalizeForMatch(p.scientificName);
                 return policyNormalized === normalizedSci || 
@@ -133,7 +109,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             });
 
             if (matchedPolicies.length > 0) {
-                // إذا وجدنا سياسات تأمينية (مغطى)
                 const availableMeds = allMedicines
                     .filter(m => normalizeForMatch(m['Scientific Name']) === normalizedSci)
                     .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
@@ -146,16 +121,15 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                     availableMedicines: availableMeds
                 });
             } else {
-                // إذا لم نجد سياسات (غير مغطى) - نضيف الأدوية الفردية التي لم نجد لها تأمين
-                matchingMeds.forEach(med => {
-                    if (med['Scientific Name'] === fullSciName) {
-                        results.push({ type: 'not-covered', medicine: med });
-                    }
+                // تصفية: فقط الأدوية التي لا تملك سياسة تأمين تظهر كـ "غير مغطى"
+                const medsOfThisSci = matchingMeds.filter(m => m['Scientific Name'] === fullSciName);
+                medsOfThisSci.forEach(med => {
+                    results.push({ type: 'not-covered', medicine: med });
                 });
             }
         });
     } else {
-        // البحث حسب التشخيص (Indication/ICD10)
+        // البحث حسب الحالة أو التشخيص
         let pattern = trimmedTerm.includes('%') 
             ? trimmedTerm.split('%').map(escapeRegExp).join('.*')
             : escapeRegExp(trimmedTerm);
@@ -199,7 +173,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
-    // إزالة التكرار في نتائج "غير مغطى"
     const finalResults: SearchResult[] = [];
     const seenMeds = new Set<string>();
     const seenSci = new Set<string>();
