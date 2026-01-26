@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MilkProduct, TFunction, Language } from '../types';
 import BabyBottleIcon from './icons/BabyBottleIcon';
 import CameraIcon from './icons/CameraIcon';
@@ -14,6 +14,9 @@ interface MilkDetailProps {
 }
 
 const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack }) => {
+  const [imgLoading, setImgLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
+
   const handleImageSearch = () => {
     const query = `${product.productName} milk formula`;
     const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
@@ -62,10 +65,21 @@ const MilkDetail: React.FC<MilkDetailProps> = ({ product, t, language, onBack })
 
       <div className="p-4 space-y-6 overflow-y-auto">
         {/* Identity Card & Image */}
-        <div className={`rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 ${headerBg}`}>
-            {product.image ? (
-                <div className="w-32 h-32 mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-md p-2 mb-4 flex items-center justify-center overflow-hidden">
-                    <img src={product.image} alt={product.productName} className="max-w-full max-h-full object-contain" />
+        <div className={`rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 ${headerBg} relative`}>
+            {product.image && !imgError ? (
+                <div className="w-32 h-32 mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-md p-2 mb-4 flex items-center justify-center overflow-hidden relative">
+                    {imgLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                            <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                    )}
+                    <img 
+                        src={product.image} 
+                        alt={product.productName} 
+                        className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${imgLoading ? 'opacity-0' : 'opacity-100'}`} 
+                        onLoad={() => setImgLoading(false)}
+                        onError={() => { setImgLoading(false); setImgError(true); }}
+                    />
                 </div>
             ) : (
                 <div className={`w-20 h-20 mx-auto rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center mb-4 ${iconColor}`}>

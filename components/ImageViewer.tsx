@@ -16,6 +16,7 @@ interface ImageViewerProps {
 const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, title, onBack, t, isIndexImage }) => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isImgLoading, setIsImgLoading] = useState(true);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -124,6 +125,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, title, onBack, t, i
 
       {/* منطقة الصورة التفاعلية */}
       <div className="flex-grow flex items-center justify-center relative bg-black p-2">
+        {isImgLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest animate-pulse">Loading High-Res...</span>
+            </div>
+        )}
         <div 
             style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -135,7 +142,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ imageUrl, title, onBack, t, i
               ref={imageRef}
               src={imageUrl} 
               alt={title}
-              className="max-w-full max-h-full object-contain shadow-2xl pointer-events-none"
+              className={`max-w-full max-h-full object-contain shadow-2xl pointer-events-none transition-opacity duration-700 ${isImgLoading ? 'opacity-0' : 'opacity-100'}`}
+              onLoad={() => setIsImgLoading(false)}
               onDoubleClick={resetZoom}
             />
         </div>

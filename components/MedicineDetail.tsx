@@ -6,6 +6,8 @@ import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
+import PillIcon from './icons/PillIcon';
+import PillBottleIcon from './icons/PillBottleIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -45,16 +47,43 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   };
 
   const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
     if (!src) return null;
     const isIndex = label.toLowerCase().includes('index') || label.includes('فهرس');
+    
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
             <div 
-                onClick={() => onImageZoom(src, `${medicine['Trade Name']} - ${label}`, isIndex)}
-                className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-transform"
+                onClick={() => !hasError && onImageZoom(src, `${medicine['Trade Name']} - ${label}`, isIndex)}
+                className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-all relative"
             >
-                <img src={src} alt={label} className="max-w-full max-h-full object-contain" loading="lazy" />
+                {isLoading && !hasError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800 animate-pulse">
+                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                    </div>
+                )}
+                
+                {hasError ? (
+                    <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 p-4">
+                        <div className="w-16 h-16 mb-2 opacity-20"><PillBottleIcon /></div>
+                        <span className="text-[9px] font-bold uppercase tracking-tight text-center">{language === 'ar' ? 'الصورة غير متوفرة' : 'Image Unavailable'}</span>
+                    </div>
+                ) : (
+                    <img 
+                        src={src} 
+                        alt={label} 
+                        className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                        onLoad={() => setIsLoading(false)}
+                        onError={() => {
+                            setIsLoading(false);
+                            setHasError(true);
+                        }}
+                        loading="lazy" 
+                    />
+                )}
             </div>
         </div>
     );
@@ -105,7 +134,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           {!isNaN(price) && <div className="mt-4 text-accent text-2xl font-bold">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* Physical Appearance Section (Now First) */}
+        {/* Physical Appearance Section */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -148,20 +177,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
             )}
         </div>
 
-        {/* Main Details List (Including ATC, Shelf Life, etc.) */}
+        {/* Main Details List */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
-            
-            {/* Regulatory & Code Fields Merged Here */}
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />
             <DetailRow label={t('shelfLife') || 'مدة الصلاحية'} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
             <DetailRow label={language === 'ar' ? 'منطقة التوزيع' : 'Distribute Area'} value={medicine['Distribute area']} />
             <DetailRow label={language === 'ar' ? 'الرقابة' : 'Product Control'} value={medicine['Product Control']} valueClassName={medicine['Product Control']?.toLowerCase().includes('controlled') ? 'text-red-500 font-bold' : ''} />
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
-
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
             <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />
