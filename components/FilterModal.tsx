@@ -41,6 +41,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
     filters,
     onFilterChange,
     onClearFilters,
+    groupedPharmaceuticalForms,
     uniqueManufactureNames,
     uniqueMarketingCompanies,
     uniqueMainAgents,
@@ -61,6 +62,19 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 {/* Body */}
                 <div className="flex-grow p-4 space-y-5 overflow-y-auto no-scrollbar">
                     
+                    <FilterItem icon={<TagIcon />} label={t('filterByProductType')}>
+                      <select
+                        id="product-type-filter"
+                        value={filters.productType}
+                        onChange={(e) => onFilterChange('productType', e.target.value as ProductTypeFilter)}
+                        className="w-full h-[42px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors font-bold"
+                      >
+                        <option value="all">{t('allProductTypes')}</option>
+                        <option value="medicine">{t('medicines')}</option>
+                        <option value="supplement">{t('supplements')}</option>
+                      </select>
+                    </FilterItem>
+
                     <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')}>
                       <SearchableDropdown
                         ariaLabel={t('filterByManufacturer')}
@@ -85,18 +99,17 @@ const FilterModal: React.FC<FilterModalProps> = ({
                       />
                     </FilterItem>
 
-                    <FilterItem icon={<TagIcon />} label={t('mainAgent')}>
-                      <SearchableDropdown
-                        ariaLabel={t('mainAgent')}
-                        value={filters.mainAgent}
-                        onChange={(value) => onFilterChange('mainAgent', Array.isArray(value) ? value : [])}
-                        options={uniqueMainAgents}
-                        placeholder={t('pleaseSelectOrAdd')}
+                    <FilterItem icon={<FormIcon />} label={t('pharmaceuticalForm')}>
+                       <SearchableDropdown
+                        ariaLabel={t('pharmaceuticalForm')}
+                        value={filters.pharmaceuticalForm}
+                        onChange={(value) => onFilterChange('pharmaceuticalForm', Array.isArray(value) ? '' : value)}
+                        options={groupedPharmaceuticalForms}
+                        placeholder={t('all')}
                         t={t}
-                        mode="multi"
                       />
                     </FilterItem>
-                    
+
                     <FilterItem icon={<ScaleIcon />} label={t('filterByLegalStatus')}>
                       <SearchableDropdown
                         ariaLabel={t('filterByLegalStatus')}
@@ -106,19 +119,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         placeholder={t('allLegalStatuses')}
                         t={t}
                       />
-                    </FilterItem>
-
-                    <FilterItem icon={<TagIcon />} label={t('filterByProductType')}>
-                      <select
-                        id="product-type-filter"
-                        value={filters.productType}
-                        onChange={(e) => onFilterChange('productType', e.target.value as ProductTypeFilter)}
-                        className="w-full h-[42px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors font-bold"
-                      >
-                        <option value="all">{t('allProductTypes')}</option>
-                        <option value="medicine">{t('medicines')}</option>
-                        <option value="supplement">{t('supplements')}</option>
-                      </select>
                     </FilterItem>
 
                     <FilterItem icon={<MoneyIcon />} label={t('priceRange')}>

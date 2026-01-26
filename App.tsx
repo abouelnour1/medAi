@@ -39,6 +39,8 @@ import DatabaseIcon from './components/icons/DatabaseIcon';
 import TrashIcon from './components/icons/TrashIcon';
 import DownloadIcon from './components/icons/DownloadIcon';
 import PillBottleIcon from './components/icons/PillBottleIcon';
+// Fix: Added missing BackIcon import
+import BackIcon from './components/icons/BackIcon';
 
 import { LoginView } from './components/auth/LoginView';
 import { RegisterView } from './components/auth/RegisterView';
@@ -108,6 +110,57 @@ const App: React.FC = () => {
         container.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, []);
+
+  // --- Edge Swipe Back Logic with Visuals ---
+  const [swipeProgress, setSwipeProgress] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  useEffect(() => {
+    let touchStartX = 0;
+    const EDGE_THRESHOLD = 40; 
+    const SWIPE_MIN_DISTANCE = 100;
+
+    const handleTouchStart = (e: TouchEvent) => {
+        const x = e.touches[0].clientX;
+        const screenWidth = window.innerWidth;
+        const isRTL = document.documentElement.dir === 'rtl';
+
+        if ((!isRTL && x < EDGE_THRESHOLD) || (isRTL && x > screenWidth - EDGE_THRESHOLD)) {
+            touchStartX = x;
+            setIsSwiping(true);
+        }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+        if (!isSwiping) return;
+        const currentX = e.touches[0].clientX;
+        const diff = Math.abs(currentX - touchStartX);
+        const progress = Math.min(diff / SWIPE_MIN_DISTANCE, 1.2);
+        setSwipeProgress(progress);
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+        if (!isSwiping) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = Math.abs(touchEndX - touchStartX);
+
+        if (diffX > SWIPE_MIN_DISTANCE) {
+            handleBack();
+        }
+        
+        setIsSwiping(false);
+        setSwipeProgress(0);
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+    return () => {
+        window.removeEventListener('touchstart', handleTouchStart);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isSwiping, handleBack]);
 
   useEffect(() => {
     if (!messaging || !user || FIREBASE_DISABLED) return;
@@ -241,7 +294,6 @@ const App: React.FC = () => {
   const [currentChatHistory, setCurrentChatHistory] = useState<ChatMessage[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   
-  // مفاتيح البحث المنفصلة
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
@@ -260,7 +312,7 @@ const App: React.FC = () => {
       } catch { return []; }
   });
 
-  const handleBack = useCallback(() => {
+  function handleBack() {
       if (view === 'imageView') setView('details');
       else if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
@@ -268,44 +320,7 @@ const App: React.FC = () => {
       else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
       else if (view === 'results') { setView('search'); setSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
-  }, [view, activeTab]);
-
-  // --- Edge Swipe Back Logic ---
-  useEffect(() => {
-    let touchStartX = 0;
-    const EDGE_THRESHOLD = 30; // pixels from the edge
-    const SWIPE_MIN_DISTANCE = 80;
-
-    const handleTouchStart = (e: TouchEvent) => {
-        touchStartX = e.touches[0].clientX;
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-        const touchEndX = e.changedTouches[0].clientX;
-        const diffX = touchEndX - touchStartX;
-        const isRTL = language === 'ar';
-        const screenWidth = window.innerWidth;
-
-        if (isRTL) {
-            // Swipe from Right Edge to Left
-            if (touchStartX > screenWidth - EDGE_THRESHOLD && diffX < -SWIPE_MIN_DISTANCE) {
-                handleBack();
-            }
-        } else {
-            // Swipe from Left Edge to Right
-            if (touchStartX < EDGE_THRESHOLD && diffX > SWIPE_MIN_DISTANCE) {
-                handleBack();
-            }
-        }
-    };
-
-    window.addEventListener('touchstart', handleTouchStart);
-    window.addEventListener('touchend', handleTouchEnd);
-    return () => {
-        window.removeEventListener('touchstart', handleTouchStart);
-        window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [language, handleBack]);
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -506,7 +521,6 @@ const App: React.FC = () => {
 
   const handleShowAlternativesFromAssistant = useCallback((medicine: Medicine) => { setIsAssistantOpen(false); handleFindAlternative(medicine); }, [handleFindAlternative]);
   
-  // هل يوجد أي فلتر نشط؟
   const isAnyFilterActive = useMemo(() => {
     return filters.productType !== 'all' || 
            filters.priceMin !== '' || 
@@ -530,17 +544,14 @@ const App: React.FC = () => {
       const lowerTerm = trimmedTerm.toLowerCase();
       const effectiveLength = searchTerm.replace(/%/g, '').trim().length;
 
-      // تطبيق فلاتر البحث النصي
       if (trimmedTerm && (effectiveLength >= 3 || forceSearch || isAnyFilterActive)) {
           const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const searchRegex = new RegExp(lowerTerm.includes('%') ? lowerTerm.split('%').map(escapeRegExp).join('.*') : '^' + escapeRegExp(lowerTerm), 'i');
           results = results.filter(m => textSearchMode === 'tradeName' ? searchRegex.test(m['Trade Name'].toLowerCase()) : textSearchMode === 'scientificName' ? searchRegex.test(m['Scientific Name'].toLowerCase()) : searchRegex.test(m['Trade Name'].toLowerCase()) || searchRegex.test(m['Scientific Name'].toLowerCase()));
       } else if (trimmedTerm && effectiveLength < 3 && !forceSearch && !isAnyFilterActive) {
-          // إذا كان هناك نص بحث ولكن لم يصل لـ 3 حروف ولا يوجد فلاتر نشطة، نرجع مصفوفة فارغة
           return [];
       }
       
-      // تطبيق فلاتر التصنيفات
       if (filters.productType !== 'all') {
           results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
       }
@@ -551,7 +562,6 @@ const App: React.FC = () => {
       if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
       if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
       
-      // الترتيب
       results.sort((a, b) => {
           if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
           if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
@@ -562,30 +572,43 @@ const App: React.FC = () => {
       return results;
   }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded, isAnyFilterActive]);
 
+  // --- Dynamic Filters Logic (Filter on Filter) ---
+  const dynamicFilterSource = useMemo(() => {
+      if (!isDataLoaded) return [];
+      if (!isAnyFilterActive && !searchTerm) return medicines;
+      
+      // We want to return medicines filtered by everything EXCEPT the current specific filter category
+      // but for simplicity and better UX, we'll use the already filtered results
+      return filteredMedicines;
+  }, [medicines, filteredMedicines, isAnyFilterActive, searchTerm, isDataLoaded]);
+
   const uniqueManufactureNames = useMemo(() => {
-    const names = new Set(medicines.map(m => m['Manufacture Name']).filter(Boolean));
+    const source = (filters.manufactureName.length > 0) ? medicines : dynamicFilterSource;
+    const names = new Set(source.map(m => m['Manufacture Name']).filter(Boolean));
     return Array.from(names).sort();
-  }, [medicines]);
+  }, [dynamicFilterSource, medicines, filters.manufactureName]);
 
   const uniqueMarketingCompanies = useMemo(() => {
-    const names = new Set(medicines.map(m => m['Marketing Company']).filter(Boolean));
+    const source = (filters.marketingCompany.length > 0) ? medicines : dynamicFilterSource;
+    const names = new Set(source.map(m => m['Marketing Company']).filter(Boolean));
     return Array.from(names).sort();
-  }, [medicines]);
+  }, [dynamicFilterSource, medicines, filters.marketingCompany]);
 
   const uniqueMainAgents = useMemo(() => {
-    const names = new Set(medicines.map(m => m['Main Agent']).filter(Boolean));
+    const source = (filters.mainAgent.length > 0) ? medicines : dynamicFilterSource;
+    const names = new Set(source.map(m => m['Main Agent']).filter(Boolean));
     return Array.from(names).sort();
-  }, [medicines]);
+  }, [dynamicFilterSource, medicines, filters.mainAgent]);
 
   const uniqueLegalStatuses = useMemo(() => {
-    const statuses = new Set(medicines.map(m => m['Legal Status']).filter(Boolean));
+    const statuses = new Set(dynamicFilterSource.map(m => m['Legal Status']).filter(Boolean));
     return Array.from(statuses).sort();
-  }, [medicines]);
+  }, [dynamicFilterSource]);
 
   const groupedPharmaceuticalForms = useMemo(() => {
-    const forms = Array.from(new Set(medicines.map(m => m.PharmaceuticalForm).filter(Boolean)));
+    const forms = Array.from(new Set(dynamicFilterSource.map(m => m.PharmaceuticalForm).filter(Boolean)));
     return groupPharmaceuticalForms(forms, t);
-  }, [medicines, t]);
+  }, [dynamicFilterSource, t]);
 
   const handleDeleteNotification = useCallback(async (id: string) => {
       if (!window.confirm(t('confirmDeleteNotification'))) return;
@@ -603,14 +626,13 @@ const App: React.FC = () => {
       return notifications.filter(n => !readNotificationIds.includes(n.id)).length;
   }, [notifications, readNotificationIds]);
 
-  // Fix: Use a functional update without parameter type annotation to ensure correct Dispatch<SetStateAction<string[]>> inference
   const handleMarkAsRead = useCallback((id: string) => {
       setReadNotificationIds(prev => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
-  // Fix: Explicitly map to string[] and call setter without redundant complex types to prevent unknown[] assignment error
   const handleMarkAllRead = useCallback(() => {
-    const allIds = notifications.map(n => String(n.id));
+    // Fix: Explicitly type allIds to avoid unknown[] inference
+    const allIds: string[] = notifications.map(n => String(n.id));
     setReadNotificationIds(allIds);
   }, [notifications]);
 
@@ -699,7 +721,17 @@ const App: React.FC = () => {
                 <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                     <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={() => { setSearchTerm(''); setView('search'); setForceSearch(false); }} onForceSearch={() => { if (searchTerm.trim().length > 0) { setForceSearch(true); scrollToTop(); } }} onSearchIconClick={scrollToTop} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
                     {!isDataLoaded && <div className="w-full h-1 bg-gray-100 overflow-hidden mt-1 rounded-full"><div className="h-full bg-primary/50 animate-progress origin-left w-full"></div></div>}
-                    <div className="flex gap-2 mt-2">
+                    
+                    {/* Results Count Header */}
+                    {isSearchActive && (
+                        <div className="flex items-center justify-between px-1 py-1 animate-fade-in">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                {filteredMedicines.length} {language === 'ar' ? 'نتيجة' : 'results'}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 mt-1">
                         <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={(filters.productType !== 'all' ? 1 : 0) + (filters.priceMin !== '' ? 1 : 0) + (filters.priceMax !== '' ? 1 : 0) + (filters.pharmaceuticalForm !== '' ? 1 : 0) + (filters.manufactureName.length > 0 ? 1 : 0) + (filters.marketingCompany.length > 0 ? 1 : 0) + (filters.mainAgent.length > 0 ? 1 : 0) + (filters.legalStatus !== '' ? 1 : 0)} t={t} />
                         <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                     </div>
@@ -769,13 +801,45 @@ const App: React.FC = () => {
       setSelectedMedicine(null); setSelectedCosmetic(null); setActiveConversationId(null); setAssistantPrompt('##PRESCRIPTION_MODE##'); setIsAssistantOpen(true);
   }, [user, t]);
 
+  const handleTabChange = useCallback((tab: Tab) => {
+    if (tab === activeTab) {
+        scrollToTop();
+    } else {
+        setActiveTab(tab); 
+        setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings');
+    }
+  }, [activeTab, scrollToTop]);
+
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text h-full flex flex-col overflow-hidden relative">
       <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} theme={theme} toggleTheme={toggleTheme} t={t} onLoginClick={() => { setView('login'); setActiveTab('settings'); }} onAdminClick={handleAdminClick} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={unreadCount} />
+      
+      {/* Visual Swipe Back Indicator */}
+      {isSwiping && (
+          <div 
+            className="fixed inset-y-0 z-[100] pointer-events-none flex items-center justify-center transition-opacity"
+            style={{ 
+                left: document.documentElement.dir === 'rtl' ? 'auto' : 0, 
+                right: document.documentElement.dir === 'rtl' ? 0 : 'auto',
+                width: '60px',
+                opacity: swipeProgress,
+                background: `linear-gradient(${document.documentElement.dir === 'rtl' ? 'to left' : 'to right'}, rgba(45, 212, 191, 0.2), transparent)`
+            }}
+          >
+              <div 
+                className="bg-primary/80 text-white p-2 rounded-full shadow-lg transform transition-transform"
+                style={{ transform: `scale(${Math.min(0.5 + swipeProgress, 1)})` }}
+              >
+                  {/* Fix: BackIcon was previously not imported in this file */}
+                  <div className={`w-6 h-6 transform ${document.documentElement.dir === 'rtl' ? '' : 'rotate-180'}`}><BackIcon /></div>
+              </div>
+          </div>
+      )}
+
       <main id="main-scroll-container" className={`flex-grow mx-auto px-4 space-y-4 transition-all duration-300 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] ${view === 'admin' ? 'w-full max-w-[98%]' : 'container max-w-7xl'}`}>
           {renderContent()}
       </main>
-      <BottomNavBar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setView(tab === 'search' ? 'search' : tab === 'insurance' ? 'insuranceSearch' : tab === 'cosmetics' ? 'cosmeticsSearch' : tab === 'milk' ? 'milkSearch' : 'settings'); }} t={t} user={user} view={view} />
+      <BottomNavBar activeTab={activeTab} setActiveTab={handleTabChange} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={handleAssistantLaunch} onLongPress={handlePrescriptionLaunch} t={t} language={language} /></div>
       {view === 'imageView' && zoomImageUrl && <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />}
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
