@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Medicine, TFunction, Language, User } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
-import PillIcon from './icons/PillIcon';
 import PillBottleIcon from './icons/PillBottleIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
@@ -18,6 +17,55 @@ const DetailRow: React.FC<{ label: string; value?: string | number | null; value
     </div>
   );
 };
+
+// PhysicalImage moved OUTSIDE to prevent re-creation on every parent render
+const PhysicalImage = memo(({ src, label, tradeName, language, onImageZoom }: { 
+    src: string, 
+    label: string, 
+    tradeName: string, 
+    language: Language,
+    onImageZoom: (url: string, title: string, isIndex: boolean) => void 
+}) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    const isIndex = label.toLowerCase().includes('index') || label.includes('فهرس');
+    
+    return (
+        <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
+            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
+            <div 
+                onClick={() => !hasError && onImageZoom(src, `${tradeName} - ${label}`, isIndex)}
+                className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-all relative"
+            >
+                {isLoading && !hasError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                    </div>
+                )}
+                
+                {hasError ? (
+                    <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 p-4">
+                        <div className="w-16 h-16 mb-2 opacity-20"><PillBottleIcon /></div>
+                        <span className="text-[9px] font-bold uppercase tracking-tight text-center">{language === 'ar' ? 'الصورة غير متوفرة' : 'Image Unavailable'}</span>
+                    </div>
+                ) : (
+                    <img 
+                        src={src} 
+                        alt={label} 
+                        className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                        onLoad={() => setIsLoading(false)}
+                        onError={() => {
+                            setIsLoading(false);
+                            setHasError(true);
+                        }}
+                        loading="lazy" 
+                    />
+                )}
+            </div>
+        </div>
+    );
+});
 
 interface MedicineDetailProps {
     medicine: Medicine;
@@ -44,49 +92,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           query = `${tradeName} ${medicine.Strength || ''} ${medicine.PharmaceuticalForm || ''}`;
       }
       window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
-  };
-
-  const PhysicalImage = ({ src, label }: { src?: string, label: string }) => {
-    const [isLoading, setIsLoading] = useState(true);
-    const [hasError, setHasError] = useState(false);
-
-    if (!src) return null;
-    const isIndex = label.toLowerCase().includes('index') || label.includes('فهرس');
-    
-    return (
-        <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
-            <div 
-                onClick={() => !hasError && onImageZoom(src, `${medicine['Trade Name']} - ${label}`, isIndex)}
-                className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-all relative"
-            >
-                {isLoading && !hasError && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800 animate-pulse">
-                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                    </div>
-                )}
-                
-                {hasError ? (
-                    <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 p-4">
-                        <div className="w-16 h-16 mb-2 opacity-20"><PillBottleIcon /></div>
-                        <span className="text-[9px] font-bold uppercase tracking-tight text-center">{language === 'ar' ? 'الصورة غير متوفرة' : 'Image Unavailable'}</span>
-                    </div>
-                ) : (
-                    <img 
-                        src={src} 
-                        alt={label} 
-                        className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-                        onLoad={() => setIsLoading(false)}
-                        onError={() => {
-                            setIsLoading(false);
-                            setHasError(true);
-                        }}
-                        loading="lazy" 
-                    />
-                )}
-            </div>
-        </div>
-    );
   };
 
   const price = parseFloat(medicine['Public price']);
@@ -151,10 +156,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
                     {hasImages && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
-                            <PhysicalImage src={medicine.imgBox} label={t('boxImage')} />
-                            <PhysicalImage src={medicine.imgIndex1} label={language === 'ar' ? 'الفهرس 1' : 'Index 1'} />
-                            <PhysicalImage src={medicine.imgIndex2} label={language === 'ar' ? 'الفهرس 2' : 'Index 2'} />
-                            <PhysicalImage src={medicine.imgPill} label={t('pillImage')} />
+                            {medicine.imgBox && <PhysicalImage src={medicine.imgBox} label={t('boxImage')} tradeName={medicine['Trade Name']} language={language} onImageZoom={onImageZoom} />}
+                            {medicine.imgIndex1 && <PhysicalImage src={medicine.imgIndex1} label={language === 'ar' ? 'الفهرس 1' : 'Index 1'} tradeName={medicine['Trade Name']} language={language} onImageZoom={onImageZoom} />}
+                            {medicine.imgIndex2 && <PhysicalImage src={medicine.imgIndex2} label={language === 'ar' ? 'الفهرس 2' : 'Index 2'} tradeName={medicine['Trade Name']} language={language} onImageZoom={onImageZoom} />}
+                            {medicine.imgPill && <PhysicalImage src={medicine.imgPill} label={t('pillImage')} tradeName={medicine['Trade Name']} language={language} onImageZoom={onImageZoom} />}
                         </div>
                     )}
 
@@ -201,4 +206,4 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   );
 };
 
-export default MedicineDetail;
+export default memo(MedicineDetail);

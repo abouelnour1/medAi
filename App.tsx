@@ -631,8 +631,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    // Fix: Explicitly type allIds to avoid unknown[] inference
-    const allIds: string[] = notifications.map(n => String(n.id));
+    // Fix: cast to string[] to resolve type inference issue and satisfy string[] parameter requirement for setReadNotificationIds
+    const allIds = notifications.map(n => String(n.id)) as string[];
     setReadNotificationIds(allIds);
   }, [notifications]);
 
