@@ -4,7 +4,7 @@ import { Filters, ProductTypeFilter, TFunction } from '../types';
 import SearchableDropdown from './SearchableDropdown';
 import ClearIcon from './icons/ClearIcon';
 
-// Icons from SearchBar
+// Icons
 const FormIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3h5"/><path d="M9.5 21h5"/><path d="M14 3v2a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V3"/><path d="M14 21v-2a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v2"/><line x1="9" x2="15" y1="12" y2="12"/></svg>;
 const FactoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22h20"/><path d="M20 13.29V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="m14 13.29 6 3.42V22"/><path d="M18 16.71v.01"/><path d="M12 13.29V22"/><path d="m6 13.29 6 3.42"/><path d="M10 9.71v.01"/><path d="M14 9.71v.01"/><path d="M10 16.71v.01"/></svg>;
 const ScaleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>;
@@ -21,7 +21,6 @@ const FilterItem: React.FC<{icon: React.ReactNode, label: string, children: Reac
     </div>
 );
 
-
 interface FilterModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -30,6 +29,8 @@ interface FilterModalProps {
     onClearFilters: () => void;
     groupedPharmaceuticalForms: { label: string; options: string[] }[];
     uniqueManufactureNames: string[];
+    uniqueMarketingCompanies: string[];
+    uniqueMainAgents: string[];
     uniqueLegalStatuses: string[];
     t: TFunction;
 }
@@ -40,8 +41,9 @@ const FilterModal: React.FC<FilterModalProps> = ({
     filters,
     onFilterChange,
     onClearFilters,
-    groupedPharmaceuticalForms,
     uniqueManufactureNames,
+    uniqueMarketingCompanies,
+    uniqueMainAgents,
     uniqueLegalStatuses,
     t
 }) => {
@@ -57,9 +59,8 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 </header>
 
                 {/* Body */}
-                <div className="flex-grow p-3 space-y-3 overflow-y-auto">
-                    {/* Pharmaceutical Form Filter Removed */}
-
+                <div className="flex-grow p-4 space-y-5 overflow-y-auto no-scrollbar">
+                    
                     <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')}>
                       <SearchableDropdown
                         ariaLabel={t('filterByManufacturer')}
@@ -67,6 +68,30 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         onChange={(value) => onFilterChange('manufactureName', Array.isArray(value) ? value : [])}
                         options={uniqueManufactureNames}
                         placeholder={t('allManufacturers')}
+                        t={t}
+                        mode="multi"
+                      />
+                    </FilterItem>
+
+                    <FilterItem icon={<FactoryIcon />} label={t('marketingCompany') || 'الشركة المسوقة'}>
+                      <SearchableDropdown
+                        ariaLabel={t('marketingCompany')}
+                        value={filters.marketingCompany}
+                        onChange={(value) => onFilterChange('marketingCompany', Array.isArray(value) ? value : [])}
+                        options={uniqueMarketingCompanies}
+                        placeholder={t('pleaseSelectOrAdd')}
+                        t={t}
+                        mode="multi"
+                      />
+                    </FilterItem>
+
+                    <FilterItem icon={<TagIcon />} label={t('mainAgent')}>
+                      <SearchableDropdown
+                        ariaLabel={t('mainAgent')}
+                        value={filters.mainAgent}
+                        onChange={(value) => onFilterChange('mainAgent', Array.isArray(value) ? value : [])}
+                        options={uniqueMainAgents}
+                        placeholder={t('pleaseSelectOrAdd')}
                         t={t}
                         mode="multi"
                       />
@@ -88,7 +113,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         id="product-type-filter"
                         value={filters.productType}
                         onChange={(e) => onFilterChange('productType', e.target.value as ProductTypeFilter)}
-                        className="w-full h-[42px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors"
+                        className="w-full h-[42px] px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary rounded-xl outline-none transition-colors font-bold"
                       >
                         <option value="all">{t('allProductTypes')}</option>
                         <option value="medicine">{t('medicines')}</option>
@@ -130,7 +155,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                     </button>
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
+                        className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition-colors shadow-md"
                     >
                         {t('showResults')}
                     </button>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -99,6 +100,14 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 
 const App: React.FC = () => {
   const { user } = useAuth();
+  const scrollPositionRef = useRef(0);
+
+  const scrollToTop = useCallback(() => {
+    const container = document.getElementById('main-scroll-container');
+    if (container) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
 
   useEffect(() => {
     if (!messaging || !user || FIREBASE_DISABLED) return;
@@ -202,6 +211,8 @@ const App: React.FC = () => {
     priceMax: '',
     pharmaceuticalForm: '',
     manufactureName: [],
+    marketingCompany: [],
+    mainAgent: [],
     legalStatus: '',
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -248,7 +259,53 @@ const App: React.FC = () => {
           return JSON.parse(localStorage.getItem('saved_prescriptions') || '[]') as PrescriptionData[];
       } catch { return []; }
   });
-  const scrollPositionRef = useRef(0);
+
+  const handleBack = useCallback(() => {
+      if (view === 'imageView') setView('details');
+      else if (view === 'details' || view === 'alternatives') setView('results'); 
+      else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
+      else if (view === 'insuranceDetails') setView('insuranceSearch');
+      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
+      else if (view === 'results') { setView('search'); setSearchTerm(''); }
+      else { setView('search'); setActiveTab('search'); }
+  }, [view, activeTab]);
+
+  // --- Edge Swipe Back Logic ---
+  useEffect(() => {
+    let touchStartX = 0;
+    const EDGE_THRESHOLD = 30; // pixels from the edge
+    const SWIPE_MIN_DISTANCE = 80;
+
+    const handleTouchStart = (e: TouchEvent) => {
+        touchStartX = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        const isRTL = language === 'ar';
+        const screenWidth = window.innerWidth;
+
+        if (isRTL) {
+            // Swipe from Right Edge to Left
+            if (touchStartX > screenWidth - EDGE_THRESHOLD && diffX < -SWIPE_MIN_DISTANCE) {
+                handleBack();
+            }
+        } else {
+            // Swipe from Left Edge to Right
+            if (touchStartX < EDGE_THRESHOLD && diffX > SWIPE_MIN_DISTANCE) {
+                handleBack();
+            }
+        }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchend', handleTouchEnd);
+    return () => {
+        window.removeEventListener('touchstart', handleTouchStart);
+        window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [language, handleBack]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -448,7 +505,20 @@ const App: React.FC = () => {
   }, [medicines]);
 
   const handleShowAlternativesFromAssistant = useCallback((medicine: Medicine) => { setIsAssistantOpen(false); handleFindAlternative(medicine); }, [handleFindAlternative]);
-  const isSearchActive = (searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch || filters.productType !== 'all' || filters.priceMin !== '' || filters.priceMax !== '' || filters.pharmaceuticalForm !== '' || filters.manufactureName.length > 0 || filters.legalStatus !== '');
+  
+  // هل يوجد أي فلتر نشط؟
+  const isAnyFilterActive = useMemo(() => {
+    return filters.productType !== 'all' || 
+           filters.priceMin !== '' || 
+           filters.priceMax !== '' || 
+           filters.pharmaceuticalForm !== '' || 
+           filters.manufactureName.length > 0 || 
+           filters.marketingCompany.length > 0 || 
+           filters.mainAgent.length > 0 || 
+           filters.legalStatus !== '';
+  }, [filters]);
+
+  const isSearchActive = (searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch || isAnyFilterActive);
 
   useEffect(() => { setResultsLimit(20); }, [searchTerm, filters, sortBy, textSearchMode, forceSearch]);
   useEffect(() => { setResultsLimitCosm(20); }, [cosmeticsSearchTerm, selectedBrand]);
@@ -457,13 +527,20 @@ const App: React.FC = () => {
       if (!isDataLoaded) return [];
       let results = [...medicines];
       const trimmedTerm = searchTerm.trim();
-      if (trimmedTerm && (searchTerm.replace(/%/g, '').trim().length >= 3 || forceSearch)) {
-          const lowerTerm = trimmedTerm.toLowerCase();
+      const lowerTerm = trimmedTerm.toLowerCase();
+      const effectiveLength = searchTerm.replace(/%/g, '').trim().length;
+
+      // تطبيق فلاتر البحث النصي
+      if (trimmedTerm && (effectiveLength >= 3 || forceSearch || isAnyFilterActive)) {
           const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const searchRegex = new RegExp(lowerTerm.includes('%') ? lowerTerm.split('%').map(escapeRegExp).join('.*') : '^' + escapeRegExp(lowerTerm), 'i');
           results = results.filter(m => textSearchMode === 'tradeName' ? searchRegex.test(m['Trade Name'].toLowerCase()) : textSearchMode === 'scientificName' ? searchRegex.test(m['Scientific Name'].toLowerCase()) : searchRegex.test(m['Trade Name'].toLowerCase()) || searchRegex.test(m['Scientific Name'].toLowerCase()));
-      } else if (trimmedTerm && searchTerm.replace(/%/g, '').trim().length < 3 && !forceSearch) return [];
+      } else if (trimmedTerm && effectiveLength < 3 && !forceSearch && !isAnyFilterActive) {
+          // إذا كان هناك نص بحث ولكن لم يصل لـ 3 حروف ولا يوجد فلاتر نشطة، نرجع مصفوفة فارغة
+          return [];
+      }
       
+      // تطبيق فلاتر التصنيفات
       if (filters.productType !== 'all') {
           results = results.filter(m => filters.productType === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] === 'Supplement' || m.DrugType === 'Health');
       }
@@ -471,7 +548,10 @@ const App: React.FC = () => {
       if (filters.priceMax !== '') results = results.filter(m => parseFloat(m['Public price']) <= parseFloat(filters.priceMax));
       if (filters.legalStatus !== '') results = results.filter(m => m['Legal Status'] === filters.legalStatus);
       if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
+      if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
+      if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
       
+      // الترتيب
       results.sort((a, b) => {
           if (sortBy === 'priceAsc') return parseFloat(a['Public price']) - parseFloat(b['Public price']);
           if (sortBy === 'priceDesc') return parseFloat(b['Public price']) - parseFloat(a['Public price']);
@@ -480,10 +560,20 @@ const App: React.FC = () => {
       });
       
       return results;
-  }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded]);
+  }, [medicines, searchTerm, textSearchMode, filters, sortBy, forceSearch, isDataLoaded, isAnyFilterActive]);
 
   const uniqueManufactureNames = useMemo(() => {
     const names = new Set(medicines.map(m => m['Manufacture Name']).filter(Boolean));
+    return Array.from(names).sort();
+  }, [medicines]);
+
+  const uniqueMarketingCompanies = useMemo(() => {
+    const names = new Set(medicines.map(m => m['Marketing Company']).filter(Boolean));
+    return Array.from(names).sort();
+  }, [medicines]);
+
+  const uniqueMainAgents = useMemo(() => {
+    const names = new Set(medicines.map(m => m['Main Agent']).filter(Boolean));
     return Array.from(names).sort();
   }, [medicines]);
 
@@ -505,16 +595,6 @@ const App: React.FC = () => {
       }
   }, [t]);
 
-  const handleBack = useCallback(() => {
-      if (view === 'imageView') setView('details');
-      else if (view === 'details' || view === 'alternatives') setView('results'); 
-      else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
-      else if (view === 'insuranceDetails') setView('insuranceSearch');
-      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'addInsuranceData', 'addCosmeticsData', 'verifyEmail', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
-      else if (view === 'results') { setView('search'); setSearchTerm(''); }
-      else { setView('search'); setActiveTab('search'); }
-  }, [view, activeTab]);
-
   const notificationsWithReadStatus = useMemo(() => {
       return notifications.map(n => ({ ...n, isRead: readNotificationIds.includes(n.id) }));
   }, [notifications, readNotificationIds]);
@@ -523,14 +603,14 @@ const App: React.FC = () => {
       return notifications.filter(n => !readNotificationIds.includes(n.id)).length;
   }, [notifications, readNotificationIds]);
 
+  // Fix: Use a functional update without parameter type annotation to ensure correct Dispatch<SetStateAction<string[]>> inference
   const handleMarkAsRead = useCallback((id: string) => {
-      // Fix: Removed explicit type from functional update to ensure correct inference from useState<string[]>
-      setReadNotificationIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+      setReadNotificationIds(prev => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
+  // Fix: Explicitly map to string[] and call setter without redundant complex types to prevent unknown[] assignment error
   const handleMarkAllRead = useCallback(() => {
-    // Fix: Removed redundant cast to string[] and used implicit mapping to avoid potential unknown[] inference
-    const allIds = notifications.map((n: AppNotification) => String(n.id));
+    const allIds = notifications.map(n => String(n.id));
     setReadNotificationIds(allIds);
   }, [notifications]);
 
@@ -617,10 +697,10 @@ const App: React.FC = () => {
           return (
               <>
                 <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={() => { setSearchTerm(''); setView('search'); setForceSearch(false); }} onForceSearch={() => { if (searchTerm.trim().length > 0) setForceSearch(true); }} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={isSearchActive} onClearSearch={() => { setSearchTerm(''); setView('search'); setForceSearch(false); }} onForceSearch={() => { if (searchTerm.trim().length > 0) { setForceSearch(true); scrollToTop(); } }} onSearchIconClick={scrollToTop} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
                     {!isDataLoaded && <div className="w-full h-1 bg-gray-100 overflow-hidden mt-1 rounded-full"><div className="h-full bg-primary/50 animate-progress origin-left w-full"></div></div>}
                     <div className="flex gap-2 mt-2">
-                        <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={(filters.productType !== 'all' ? 1 : 0) + (filters.priceMin !== '' ? 1 : 0) + (filters.priceMax !== '' ? 1 : 0) + (filters.pharmaceuticalForm !== '' ? 1 : 0) + (filters.manufactureName.length > 0 ? 1 : 0) + (filters.legalStatus !== '' ? 1 : 0)} t={t} />
+                        <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={(filters.productType !== 'all' ? 1 : 0) + (filters.priceMin !== '' ? 1 : 0) + (filters.priceMax !== '' ? 1 : 0) + (filters.pharmaceuticalForm !== '' ? 1 : 0) + (filters.manufactureName.length > 0 ? 1 : 0) + (filters.marketingCompany.length > 0 ? 1 : 0) + (filters.mainAgent.length > 0 ? 1 : 0) + (filters.legalStatus !== '' ? 1 : 0)} t={t} />
                         <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                     </div>
                     <div className="mt-4">
@@ -633,14 +713,14 @@ const App: React.FC = () => {
               </>
           );
       }
-      if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} />;
+      if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} scrollToTop={scrollToTop} />;
       if (activeTab === 'cosmetics') {
           if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { alert("Cosmetic editing not yet implemented in detail view."); }} />;
-          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setCosmeticsSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} />;
+          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={handleCosmeticSelect} searchTerm={cosmeticsSearchTerm} setSearchTerm={setSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} limit={cosmeticsLimit} onLoadMore={() => setResultsLimitCosm(prev => prev + 20)} onCosmeticLongPress={(c) => { if (user) { setSelectedCosmetic(c); setAssistantPrompt(''); setActiveConversationId(null); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onSearchIconClick={scrollToTop} />;
       }
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(data) => { setSelectedInsuranceData(data); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
       }
       if (activeTab === 'settings') {
           return (
@@ -700,7 +780,7 @@ const App: React.FC = () => {
       {view === 'imageView' && zoomImageUrl && <ImageViewer imageUrl={zoomImageUrl} title={zoomImageTitle} onBack={handleBack} t={t} isIndexImage={isZoomImageIndex} />}
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={handleSaveAssistantHistory} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowAlternatives={handleShowAlternativesFromAssistant} />
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={handleUpdateMedicine} t={t} />
-      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onFilterChange={(n,v) => setFilters(p => ({...p, [n]:v}))} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} groupedPharmaceuticalForms={groupedPharmaceuticalForms} uniqueManufactureNames={uniqueManufactureNames} uniqueMarketingCompanies={uniqueMarketingCompanies} uniqueMainAgents={uniqueMainAgents} uniqueLegalStatuses={uniqueLegalStatuses} t={t} />
       <BarcodeScannerModal isOpen={isBarcodeScannerOpen} onClose={() => setIsBarcodeScannerOpen(false)} onBarcodeDetected={(code) => { setSearchTerm(code); setIsBarcodeScannerOpen(false); }} t={t} />
     </div>
   );

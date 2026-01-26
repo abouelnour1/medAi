@@ -12,34 +12,30 @@ interface MilkViewProps {
   milkProducts: MilkProduct[];
   t: TFunction;
   language: Language;
+  scrollToTop?: () => void;
 }
 
-const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
+const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollToTop }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMilk, setSelectedMilk] = useState<MilkProduct | null>(null);
-  const [selectedBrand, setSelectedBrand] = useState<string>(''); // Default is empty to hide results
+  const [selectedBrand, setSelectedBrand] = useState<string>(''); 
   
-  // Comparison State
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
-  // Extract unique brands
   const brands = useMemo(() => {
       const b = new Set(milkProducts.map(p => p.brand));
       return Array.from(b).sort();
   }, [milkProducts]);
 
   const filteredProducts = useMemo(() => {
-    // Logic: Show nothing if no brand selected AND no search term
     if (!selectedBrand && !searchTerm) return [];
 
     return milkProducts.filter(product => {
-      // 1. Brand Filter
       if (selectedBrand && selectedBrand !== 'All' && product.brand !== selectedBrand) {
           return false;
       }
 
-      // 2. Text Search
       if (searchTerm) {
           const lowerSearch = searchTerm.toLowerCase();
           const name = (product.productName || '').toLowerCase();
@@ -60,7 +56,6 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
               return prev.filter(id => id !== productId);
           }
           if (prev.length >= 2) {
-              // Shift: remove first, add new one to become the second
               return [prev[1], productId]; 
           }
           return [...prev, productId];
@@ -86,10 +81,8 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
 
   return (
     <div className="animate-fade-in pb-24 relative min-h-full">
-      {/* Header Container */}
       <div className="bg-white dark:bg-dark-card pt-4 pb-4 shadow-sm border-b border-slate-100 dark:border-slate-800 sticky top-0 z-20">
         
-        {/* Brand Dropdown (List) */}
         <div className="px-4 mb-3">
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                 Select Company / Filter
@@ -112,8 +105,13 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
             </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative px-4">
+            <button 
+                onClick={scrollToTop}
+                className="absolute top-1/2 left-7 rtl:right-7 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary h-5 w-5 hover:text-primary transition-colors cursor-pointer z-10"
+            >
+                <SearchIcon />
+            </button>
             <input
                 type="text"
                 value={searchTerm}
@@ -121,9 +119,6 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
                 placeholder={t('searchMilkPlaceholder')}
                 className="w-full h-[45px] pl-10 pr-10 rtl:pr-10 rtl:pl-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-primary dark:focus:border-primary rounded-xl outline-none transition-all text-base"
             />
-            <div className="absolute top-1/2 ltr:left-7 rtl:right-7 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary pointer-events-none h-5 w-5">
-                <SearchIcon />
-            </div>
             {searchTerm && (
                 <button
                     onClick={() => setSearchTerm('')}
@@ -140,7 +135,6 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
             <div className="flex flex-col gap-3">
                 {filteredProducts.map(product => {
                     const isSelected = selectedForCompare.includes(product.id);
-                    // Check if this product is the SECOND item in the selection list
                     const isSecondSelection = selectedForCompare.length === 2 && selectedForCompare[1] === product.id;
 
                     return (
@@ -172,7 +166,6 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language }) => {
         )}
       </div>
 
-      {/* Comparison Floating Bar (Backup) - Only shows if 2 selected but user hasn't clicked Compare on card yet */}
       {selectedForCompare.length > 0 && (
           <div className="fixed bottom-[85px] left-4 right-4 z-40 animate-slide-up pointer-events-none">
               <div className="bg-slate-900/95 backdrop-blur-md dark:bg-slate-700/95 text-white rounded-2xl shadow-2xl p-3 flex justify-between items-center ring-1 ring-white/10 pointer-events-auto">

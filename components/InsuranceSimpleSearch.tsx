@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import ClearIcon from './icons/ClearIcon';
+import SearchIcon from './icons/SearchIcon';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
 import DrugPolicyCard, { DrugGroup } from './DrugPolicyCard';
@@ -18,6 +19,7 @@ interface InsuranceSimpleSearchProps {
   setSearchTerm: (term: string) => void;
   searchMode: InsuranceSearchMode;
   setSearchMode: (mode: InsuranceSearchMode) => void;
+  onSearchIconClick?: () => void;
 }
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
@@ -31,6 +33,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     setSearchTerm,
     searchMode,
     setSearchMode,
+    onSearchIconClick
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
 
@@ -121,7 +124,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                     availableMedicines: availableMeds
                 });
             } else {
-                // تصفية: فقط الأدوية التي لا تملك سياسة تأمين تظهر كـ "غير مغطى"
                 const medsOfThisSci = matchingMeds.filter(m => m['Scientific Name'] === fullSciName);
                 medsOfThisSci.forEach(med => {
                     results.push({ type: 'not-covered', medicine: med });
@@ -129,7 +131,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             }
         });
     } else {
-        // البحث حسب الحالة أو التشخيص
         let pattern = trimmedTerm.includes('%') 
             ? trimmedTerm.split('%').map(escapeRegExp).join('.*')
             : escapeRegExp(trimmedTerm);
@@ -216,12 +217,18 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
           </div>
 
           <div className="relative">
+             <button 
+                onClick={onSearchIconClick}
+                className="absolute top-1/2 left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 h-5 w-5 hover:text-primary transition-colors cursor-pointer z-10"
+             >
+                <SearchIcon />
+             </button>
             <input
               type="text"
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder={t('insuranceSearchPlaceholder')}
-              className="w-full h-11 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-base bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary outline-none transition-all"
+              className="w-full h-11 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-base bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary outline-none transition-all"
             />
             {inputValue && (
                 <button onClick={() => { setInputValue(''); setSearchTerm(''); }} className="absolute top-1/2 right-3 rtl:left-3 rtl:right-auto transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-red-500 transition-colors">

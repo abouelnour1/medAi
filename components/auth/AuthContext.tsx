@@ -40,11 +40,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const syncUserData = useCallback(async (firebaseUser: FirebaseUser) => {
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          let userDoc;
+          
+          try {
+              userDoc = await getDoc(userDocRef);
+          } catch (getErr: any) {
+              // Handle offline error gracefully
+              if (getErr.code === 'unavailable' || !navigator.onLine) {
+                  console.warn("Client is offline. Using local session data.");
+                  // If we already have a user in state from LocalStorage backup, keep it
+                  if (user) return;
+                  
+                  // Otherwise construct a basic user from Firebase Auth info
+                  const fallbackUser: User = {
+                    id: firebaseUser.uid,
+                    username: firebaseUser.email?.split('@')[0] || 'User',
+                    role: 'premium',
+                    email: firebaseUser.email || '',
+                    emailVerified: firebaseUser.emailVerified,
+                    status: 'active',
+                    aiRequestCount: 0,
+                    lastRequestDate: new Date().toISOString().split('T')[0],
+                    prescriptionPrivilege: false
+                  };
+                  setUser(fallbackUser);
+                  return;
+              }
+              throw getErr;
+          }
           
           let userData: User;
           
-          if (userDoc.exists()) {
+          if (userDoc && userDoc.exists()) {
               const data = userDoc.data();
               userData = {
                   id: firebaseUser.uid,
@@ -59,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   prescriptionPrivilege: data.prescriptionPrivilege || false
               };
               if (data.emailVerified !== firebaseUser.emailVerified) {
-                  await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified });
+                  await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified }).catch(e => console.warn("Failed to update email status while offline"));
               }
           } else {
               userData = {
@@ -73,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   lastRequestDate: new Date().toISOString().split('T')[0],
                   prescriptionPrivilege: false
               };
-              await setDoc(userDocRef, userData);
+              await setDoc(userDocRef, userData).catch(e => console.warn("Failed to create user doc while offline"));
           }
           
           setUser(userData);
@@ -83,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } finally {
           setIsLoading(false);
       }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -108,7 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await sendEmailVerification(result.user);
     
-    // Create initial user doc with selected role
     const userData: Partial<User> = {
         id: result.user.uid,
         username: email.split('@')[0],

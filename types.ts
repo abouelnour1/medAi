@@ -157,6 +157,8 @@ export interface Filters {
   priceMax: string;
   pharmaceuticalForm: string;
   manufactureName: string[];
+  marketingCompany: string[];
+  mainAgent: string[];
   legalStatus: string;
 }
 

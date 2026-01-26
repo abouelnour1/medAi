@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Medicine, TFunction, Language, InsuranceDrug, SelectedInsuranceData, InsuranceSearchMode } from '../types';
 import InsuranceSimpleSearch from './InsuranceSimpleSearch';
@@ -12,6 +13,7 @@ interface InsuranceSearchViewProps {
   setInsuranceSearchTerm: (term: string) => void;
   insuranceSearchMode: InsuranceSearchMode;
   setInsuranceSearchMode: (mode: InsuranceSearchMode) => void;
+  onSearchIconClick?: () => void;
 }
 
 const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
@@ -28,6 +30,7 @@ const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
           setSearchTerm={props.setInsuranceSearchTerm}
           searchMode={props.insuranceSearchMode}
           setSearchMode={props.setInsuranceSearchMode}
+          onSearchIconClick={props.onSearchIconClick}
       />
     </div>
   );

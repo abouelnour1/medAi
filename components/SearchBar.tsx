@@ -12,6 +12,7 @@ interface SearchBarProps {
   isSearchActive: boolean;
   onClearSearch: () => void;
   onForceSearch: () => void;
+  onSearchIconClick?: () => void;
   onBarcodeScanClick: () => void;
   t: TFunction;
 }
@@ -24,6 +25,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   isSearchActive,
   onClearSearch,
   onForceSearch,
+  onSearchIconClick,
   t,
 }) => {
 
@@ -34,9 +36,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <label htmlFor="search-term" className="sr-only">
           {t('search')}
         </label>
-         <div className="absolute top-1/2 left-3 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary pointer-events-none h-4 w-4">
+         <button 
+           onClick={onSearchIconClick}
+           className="absolute top-1/2 left-3 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary h-4 w-4 hover:text-primary transition-colors cursor-pointer z-10"
+         >
              <SearchIcon />
-         </div>
+         </button>
         <input
           id="search-term"
           type="text"
