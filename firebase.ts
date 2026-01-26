@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence, Firestore, initializeFirestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging, Messaging, getToken, onMessage } from "firebase/messaging";
@@ -57,7 +57,13 @@ try {
   }
 
   app = initializeApp(activeConfig);
-  db = getFirestore(app);
+  
+  // استخدام initializeFirestore مع إعدادات تحسين الاتصال
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false
+  });
+  
   auth = getAuth(app);
   functions = getFunctions(app);
 

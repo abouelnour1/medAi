@@ -171,6 +171,7 @@ export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'pri
 
 export interface SerializablePart {
   text?: string;
+  thought?: string;
   inlineData?: {
     mimeType: string;
     data: string;
@@ -219,7 +220,6 @@ export interface AppSettings {
   isAiEnabled: boolean;
 }
 
-// Added: Missing interfaces for prescription and insurance search
 export interface DrugInPrescription {
   tradeName: string;
   genericName: string;
@@ -257,7 +257,6 @@ export interface SelectedInsuranceData {
   scientificGroup: ScientificGroupData;
 }
 
-// Added: Missing interfaces for product recommendations from AI
 export interface ProductSuggestion {
   name: string;
   concentration: string;

@@ -55,6 +55,7 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     return parts.map(p => {
         const part: SerializablePart = {};
         if (p.text) part.text = String(p.text);
+        if (p.thought) part.thought = String(p.thought);
         
         if (p.inlineData) {
             part.inlineData = {
@@ -98,7 +99,12 @@ export const runAIChat = async (
         role: msg.role, 
         parts: sanitizeParts(msg.parts)
     })),
-    config: { systemInstruction, tools },
+    config: { 
+        systemInstruction, 
+        tools,
+        // CRITICAL: Disable thinking budget when using tools for fast lookup and to avoid "missing thought signature" errors
+        thinkingConfig: { thinkingBudget: 0 }
+    },
   };
 
   try {
@@ -109,16 +115,23 @@ export const runAIChat = async (
       const implementation = toolImplementations[fc.name];
       if (implementation) {
         const functionResult = implementation(fc.args);
+        // We must preserve the exact response from model turn including thought parts if present
+        const modelTurnParts = sanitizeParts(response.candidates?.[0]?.content?.parts || []);
+        
         const toolResponseHistory: ChatMessage[] = [
           ...history,
-          { role: 'model', parts: [{ functionCall: { name: fc.name, args: safeClone(fc.args), id: fc.id } }] },
+          { role: 'model', parts: modelTurnParts },
           { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
         ];
         
         return await ai.models.generateContent({
           model: modelName,
           contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: sanitizeParts(msg.parts) })),
-          config: { systemInstruction, tools },
+          config: { 
+              systemInstruction, 
+              tools,
+              thinkingConfig: { thinkingBudget: 0 }
+          },
         });
       }
     }

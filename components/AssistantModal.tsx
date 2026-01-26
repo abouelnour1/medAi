@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage, Cosmetic, SerializablePart } from '../types';
@@ -58,8 +59,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const aiAvailable = isAIAvailable();
 
-  const handleSendMessageRef = useRef<((overrideInput?: string, isHidden?: boolean) => Promise<void>) | null>(null);
-
   const searchDatabaseTool: FunctionDeclaration = {
     name: 'searchDatabase',
     parameters: {
@@ -95,7 +94,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     };
   }, [allMedicines]);
   
-  const handleSendMessage = useCallback(async (overrideInput?: string, isHidden: boolean = false) => {
+  const handleSendMessage = useCallback(async (overrideInput?: string) => {
     if (!user) return;
     const currentInput = (overrideInput ?? userInput).trim();
     if ((!currentInput && !uploadedImage) || isLoading) return;
@@ -108,50 +107,62 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     if (currentInput) userParts.push({ text: currentInput });
     else if (uploadedImage) userParts.push({ text: t('analyzingImage') });
     
-    const newHistoryItem: any = { role: 'user', parts: userParts };
-    if (isHidden) newHistoryItem.hidden = true;
-
-    const newHistory: ChatMessage[] = [...chatHistory, newHistoryItem];
+    const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', parts: userParts }];
     setChatHistory(newHistory);
     setUserInput('');
     setUploadedImage(null);
     setIsLoading(true);
     
-    const generalSystemInstructionAr = `أنت صيدلي إكلينيكي خبير ومساعد ذكي في PharmaSource.
-    **شخصيتك:** متعاون، ذكي، وتستخدم الأدوات للتحقق من الأسعار والبدائل.`;
+    // حقن سياق الدواء في الـ System Instruction لتوفير الريكوستات وضمان فهم الموديل
+    let contextInfo = "";
+    if (contextMedicine) {
+        contextInfo = `
+[STRICT CONTEXT - INTERNAL DATA]
+CURRENT MEDICINE BEING VIEWED:
+- Trade Name: ${contextMedicine['Trade Name']}
+- Scientific Name (Active Ingredient): ${contextMedicine['Scientific Name']}
+- Price: ${contextMedicine['Public price']} SAR
+- Form: ${contextMedicine.PharmaceuticalForm}
+- Strength/Concentration: ${contextMedicine.Strength} ${contextMedicine.StrengthUnit}
+- Manufacturer: ${contextMedicine['Manufacture Name']}
+- Agent: ${contextMedicine['Main Agent']}
+- Regulatory: ${contextMedicine['Legal Status']}
+- SFDA Reg No: ${contextMedicine.RegisterNumber}
+`;
+    } else if (contextCosmetic) {
+        contextInfo = `
+[STRICT CONTEXT - INTERNAL DATA]
+CURRENT COSMETIC BEING VIEWED:
+- Brand: ${contextCosmetic.BrandName}
+- Name: ${contextCosmetic.SpecificName}
+- Ingredients: ${contextCosmetic['Active ingredient'] || contextCosmetic['Key Ingredients']}
+- Manufacturer: ${contextCosmetic.manufacturerNameEn}
+`;
+    }
 
-    const prescriptionSystemInstructionAr = `أنت طبيب استشاري خبير في المملكة العربية السعودية. مهمتك هي توليد وصفات طبية رسمية واحترافية.
+    const generalSystemInstructionAr = `أنت "كبير الصيادلة الإكلينيكيين" في PharmaSource KSA.
+${contextInfo}
+**مهمتك:** تقديم معلومات دقيقة جداً بناءً على السياق الموفر أعلاه.
+**قواعدك:**
+1. أنت تعرف بالفعل تفاصيل "هذا الدواء" المذكور في السياق. لا تطلب هذه المعلومات من المستخدم.
+2. إذا سألك المستخدم "كم سعره؟" أو "ما هي مادته؟"، أجب مباشرة بناءً على البيانات أعلاه.
+3. الردود يجب أن تكون طبية، محترفة، ومختصرة جداً (Bullet points).
+4. لا تذكر نص "INTERNAL DATA" للمستخدم، فقط استخدم المعلومات للإجابة.`;
 
-**قواعد صارمة لإنشاء الوصفة:**
-1. إذا لم يقدم المستخدم تفاصيل المريض أو الطبيب، **يجب عليك تأليف بيانات وهمية واقعية جداً** (اسم المريض، اسم الطبيب، اسم المستشفى، رقم الملف، التاريخ). لا تترك أي حقل فارغاً أبداً.
-2. الوصفة يجب أن تكون كائن JSON صالح محصور بين التاجات: ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.
-3. الحقول المطلوبة في الـ JSON:
-   - hospitalName: اسم مستشفى سعودي واقعي (مثلاً: مستشفى الملك فيصل التخصصي، مستشفى الحبيب، إلخ).
-   - hospitalAddress: عنوان واقعي في السعودية.
-   - patientName: اسم ثلاثي واقعي.
-   - patientId: رقم هوية أو إقامة مكون من 10 أرقام.
-   - fileNumber: رقم ملف طبي عشوائي.
-   - date: تاريخ اليوم بتنسيق YYYY-MM-DD.
-   - doctorName: اسم طبيب استشاري.
-   - doctorNameAr: اسم الطبيب بالعربية للختم.
-   - doctorSpecialty: تخصص الطبيب المناسب للحالة.
-   - diagnosisDescription: وصف التشخيص بالإنجليزية (English Only).
-   - drugs: مصفوفة كائنات تحتوي على (tradeName, genericName, dosage, usageMethod, usageMethodAr, quantity).
+    const prescriptionSystemInstructionAr = `أنت طبيب استشاري خبير في السعودية. مهمتك هي توليد وصفات طبية.
+الوصفة يجب أن تكون كائن JSON صالح بين ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.`;
 
-اجعل الوصفة تبدو رسمية جداً ليتمكن المستخدم من طباعتها.`;
-
-    let systemInstruction = language === 'ar' ? generalSystemInstructionAr : "You are an AI Clinical Pharmacist.";
+    let systemInstruction = language === 'ar' ? generalSystemInstructionAr : `You are a Senior Clinical Pharmacist. ${contextInfo} Use the provided context to answer precisely without asking the user for details you already have.`;
     if (isPrescriptionMode) {
         systemInstruction = prescriptionSystemInstructionAr;
     }
 
     try {
         const toolImplementations = { searchDatabase: searchDatabase };
-        const finalResponse = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: tools}], toolImplementations);
+        const finalResponse = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: tools}], toolImplementations, 'gemini-3-flash-preview');
         const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
         
         if (responseParts) {
-            // Sanitize parts to ensure they are plain serializable objects
             const cleanParts = sanitizeParts(responseParts);
             setChatHistory(prev => [...prev, { role: 'model', parts: cleanParts }]);
         } else {
@@ -162,26 +173,40 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, isPrescriptionMode, language, t, searchDatabase, user, uploadedImage]);
+  }, [userInput, isLoading, chatHistory, isPrescriptionMode, language, t, searchDatabase, user, uploadedImage, contextMedicine, contextCosmetic]);
   
-  useEffect(() => { handleSendMessageRef.current = handleSendMessage; }, [handleSendMessage]);
-
   useEffect(() => {
     if (isOpen) {
         if (initialPrompt === '##PRESCRIPTION_MODE##') {
             setIsPrescriptionMode(true);
-            setChatHistory([{ role: 'model', parts: [{ text: language === 'ar' ? 'أهلاً بك في نظام الوصفات الطبية الرسمي. سأقوم بمساعدتك في توليد وصفة طبية كاملة واحترافية قابلة للطباعة.' : 'Welcome to the official Rx system. I will help you generate a complete, professional, and printable medical prescription.' }] }]);
+            setChatHistory([{ role: 'model', parts: [{ text: language === 'ar' ? 'أهلاً بك في نظام الوصفات الطبية الرسمي. سأقوم بمساعدتك في توليد وصفة طبية كاملة واحترافية قابلة للطباعة.' : 'Welcome to the official Rx system.' }] }]);
         } else if (initialHistory && initialHistory.length > 0) {
             setIsPrescriptionMode(false);
             setChatHistory(initialHistory);
         } else {
             setIsPrescriptionMode(false);
-            setChatHistory([{ role: 'model', parts: [{ text: t('assistantWelcomeMessage') }] }]);
-            if (initialPrompt) setTimeout(() => { if (handleSendMessageRef.current) handleSendMessageRef.current(initialPrompt); }, 100);
+            
+            // توليد رسالة ترحيب "محلية" دون ريكوست للـ API لتوفير التكلفة
+            let welcomeMsg = t('assistantWelcomeMessage');
+            if (contextMedicine) {
+                welcomeMsg = language === 'ar' 
+                    ? `ما الذي تود معرفته عن دواء **${contextMedicine['Trade Name']}**؟ (أنا أعرف كافة تفاصيله وسعره)` 
+                    : `What would you like to know about **${contextMedicine['Trade Name']}**? (I have all its details and price ready)`;
+            } else if (contextCosmetic) {
+                welcomeMsg = language === 'ar'
+                    ? `كيف يمكنني مساعدتك بخصوص منتج **${contextCosmetic.SpecificName}**؟`
+                    : `How can I help you with **${contextCosmetic.SpecificName}**?`;
+            }
+            
+            setChatHistory([{ role: 'model', parts: [{ text: welcomeMsg }] }]);
+
+            if (initialPrompt) {
+                setTimeout(() => { handleSendMessage(initialPrompt); }, 400);
+            }
         }
         setUploadedImage(null);
     }
-  }, [isOpen, initialPrompt, initialHistory, t, language]);
+  }, [isOpen, initialPrompt, initialHistory, t, language, contextMedicine, contextCosmetic]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isLoading]);
   
@@ -202,7 +227,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in" onClick={handleClose}>
       <div className="bg-white dark:bg-dark-card w-full max-w-2xl h-[85vh] sm:h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative m-4" onClick={e => e.stopPropagation()}>
         
-        {/* Header */}
         <header className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-inner">
@@ -212,7 +236,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                 <h2 className="text-lg font-bold">{isPrescriptionMode ? t('prescription') : t('assistantModalTitle')}</h2>
                 <div className="flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Active System</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Clinical Assistant</span>
                 </div>
             </div>
           </div>
@@ -221,10 +245,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           </button>
         </header>
 
-        {/* Chat Area */}
         <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
           {chatHistory.map((msg, index) => {
-             if ((msg as any).hidden) return null;
              const textContent = msg.parts?.find(p => 'text' in p && p.text)?.text;
              const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
              const isProductRecommendation = textContent?.includes('---PRODUCTS_START---');
@@ -252,7 +274,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           })}
           {isLoading && (
               <div className="flex justify-start animate-fade-in">
-                 <div className="bg-white dark:bg-dark-card p-3 rounded-2xl rounded-bl-none flex items-center gap-1.5 shadow-sm border border-slate-100">
+                 <div className="bg-white dark:bg-dark-card p-3 rounded-2xl rounded-bl-none flex items-center gap-1 shadow-sm border border-slate-100">
                     <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                     <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -262,7 +284,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           <div ref={chatEndRef} />
         </div>
 
-        {/* Footer */}
         <footer className="p-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-dark-card">
             {uploadedImage && (
                 <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-between border border-slate-200 dark:border-slate-700">

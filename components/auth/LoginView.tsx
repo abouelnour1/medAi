@@ -25,17 +25,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     
     const cleanInput = username.trim();
 
-    // Validation: Must be 'admin' (case insensitive) OR a valid email containing '@'
-    const isAdmin = cleanInput.toLowerCase() === 'admin';
-    const isEmail = cleanInput.includes('@');
+    // Firebase Auth requires a valid email. "admin" is not allowed unless it's admin@domain.com
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanInput);
 
-    if (!isAdmin && !isEmail) {
-        setError(t('invalidEmailFormat'));
+    if (!isEmail) {
+        setError(t('language') === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح.' : 'Please enter a valid email address.');
         return;
     }
     
-    if (!password) {
-        setError(t('incorrectPasswordError'));
+    if (!password || password.length < 6) {
+        setError(t('language') === 'ar' ? 'كلمة المرور قصيرة جداً.' : 'Password is too short.');
         return;
     }
 
@@ -44,8 +43,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       await login(cleanInput, password);
       onLoginSuccess();
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Login failed');
+      console.error("Login Error:", err.code);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+          setError(t('language') === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : 'Invalid email or password.');
+      } else {
+          setError(err.message || 'Login failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +113,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">{t('email')}</label>
-          <input type="text" id="username" value={username} onChange={e => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
+          <input type="text" id="username" value={username} onChange={e => setUsername(e.target.value)} required placeholder="email@example.com" className="mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"/>
         </div>
         
         <div>
@@ -128,7 +131,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
           />
         </div>
 
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {error && <p className="text-red-500 text-sm text-center font-bold">{error}</p>}
         <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70">
           {isLoading ? '...' : t('login')}
         </button>
