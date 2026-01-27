@@ -1,15 +1,18 @@
-
-import { initializeApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence, Firestore, initializeFirestore } from "firebase/firestore";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { 
+  initializeFirestore, 
+  memoryLocalCache,
+  Firestore,
+  getFirestore
+} from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging, Messaging, getToken, onMessage } from "firebase/messaging";
 import { getFunctions, Functions } from "firebase/functions";
 
-// تم إعادة الاتصال بـ Firebase للعمل كبرنامج سحابي متكامل
 export const FIREBASE_DISABLED = false;
 
-const firebaseWebConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
   authDomain: "medainew-fa6a2.firebaseapp.com",
   projectId: "medainew-fa6a2",
@@ -19,50 +22,42 @@ const firebaseWebConfig = {
   measurementId: "G-J06N12MDW0"
 };
 
-const firebaseAndroidConfig = {
-  apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
-  authDomain: "medainew-fa6a2.firebaseapp.com",
-  projectId: "medainew-fa6a2",
-  storageBucket: "medainew-fa6a2.firebasestorage.app",
-  messagingSenderId: "568872568132",
-  appId: "1:568872568132:web:3b07d77360eb8f3d16c311", 
-  measurementId: "G-J06N12MDW0"
-};
-
-let app: any = null;
-let db: any = null;
-let auth: any = null;
+let app: FirebaseApp;
+let db: Firestore;
+let auth: Auth;
 let analytics: any = null;
-let messaging: any = null;
-let functions: any = null;
+let messaging: Messaging = null as any;
+let functions: Functions = null as any;
 
-const isAndroidEnvironment = () => {
-  if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      const platform = (window as any).Capacitor.getPlatform();
-      if (platform === 'android') return true;
+// وظيفة لتهيئة Firestore بطريقة آمنة
+const getSafeFirestore = (firebaseApp: FirebaseApp): Firestore => {
+  const existingApps = getApps();
+  // إذا كان التطبيق موجوداً بالفعل، نحاول جلب النسخة القائمة بدلاً من إعادة التهيئة
+  if (existingApps.length > 0) {
+    try {
+      return getFirestore(firebaseApp);
+    } catch (e) {
+      console.warn("Could not get existing Firestore, re-initializing...");
+    }
   }
-  if (typeof navigator !== 'undefined') {
-      const ua = navigator.userAgent.toLowerCase();
-      if (ua.includes('android') && (ua.includes('wv') || window.location.hostname === 'localhost')) {
-          return true;
-      }
-  }
-  return false;
+
+  /**
+   * حل مشكلة INTERNAL ASSERTION FAILED:
+   * نستخدم memoryLocalCache بدلاً من persistentLocalCache.
+   * هذا يمنع الأخطاء الناتجة عن قفل الملفات في IndexedDB والتي تحدث غالباً في الأندرويد.
+   */
+  return initializeFirestore(firebaseApp, {
+    localCache: memoryLocalCache(),
+    experimentalForceLongPolling: true, // ضروري لتجاوز مشاكل الشبكة/البروكسي
+  });
 };
 
 try {
-  let activeConfig = firebaseWebConfig;
-  if (isAndroidEnvironment()) {
-      activeConfig = firebaseAndroidConfig;
-  }
-
-  app = initializeApp(activeConfig);
+  const apps = getApps();
+  app = apps.length > 0 ? apps[0] : initializeApp(firebaseConfig);
   
-  // استخدام initializeFirestore مع إعدادات تحسين الاتصال
-  db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    useFetchStreams: false
-  });
+  // تهيئة Firestore
+  db = getSafeFirestore(app);
   
   auth = getAuth(app);
   functions = getFunctions(app);
@@ -73,20 +68,16 @@ try {
     } catch (e) {}
 
     if ('serviceWorker' in navigator) {
-      messaging = getMessaging(app);
+      try {
+        messaging = getMessaging(app);
+      } catch (e) {}
     }
   }
-
-  // تفعيل التخزين المحلي للعمل في حال انقطاع الإنترنت المؤقت
-  enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-          console.warn("Persistence failed: Multiple tabs open.");
-      } else if (err.code === 'unimplemented') {
-          console.warn("Persistence is not supported by this browser.");
-      }
-  });
 } catch (e) {
-  console.error("Firebase Init Error", e);
+  console.error("Critical Firebase Initialization Error", e);
+  // Fallback objects to prevent UI crashes
+  db = { type: 'firestore' } as any; 
+  auth = {} as any;
 }
 
 export { app, db, auth, analytics, messaging, functions, getToken, onMessage };

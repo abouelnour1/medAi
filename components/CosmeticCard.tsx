@@ -13,6 +13,8 @@ interface CosmeticCardProps {
 }
 
 const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onClick, onLongPress }) => {
+  const price = parseFloat(cosmetic["Public price"] || "");
+
   return (
     <div 
       className="group relative bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-md active:scale-[0.99]"
@@ -26,25 +28,32 @@ const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onCl
       <div className="h-0.5 w-full bg-gradient-to-r from-pink-300 to-purple-300 dark:from-pink-800 dark:to-purple-800"></div>
 
       <div className="p-3">
-        {/* Top Row: Brand & Origin */}
+        {/* Top Row: Brand & Origin & Price */}
         <div className="flex justify-between items-start mb-2">
             <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 rounded-md">
                 {cosmetic.BrandName}
             </span>
-            {(cosmetic.manufacturerCountryEn || cosmetic.manufacturerNameEn) && (
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 max-w-[50%] truncate">
-                    <FactoryIcon />
-                    <span className="truncate">
-                        {cosmetic.manufacturerNameEn} 
-                        {cosmetic.manufacturerCountryEn && ` (${cosmetic.manufacturerCountryEn})`}
-                    </span>
-                </div>
-            )}
+            
+            <div className="flex flex-col items-end gap-1">
+                {!isNaN(price) && (
+                  <div className="text-pink-600 dark:text-pink-400 text-sm font-black whitespace-nowrap">
+                    {price.toFixed(2)} <span className="text-[9px] font-normal text-slate-400">{t('sar')}</span>
+                  </div>
+                )}
+                {(cosmetic.manufacturerCountryEn || cosmetic.manufacturerNameEn) && (
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 max-w-[120px] truncate">
+                        <FactoryIcon />
+                        <span className="truncate">
+                            {cosmetic.manufacturerNameEn || cosmetic.manufacturerCountryEn}
+                        </span>
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* Product Name */}
         <div className="mb-3">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug font-serif group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors" dir="ltr">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors" dir="ltr">
               {cosmetic.SpecificName}
             </h2>
             {cosmetic.SpecificNameAr && (

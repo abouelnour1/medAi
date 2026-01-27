@@ -63,11 +63,11 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     name: 'searchDatabase',
     parameters: {
       type: Type.OBJECT,
-      description: 'Searches the database for medicines. Use this to find prices, alternatives, and details.',
+      description: 'Searches the entire SFDA-registered medicine database for prices, ingredients, and alternatives. Use this when the user asks for ANY medicine or ingredient details.',
       properties: {
-        tradeName: { type: Type.STRING, description: 'The trade name.' },
-        scientificName: { type: Type.STRING, description: 'The scientific name.' },
-        productType: { type: Type.STRING, description: "Type: 'medicine' or 'supplement'." },
+        tradeName: { type: Type.STRING, description: 'Trade name of the product.' },
+        scientificName: { type: Type.STRING, description: 'Active ingredient name.' },
+        limitResults: { type: Type.NUMBER, description: 'Max number of items to return.' }
       },
     },
   };
@@ -78,18 +78,20 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     let results = [...allMedicines];
     if (args.tradeName) results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
     if (args.scientificName) {
-        results = results.filter(med => String(med['Scientific Name']).toLowerCase().trim() === args.scientificName!.toLowerCase().trim());
+        results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(args.scientificName!.toLowerCase().trim()));
     }
-    if (results.length === 0) return { count: 0, status: "NO_MATCH_FOUND", message: "No exact match in local DB." };
+    if (results.length === 0) return { count: 0, status: "NOT_IN_LOCAL_DB", message: "Item not found in current directory snapshot. Suggest general clinical advice." };
+    
     return {
         count: results.length,
-        results: results.slice(0, 20).map(r => ({
+        results: results.slice(0, args.limitResults || 15).map(r => ({
             tradeName: r['Trade Name'],
             scientificName: r['Scientific Name'],
-            price: r['Public price'],
+            priceSAR: r['Public price'],
             form: r.PharmaceuticalForm,
-            strength: r.Strength + ' ' + r.StrengthUnit,
+            strength: `${r.Strength} ${r.StrengthUnit}`,
             manufacturer: r['Manufacture Name'],
+            status: r['Legal Status']
         }))
     };
   }, [allMedicines]);
@@ -105,7 +107,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         userParts.push({ inlineData: { mimeType: uploadedImage.mimeType, data: base64Data } });
     }
     if (currentInput) userParts.push({ text: currentInput });
-    else if (uploadedImage) userParts.push({ text: t('analyzingImage') });
     
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', parts: userParts }];
     setChatHistory(newHistory);
@@ -113,49 +114,27 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     setUploadedImage(null);
     setIsLoading(true);
     
-    // حقن سياق الدواء في الـ System Instruction لتوفير الريكوستات وضمان فهم الموديل
-    let contextInfo = "";
+    let contextInfo = `[DATABASE_SNAPSHOT: ${allMedicines.length} Items Loaded]`;
     if (contextMedicine) {
-        contextInfo = `
-[STRICT CONTEXT - INTERNAL DATA]
-CURRENT MEDICINE BEING VIEWED:
-- Trade Name: ${contextMedicine['Trade Name']}
-- Scientific Name (Active Ingredient): ${contextMedicine['Scientific Name']}
-- Price: ${contextMedicine['Public price']} SAR
-- Form: ${contextMedicine.PharmaceuticalForm}
-- Strength/Concentration: ${contextMedicine.Strength} ${contextMedicine.StrengthUnit}
-- Manufacturer: ${contextMedicine['Manufacture Name']}
-- Agent: ${contextMedicine['Main Agent']}
-- Regulatory: ${contextMedicine['Legal Status']}
-- SFDA Reg No: ${contextMedicine.RegisterNumber}
-`;
-    } else if (contextCosmetic) {
-        contextInfo = `
-[STRICT CONTEXT - INTERNAL DATA]
-CURRENT COSMETIC BEING VIEWED:
-- Brand: ${contextCosmetic.BrandName}
-- Name: ${contextCosmetic.SpecificName}
-- Ingredients: ${contextCosmetic['Active ingredient'] || contextCosmetic['Key Ingredients']}
-- Manufacturer: ${contextCosmetic.manufacturerNameEn}
-`;
+        contextInfo += `\n[FOCUSED_ITEM]: ${contextMedicine['Trade Name']} (${contextMedicine['Scientific Name']}), Price: ${contextMedicine['Public price']} SAR, Status: ${contextMedicine['Legal Status']}`;
     }
 
-    const generalSystemInstructionAr = `أنت "كبير الصيادلة الإكلينيكيين" في PharmaSource KSA.
-${contextInfo}
-**مهمتك:** تقديم معلومات دقيقة جداً بناءً على السياق الموفر أعلاه.
-**قواعدك:**
-1. أنت تعرف بالفعل تفاصيل "هذا الدواء" المذكور في السياق. لا تطلب هذه المعلومات من المستخدم.
-2. إذا سألك المستخدم "كم سعره؟" أو "ما هي مادته؟"، أجب مباشرة بناءً على البيانات أعلاه.
-3. الردود يجب أن تكون طبية، محترفة، ومختصرة جداً (Bullet points).
-4. لا تذكر نص "INTERNAL DATA" للمستخدم، فقط استخدم المعلومات للإجابة.`;
+    const clinicalSystemInstruction = `
+أنت "كبير الصيادلة الإكلينيكيين والمستشار الطبي" لمنصة PharmaSource KSA.
+جمهورك هم "أطباء وصيادلة" محترفون في المملكة العربية السعودية.
 
-    const prescriptionSystemInstructionAr = `أنت طبيب استشاري خبير في السعودية. مهمتك هي توليد وصفات طبية.
-الوصفة يجب أن تكون كائن JSON صالح بين ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.`;
+**قواعد التواصل الـصـارمة:**
+1. تواصل بلغة علمية احترافية دقيقة. استخدم المصطلحات الطبية الصحيحة (Bioavailability, Indication, Contraindication, Half-life).
+2. لا تستخدم عبارات ترحيبية زائدة أو لغة عامية. اجعل إجاباتك بصيغة "الاستشارة الطبية".
+3. عندما تُسأل عن أي دواء، ابحث أولاً في قاعدة البيانات باستخدام أداة 'searchDatabase'. لديك وصول لـ ${allMedicines.length} صنف مسجل في السعودية.
+4. إذا سألك المستخدم "كم سعره؟" أو "ما بديله؟" أو "ما مكوناته؟" بخصوص الدواء الذي يركز عليه الآن، أجب مباشرة من السياق الموفر لك.
+5. في حال رفع صورة وصفة طبية، حللها طبياً واقترح الأدوية المناسبة من قاعدة البيانات.
+${contextInfo}`;
 
-    let systemInstruction = language === 'ar' ? generalSystemInstructionAr : `You are a Senior Clinical Pharmacist. ${contextInfo} Use the provided context to answer precisely without asking the user for details you already have.`;
-    if (isPrescriptionMode) {
-        systemInstruction = prescriptionSystemInstructionAr;
-    }
+    const prescriptionSystemInstruction = `أنت طبيب استشاري خبير. قم بتوليد كائن JSON للوصفة الطبية بين علامات ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.`;
+
+    let systemInstruction = language === 'ar' ? clinicalSystemInstruction : `You are a Senior Clinical Pharmacist Consultant. Use medical terminology. Access DB via tools for any drug queries. ${contextInfo}`;
+    if (isPrescriptionMode) systemInstruction = prescriptionSystemInstruction;
 
     try {
         const toolImplementations = { searchDatabase: searchDatabase };
@@ -163,8 +142,7 @@ ${contextInfo}
         const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
         
         if (responseParts) {
-            const cleanParts = sanitizeParts(responseParts);
-            setChatHistory(prev => [...prev, { role: 'model', parts: cleanParts }]);
+            setChatHistory(prev => [...prev, { role: 'model', parts: sanitizeParts(responseParts) }]);
         } else {
             setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
         }
@@ -173,40 +151,28 @@ ${contextInfo}
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, isPrescriptionMode, language, t, searchDatabase, user, uploadedImage, contextMedicine, contextCosmetic]);
+  }, [userInput, isLoading, chatHistory, isPrescriptionMode, language, t, searchDatabase, user, uploadedImage, contextMedicine, allMedicines]);
   
   useEffect(() => {
     if (isOpen) {
         if (initialPrompt === '##PRESCRIPTION_MODE##') {
             setIsPrescriptionMode(true);
-            setChatHistory([{ role: 'model', parts: [{ text: language === 'ar' ? 'أهلاً بك في نظام الوصفات الطبية الرسمي. سأقوم بمساعدتك في توليد وصفة طبية كاملة واحترافية قابلة للطباعة.' : 'Welcome to the official Rx system.' }] }]);
+            setChatHistory([{ role: 'model', parts: [{ text: language === 'ar' ? 'وضع الوصفات الطبية نشط. كيف يمكنني مساعدتك بروفيسور؟' : 'Rx Mode active. How can I assist you, Doctor?' }] }]);
         } else if (initialHistory && initialHistory.length > 0) {
             setIsPrescriptionMode(false);
             setChatHistory(initialHistory);
         } else {
             setIsPrescriptionMode(false);
-            
-            // توليد رسالة ترحيب "محلية" دون ريكوست للـ API لتوفير التكلفة
-            let welcomeMsg = t('assistantWelcomeMessage');
+            let welcomeMsg = language === 'ar' ? 'أهلاً بك زميلي الطبيب/الصيدلي. كيف يمكنني مساعدتك إكلينيكياً اليوم؟' : 'Welcome, Colleague. Clinical Assistant ready for consultation.';
             if (contextMedicine) {
-                welcomeMsg = language === 'ar' 
-                    ? `ما الذي تود معرفته عن دواء **${contextMedicine['Trade Name']}**؟ (أنا أعرف كافة تفاصيله وسعره)` 
-                    : `What would you like to know about **${contextMedicine['Trade Name']}**? (I have all its details and price ready)`;
-            } else if (contextCosmetic) {
-                welcomeMsg = language === 'ar'
-                    ? `كيف يمكنني مساعدتك بخصوص منتج **${contextCosmetic.SpecificName}**؟`
-                    : `How can I help you with **${contextCosmetic.SpecificName}**?`;
+                welcomeMsg = language === 'ar' ? `ما هي استشارتك بخصوص دواء **${contextMedicine['Trade Name']}**؟` : `Clinical query regarding **${contextMedicine['Trade Name']}**?`;
             }
-            
             setChatHistory([{ role: 'model', parts: [{ text: welcomeMsg }] }]);
-
-            if (initialPrompt) {
-                setTimeout(() => { handleSendMessage(initialPrompt); }, 400);
-            }
+            if (initialPrompt) setTimeout(() => { handleSendMessage(initialPrompt); }, 400);
         }
         setUploadedImage(null);
     }
-  }, [isOpen, initialPrompt, initialHistory, t, language, contextMedicine, contextCosmetic]);
+  }, [isOpen, initialPrompt, initialHistory, language, contextMedicine]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isLoading]);
   
@@ -229,14 +195,14 @@ ${contextInfo}
         
         <header className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-inner">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-inner border border-primary/20">
                 <AssistantIcon />
             </div>
             <div>
-                <h2 className="text-lg font-bold">{isPrescriptionMode ? t('prescription') : t('assistantModalTitle')}</h2>
+                <h2 className="text-lg font-bold">{isPrescriptionMode ? t('prescription') : 'Clinical Assistant'}</h2>
                 <div className="flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Clinical Assistant</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Scientific Expert</span>
                 </div>
             </div>
           </div>
@@ -307,7 +273,7 @@ ${contextInfo}
                     value={userInput} 
                     onChange={(e) => setUserInput(e.target.value)} 
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
-                    placeholder={isPrescriptionMode ? 'اكتب حالة المريض أو الأدوية لتوليد الوصفة...' : (aiAvailable ? t('askGeminiPlaceholder') : t('aiUnavailableShort'))} 
+                    placeholder={aiAvailable ? (language === 'ar' ? 'استشارة طبية بخصوص أي دواء...' : 'Medical consultation or drug query...') : t('aiUnavailableShort')} 
                     className="flex-grow p-3 bg-slate-100 dark:bg-slate-800 rounded-xl outline-none transition-all focus:ring-2 focus:ring-primary/20 resize-none text-sm min-h-[48px] max-h-32" 
                     rows={1} 
                     disabled={isLoading || !aiAvailable} 

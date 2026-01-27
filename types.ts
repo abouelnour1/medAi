@@ -16,9 +16,10 @@ export interface Notification {
 export interface PendingUpdate {
   id: string;
   medicineId?: string; // Empty if it's a new medicine
+  itemType: 'medicine' | 'cosmetic'; // New: To distinguish between data types
   type: 'add' | 'edit';
-  newData: Partial<Medicine>;
-  originalData?: Partial<Medicine>;
+  newData: Partial<Medicine> | Partial<Cosmetic>;
+  originalData?: any;
   submittedBy: string;
   submittedByName: string;
   timestamp: number;
@@ -114,6 +115,8 @@ export interface Cosmetic {
   "Active ingredient"?: string;
   "Key Ingredients"?: string;
   Highlights?: string;
+  "Public price"?: string; // Added
+  imgBox?: string; // Added
 }
 
 export interface MilkProduct {

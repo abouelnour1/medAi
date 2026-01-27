@@ -58,11 +58,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+    // تم إصلاح الدالة هنا لعدم حذف المسافات بين الكلمات
     const normalizeForMatch = (name: string) => {
         if (!name) return '';
         return name.toLowerCase()
-            .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, '')
-            .replace(/[^a-z,]/g, ' ')
+            .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
+            .replace(/[^a-z0-9\s,]/g, ' ') // إبقاء المسافات
             .split(/[,\s]+/)
             .filter(s => s.length > 1 && !JUNK_TOKENS.has(s))
             .join(' ')
@@ -78,7 +79,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         if (trimmedTerm.includes('%')) {
             pattern = trimmedTerm.split('%').map(escapeRegExp).join('.*');
         } else {
-            pattern = '^' + escapeRegExp(trimmedTerm);
+            pattern = escapeRegExp(trimmedTerm);
         }
         
         const regex = new RegExp(pattern, 'i');
@@ -112,16 +113,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             });
 
             if (matchedPolicies.length > 0) {
-                const availableMeds = allMedicines
-                    .filter(m => normalizeForMatch(m['Scientific Name']) === normalizedSci)
-                    .sort((a, b) => parseFloat(a['Public price']) - parseFloat(b['Public price']));
-
                 results.push({
                     type: 'drug-grouped',
                     scientificName: fullSciName,
                     tradeNames: Array.from(tradeNamesSet),
                     policies: matchedPolicies,
-                    availableMedicines: availableMeds
+                    availableMedicines: allMedicines.filter(m => normalizeForMatch(m['Scientific Name']) === normalizedSci)
                 });
             } else {
                 const medsOfThisSci = matchingMeds.filter(m => m['Scientific Name'] === fullSciName);
@@ -174,27 +171,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
     }
 
-    const finalResults: SearchResult[] = [];
-    const seenMeds = new Set<string>();
-    const seenSci = new Set<string>();
-
-    results.forEach(res => {
-        if (res.type === 'not-covered') {
-            if (!seenMeds.has(res.medicine.RegisterNumber)) {
-                finalResults.push(res);
-                seenMeds.add(res.medicine.RegisterNumber);
-            }
-        } else if (res.type === 'drug-grouped') {
-            if (!seenSci.has(res.scientificName)) {
-                finalResults.push(res);
-                seenSci.add(res.scientificName);
-            }
-        } else {
-            finalResults.push(res);
-        }
-    });
-
-    return finalResults;
+    return results;
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
 
   return (

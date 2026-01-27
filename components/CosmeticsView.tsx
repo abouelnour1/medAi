@@ -60,44 +60,35 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
       results = results.filter(c => c.BrandName === selectedBrand);
     }
 
-    const effectiveLength = searchTerm.replace(/%/g, '').trim().length;
+    const trimmedTerm = searchTerm.trim().toLowerCase();
+    const effectiveLength = trimmedTerm.replace(/%/g, '').length;
 
-    if (effectiveLength >= 3) {
-      const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    if (effectiveLength >= 2) {
       const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const parts = lowerSearchTerm.split('%').map(escapeRegExp);
+      const parts = trimmedTerm.split('%').map(escapeRegExp);
       const pattern = parts.join('.*');
       
       let searchRegex: RegExp;
       try {
           searchRegex = new RegExp(pattern, 'i');
       } catch (e) {
-          searchRegex = new RegExp(escapeRegExp(lowerSearchTerm), 'i');
+          searchRegex = new RegExp(escapeRegExp(trimmedTerm), 'i');
       }
 
       results = results.filter(c => {
-        return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr || '');
+        return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr || '') || searchRegex.test(c.BrandName);
       });
-
-      results.sort((a, b) => {
-          const cleanTerm = lowerSearchTerm.replace(/%/g, '');
-          const aName = a.SpecificName.toLowerCase();
-          const bName = b.SpecificName.toLowerCase();
-          const aStarts = aName.startsWith(cleanTerm);
-          const bStarts = bName.startsWith(cleanTerm);
-
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-          return a.SpecificName.localeCompare(b.SpecificName);
-      });
-    } else if (searchTerm && effectiveLength < 3 && !selectedBrand) {
-        return []; 
+    }
+    
+    // إذا لم تكن هناك ماركة مختارة ولا بحث كافٍ، لا تعرض شيئاً في البداية
+    if (!selectedBrand && effectiveLength < 2) {
+        return [];
     }
     
     return results;
   }, [cosmetics, selectedBrand, searchTerm]);
   
-  const showResults = (selectedBrand || searchTerm.replace(/%/g, '').trim().length >= 3);
+  const showResults = (selectedBrand || searchTerm.trim().length >= 2);
   const displayedCosmetics = filteredCosmetics.slice(0, limit);
   const hasMore = filteredCosmetics.length > limit;
 
@@ -163,19 +154,12 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
                     <div ref={loaderRef} className="h-6 w-full flex justify-center items-center">
                         <div className="w-5 h-5 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
                     </div>
-                    <button 
-                        onClick={() => onLoadMore && onLoadMore()}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-light-text-secondary dark:text-dark-text-secondary text-sm rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                        {t('loadMore') || 'Load More'}
-                    </button>
                 </div>
             )}
         </div>
         ) : (
         <div className="text-center py-10 px-4 bg-white dark:bg-dark-card rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
             <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-text-secondary">{t('noResultsTitle')}</h3>
-            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1">{t('noResultsSubtitle')}</p>
         </div>
         )
       ) : null}

@@ -25,7 +25,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     
     const cleanInput = username.trim();
 
-    // Firebase Auth requires a valid email. "admin" is not allowed unless it's admin@domain.com
+    // Firebase Auth requires a valid email.
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanInput);
 
     if (!isEmail) {
@@ -34,7 +34,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     }
     
     if (!password || password.length < 6) {
-        setError(t('language') === 'ar' ? 'كلمة المرور قصيرة جداً.' : 'Password is too short.');
+        setError(t('language') === 'ar' ? 'كلمة المرور قصيرة جداً (6 أحرف على الأقل).' : 'Password is too short (min 6 characters).');
         return;
     }
 
@@ -43,9 +43,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       await login(cleanInput, password);
       onLoginSuccess();
     } catch (err: any) {
-      console.error("Login Error:", err.code);
+      console.warn("Login Failure Code:", err.code);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
           setError(t('language') === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : 'Invalid email or password.');
+      } else if (err.code === 'auth/too-many-requests') {
+          setError(t('language') === 'ar' ? 'تم حظر الحساب مؤقتاً بسبب محاولات كثيرة خاطئة. حاول لاحقاً.' : 'Account temporarily blocked due to too many failed attempts.');
       } else {
           setError(err.message || 'Login failed');
       }

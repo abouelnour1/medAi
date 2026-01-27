@@ -20,14 +20,8 @@ export const isAIAvailable = (): boolean => {
   return isAiEnabled;
 };
 
-/**
- * Deep clones an object while stripping functions and ensuring only plain values remain.
- * Prevents circular structure errors when serializing to JSON.
- */
 const safeClone = (obj: any, seen = new WeakSet()): any => {
     if (obj === null || typeof obj !== 'object') return obj;
-    
-    // Handle circular references
     if (seen.has(obj)) return '[Circular]';
     seen.add(obj);
 
@@ -39,7 +33,6 @@ const safeClone = (obj: any, seen = new WeakSet()): any => {
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
-            // Skip functions and internal private symbols (starting with _)
             if (typeof val === 'function' || key.startsWith('_')) continue;
             clone[key] = safeClone(val, seen);
         }
@@ -47,97 +40,121 @@ const safeClone = (obj: any, seen = new WeakSet()): any => {
     return clone;
 };
 
-/**
- * Ensures AI response parts are clean, plain objects safe for state and storage.
- */
 export const sanitizeParts = (parts: any[]): SerializablePart[] => {
-    if (!parts || !Array.isArray(parts)) return [];
-    return parts.map(p => {
-        const part: SerializablePart = {};
-        if (p.text) part.text = String(p.text);
-        if (p.thought) part.thought = String(p.thought);
-        
-        if (p.inlineData) {
-            part.inlineData = {
-                mimeType: String(p.inlineData.mimeType),
-                data: String(p.inlineData.data)
+    return parts.map(part => {
+        const sanitized: SerializablePart = {};
+        if (part.text) sanitized.text = part.text;
+        if (part.thought) sanitized.thought = part.thought;
+        if (part.inlineData) {
+            sanitized.inlineData = {
+                mimeType: part.inlineData.mimeType,
+                data: part.inlineData.data
             };
         }
-        
-        if (p.functionCall) {
-            part.functionCall = {
-                name: String(p.functionCall.name),
-                args: safeClone(p.functionCall.args),
-                id: p.functionCall.id ? String(p.functionCall.id) : undefined
+        if (part.functionCall) {
+            sanitized.functionCall = {
+                name: part.functionCall.name,
+                args: part.functionCall.args,
+                id: part.functionCall.id
             };
         }
-        
-        if (p.functionResponse) {
-            part.functionResponse = {
-                name: String(p.functionResponse.name),
-                response: safeClone(p.functionResponse.response),
-                id: p.functionResponse.id ? String(p.functionResponse.id) : undefined
+        if (part.functionResponse) {
+            sanitized.functionResponse = {
+                name: part.functionResponse.name,
+                response: part.functionResponse.response,
+                id: part.functionResponse.id
             };
         }
-        
-        return part;
+        return sanitized;
     });
 };
 
 export const runAIChat = async (
-  history: ChatMessage[],
-  systemInstruction: string,
-  tools: any[],
-  toolImplementations: { [key:string]: (...args: any[]) => any },
-  modelName: string = 'gemini-3-flash-preview'
+    history: ChatMessage[],
+    systemInstruction: string,
+    tools: any[] | null,
+    toolImplementations: Record<string, Function>,
+    modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-  
-  const initialParams = {
-    model: modelName,
-    contents: history.map(msg => ({ 
-        role: msg.role, 
-        parts: sanitizeParts(msg.parts)
-    })),
-    config: { 
-        systemInstruction, 
-        tools,
-        // CRITICAL: Disable thinking budget when using tools for fast lookup and to avoid "missing thought signature" errors
-        thinkingConfig: { thinkingBudget: 0 }
-    },
-  };
-
-  try {
-    const response = await ai.models.generateContent(initialParams);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      const fc = response.functionCalls[0];
-      const implementation = toolImplementations[fc.name];
-      if (implementation) {
-        const functionResult = implementation(fc.args);
-        // We must preserve the exact response from model turn including thought parts if present
-        const modelTurnParts = sanitizeParts(response.candidates?.[0]?.content?.parts || []);
-        
-        const toolResponseHistory: ChatMessage[] = [
-          ...history,
-          { role: 'model', parts: modelTurnParts },
-          { role: 'user', parts: [{ functionResponse: { name: fc.name, response: functionResult, id: fc.id } }] }
-        ];
-        
-        return await ai.models.generateContent({
-          model: modelName,
-          contents: toolResponseHistory.map(msg => ({ role: msg.role, parts: sanitizeParts(msg.parts) })),
-          config: { 
-              systemInstruction, 
-              tools,
-              thinkingConfig: { thinkingBudget: 0 }
-          },
-        });
-      }
+    const contents = history.map(msg => ({
+        role: msg.role,
+        parts: msg.parts.map(part => {
+            // إضافة التعامل مع الـ thought لضمان عدم ضياع التوقيع الفكري للموديل
+            if (part.thought) return { thought: part.thought };
+            if (part.text) return { text: part.text };
+            if (part.inlineData) return { inlineData: part.inlineData };
+            if (part.functionCall) return { functionCall: part.functionCall };
+            if (part.functionResponse) return { functionResponse: part.functionResponse };
+            return { text: "" };
+        })
+    }));
+
+    const config: any = {
+        systemInstruction: systemInstruction,
+    };
+
+    if (tools) {
+        config.tools = tools;
     }
+
+    let response = await ai.models.generateContent({
+        model: modelName,
+        contents: contents,
+        config: config,
+    });
+
+    let iterations = 0;
+    const MAX_ITERATIONS = 5;
+
+    while (response.functionCalls && response.functionCalls.length > 0 && iterations < MAX_ITERATIONS) {
+        iterations++;
+        const functionResponses: any[] = [];
+        
+        for (const call of response.functionCalls) {
+            const implementation = toolImplementations[call.name];
+            if (implementation) {
+                try {
+                    const result = await implementation(call.args);
+                    functionResponses.push({
+                        functionResponse: {
+                            name: call.name,
+                            response: { result: safeClone(result) },
+                            id: call.id
+                        }
+                    });
+                } catch (e) {
+                    functionResponses.push({
+                        functionResponse: {
+                            name: call.name,
+                            response: { error: String(e) },
+                            id: call.id
+                        }
+                    });
+                }
+            }
+        }
+
+        if (functionResponses.length > 0) {
+            contents.push({
+                role: 'model',
+                parts: response.candidates[0].content.parts
+            });
+            contents.push({
+                role: 'user',
+                parts: functionResponses
+            });
+
+            response = await ai.models.generateContent({
+                model: modelName,
+                contents: contents,
+                config: config,
+            });
+        } else {
+            break;
+        }
+    }
+
     return response;
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    throw error;
-  }
 };

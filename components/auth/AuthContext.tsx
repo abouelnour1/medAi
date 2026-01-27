@@ -21,15 +21,35 @@ import {
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
-const LOCAL_USER_STORAGE_KEY = 'medai_user_backup';
+const LOCAL_USER_STORAGE_KEY = 'medai_user_backup_v2';
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+/**
+ * وظيفة لتنظيف الكائن من أي مراجع دائرية أو خصائص غير قابلة للتسلسل (Serialization)
+ * لضمان عدم حدوث خطأ "Converting circular structure to JSON"
+ */
+const toPlainObject = (user: any): User => {
+    if (!user) return null as any;
+    return {
+        id: String(user.id || user.uid || ''),
+        username: String(user.username || user.email?.split('@')[0] || 'User'),
+        role: (user.role as any) || 'premium',
+        email: String(user.email || ''),
+        emailVerified: Boolean(user.emailVerified),
+        status: (user.status as any) || 'active',
+        aiRequestCount: Number(user.aiRequestCount || 0),
+        customAiLimit: user.customAiLimit ? Number(user.customAiLimit) : undefined,
+        lastRequestDate: String(user.lastRequestDate || new Date().toISOString().split('T')[0]),
+        prescriptionPrivilege: Boolean(user.prescriptionPrivilege)
+    };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-      return cached ? JSON.parse(cached) : null;
+      return cached ? toPlainObject(JSON.parse(cached)) : null;
     } catch (e) {
       return null;
     }
@@ -40,82 +60,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const syncUserData = useCallback(async (firebaseUser: FirebaseUser) => {
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
-          let userDoc;
-          
-          try {
-              userDoc = await getDoc(userDocRef);
-          } catch (getErr: any) {
-              // Handle offline error gracefully
-              if (getErr.code === 'unavailable' || !navigator.onLine) {
-                  console.warn("Client is offline. Using local session data.");
-                  // If we already have a user in state from LocalStorage backup, keep it
-                  if (user) return;
-                  
-                  // Otherwise construct a basic user from Firebase Auth info
-                  const fallbackUser: User = {
-                    id: firebaseUser.uid,
-                    username: firebaseUser.email?.split('@')[0] || 'User',
-                    role: 'premium',
-                    email: firebaseUser.email || '',
-                    emailVerified: firebaseUser.emailVerified,
-                    status: 'active',
-                    aiRequestCount: 0,
-                    lastRequestDate: new Date().toISOString().split('T')[0],
-                    prescriptionPrivilege: false
-                  };
-                  setUser(fallbackUser);
-                  return;
-              }
-              throw getErr;
-          }
-          
           let userData: User;
           
-          if (userDoc && userDoc.exists()) {
-              const data = userDoc.data();
-              userData = {
-                  id: firebaseUser.uid,
-                  username: data.username || firebaseUser.email?.split('@')[0] || 'User',
-                  role: data.role || 'premium',
-                  email: firebaseUser.email || '',
-                  emailVerified: firebaseUser.emailVerified,
-                  status: data.status || 'active',
-                  aiRequestCount: data.aiRequestCount || 0,
-                  customAiLimit: data.customAiLimit,
-                  lastRequestDate: data.lastRequestDate || new Date().toISOString().split('T')[0],
-                  prescriptionPrivilege: data.prescriptionPrivilege || false
-              };
-              if (data.emailVerified !== firebaseUser.emailVerified) {
-                  await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified }).catch(e => console.warn("Failed to update email status while offline"));
+          try {
+              const userDoc = await getDoc(userDocRef);
+              if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  userData = toPlainObject({
+                      ...data,
+                      id: firebaseUser.uid,
+                      email: firebaseUser.email,
+                      emailVerified: firebaseUser.emailVerified
+                  });
+                  
+                  if (data.emailVerified !== firebaseUser.emailVerified) {
+                      await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified }).catch(() => {});
+                  }
+              } else {
+                  // إنشاء مستخدم جديد في قاعدة البيانات إذا لم يوجد
+                  userData = toPlainObject({
+                      id: firebaseUser.uid,
+                      username: firebaseUser.email?.split('@')[0] || 'User',
+                      role: 'premium',
+                      email: firebaseUser.email || '',
+                      emailVerified: firebaseUser.emailVerified,
+                      status: 'active',
+                      aiRequestCount: 0,
+                      lastRequestDate: new Date().toISOString().split('T')[0]
+                  });
+                  await setDoc(userDocRef, userData).catch(() => {});
               }
-          } else {
-              userData = {
-                  id: firebaseUser.uid,
-                  username: firebaseUser.email?.split('@')[0] || 'User',
-                  role: 'premium',
-                  email: firebaseUser.email || '',
-                  emailVerified: firebaseUser.emailVerified,
-                  status: 'active',
-                  aiRequestCount: 0,
-                  lastRequestDate: new Date().toISOString().split('T')[0],
-                  prescriptionPrivilege: false
-              };
-              await setDoc(userDocRef, userData).catch(e => console.warn("Failed to create user doc while offline"));
+          } catch (err: any) {
+              // التعامل مع حالات عدم الاتصال
+              console.warn("Sync error (Offline?):", err.message);
+              if (user && user.id === firebaseUser.uid) return;
+              userData = toPlainObject(firebaseUser);
           }
           
           setUser(userData);
           localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
       } catch (err) {
-          console.error("Error syncing user data:", err);
+          console.error("Critical Auth Sync Error:", err);
       } finally {
           setIsLoading(false);
       }
   }, [user]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        await syncUserData(firebaseUser);
+        syncUserData(firebaseUser);
       } else {
         localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
         setUser(null);
@@ -135,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await sendEmailVerification(result.user);
     
-    const userData: Partial<User> = {
+    const userData = toPlainObject({
         id: result.user.uid,
         username: email.split('@')[0],
         email: email,
@@ -144,9 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'active',
         aiRequestCount: 0,
         lastRequestDate: new Date().toISOString().split('T')[0]
-    };
+    });
     await setDoc(doc(db, 'users', result.user.uid), userData);
-    await syncUserData(result.user);
+    setUser(userData);
   };
 
   const logout = async () => {
@@ -163,31 +157,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resendVerificationEmail = async () => {
-      if (auth.currentUser) {
-          await sendEmailVerification(auth.currentUser);
-      }
+      if (auth.currentUser) await sendEmailVerification(auth.currentUser);
   };
 
   const resetPassword = async (email: string) => {
       await sendPasswordResetEmail(auth, email);
   };
 
-  const getAllUsers = () => {
-      return []; 
-  };
+  const getAllUsers = () => [];
 
   const updateUser = async (updatedUser: User) => {
-      const userRef = doc(db, 'users', updatedUser.id);
-      await setDoc(userRef, updatedUser, { merge: true });
+      const plain = toPlainObject(updatedUser);
+      const userRef = doc(db, 'users', plain.id);
+      await setDoc(userRef, plain, { merge: true });
+      if (user?.id === plain.id) setUser(plain);
   };
 
   const deleteUser = async (userId: string) => {
       await deleteDoc(doc(db, 'users', userId));
   };
 
-  const getSettings = (): AppSettings => {
-      return { aiRequestLimit: 5, isAiEnabled: true };
-  };
+  const getSettings = (): AppSettings => ({ aiRequestLimit: 5, isAiEnabled: true });
 
   const updateSettings = async (settings: AppSettings) => {
       await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings);
@@ -195,17 +185,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestAIAccess = useCallback((callback: () => void, t: TFunction) => {
     if (!user) return;
-    
     const today = new Date().toISOString().split('T')[0];
     const limit = user.customAiLimit || 5;
 
     if (user.lastRequestDate !== today) {
-        const updatedUser = { ...user, aiRequestCount: 1, lastRequestDate: today };
-        updateUser(updatedUser);
+        updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
         callback();
     } else if (user.aiRequestCount < limit) {
-        const updatedUser = { ...user, aiRequestCount: user.aiRequestCount + 1 };
-        updateUser(updatedUser);
+        updateUser({ ...user, aiRequestCount: user.aiRequestCount + 1 });
         callback();
     } else {
         alert(t('usageLimitReached', { limit }));
