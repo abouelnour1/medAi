@@ -58,12 +58,11 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // تم إصلاح الدالة هنا لعدم حذف المسافات بين الكلمات
     const normalizeForMatch = (name: string) => {
         if (!name) return '';
         return name.toLowerCase()
             .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
-            .replace(/[^a-z0-9\s,]/g, ' ') // إبقاء المسافات
+            .replace(/[^a-z0-9\s,]/g, ' ') 
             .split(/[,\s]+/)
             .filter(s => s.length > 1 && !JUNK_TOKENS.has(s))
             .join(' ')
@@ -84,6 +83,17 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         
         const regex = new RegExp(pattern, 'i');
         matchingMeds = allMedicines.filter(m => regex.test(m[field]));
+        
+        // Sorting results by prefix
+        matchingMeds.sort((a, b) => {
+          const aVal = String(a[field]).toLowerCase();
+          const bVal = String(b[field]).toLowerCase();
+          const aStarts = aVal.startsWith(trimmedTerm);
+          const bStarts = bVal.startsWith(trimmedTerm);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return aVal.localeCompare(bVal);
+        });
     }
 
     const sciToTradeMap = new Map<string, Set<string>>();
@@ -136,6 +146,17 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         const matchingPolicies = insuranceData.filter(p => {
             const targetField = (searchMode === 'indication' ? p.indication : p.icd10Code || '').toLowerCase();
             return regex.test(targetField);
+        });
+        
+        // Sorting policies by prefix
+        matchingPolicies.sort((a, b) => {
+          const aField = (searchMode === 'indication' ? a.indication : a.icd10Code || '').toLowerCase();
+          const bField = (searchMode === 'indication' ? b.indication : b.icd10Code || '').toLowerCase();
+          const aStarts = aField.startsWith(trimmedTerm);
+          const bStarts = bField.startsWith(trimmedTerm);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return aField.localeCompare(bField);
         });
 
         const groupedByIndication = new Map<string, InsuranceDrug[]>();

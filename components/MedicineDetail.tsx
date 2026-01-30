@@ -7,6 +7,7 @@ import CameraIcon from './icons/CameraIcon';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
 import PillBottleIcon from './icons/PillBottleIcon';
+import AlternativeIcon from './icons/AlternativeIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -71,16 +72,17 @@ interface MedicineDetailProps {
     user?: User | null;
     onEdit?: (medicine: Medicine) => void;
     onOpenAssistant?: () => void;
-    onImageZoom: (allImages: string[], initialIndex: number, title: string, isIndex: boolean) => void;
+    onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
+    onFindAlternative: (medicine: Medicine) => void;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
   const medicineImages = useMemo(() => {
     return [
-        { url: medicine.imgBox, label: t('boxImage') },
+        { url: medicine.imgBox, label: t('boxImage'), isIndex: false },
         { url: medicine.imgIndex1, label: language === 'ar' ? 'الفهرس 1' : 'Index 1', isIndex: true },
         { url: medicine.imgIndex2, label: language === 'ar' ? 'الفهرس 2' : 'Index 2', isIndex: true },
-        { url: medicine.imgPill, label: t('pillImage') }
+        { url: medicine.imgPill, label: t('pillImage'), isIndex: false }
     ].filter(img => img.url && img.url.trim() !== '');
   }, [medicine, t, language]);
 
@@ -108,7 +110,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
   const handleThumbnailClick = (index: number) => {
     const allUrls = medicineImages.map(img => img.url!);
-    onImageZoom(allUrls, index, medicine['Trade Name'], !!medicineImages[index].isIndex);
+    const indexFlags = medicineImages.map(img => !!img.isIndex);
+    onImageZoom(allUrls, index, medicine['Trade Name'], indexFlags);
   };
 
   return (
@@ -123,7 +126,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                   <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
               </button>
               <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500"><div className="h-5 w-5"><CameraIcon /></div></button>
+                  <button onClick={() => onFindAlternative(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('directAlternatives')}><div className="h-5 w-5"><AlternativeIcon /></div></button>
+                  <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500" title={t('searchImage')}><div className="h-5 w-5"><CameraIcon /></div></button>
                   {canEdit && onEdit && (
                       <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
                   )}

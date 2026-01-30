@@ -1,9 +1,12 @@
+
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { 
   initializeFirestore, 
   memoryLocalCache,
   Firestore,
-  getFirestore
+  getFirestore,
+  terminate,
+  clearIndexedDbPersistence
 } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
@@ -29,36 +32,32 @@ let analytics: any = null;
 let messaging: Messaging = null as any;
 let functions: Functions = null as any;
 
-// وظيفة لتهيئة Firestore بطريقة آمنة
 const getSafeFirestore = (firebaseApp: FirebaseApp): Firestore => {
   const existingApps = getApps();
-  // إذا كان التطبيق موجوداً بالفعل، نحاول جلب النسخة القائمة بدلاً من إعادة التهيئة
   if (existingApps.length > 0) {
     try {
       return getFirestore(firebaseApp);
     } catch (e) {
-      console.warn("Could not get existing Firestore, re-initializing...");
+      console.warn("Re-initializing Firestore...");
     }
   }
 
-  /**
-   * حل مشكلة INTERNAL ASSERTION FAILED:
-   * نستخدم memoryLocalCache بدلاً من persistentLocalCache.
-   * هذا يمنع الأخطاء الناتجة عن قفل الملفات في IndexedDB والتي تحدث غالباً في الأندرويد.
-   */
-  return initializeFirestore(firebaseApp, {
+  // إعدادات قوية جداً لضمان العمل في الأندرويد والشبكات الضعيفة
+  const firestore = initializeFirestore(firebaseApp, {
     localCache: memoryLocalCache(),
-    experimentalForceLongPolling: true, // ضروري لتجاوز مشاكل الشبكة/البروكسي
+    experimentalForceLongPolling: true, // إجبار التوصيل عبر HTTP الطويل بدلاً من WebSockets
+    experimentalAutoDetectLongPolling: false, // لا تترك القرار للمتصفح، اجبره
+    ignoreUndefinedProperties: true,
   });
+
+  return firestore;
 };
 
 try {
   const apps = getApps();
   app = apps.length > 0 ? apps[0] : initializeApp(firebaseConfig);
   
-  // تهيئة Firestore
   db = getSafeFirestore(app);
-  
   auth = getAuth(app);
   functions = getFunctions(app);
 
@@ -75,7 +74,6 @@ try {
   }
 } catch (e) {
   console.error("Critical Firebase Initialization Error", e);
-  // Fallback objects to prevent UI crashes
   db = { type: 'firestore' } as any; 
   auth = {} as any;
 }

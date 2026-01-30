@@ -117,6 +117,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     let contextInfo = `[DATABASE_SNAPSHOT: ${allMedicines.length} Items Loaded]`;
     if (contextMedicine) {
         contextInfo += `\n[FOCUSED_ITEM]: ${contextMedicine['Trade Name']} (${contextMedicine['Scientific Name']}), Price: ${contextMedicine['Public price']} SAR, Status: ${contextMedicine['Legal Status']}`;
+    } else {
+        contextInfo += `\n[NO_FOCUSED_ITEM]: You are currently in general clinical mode. DO NOT assume the user is talking about any specific medicine unless they provide a name. Use searchDatabase if they ask for details.`;
     }
 
     const clinicalSystemInstruction = `
@@ -124,16 +126,16 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 جمهورك هم "أطباء وصيادلة" محترفون في المملكة العربية السعودية.
 
 **قواعد التواصل الـصـارمة:**
-1. تواصل بلغة علمية احترافية دقيقة. استخدم المصطلحات الطبية الصحيحة (Bioavailability, Indication, Contraindication, Half-life).
-2. لا تستخدم عبارات ترحيبية زائدة أو لغة عامية. اجعل إجاباتك بصيغة "الاستشارة الطبية".
-3. عندما تُسأل عن أي دواء، ابحث أولاً في قاعدة البيانات باستخدام أداة 'searchDatabase'. لديك وصول لـ ${allMedicines.length} صنف مسجل في السعودية.
-4. إذا سألك المستخدم "كم سعره؟" أو "ما بديله؟" أو "ما مكوناته؟" بخصوص الدواء الذي يركز عليه الآن، أجب مباشرة من السياق الموفر لك.
+1. تواصل بلغة علمية احترافية دقيقة.
+2. إذا لم يكن هناك دواء محدد في السياق ([FOCUSED_ITEM])، فأنت مساعد عام. لا تفترض دواءً معيناً أبداً.
+3. إذا سأل المستخدم عن سعر أو بديل ولم يذكر اسم الدواء، اطلب منه اسم الصنف أو ابحث عنه باستخدام الأداة.
+4. عندما تُسأل عن أي دواء، ابحث أولاً في قاعدة البيانات باستخدام أداة 'searchDatabase'.
 5. في حال رفع صورة وصفة طبية، حللها طبياً واقترح الأدوية المناسبة من قاعدة البيانات.
 ${contextInfo}`;
 
     const prescriptionSystemInstruction = `أنت طبيب استشاري خبير. قم بتوليد كائن JSON للوصفة الطبية بين علامات ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.`;
 
-    let systemInstruction = language === 'ar' ? clinicalSystemInstruction : `You are a Senior Clinical Pharmacist Consultant. Use medical terminology. Access DB via tools for any drug queries. ${contextInfo}`;
+    let systemInstruction = language === 'ar' ? clinicalSystemInstruction : `You are a Senior Clinical Pharmacist Consultant. Use medical terminology. ${contextInfo}`;
     if (isPrescriptionMode) systemInstruction = prescriptionSystemInstruction;
 
     try {

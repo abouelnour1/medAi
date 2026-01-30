@@ -78,9 +78,19 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
       results = results.filter(c => {
         return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr || '') || searchRegex.test(c.BrandName);
       });
+      
+      // Sorting: Starts with text first
+      results.sort((a, b) => {
+        const aVal = String(a.SpecificName).toLowerCase();
+        const bVal = String(b.SpecificName).toLowerCase();
+        const aStarts = aVal.startsWith(trimmedTerm);
+        const bStarts = bVal.startsWith(trimmedTerm);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return aVal.localeCompare(bVal);
+      });
     }
     
-    // إذا لم تكن هناك ماركة مختارة ولا بحث كافٍ، لا تعرض شيئاً في البداية
     if (!selectedBrand && effectiveLength < 2) {
         return [];
     }
