@@ -192,7 +192,6 @@ const App: React.FC = () => {
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Fix: Move isFilterActive calculation to component level so it is accessible in both filteredMedicines useMemo and line 492 JSX.
   const isFilterActive = useMemo(() => {
     return filters.productType !== 'all' || 
            !!filters.priceMin || 
@@ -254,11 +253,13 @@ const App: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (view === 'details' || view === 'cosmeticDetails' || view === 'insuranceDetails' || view === 'alternatives') {
-        scrollToTop();
+  // تعديل: ضمان بقاء الصفحة في الأعلى عند تبديل العرض (مثل الدخول للتفاصيل)
+  useLayoutEffect(() => {
+    if (view === 'details' || view === 'cosmeticDetails' || view === 'insuranceDetails' || view === 'alternatives' || view === 'results') {
+        const container = document.getElementById('main-scroll-container');
+        if (container) container.scrollTop = 0;
     }
-  }, [view, scrollToTop]);
+  }, [view]);
 
   useEffect(() => {
     let unsubMeds: (() => void) | undefined;
@@ -341,7 +342,6 @@ const App: React.FC = () => {
     
     const term = searchTerm.toLowerCase().trim();
     
-    // تعديل: لا تظهر نتائج الأدوية إلا إذا كتب 3 حروف أو اختار فلتراً
     if (term.length > 0 && term.length < 3 && !isFilterActive) return [];
     if (!term && !isFilterActive) return [];
 
@@ -457,8 +457,6 @@ const App: React.FC = () => {
   };
 
   const handleMedicineSelect = useCallback((medicine: Medicine) => { 
-      const container = document.getElementById('main-scroll-container');
-      if(container) scrollPositionRef.current = container.scrollTop;
       setSelectedMedicine(medicine); setView('details'); 
   }, []);
 
@@ -557,7 +555,19 @@ const App: React.FC = () => {
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 space-y-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] w-full max-w-7xl">
           {isDataLoaded ? renderContent() : <div className="flex items-center justify-center h-full"><div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div></div>}
       </main>
-      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':tab==='cosmetics'?'cosmeticsSearch':tab==='milk'?'milkSearch':'settings');}} t={t} user={user} view={view} />
+      <BottomNavBar 
+        activeTab={activeTab} 
+        setActiveTab={(tab)=>{
+            if (activeTab === tab) {
+                scrollToTop(); // تمرير للأعلى إذا كان المستخدم في نفس التبويب
+            }
+            setActiveTab(tab); 
+            setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':tab==='cosmetics'?'cosmeticsSearch':tab==='milk'?'milkSearch':'settings');
+        }} 
+        t={t} 
+        user={user} 
+        view={view} 
+      />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>{setIsAssistantOpen(false)}} contextMedicine={selectedMedicine} contextCosmetic={selectedCosmetic} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} />
       <FilterModal 
