@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TFunction, User, Medicine, AppSettings, Cosmetic, PendingUpdate, Notification as AppNotification } from '../../types';
+import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification } from '../../types';
 import { useAuth } from './AuthContext';
 import ChartIcon from '../icons/ChartIcon';
 import UsersIcon from '../icons/UsersIcon';
@@ -11,9 +11,8 @@ import TrashIcon from '../icons/TrashIcon';
 import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
-import EditIcon from '../icons/EditIcon';
 import { db, FIREBASE_DISABLED } from '../../firebase';
-import { collection, doc, setDoc, addDoc, deleteDoc, updateDoc, query, onSnapshot, where, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc } from 'firebase/firestore';
 
 type Panel = 'menu' | 'overview' | 'users' | 'add_manual' | 'approvals' | 'notifications' | 'settings';
 type ItemCategory = 'Human' | 'Supplement' | 'Cosmetic';
@@ -43,8 +42,8 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
     </button>
 );
 
-export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any }> = ({ t, allMedicines, setMedicines }) => {
-  const { deleteUser, getSettings, updateSettings } = useAuth();
+export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any }> = ({ t, allMedicines }) => {
+  const { user, deleteUser, updateSettings } = useAuth();
   
   const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm dark:text-white";
   const labelClass = "block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1";
@@ -82,21 +81,21 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   }, [allMedicines]);
 
   useEffect(() => {
-    if (FIREBASE_DISABLED) return;
+    if (FIREBASE_DISABLED || !user || user.role !== 'admin') return;
     
-    // إضافة Error Handlers لكل الـ Snapshots لمنع Permission Denied crashes
+    // إغلاق أي مستمعين سابقين عند تغيير حالة المستخدم أو الدخول للوحة التحكم
     const unsubUsers = onSnapshot(collection(db, 'users'), 
       (snap) => {
         setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as User)));
       },
-      (err) => console.warn("Admin Dashboard: User list sync permission denied", err)
+      (err) => console.warn("Admin Dashboard: User list permission denied. This usually happens if you're not a verified admin.", err)
     );
 
     const unsubNotifs = onSnapshot(collection(db, 'notifications'), 
       (snap) => {
         setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification)));
       },
-      (err) => console.warn("Admin Dashboard: Notifications sync permission denied", err)
+      (err) => console.warn("Admin Dashboard: Notifications permission denied.", err)
     );
 
     const q = query(collection(db, 'pending_updates'), where('status', '==', 'pending'));
@@ -104,7 +103,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
       (snap) => {
         setPendingUpdates(snap.docs.map(d => ({ id: d.id, ...d.data() } as PendingUpdate)));
       },
-      (err) => console.warn("Admin Dashboard: Pending updates sync permission denied", err)
+      (err) => console.warn("Admin Dashboard: Pending updates permission denied.", err)
     );
 
     getDoc(doc(db, 'settings', 'app_settings')).then(snap => {
@@ -112,7 +111,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
     }).catch(err => console.warn("Settings fetch failed", err));
 
     return () => { unsubUsers(); unsubNotifs(); unsubApprovals(); };
-  }, []);
+  }, [user]);
 
   const handleSaveUserRole = async (userId: string) => {
     const newRole = userRoleChanges[userId];

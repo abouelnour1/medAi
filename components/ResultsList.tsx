@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
 
@@ -27,28 +27,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
     resultsState, 
     favorites, 
     onToggleFavorite,
-    limit = 20,
-    onLoadMore
+    limit = 2000 // Show all results
 }) => {
-  const loaderRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && onLoadMore) {
-            onLoadMore();
-        }
-    }, { threshold: 0.1 });
-
-    if (loaderRef.current) {
-        observer.observe(loaderRef.current);
-    }
-
-    return () => {
-        if (loaderRef.current) observer.unobserve(loaderRef.current);
-    }
-  }, [onLoadMore, medicines.length]);
-
   if (resultsState === 'empty') {
     return (
       <div className="text-center py-10 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm animate-fade-in" role="status">
@@ -58,11 +38,10 @@ const ResultsList: React.FC<ResultsListProps> = ({
     );
   }
 
-  const displayedMedicines = medicines.slice(0, limit);
-
+  // Display all matching medicines without slicing
   return (
     <div className="space-y-3 animate-fade-in">
-      {displayedMedicines.map((med) => {
+      {medicines.map((med) => {
         if (!med) return null; 
         return (
           <MedicineCard 
@@ -78,13 +57,6 @@ const ResultsList: React.FC<ResultsListProps> = ({
           />
         );
       })}
-      
-      {/* Infinite Scroll Trigger */}
-      {medicines.length > limit && (
-          <div ref={loaderRef} className="py-4 text-center text-sm text-gray-400">
-              {t('loadMore') || 'Loading more...'}
-          </div>
-      )}
     </div>
   );
 };

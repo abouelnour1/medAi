@@ -4,9 +4,7 @@ import {
   initializeFirestore, 
   memoryLocalCache,
   Firestore,
-  getFirestore,
-  terminate,
-  clearIndexedDbPersistence
+  getFirestore
 } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
@@ -42,11 +40,11 @@ const getSafeFirestore = (firebaseApp: FirebaseApp): Firestore => {
     }
   }
 
-  // إعدادات قوية جداً لضمان العمل في الأندرويد والشبكات الضعيفة
+  // استخدام الذاكرة فقط للتخزين المؤقت (memoryLocalCache) لضمان عدم حدوث تعارضات في الأندرويد
   const firestore = initializeFirestore(firebaseApp, {
     localCache: memoryLocalCache(),
-    experimentalForceLongPolling: true, // إجبار التوصيل عبر HTTP الطويل بدلاً من WebSockets
-    experimentalAutoDetectLongPolling: false, // لا تترك القرار للمتصفح، اجبره
+    experimentalForceLongPolling: true, 
+    experimentalAutoDetectLongPolling: false, 
     ignoreUndefinedProperties: true,
   });
 

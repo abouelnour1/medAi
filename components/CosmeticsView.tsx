@@ -30,24 +30,11 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
     setSearchTerm,
     selectedBrand,
     setSelectedBrand,
-    limit = 20,
+    limit = 2000, // Large limit to show all
     onLoadMore,
     onCosmeticLongPress,
     onSearchIconClick
 }) => {
-  const loaderRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && onLoadMore) {
-            onLoadMore();
-        }
-    }, { threshold: 0.1 });
-
-    if (loaderRef.current) observer.observe(loaderRef.current);
-    return () => { if (loaderRef.current) observer.unobserve(loaderRef.current); }
-  }, [onLoadMore]);
-
   const uniqueBrands = useMemo(() => {
     const brands = new Set(cosmetics.map(c => c.BrandName));
     return Array.from(brands).sort();
@@ -64,22 +51,29 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
     const effectiveLength = trimmedTerm.replace(/%/g, '').length;
 
     if (effectiveLength >= 2) {
-      const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const parts = trimmedTerm.split('%').map(escapeRegExp);
-      const pattern = parts.join('.*');
+      const termParts = trimmedTerm.split(/\s+/).filter(Boolean);
       
-      let searchRegex: RegExp;
-      try {
-          searchRegex = new RegExp(pattern, 'i');
-      } catch (e) {
-          searchRegex = new RegExp(escapeRegExp(trimmedTerm), 'i');
+      if (termParts.length >= 2) {
+          // منطق المقطعين لمستحضرات التجميل أيضاً
+          const part1 = termParts[0];
+          const part2 = termParts[1];
+          results = results.filter(c => {
+              const nameEn = String(c.SpecificName).toLowerCase();
+              const nameAr = String(c.SpecificNameAr || '').toLowerCase();
+              const brand = String(c.BrandName).toLowerCase();
+              
+              const match1 = nameEn.startsWith(part1) || nameAr.startsWith(part1) || brand.startsWith(part1);
+              const match2 = nameEn.includes(part2) || nameAr.includes(part2) || brand.includes(part2);
+              return match1 && match2;
+          });
+      } else {
+          results = results.filter(c => {
+              return c.SpecificName.toLowerCase().includes(trimmedTerm) || 
+                     (c.SpecificNameAr && c.SpecificNameAr.toLowerCase().includes(trimmedTerm)) || 
+                     c.BrandName.toLowerCase().includes(trimmedTerm);
+          });
       }
-
-      results = results.filter(c => {
-        return searchRegex.test(c.SpecificName) || searchRegex.test(c.SpecificNameAr || '') || searchRegex.test(c.BrandName);
-      });
       
-      // Sorting: Starts with text first
       results.sort((a, b) => {
         const aVal = String(a.SpecificName).toLowerCase();
         const bVal = String(b.SpecificName).toLowerCase();
@@ -99,8 +93,7 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
   }, [cosmetics, selectedBrand, searchTerm]);
   
   const showResults = (selectedBrand || searchTerm.trim().length >= 2);
-  const displayedCosmetics = filteredCosmetics.slice(0, limit);
-  const hasMore = filteredCosmetics.length > limit;
+  const displayedCosmetics = filteredCosmetics; // No slicing
 
   return (
     <div className="animate-fade-in pb-20 relative">
@@ -158,14 +151,6 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
                 onLongPress={onCosmeticLongPress}
             />
             ))}
-            
-            {hasMore && (
-                <div className="flex flex-col items-center pt-4 pb-8 space-y-3">
-                    <div ref={loaderRef} className="h-6 w-full flex justify-center items-center">
-                        <div className="w-5 h-5 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
-                    </div>
-                </div>
-            )}
         </div>
         ) : (
         <div className="text-center py-10 px-4 bg-white dark:bg-dark-card rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
