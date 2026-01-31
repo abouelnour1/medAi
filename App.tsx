@@ -115,24 +115,27 @@ const normalizeMedicine = (item: any): Medicine => {
   };
 };
 
-const normalizeCosmetic = (item: any): Cosmetic => ({
-  id: String(item.id || item.BrandName + '-' + Math.random()),
-  BrandName: String(item.BrandName || ''),
-  SpecificName: String(item.SpecificName || ''),
-  SpecificNameAr: String(item.SpecificNameAr || ''),
-  FirstSubCategoryAr: String(item.FirstSubCategoryAr || ''),
-  FirstSubCategoryEn: String(item.FirstSubCategoryEn || ''),
-  SecondSubCategoryAr: String(item.SecondSubCategoryAr || ''),
-  SecondSubCategoryEn: String(item.SecondSubCategoryEn || ''),
-  manufacturerNameEn: String(item.manufacturerNameEn || ''),
-  manufacturerCountryAr: String(item.manufacturerCountryAr || ''),
-  manufacturerCountryEn: String(item.manufacturerCountryEn || ''),
-  "Active ingredient": String(item["Active ingredient"] || ''),
-  "Key Ingredients": String(item["Key Ingredients"] || ''),
-  Highlights: String(item.Highlights || ''),
-  "Public price": String(item["Public price"] || ''),
-  imgBox: String(item.imgBox || '')
-});
+const normalizeCosmetic = (item: any): Cosmetic => {
+    const generatedId = `cosm-v1-${String(item.BrandName || 'brand').toLowerCase().replace(/\s+/g, '-')}-${String(item.SpecificName || 'name').toLowerCase().replace(/\s+/g, '-')}`;
+    return {
+      id: String(item.id || item.Id || generatedId),
+      BrandName: String(item.BrandName || ''),
+      SpecificName: String(item.SpecificName || ''),
+      SpecificNameAr: String(item.SpecificNameAr || ''),
+      FirstSubCategoryAr: String(item.FirstSubCategoryAr || ''),
+      FirstSubCategoryEn: String(item.FirstSubCategoryEn || ''),
+      SecondSubCategoryAr: String(item.SecondSubCategoryAr || ''),
+      SecondSubCategoryEn: String(item.SecondSubCategoryEn || ''),
+      manufacturerNameEn: String(item.manufacturerNameEn || ''),
+      manufacturerCountryAr: String(item.manufacturerCountryAr || ''),
+      manufacturerCountryEn: String(item.manufacturerCountryEn || ''),
+      "Active ingredient": String(item["Active ingredient"] || ''),
+      "Key Ingredients": String(item["Key Ingredients"] || ''),
+      Highlights: String(item.Highlights || ''),
+      "Public price": String(item["Public price"] || ''),
+      imgBox: String(item.imgBox || '')
+    };
+};
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
@@ -188,6 +191,19 @@ const App: React.FC = () => {
     legalStatus: '',
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // Fix: Move isFilterActive calculation to component level so it is accessible in both filteredMedicines useMemo and line 492 JSX.
+  const isFilterActive = useMemo(() => {
+    return filters.productType !== 'all' || 
+           !!filters.priceMin || 
+           !!filters.priceMax || 
+           !!filters.pharmaceuticalForm || 
+           filters.manufactureName.length > 0 || 
+           filters.marketingCompany.length > 0 || 
+           filters.mainAgent.length > 0 || 
+           !!filters.legalStatus;
+  }, [filters]);
+
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [selectedCosmetic, setSelectedCosmetic] = useState<Cosmetic | null>(null);
   const [selectedInsuranceData, setSelectedInsuranceData] = useState<SelectedInsuranceData | null>(null);
@@ -244,21 +260,98 @@ const App: React.FC = () => {
     }
   }, [view, scrollToTop]);
 
+  useEffect(() => {
+    let unsubMeds: (() => void) | undefined;
+    let unsubCosm: (() => void) | undefined;
+    let unsubNotifs: (() => void) | undefined;
+
+    const loadData = async () => {
+        try {
+            let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
+            let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
+            
+            if (!medicinesData) {
+                const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
+                medicinesData = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW] as any[]).map(normalizeMedicine);
+                await setItem(MEDICINES_CACHE_KEY, medicinesData);
+            }
+            if (!cosmeticsData) {
+                const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
+                cosmeticsData = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
+                await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
+            }
+            
+            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
+            const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
+            const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
+            const { INITIAL_MILK_DATA } = await import('./data/milk-data');
+            const { CUSTOM_MILK_DATA } = await import('./data/custom-milk-data');
+            
+            setMedicines((medicinesData || []) as Medicine[]);
+            setCosmetics((cosmeticsData || []) as Cosmetic[]);
+            setMilkProducts([...(INITIAL_MILK_DATA as any[] || []), ...(CUSTOM_MILK_DATA as any[] || [])]);
+            setInsuranceData([...(INITIAL_INSURANCE_DATA as any[]), ...(CUSTOM_INSURANCE_DATA as any[])]);
+            setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
+            
+            setIsDataLoaded(true);
+
+            if (!FIREBASE_DISABLED && db) {
+                unsubMeds = onSnapshot(collection(db, 'medicines'), (snapshot) => {
+                    if (snapshot.empty) return;
+                    const cloudMeds = snapshot.docs.map(doc => normalizeMedicine(doc.data()));
+                    setMedicines(prev => {
+                        const mergedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+                        cloudMeds.forEach(m => mergedMap.set(m.RegisterNumber, m));
+                        const mergedArray = Array.from(mergedMap.values());
+                        setItem(MEDICINES_CACHE_KEY, mergedArray).catch(() => {});
+                        return mergedArray;
+                    });
+                }, (error) => console.warn("Meds sync offline:", error.message));
+
+                unsubCosm = onSnapshot(collection(db, 'cosmetics'), (snapshot) => {
+                    if (snapshot.empty) return;
+                    const cloudCosm = snapshot.docs.map(doc => normalizeCosmetic({ ...doc.data(), id: doc.id }));
+                    setCosmetics(prev => {
+                        const mergedMap = new Map<string, Cosmetic>(prev.map(c => [c.id, c]));
+                        cloudCosm.forEach(c => mergedMap.set(c.id, c));
+                        const mergedArray = Array.from(mergedMap.values());
+                        setItem(COSMETICS_CACHE_KEY, mergedArray).catch(() => {});
+                        return mergedArray;
+                    });
+                }, (error) => console.warn("Cosm sync offline:", error.message));
+
+                if (user) {
+                    unsubNotifs = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+                        const allNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+                        setNotifications(allNotifs.filter(n => (!n.targetUserId || n.targetUserId === user?.id) && (!n.targetRole || n.targetRole === user?.role)));
+                    }, (error) => console.warn("Notifs sync offline:", error.message));
+                }
+            }
+        } catch (e) { 
+            console.error("Error loading data", e); 
+            setIsDataLoaded(true);
+        }
+    };
+    loadData();
+    return () => { unsubMeds?.(); unsubCosm?.(); unsubNotifs?.(); };
+  }, [user]);
+
   const filteredMedicines = useMemo(() => {
     let results = [...medicines];
-    const isFilterActive = filters.productType !== 'all' || filters.priceMin || filters.priceMax || filters.pharmaceuticalForm || filters.manufactureName.length > 0 || filters.marketingCompany.length > 0 || filters.mainAgent.length > 0 || filters.legalStatus;
     
-    if (!searchTerm && !isFilterActive) return [];
+    const term = searchTerm.toLowerCase().trim();
+    
+    // تعديل: لا تظهر نتائج الأدوية إلا إذا كتب 3 حروف أو اختار فلتراً
+    if (term.length > 0 && term.length < 3 && !isFilterActive) return [];
+    if (!term && !isFilterActive) return [];
 
     if (isFilterActive) {
       results = results.filter(m => {
         if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
         if (filters.productType === 'supplement' && m['Product type'] === 'Human') return false;
-        
         const mPrice = parseFloat(m['Public price']) || 0;
         if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
         if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;
-        
         if (filters.pharmaceuticalForm && m.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
         if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(m['Manufacture Name'])) return false;
         if (filters.marketingCompany.length > 0 && !filters.marketingCompany.includes(m['Marketing Company'])) return false;
@@ -268,8 +361,7 @@ const App: React.FC = () => {
       });
     }
 
-    const term = searchTerm.toLowerCase().trim();
-    if (term) {
+    if (term && term.length >= 3) {
       const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
       const termParts = term.split(/\s+/).filter(Boolean);
 
@@ -286,7 +378,7 @@ const App: React.FC = () => {
     }
 
     results.sort((a, b) => {
-        if (term) {
+        if (term && term.length >= 3) {
             const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
             const aStarts = String(a[field]).toLowerCase().startsWith(term);
             const bStarts = String(b[field]).toLowerCase().startsWith(term);
@@ -308,7 +400,7 @@ const App: React.FC = () => {
     });
 
     return results;
-  }, [medicines, searchTerm, filters, textSearchMode, sortBy]);
+  }, [medicines, searchTerm, filters, isFilterActive, textSearchMode, sortBy]);
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
@@ -320,91 +412,14 @@ const App: React.FC = () => {
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab]);
 
-  useEffect(() => {
-    let unsubMeds: (() => void) | undefined;
-    let unsubCosm: (() => void) | undefined;
-    let unsubNotifs: (() => void) | undefined;
-
-    const loadData = async () => {
-        try {
-            let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
-            let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
-            if (!medicinesData) {
-                const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
-                medicinesData = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW] as any[]).map(normalizeMedicine);
-                await setItem(MEDICINES_CACHE_KEY, medicinesData);
-            }
-            if (!cosmeticsData) {
-                const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
-                cosmeticsData = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
-                await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
-            }
-            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
-            const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
-            const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
-            const { INITIAL_MILK_DATA } = await import('./data/milk-data');
-            const { CUSTOM_MILK_DATA } = await import('./data/custom-milk-data');
-            
-            setMedicines((medicinesData || []) as Medicine[]);
-            setCosmetics((cosmeticsData || []) as Cosmetic[]);
-            setMilkProducts([...(INITIAL_MILK_DATA as any[] || []), ...(CUSTOM_MILK_DATA as any[] || [])]);
-            setInsuranceData([...(INITIAL_INSURANCE_DATA as any[]), ...(CUSTOM_INSURANCE_DATA as any[])]);
-            setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
-            setIsDataLoaded(true);
-
-            if (!FIREBASE_DISABLED && db && db.type === 'firestore') {
-                // إضافة معالج الخطأ (onSnapshot's error callback) لمنع Uncaught Errors
-                unsubMeds = onSnapshot(collection(db, 'medicines'), (snapshot) => {
-                    const cloudMeds = snapshot.docs.map(doc => normalizeMedicine(doc.data()));
-                    if (cloudMeds.length > 0) {
-                        setMedicines(prev => {
-                            const mergedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-                            cloudMeds.forEach(m => mergedMap.set(m.RegisterNumber, m));
-                            const mergedArray = Array.from(mergedMap.values());
-                            setItem(MEDICINES_CACHE_KEY, mergedArray).catch(console.error);
-                            return mergedArray;
-                        });
-                    }
-                }, (error) => {
-                    console.warn("Firestore sync permission denied for medicines. Using local cache.", error);
-                });
-
-                unsubCosm = onSnapshot(collection(db, 'cosmetics'), (snapshot) => {
-                    const cloudCosm = snapshot.docs.map(doc => normalizeCosmetic({ id: doc.id, ...doc.data() }));
-                    if (cloudCosm.length > 0) {
-                        setCosmetics(prev => {
-                            const mergedMap = new Map<string, Cosmetic>(prev.map(c => [c.id, c]));
-                            cloudCosm.forEach(c => mergedMap.set(c.id, c));
-                            const mergedArray = Array.from(mergedMap.values());
-                            setItem(COSMETICS_CACHE_KEY, mergedArray).catch(console.error);
-                            return mergedArray;
-                        });
-                    }
-                }, (error) => {
-                    console.warn("Firestore sync permission denied for cosmetics. Using local cache.", error);
-                });
-
-                // الاستماع للإشعارات فقط في حال تسجيل الدخول لمنع أخطاء الصلاحيات
-                if (user) {
-                    unsubNotifs = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-                        const allNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
-                        setNotifications(allNotifs.filter(n => (!n.targetUserId || n.targetUserId === user?.id) && (!n.targetRole || n.targetRole === user?.role)));
-                    }, (error) => {
-                        console.warn("Firestore sync permission denied for notifications.", error);
-                    });
-                }
-            }
-        } catch (e) { console.error("Error loading data", e); setIsDataLoaded(true); }
-    };
-    loadData();
-    return () => { unsubMeds?.(); unsubCosm?.(); unsubNotifs?.(); };
-  }, [user]);
-
   const handleSaveCosmetic = async (updatedCosm: Cosmetic) => {
-      if (!user) return;
+      if (!user) { alert(t('loginRequired')); return; }
+      
       try {
           if (user.role === 'admin') {
               await setDoc(doc(db, 'cosmetics', updatedCosm.id), updatedCosm, { merge: true });
+              setCosmetics(prev => prev.map(c => c.id === updatedCosm.id ? updatedCosm : c));
+              setSelectedCosmetic(updatedCosm);
               alert(t('saveSuccess'));
           } else if (user.role === 'company') {
               const original = cosmetics.find(c => c.id === updatedCosm.id);
@@ -415,6 +430,7 @@ const App: React.FC = () => {
                   }
               });
               if (Object.keys(changes).length === 0) { alert("No changes detected."); return; }
+              
               await addDoc(collection(db, 'pending_updates'), {
                   medicineId: updatedCosm.id,
                   itemType: 'cosmetic',
@@ -427,9 +443,16 @@ const App: React.FC = () => {
                   status: 'pending'
               });
               alert(t('requestSubmittedTitle'));
+          } else {
+              alert(t('insufficientPermissions'));
           }
       } catch (err: any) {
-          alert(`Error saving: ${err.message}`);
+          console.error("Save error:", err);
+          if (err.code === 'permission-denied') {
+              alert(t('insufficientPermissions'));
+          } else {
+              alert(`Error: ${err.message}`);
+          }
       }
   };
 
@@ -459,7 +482,7 @@ const App: React.FC = () => {
           if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => { if (user) { setSelectedMedicine(selectedMedicine); setIsAssistantOpen(true); } else { alert(t('loginRequired')); setView('login'); } }} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={handleFindAlternative} />;
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
-                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length >= 3} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { scrollToTop(); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
+                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { scrollToTop(); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={() => setIsBarcodeScannerOpen(true)} t={t} />
                   <div className="flex gap-2 mt-1">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={Object.values(filters).filter((f: any) => f && f!=='all' && f.length!==0).length} t={t} />
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
@@ -478,7 +501,7 @@ const App: React.FC = () => {
                           resultsState="loaded" 
                         />
                       ) : (
-                        (searchTerm.length >= 3) && (
+                        (searchTerm.length >= 3 || isFilterActive) && (
                           <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>
                         )
                       )}

@@ -2,7 +2,8 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { 
   initializeFirestore, 
-  memoryLocalCache,
+  persistentLocalCache,
+  persistentSingleTabManager,
   Firestore,
   getFirestore
 } from "firebase/firestore";
@@ -34,17 +35,20 @@ const getSafeFirestore = (firebaseApp: FirebaseApp): Firestore => {
   const existingApps = getApps();
   if (existingApps.length > 0) {
     try {
-      return getFirestore(firebaseApp);
+      const dbInstance = getFirestore(firebaseApp);
+      if (dbInstance) return dbInstance;
     } catch (e) {
       console.warn("Re-initializing Firestore...");
     }
   }
 
-  // استخدام الذاكرة فقط للتخزين المؤقت (memoryLocalCache) لضمان عدم حدوث تعارضات في الأندرويد
+  // استخدام التخزين الدائم (Persistent Cache) بدلاً من الذاكرة (Memory)
+  // هذا يحل مشكلة الـ 10 ثوانٍ لأن Firestore سيعمل أوفلاين فوراً عند بطء الشبكة
   const firestore = initializeFirestore(firebaseApp, {
-    localCache: memoryLocalCache(),
-    experimentalForceLongPolling: true, 
-    experimentalAutoDetectLongPolling: false, 
+    localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager()
+    }),
+    experimentalForceLongPolling: true, // ضروري لبيئات الأندرويد التي تعاني مع WebSockets
     ignoreUndefinedProperties: true,
   });
 
@@ -72,6 +76,7 @@ try {
   }
 } catch (e) {
   console.error("Critical Firebase Initialization Error", e);
+  // Fallback object to prevent app crash
   db = { type: 'firestore' } as any; 
   auth = {} as any;
 }

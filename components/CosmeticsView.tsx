@@ -30,7 +30,7 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
     setSearchTerm,
     selectedBrand,
     setSelectedBrand,
-    limit = 2000, // Large limit to show all
+    limit = 2000, 
     onLoadMore,
     onCosmeticLongPress,
     onSearchIconClick
@@ -48,13 +48,16 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
     }
 
     const trimmedTerm = searchTerm.trim().toLowerCase();
-    const effectiveLength = trimmedTerm.replace(/%/g, '').length;
+    
+    // تعديل: لا تظهر نتائج التجميل إلا إذا كتب 3 حروف أو اختار ماركة
+    if (!selectedBrand && trimmedTerm.length < 3) {
+        return [];
+    }
 
-    if (effectiveLength >= 2) {
+    if (trimmedTerm && trimmedTerm.length >= 3) {
       const termParts = trimmedTerm.split(/\s+/).filter(Boolean);
       
       if (termParts.length >= 2) {
-          // منطق المقطعين لمستحضرات التجميل أيضاً
           const part1 = termParts[0];
           const part2 = termParts[1];
           results = results.filter(c => {
@@ -85,15 +88,11 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
       });
     }
     
-    if (!selectedBrand && effectiveLength < 2) {
-        return [];
-    }
-    
     return results;
   }, [cosmetics, selectedBrand, searchTerm]);
   
-  const showResults = (selectedBrand || searchTerm.trim().length >= 2);
-  const displayedCosmetics = filteredCosmetics; // No slicing
+  const showResults = (selectedBrand || searchTerm.trim().length >= 3);
+  const displayedCosmetics = filteredCosmetics;
 
   return (
     <div className="animate-fade-in pb-20 relative">

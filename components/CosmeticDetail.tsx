@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Cosmetic, TFunction, Language, User } from '../types';
 import EditIcon from './icons/EditIcon';
@@ -30,8 +31,20 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
       window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
   };
 
+  const handleEditClick = () => {
+      if (!user) {
+          alert(t('loginRequired'));
+          return;
+      }
+      if (user.role === 'admin' || user.role === 'company') {
+          onEdit?.(cosmetic);
+      } else {
+          // إذا كان المستخدم premium (فرد) وليس شركة
+          alert(t('onlyCompanyCanEdit') + "\n\n" + t('pleaseUseCompanyAccount'));
+      }
+  };
+
   const price = parseFloat(cosmetic["Public price"] || "");
-  const canEdit = user?.role === 'admin' || user?.role === 'company';
 
   return (
     <div className="bg-white dark:bg-slate-900 min-h-full rounded-2xl shadow-sm animate-fade-in overflow-hidden border border-slate-100 dark:border-slate-800">
@@ -60,17 +73,14 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
                     <div className="h-5 w-5"><CameraIcon /></div>
                   </button>
                   
-                  {/* زر التعديل - تم التأكد من ربطه */}
-                  {canEdit && (
-                    <button 
-                        onClick={() => onEdit?.(cosmetic)} 
-                        className="p-2.5 bg-pink-600 text-white rounded-full shadow-lg hover:bg-pink-700 active:scale-95 transition-all flex items-center justify-center"
-                        aria-label="Edit Cosmetic"
-                        title="تعديل المنتج"
-                    >
-                        <div className="h-5 w-5"><EditIcon /></div>
-                    </button>
-                  )}
+                  <button 
+                      onClick={handleEditClick} 
+                      className={`p-2.5 rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center ${user?.role === 'admin' || user?.role === 'company' ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-slate-200 text-slate-400'}`}
+                      aria-label="Edit Cosmetic"
+                      title={t('editProposal')}
+                  >
+                      <div className="h-5 w-5"><EditIcon /></div>
+                  </button>
               </div>
           </div>
 

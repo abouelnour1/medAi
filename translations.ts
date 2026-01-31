@@ -117,7 +117,6 @@ export const translations = {
     username: 'اسم المستخدم',
     actions: 'الإجراءات',
     manageUser: 'إدارة المستخدم',
-    // Fix duplicate entries and update with more detailed versions
     confirmDeleteUser: 'هل أنت متأكد من حذف هذا المستخدم نهائياً؟',
     broadcastTitle: 'بث إشعار جديد',
     notificationTitle: 'عنوان الإشعار',
@@ -307,6 +306,10 @@ export const translations = {
     activeNotifsTitle: 'إدارة الإشعارات الحالية',
     aiLimitLabel: 'حد استخدام AI الافتراضي',
     aiToggleLabel: 'تفعيل الذكاء الاصطناعي',
+    // مفاتيح جديدة للخطأ
+    insufficientPermissions: 'عذراً، صلاحياتك الحالية لا تسمح بهذا الإجراء. فقط حسابات الشركات والمسؤولين يمكنهم اقتراح التعديلات.',
+    onlyCompanyCanEdit: 'هذه الميزة متاحة فقط لشركات الأدوية والتجميل المسجلة لدينا.',
+    pleaseUseCompanyAccount: 'يرجى تسجيل الدخول بحساب شركة للمتابعة.'
   },
   en: {
     individualAccount: 'Individual Account',
@@ -425,7 +428,6 @@ export const translations = {
     username: 'Username',
     actions: 'Actions',
     manageUser: 'Manage User',
-    // Fix duplicate entries and update with more detailed versions
     confirmDeleteUser: 'Confirm delete user?',
     broadcastTitle: 'Broadcast New Notification',
     notificationTitle: 'Notification Title',
@@ -615,6 +617,10 @@ export const translations = {
     activeNotifsTitle: 'Manage Current Notifications',
     aiLimitLabel: 'Default AI Request Limit',
     aiToggleLabel: 'Enable AI Functionality',
+    // New Error Keys
+    insufficientPermissions: 'Sorry, your current permissions do not allow this action. Only company accounts and admins can suggest edits.',
+    onlyCompanyCanEdit: 'This feature is only available for registered pharmaceutical and cosmetic companies.',
+    pleaseUseCompanyAccount: 'Please log in with a company account to continue.'
   }
 };
 

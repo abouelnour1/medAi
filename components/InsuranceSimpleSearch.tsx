@@ -54,7 +54,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   const searchResults = useMemo((): SearchResult[] => {
     const trimmedTerm = searchTerm.trim().toLowerCase();
-    if (trimmedTerm.replace(/%/g, '').length < 2) return [];
+    
+    // تعديل: رفع حد البحث إلى 3 أحرف بدلاً من حرفين
+    if (trimmedTerm.replace(/%/g, '').length < 3) return [];
     
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -84,7 +86,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         const regex = new RegExp(pattern, 'i');
         matchingMeds = allMedicines.filter(m => regex.test(m[field]));
         
-        // Sorting results by prefix
         matchingMeds.sort((a, b) => {
           const aVal = String(a[field]).toLowerCase();
           const bVal = String(b[field]).toLowerCase();
@@ -148,7 +149,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             return regex.test(targetField);
         });
         
-        // Sorting policies by prefix
         matchingPolicies.sort((a, b) => {
           const aField = (searchMode === 'indication' ? a.indication : a.icd10Code || '').toLowerCase();
           const bField = (searchMode === 'indication' ? b.indication : b.icd10Code || '').toLowerCase();
@@ -245,7 +245,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 return null;
             })
         ) : (
-            searchTerm.length >= 2 && (
+            searchTerm.trim().length >= 3 && (
                 <div className="text-center py-12 bg-white dark:bg-dark-card rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800">
                     <p className="text-slate-400 font-bold">{t('noResultsTitle')}</p>
                 </div>

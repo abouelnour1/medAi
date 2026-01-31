@@ -29,20 +29,22 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
   }, [milkProducts]);
 
   const filteredProducts = useMemo(() => {
-    if (!selectedBrand && !searchTerm) return [];
+    const trimmedTerm = searchTerm.trim().toLowerCase();
+    
+    // تعديل: لا تظهر نتائج الحليب إلا إذا كتب 3 حروف أو اختار شركة
+    if (!selectedBrand && trimmedTerm.length < 3) return [];
 
     return milkProducts.filter(product => {
       if (selectedBrand && selectedBrand !== 'All' && product.brand !== selectedBrand) {
           return false;
       }
 
-      if (searchTerm) {
-          const lowerSearch = searchTerm.toLowerCase();
+      if (trimmedTerm && trimmedTerm.length >= 3) {
           const name = (product.productName || '').toLowerCase();
           const brand = (product.brand || '').toLowerCase();
           const features = (product.keyFeatures || '').toLowerCase();
           
-          return name.includes(lowerSearch) || brand.includes(lowerSearch) || features.includes(lowerSearch);
+          return name.includes(trimmedTerm) || brand.includes(trimmedTerm) || features.includes(trimmedTerm);
       }
 
       return true;
@@ -99,7 +101,7 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
                         <option key={brand} value={brand}>{brand}</option>
                     ))}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-50">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                 </div>
             </div>
@@ -157,7 +159,9 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
                     <BabyBottleIcon />
                 </div>
                 <p className="text-slate-500 dark:text-slate-400 font-bold text-lg text-center">
-                    {!selectedBrand && !searchTerm ? "Select a Company to start" : t('noResultsTitle')}
+                    {(!selectedBrand && searchTerm.trim().length > 0 && searchTerm.trim().length < 3) 
+                        ? "اكتب 3 حروف على الأقل للبحث" 
+                        : (!selectedBrand && !searchTerm) ? "Select a Company to start" : t('noResultsTitle')}
                 </p>
                 <p className="text-xs text-slate-400 text-center max-w-[200px] mt-1">
                     {!selectedBrand && !searchTerm ? "Choose from the dropdown list above or search by name" : ""}
