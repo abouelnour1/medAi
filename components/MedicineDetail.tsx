@@ -79,8 +79,10 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
-  const [isClinicalExpanded, setIsClinicalExpanded] = useState(true);
-  const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(false);
+  // الخصائص المادية مفتوحة افتراضياً بناءً على طلبك
+  const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(true);
+  // المعلومات السريرية مغلقة افتراضياً
+  const [isClinicalExpanded, setIsClinicalExpanded] = useState(false);
   
   const medicineImages = useMemo(() => {
     return [
@@ -91,22 +93,19 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     ].filter(img => img.url && img.url.trim() !== '');
   }, [medicine, t, language]);
 
-  // الربط الذكي مع بيانات التأمين السريرية
   const clinicalMatches = useMemo(() => {
     if (!insuranceData || !medicine['Scientific Name']) return [];
     const medicineSciName = medicine['Scientific Name'].toLowerCase().trim();
     
-    // فلترة البيانات التي تطابق الاسم العلمي
     const matches = insuranceData.filter(d => {
         if (!d.scientificName) return false;
         const entrySciName = d.scientificName.toLowerCase().trim();
         return medicineSciName.includes(entrySciName) || entrySciName.includes(medicineSciName);
     });
 
-    // تجميع البيانات حسب التشخيص (Indication)
     const groupedByIndication = new Map<string, InsuranceDrug[]>();
     matches.forEach(m => {
-        const key = m.indication || (language === 'ar' ? 'عام' : 'General');
+        const key = m.indication || (language === 'ar' ? 'استخدامات عامة' : 'General Usage');
         if (!groupedByIndication.has(key)) groupedByIndication.set(key, []);
         groupedByIndication.get(key)!.push(m);
     });
@@ -176,60 +175,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* القسم السريري الجديد: Clinical Information مجمعة حسب التشخيص */}
-        {clinicalMatches.length > 0 && (
-            <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
-                <button 
-                    onClick={() => setIsClinicalExpanded(!isClinicalExpanded)}
-                    className="w-full flex justify-between items-center py-4 text-secondary dark:text-green-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-5 h-5"><StethoscopeIcon /></div>
-                        <span>{t('clinicalDetails')}</span>
-                    </div>
-                    <svg className={`h-5 w-5 transform transition-transform ${isClinicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-
-                {isClinicalExpanded && (
-                    <div className="pb-6 px-1 animate-fade-in space-y-4">
-                        {clinicalMatches.map(([indication, entries]) => (
-                            <div key={indication} className="bg-green-50/50 dark:bg-green-900/10 rounded-2xl overflow-hidden border border-green-100/50 dark:border-green-800/30">
-                                <div className="bg-green-100/40 dark:bg-green-800/30 px-4 py-2 border-b border-green-100 dark:border-green-800/50">
-                                    <h4 className="text-xs font-black text-secondary dark:text-green-300 uppercase tracking-widest">{indication}</h4>
-                                </div>
-                                <div className="p-4 space-y-3">
-                                    {entries.map((entry, idx) => (
-                                        <div key={idx} className="space-y-3">
-                                            {(entry.mddAdults) && (
-                                                <div>
-                                                    <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t('maxDailyDoseAdults')}</dt>
-                                                    <dd className="text-sm font-bold text-slate-700 dark:text-slate-200">{entry.mddAdults}</dd>
-                                                </div>
-                                            )}
-                                            {(entry.mddPediatrics) && (
-                                                <div>
-                                                    <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t('maxDailyDosePediatrics')}</dt>
-                                                    <dd className="text-sm font-bold text-slate-700 dark:text-slate-200">{entry.mddPediatrics}</dd>
-                                                </div>
-                                            )}
-                                            {entry.notes && (
-                                                <div className="pt-2 border-t border-green-100/50 dark:border-green-800/30">
-                                                    <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-1.5">{t('clinicalNotes')}</dt>
-                                                    <dd className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic bg-white/50 dark:bg-black/20 p-2 rounded-lg">
-                                                        <MarkdownRenderer content={entry.notes} />
-                                                    </dd>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        )}
-
+        {/* 1. قسم الخصائص المادية (أصبح أولاً ومفتوحاً افتراضياً) */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -252,7 +198,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                         </div>
                     )}
 
-                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800">
+                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">
                         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
                             <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                             <DetailRow label={t('scored')} value={medicine.pillScored} />
@@ -270,6 +216,74 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                 </div>
             )}
         </div>
+
+        {/* 2. قسم المعلومات السريرية (أصبح ثانياً ومغلقاً افتراضياً) */}
+        {clinicalMatches.length > 0 && (
+            <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
+                <button 
+                    onClick={() => setIsClinicalExpanded(!isClinicalExpanded)}
+                    className="w-full flex justify-between items-center py-4 text-secondary dark:text-green-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-5 h-5"><StethoscopeIcon /></div>
+                        <span>{t('clinicalDetails')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-secondary/10 px-2 py-0.5 rounded-full">{clinicalMatches.length}</span>
+                        <svg className={`h-5 w-5 transform transition-transform ${isClinicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                </button>
+
+                {isClinicalExpanded && (
+                    <div className="pb-6 px-1 animate-fade-in space-y-6">
+                        {clinicalMatches.map(([indication, entries]) => (
+                            <div key={indication} className="bg-white dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                                {/* Indication Header - High visibility */}
+                                <div className="bg-secondary/20 dark:bg-secondary/30 px-4 py-3 border-b border-secondary/20 flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></div>
+                                    <h4 className="text-sm font-black text-secondary dark:text-green-300 uppercase tracking-tight leading-tight">
+                                        {indication}
+                                    </h4>
+                                </div>
+                                
+                                <div className="p-4 space-y-4">
+                                    {entries.map((entry, idx) => (
+                                        <div key={idx} className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                {(entry.mddAdults) && (
+                                                    <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                        <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDoseAdults')}</dt>
+                                                        <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddAdults}</dd>
+                                                    </div>
+                                                )}
+                                                {(entry.mddPediatrics) && (
+                                                    <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                        <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDosePediatrics')}</dt>
+                                                        <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddPediatrics}</dd>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {entry.notes && (
+                                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                                                    <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        {t('clinicalNotes')}
+                                                    </dt>
+                                                    <dd className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 italic bg-white dark:bg-black/20 p-3 rounded-xl border border-slate-50 dark:border-slate-800">
+                                                        <MarkdownRenderer content={entry.notes} />
+                                                    </dd>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">

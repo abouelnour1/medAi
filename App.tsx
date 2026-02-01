@@ -378,6 +378,27 @@ const App: React.FC = () => {
       alert(t('exportSuccess'));
   }, [medicines, t]);
 
+  const handleFindAlternatives = useCallback((medicine: Medicine) => {
+      const sciName = String(medicine['Scientific Name']).toLowerCase().trim();
+      const atc = medicine.AtcCode1?.substring(0, 4);
+
+      const direct = medicines.filter(m => 
+          m.RegisterNumber !== medicine.RegisterNumber && 
+          String(m['Scientific Name']).toLowerCase().trim() === sciName
+      );
+
+      const therapeutic = medicines.filter(m => 
+          m.RegisterNumber !== medicine.RegisterNumber && 
+          m.AtcCode1 && atc && m.AtcCode1.startsWith(atc) && 
+          String(m['Scientific Name']).toLowerCase().trim() !== sciName
+      );
+
+      setAlternatives({ direct, therapeutic });
+      setSelectedMedicine(medicine);
+      setView('alternatives');
+      scrollToTop();
+  }, [medicines, scrollToTop]);
+
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
       else if (view === 'details' || view === 'alternatives') setView('results'); 
@@ -407,10 +428,10 @@ const App: React.FC = () => {
       if (view === 'chatHistory') return <ChatHistoryView conversations={allConversations} onSelectConversation={(c)=>{setCurrentChatHistory(c.messages); setIsAssistantOpen(true); setView('search');}} onDeleteConversation={async (id) => { const updated = allConversations.filter(c => c.id !== id); setAllConversations(updated); await setItem(CHAT_HISTORY_KEY, updated); }} onClearHistory={async () => { setAllConversations([]); await setItem(CHAT_HISTORY_KEY, []); }} t={t} language={language} />;
       if (view === 'notifications') return <NotificationsView notifications={notifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = notifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { const med = medicines.find(m => m.RegisterNumber === id); if(med) { setSelectedMedicine(med); setView('details'); } }} />;
       if (view === 'imageView') return <ImageViewer images={zoomImages} initialIndex={zoomImageInitialIndex} title={zoomImageTitle} onBack={handleBack} t={t} indexFlags={zoomImageIndexFlags} />;
-      if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
+      if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={()=>{}} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={handleFindAlternatives} />;
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={()=>{}} t={t} />
@@ -420,7 +441,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="mt-4">
                       {filteredMedicines.length > 0 ? (
-                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
+                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
                       ) : (searchTerm.length >= 3 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
@@ -444,7 +465,7 @@ const App: React.FC = () => {
                   <div className="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100 border border-slate-100">
                       <button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"><span className="flex items-center gap-3"><span className="font-medium">{t('language')}</span></span><span className="font-black text-primary">{language === 'ar' ? 'English' : 'العربية'}</span></button>
                   </div>
-                  {user && <button onClick={() => useAuth().logout()} className="w-full py-4 text-red-500 font-black bg-white rounded-xl shadow-sm hover:bg-red-50 transition-colors mt-4">{t('logout')}</button>}
+                  {user && <button onClick={() => useAuth().logout()} className="w-full py-4 text-red-500 font-black bg-white rounded-xl shadow-sm hover:bg-red transition-colors mt-4">{t('logout')}</button>}
               </div>
           );
       return <div className="text-center py-20 text-slate-400">Application Error. Please reload.</div>;
