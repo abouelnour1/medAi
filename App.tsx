@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -33,7 +34,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -130,11 +131,8 @@ const App: React.FC = () => {
   const scrollPositionsByView = useRef<Record<string, number>>({});
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('theme');
-        return (saved === 'dark') ? 'dark' : 'light';
-    }
-    return 'light';
+    const saved = localStorage.getItem('theme');
+    return (saved === 'dark') ? 'dark' : 'light';
   });
 
   const [language, setLanguage] = useState<Language>(() => {
@@ -292,6 +290,11 @@ const App: React.FC = () => {
                         return mergedArray;
                     });
                 });
+
+                onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), firestoreLimit(20)), (snapshot) => {
+                    const cloudNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+                    setNotifications(cloudNotifs);
+                });
             }
         } catch (e) { 
             console.error("Data Load Error", e);
@@ -391,17 +394,23 @@ const App: React.FC = () => {
       setSelectedMedicine(medicine); setView('details'); 
   }, [captureScrollPosition]);
 
+  const handleInsuranceSelect = useCallback((data: SelectedInsuranceData) => {
+      captureScrollPosition();
+      setSelectedInsuranceData(data);
+      setView('insuranceDetails');
+  }, [captureScrollPosition]);
+
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={handleExportData} />;
       if (view === 'chatHistory') return <ChatHistoryView conversations={allConversations} onSelectConversation={(c)=>{setCurrentChatHistory(c.messages); setIsAssistantOpen(true); setView('search');}} onDeleteConversation={async (id) => { const updated = allConversations.filter(c => c.id !== id); setAllConversations(updated); await setItem(CHAT_HISTORY_KEY, updated); }} onClearHistory={async () => { setAllConversations([]); await setItem(CHAT_HISTORY_KEY, []); }} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={notifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = notifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} />;
+      if (view === 'notifications') return <NotificationsView notifications={notifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = notifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { const med = medicines.find(m => m.RegisterNumber === id); if(med) { setSelectedMedicine(med); setView('details'); } }} />;
       if (view === 'imageView') return <ImageViewer images={zoomImages} initialIndex={zoomImageInitialIndex} title={zoomImageTitle} onBack={handleBack} t={t} indexFlags={zoomImageIndexFlags} />;
       if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={()=>{}} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={()=>{}} />;
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={()=>{}} t={t} />
@@ -424,7 +433,7 @@ const App: React.FC = () => {
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} scrollToTop={scrollToTop} />;
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d)=>{captureScrollPosition(); setSelectedInsuranceData(d); setView('insuranceDetails');}} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={handleInsuranceSelect} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
       }
       if (activeTab === 'settings') return (
               <div className="space-y-4 animate-fade-in pb-10">

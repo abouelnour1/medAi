@@ -20,8 +20,7 @@ export const isAIAvailable = (): boolean => {
 };
 
 /**
- * وظيفة لتنظيف الأجزاء المرسلة للموديل لضمان عدم وجود مراجع دائرية أو كائنات معقدة.
- * تقوم بتحويل كل جزء إلى كائن بسيط (POJO) تماماً.
+ * تحويل الأجزاء إلى كائنات بسيطة جداً قابلة للتحويل لـ JSON بدون مراجع دائرية.
  */
 export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     if (!parts || !Array.isArray(parts)) return [];
@@ -29,17 +28,11 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     return parts.map(part => {
         const sanitized: SerializablePart = {};
         
-        // دعم النص - تحويل صريح لسلسلة نصية
-        if (part.text !== undefined && part.text !== null) {
-            sanitized.text = String(part.text);
-        }
+        // التعامل مع النصوص
+        if (part.text) sanitized.text = String(part.text);
+        if (part.thought) sanitized.thought = String(part.thought);
         
-        // دعم التفكير (Thinking)
-        if (part.thought !== undefined && part.thought !== null) {
-            sanitized.thought = String(part.thought);
-        }
-        
-        // دعم الصور - نسخ البيانات الخام فقط
+        // التعامل مع الصور (نسخ البيانات فقط)
         if (part.inlineData) {
             sanitized.inlineData = {
                 mimeType: String(part.inlineData.mimeType),
@@ -47,30 +40,22 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
             };
         }
         
-        // دعم استدعاء الوظائف - تنظيف الـ args من أي مراجع دائرية
+        // التعامل مع استدعاءات الوظائف (تدمير المراجع الدائرية في الـ args)
         if (part.functionCall) {
-            try {
-                sanitized.functionCall = {
-                    name: String(part.functionCall.name),
-                    args: JSON.parse(JSON.stringify(part.functionCall.args || {})),
-                    id: part.functionCall.id ? String(part.functionCall.id) : undefined
-                };
-            } catch (e) {
-                sanitized.functionCall = { name: String(part.functionCall.name), args: {} };
-            }
+            sanitized.functionCall = {
+                name: String(part.functionCall.name),
+                args: JSON.parse(JSON.stringify(part.functionCall.args || {})),
+                id: part.functionCall.id ? String(part.functionCall.id) : undefined
+            };
         }
-        
-        // دعم ردود الوظائف
+
+        // التعامل مع ردود الوظائف
         if (part.functionResponse) {
-            try {
-                sanitized.functionResponse = {
-                    name: String(part.functionResponse.name),
-                    response: JSON.parse(JSON.stringify(part.functionResponse.response || {})),
-                    id: part.functionResponse.id ? String(part.functionResponse.id) : undefined
-                };
-            } catch (e) {
-                sanitized.functionResponse = { name: String(part.functionResponse.name), response: { error: "serialization_error" } };
-            }
+            sanitized.functionResponse = {
+                name: String(part.functionResponse.name),
+                response: JSON.parse(JSON.stringify(part.functionResponse.response || {})),
+                id: part.functionResponse.id ? String(part.functionResponse.id) : undefined
+            };
         }
         
         return sanitized;
@@ -86,7 +71,7 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // تنظيف التاريخ قبل الإرسال لضمان عدم وجود مراجع دائرية
+    // تنظيف التاريخ قبل كل عملية إرسال أو حفظ
     const contents = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
@@ -100,9 +85,7 @@ export const runAIChat = async (
         thinkingConfig: { thinkingBudget: 0 }
     };
 
-    if (tools) {
-        config.tools = tools;
-    }
+    if (tools) config.tools = tools;
 
     let response = await ai.models.generateContent({
         model: modelName,
@@ -111,59 +94,36 @@ export const runAIChat = async (
     });
 
     let iterations = 0;
-    const MAX_ITERATIONS = 5;
-
-    while (response.functionCalls && response.functionCalls.length > 0 && iterations < MAX_ITERATIONS) {
+    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 5) {
         iterations++;
         const functionResponses: any[] = [];
         
         for (const call of response.functionCalls) {
             const implementation = toolImplementations[call.name];
             if (implementation) {
-                try {
-                    const result = await implementation(call.args);
-                    // تنظيف النتيجة قبل وضعها في التاريخ
-                    const safeResult = JSON.parse(JSON.stringify(result || {}));
-                    functionResponses.push({
-                        functionResponse: {
-                            name: call.name,
-                            response: safeResult,
-                            id: call.id
-                        }
-                    });
-                } catch (e) {
-                    functionResponses.push({
-                        functionResponse: {
-                            name: call.name,
-                            response: { error: String(e) },
-                            id: call.id
-                        }
-                    });
-                }
+                const result = await implementation(call.args);
+                functionResponses.push({
+                    functionResponse: {
+                        name: call.name,
+                        response: JSON.parse(JSON.stringify(result || {})),
+                        id: call.id
+                    }
+                });
             }
         }
 
         if (functionResponses.length > 0) {
             const modelTurnParts = response.candidates?.[0]?.content?.parts;
             if (modelTurnParts) {
-                contents.push({
-                    role: 'model',
-                    parts: sanitizeParts(modelTurnParts)
-                });
-                
+                contents.push({ role: 'model', parts: sanitizeParts(modelTurnParts) });
                 contents.push({ role: 'user', parts: functionResponses });
-                
                 response = await ai.models.generateContent({
                     model: modelName,
                     contents: contents,
                     config: config,
                 });
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
+            } else break;
+        } else break;
     }
 
     return response;

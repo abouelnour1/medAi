@@ -1,6 +1,6 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
-import ClearIcon from './icons/ClearIcon';
 import SearchIcon from './icons/SearchIcon';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -38,20 +38,17 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (inputValue !== searchTerm) {
-        setSearchTerm(inputValue);
-      }
-    }, 300);
+      if (inputValue !== searchTerm) setSearchTerm(inputValue);
+    }, 400);
     return () => clearTimeout(handler);
   }, [inputValue, searchTerm, setSearchTerm]);
 
   const searchResults = useMemo((): SearchResult[] => {
-    const trimmedTerm = searchTerm.trim().toLowerCase();
-    if (trimmedTerm.replace(/%/g, '').length < 3) return [];
+    const term = searchTerm.toLowerCase().trim();
+    if (term.replace(/\*/g, '').length < 3) return [];
     
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // وظيفة تطبيع متقدمة للمقارنة الدقيقة
     const normalizeForMatch = (name: string) => {
         if (!name) return '';
         return name.toLowerCase()
@@ -68,9 +65,16 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
     if (isNameSearch) {
         const field = searchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-        let pattern = trimmedTerm.includes('%') ? trimmedTerm.split('%').map(escapeRegExp).join('.*') : escapeRegExp(trimmedTerm);
-        const regex = new RegExp(pattern, 'i');
-        matchingMeds = allMedicines.filter(m => regex.test(m[field]));
+        if (term.includes('*')) {
+            const parts = term.split('*').map(p => p.trim()).filter(Boolean);
+            if (parts.length > 0) {
+                const regexPattern = parts.map(escapeRegExp).join('.*');
+                const regex = new RegExp(regexPattern, 'i');
+                matchingMeds = allMedicines.filter(m => regex.test(String(m[field])));
+            }
+        } else {
+            matchingMeds = allMedicines.filter(m => String(m[field]).toLowerCase().includes(term));
+        }
     }
 
     const results: SearchResult[] = [];
@@ -86,10 +90,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             const medsArray = Array.from(medsSet);
             const normalizedSci = normalizeForMatch(fullSciName);
             
-            // مطابقة ذكية مع بيانات التأمين: مقارنة الاسم العلمي أو كود ATC
             const matchedPolicies = insuranceData.filter(p => {
                 const policyNormalized = normalizeForMatch(p.scientificName);
-                const atcMatch = medsArray.some(m => m.AtcCode1 && p.atcCode && m.AtcCode1.startsWith(p.atcCode));
+                const atcMatch = medsArray.some(m => m.AtcCode1 && p.atcCode && (m.AtcCode1 === p.atcCode || m.AtcCode1.startsWith(p.atcCode)));
                 
                 return atcMatch || 
                        policyNormalized === normalizedSci || 
@@ -98,7 +101,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             });
 
             if (matchedPolicies.length > 0) {
-                // مغطى (Green logic)
                 results.push({
                     type: 'drug-grouped',
                     scientificName: fullSciName,
@@ -107,16 +109,20 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                     availableMedicines: medsArray
                 });
             } else {
-                // غير مغطى (Red logic)
                 medsArray.forEach(med => {
                     results.push({ type: 'not-covered', medicine: med });
                 });
             }
         });
     } else {
-        // البحث بالمرض أو الكود
-        let pattern = trimmedTerm.includes('%') ? trimmedTerm.split('%').map(escapeRegExp).join('.*') : escapeRegExp(trimmedTerm);
-        const regex = new RegExp(pattern, 'i');
+        let regex: RegExp;
+        if (term.includes('*')) {
+            const parts = term.split('*').map(p => p.trim()).filter(Boolean);
+            const regexPattern = parts.map(escapeRegExp).join('.*');
+            regex = new RegExp(regexPattern, 'i');
+        } else {
+            regex = new RegExp(escapeRegExp(term), 'i');
+        }
 
         const matchingPolicies = insuranceData.filter(p => {
             const targetField = (searchMode === 'indication' ? p.indication : p.icd10Code || '').toLowerCase();
@@ -158,12 +164,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   return (
     <div className="space-y-4 min-h-[400px]">
-      <div className="bg-white dark:bg-dark-card p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-3">
+      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
           <div className="relative">
             <select
               value={searchMode}
               onChange={(e) => setSearchMode(e.target.value as InsuranceSearchMode)}
-              className="w-full h-11 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-sm font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl appearance-none cursor-pointer focus:border-primary transition-all"
+              className="w-full h-12 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-base font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl appearance-none cursor-pointer focus:border-primary transition-all shadow-inner"
             >
               <option value="tradeName">{t('tradeName')}</option>
               <option value="scientificName">{t('scientificName')}</option>
@@ -179,12 +185,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder={t('insuranceSearchPlaceholder')}
-              className="w-full h-11 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-base bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary outline-none transition-all"
+              className="w-full h-12 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-lg bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary outline-none transition-all shadow-inner"
             />
           </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 animate-fade-in pb-10">
+      <div className="grid grid-cols-1 gap-4 animate-fade-in pb-20">
         {searchResults.map((result, idx) => {
             if (result.type === 'covered') return <IndicationCard key={'c'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
             if (result.type === 'drug-grouped') return <DrugPolicyCard key={'d'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;

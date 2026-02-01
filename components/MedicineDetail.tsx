@@ -1,6 +1,6 @@
 
 import React, { useState, memo, useMemo } from 'react';
-import { Medicine, TFunction, Language, User } from '../types';
+import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import CameraIcon from './icons/CameraIcon';
@@ -8,6 +8,7 @@ import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';
 import PillBottleIcon from './icons/PillBottleIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
+import StethoscopeIcon from './icons/StethoscopeIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '') return null;
@@ -65,6 +66,7 @@ const PhysicalImage = memo(({ src, label, onClick }: {
 
 interface MedicineDetailProps {
     medicine: Medicine;
+    insuranceData: InsuranceDrug[]; // New prop
     t: TFunction;
     language: Language;
     isFavorite: boolean;
@@ -76,7 +78,9 @@ interface MedicineDetailProps {
     onFindAlternative: (medicine: Medicine) => void;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
+  const [isClinicalExpanded, setIsClinicalExpanded] = useState(false);
+  
   const medicineImages = useMemo(() => {
     return [
         { url: medicine.imgBox, label: t('boxImage'), isIndex: false },
@@ -85,6 +89,13 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
         { url: medicine.imgPill, label: t('pillImage'), isIndex: false }
     ].filter(img => img.url && img.url.trim() !== '');
   }, [medicine, t, language]);
+
+  const clinicalMatch = useMemo(() => {
+    if (!insuranceData || !medicine['Scientific Name']) return null;
+    const mSci = medicine['Scientific Name'].toLowerCase().trim();
+    // البحث عن تطابق في الاسم العلمي في بيانات التأمين
+    return insuranceData.find(d => d.scientificName && mSci.includes(d.scientificName.toLowerCase().trim()));
+  }, [insuranceData, medicine]);
 
   const hasImages = medicineImages.length > 0;
   const hasPhysicalProps = !!(medicine.pillShape || medicine.pillScored || medicine.pillMarkings || medicine.liquidTaste || medicine.liquidColor);
@@ -151,6 +162,51 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
+        {/* Clinical Section (Linked to Insurance DB) */}
+        {clinicalMatch && (
+            <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
+                <button 
+                    onClick={() => setIsClinicalExpanded(!isClinicalExpanded)}
+                    className="w-full flex justify-between items-center py-4 text-secondary dark:text-green-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-5 h-5"><StethoscopeIcon /></div>
+                        <span>{t('clinicalDetails')}</span>
+                    </div>
+                    <svg className={`h-5 w-5 transform transition-transform ${isClinicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+
+                {isClinicalExpanded && (
+                    <div className="pb-6 px-1 animate-fade-in">
+                        <div className="bg-green-50/50 dark:bg-green-900/10 rounded-2xl p-5 border border-green-100/50 dark:border-green-800/30">
+                            <dl className="grid grid-cols-1 gap-y-4">
+                                {(clinicalMatch.mddAdults) && (
+                                    <div>
+                                        <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDoseAdults')}</dt>
+                                        <dd className="text-sm font-bold text-slate-700 dark:text-slate-200">{clinicalMatch.mddAdults}</dd>
+                                    </div>
+                                )}
+                                {(clinicalMatch.mddPediatrics) && (
+                                    <div>
+                                        <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDosePediatrics')}</dt>
+                                        <dd className="text-sm font-bold text-slate-700 dark:text-slate-200">{clinicalMatch.mddPediatrics}</dd>
+                                    </div>
+                                )}
+                                {clinicalMatch.notes && (
+                                    <div className="pt-3 border-t border-green-100 dark:border-green-800/50">
+                                        <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2">{t('clinicalNotes')}</dt>
+                                        <dd className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                                            <MarkdownRenderer content={clinicalMatch.notes} />
+                                        </dd>
+                                    </div>
+                                )}
+                            </dl>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -198,7 +254,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />
-            <DetailRow label={t('shelfLife') || 'مدة الصلاحية'} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
+            <DetailRow label={t('shelfLife') || 'الكود الوصفي'} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
             <DetailRow label={language === 'ar' ? 'منطقة التوزيع' : 'Distribute Area'} value={medicine['Distribute area']} />
             <DetailRow label={language === 'ar' ? 'الرقابة' : 'Product Control'} value={medicine['Product Control']} valueClassName={medicine['Product Control']?.toLowerCase().includes('controlled') ? 'text-red-500 font-bold' : ''} />
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
