@@ -8,15 +8,16 @@ export interface Notification {
   timestamp: number;
   type: 'info' | 'alert' | 'update' | 'approval_request' | 'request_result';
   isRead?: boolean;
-  relatedId?: string; // ID of the medicine or update request
-  targetUserId?: string; // If set, only this user sees it
-  targetRole?: 'admin' | 'premium' | 'company'; // New: If set, only users with this role see it
+  relatedId?: string; 
+  relatedMedicineId?: string; // New: To link directly to a medicine
+  targetUserId?: string; 
+  targetRole?: 'admin' | 'premium' | 'company'; 
 }
 
 export interface PendingUpdate {
   id: string;
-  medicineId?: string; // Empty if it's a new medicine
-  itemType: 'medicine' | 'cosmetic'; // New: To distinguish between data types
+  medicineId?: string; 
+  itemType: 'medicine' | 'cosmetic'; 
   type: 'add' | 'edit';
   newData: Partial<Medicine> | Partial<Cosmetic>;
   originalData?: any;
@@ -115,8 +116,8 @@ export interface Cosmetic {
   "Active ingredient"?: string;
   "Key Ingredients"?: string;
   Highlights?: string;
-  "Public price"?: string; // Added
-  imgBox?: string; // Added
+  "Public price"?: string; 
+  imgBox?: string; 
 }
 
 export interface MilkProduct {
@@ -146,13 +147,14 @@ export interface MilkProduct {
   };
 }
 
-export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
-
 export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
 
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 
 export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
+
+// Fix: Define ProductTypeFilter which was missing and causing errors
+export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
 
 export interface Filters {
   productType: ProductTypeFilter;

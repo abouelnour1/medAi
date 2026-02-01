@@ -11,10 +11,11 @@ import TrashIcon from '../icons/TrashIcon';
 import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
+import DownloadIcon from '../icons/DownloadIcon';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc } from 'firebase/firestore';
 
-type Panel = 'menu' | 'overview' | 'users' | 'add_manual' | 'approvals' | 'notifications' | 'settings';
+type Panel = 'menu' | 'overview' | 'users' | 'add_manual' | 'approvals' | 'notifications' | 'settings' | 'export';
 type ItemCategory = 'Human' | 'Supplement' | 'Cosmetic';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
@@ -42,7 +43,7 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
     </button>
 );
 
-export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any }> = ({ t, allMedicines }) => {
+export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement') => void }> = ({ t, allMedicines, onExport }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
   const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm dark:text-white";
@@ -83,12 +84,11 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   useEffect(() => {
     if (FIREBASE_DISABLED || !user || user.role !== 'admin') return;
     
-    // إغلاق أي مستمعين سابقين عند تغيير حالة المستخدم أو الدخول للوحة التحكم
     const unsubUsers = onSnapshot(collection(db, 'users'), 
       (snap) => {
         setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as User)));
       },
-      (err) => console.warn("Admin Dashboard: User list permission denied. This usually happens if you're not a verified admin.", err)
+      (err) => console.warn("Admin Dashboard: User list permission denied.", err)
     );
 
     const unsubNotifs = onSnapshot(collection(db, 'notifications'), 
@@ -319,6 +319,42 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
     );
   };
 
+  const renderExportPanel = () => (
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 text-center shadow-sm">
+            <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <DownloadIcon />
+            </div>
+            <h3 className="text-xl font-black mb-2">{t('exportData')}</h3>
+            <p className="text-sm text-slate-400 mb-8 px-4">استخرج قاعدة البيانات الحالية بصيغة ملفات JSON لاستخدامها في تطبيقات أخرى أو كنسخة احتياطية.</p>
+            
+            <div className="grid grid-cols-1 gap-4">
+                <button 
+                    onClick={() => onExport('medicine')}
+                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform"><PillBottleIcon /></div>
+                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportMedicines')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على الأدوية البشرية</p></div>
+                    </div>
+                    <div className="w-5 h-5"><DownloadIcon /></div>
+                </button>
+
+                <button 
+                    onClick={() => onExport('supplement')}
+                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-accent/10 hover:text-accent rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-accent group-hover:scale-110 transition-transform"><DatabaseIcon /></div>
+                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportSupplements')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على المكملات الغذائية</p></div>
+                    </div>
+                    <div className="w-5 h-5"><DownloadIcon /></div>
+                </button>
+            </div>
+        </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full bg-light-bg dark:bg-dark-bg">
         {activePanel !== 'menu' && (
@@ -335,18 +371,20 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <StatCard title={t('totalItemsCount')} value={allMedicines.length} icon={<PillBottleIcon />} />
                         <StatCard title={t('activeNotifications')} value={notifications.length} icon={<BellIcon />} />
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         <MenuCard title={t('overviewPanel')} icon={<ChartIcon />} onClick={() => setActivePanel('overview')} colorClass="bg-white dark:bg-slate-800 text-blue-600 border-blue-100" />
                         <MenuCard title={t('usersPanel')} icon={<UsersIcon />} onClick={() => setActivePanel('users')} colorClass="bg-white dark:bg-slate-800 text-green-600 border-green-100" />
                         <MenuCard title={t('approvalsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('approvals')} colorClass="bg-white dark:bg-slate-800 text-amber-600 border-amber-100" badge={pendingUpdates.length} />
                         <MenuCard title={t('addManualPanel')} icon={<div className="text-3xl font-black">+</div>} onClick={() => setActivePanel('add_manual')} colorClass="bg-white dark:bg-slate-800 text-purple-600 border-purple-100" />
                         <MenuCard title={t('notificationsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-white dark:bg-slate-800 text-red-600 border-red-100" />
+                        <MenuCard title={t('exportPanel')} icon={<DownloadIcon />} onClick={() => setActivePanel('export')} colorClass="bg-white dark:bg-slate-800 text-primary border-primary/10" />
                         <MenuCard title={t('settingsPanel')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-white dark:bg-slate-800 text-slate-600 border-slate-100" />
                     </div>
                 </div>
             )}
             {activePanel === 'add_manual' && renderAddManual()}
             {activePanel === 'approvals' && renderApprovals()}
+            {activePanel === 'export' && renderExportPanel()}
             {activePanel === 'notifications' && (
                 <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
@@ -384,7 +422,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                             const isChanged = !!userRoleChanges[u.id];
                             return (
                                 <div key={u.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black">{u.username?.charAt(0).toUpperCase()}</div><div className="text-right"><p className="font-black text-sm">{u.username}</p><p className="text-[10px] text-slate-400">{u.email}</p></div></div>
+                                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black">{u.username?.charAt(0).toUpperCase()}</div><div className="text-right rtl:text-right"><p className="font-black text-sm">{u.username}</p><p className="text-[10px] text-slate-400">{u.email}</p></div></div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-100">{(['admin', 'premium', 'company'] as const).map(role => (<button key={role} onClick={() => setUserRoleChanges(prev => ({...prev, [u.id]: role}))} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentRole === role ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{t(`${role}Role` as any)}</button>))}</div>
                                         {isChanged && <button onClick={() => handleSaveUserRole(u.id)} className="px-4 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase shadow-md">{t('save')}</button>}

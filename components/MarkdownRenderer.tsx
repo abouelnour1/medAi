@@ -9,9 +9,18 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
   const createMarkup = (htmlString: string) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const withLinks = htmlString.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-    const withBold = withLinks.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    return { __html: withBold };
+    const withLinks = htmlString.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-primary underline font-bold">$1</a>');
+    
+    // Highlight Prices (X SAR or X ريال) - Vibrant Orange
+    const withPrice = withLinks.replace(/(\d+\.?\d*)\s*(SAR|SR|ريال|ر.س)/gi, '<span class="text-orange-600 dark:text-orange-400 font-black px-1 py-0.5 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-100 dark:border-orange-800/30">$1 $2</span>');
+    
+    // Highlight Key Medical Terms in Bold - Deep Teal
+    const withBold = withPrice.replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-teal-700 dark:text-teal-300">$1</strong>');
+    
+    // Highlight warnings/Cautions - Bold Red
+    const withWarnings = withBold.replace(/(Warning|Caution|تنبيه|تحذير|خطر)/gi, '<span class="text-red-600 dark:text-red-400 font-black underline decoration-wavy underline-offset-4">$1</span>');
+    
+    return { __html: withWarnings };
   };
 
   const lines = content.split('\n');
@@ -22,12 +31,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   const flushList = () => {
     if (listItems.length > 0) {
       const items = listItems.map((item, index) => (
-        <li key={index} dangerouslySetInnerHTML={createMarkup(item)} />
+        <li key={index} className="mb-1 leading-snug text-[inherit]" dir="auto" dangerouslySetInnerHTML={createMarkup(item)} />
       ));
       if (listType === 'ul') {
-        elements.push(<ul key={elements.length}>{items}</ul>);
+        elements.push(<ul key={elements.length} className="list-disc list-inside space-y-0.5 my-2 text-slate-700 dark:text-slate-300 rtl:mr-3 ltr:ml-3 marker:text-primary marker:font-black" dir="auto">{items}</ul>);
       } else if (listType === 'ol') {
-        elements.push(<ol key={elements.length}>{items}</ol>);
+        elements.push(<ol key={elements.length} className="list-decimal list-inside space-y-0.5 my-2 text-slate-700 dark:text-slate-300 rtl:mr-3 ltr:ml-3 marker:text-primary marker:font-black" dir="auto">{items}</ol>);
       }
     }
     listItems = [];
@@ -36,11 +45,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
 
   lines.forEach((line) => {
     const trimmedLine = line.trim();
-    // Match and capture content *after* the list marker
     const ulMatch = trimmedLine.match(/^([*•-])\s+(.*)/);
     const olMatch = trimmedLine.match(/^(\d+)\.\s+(.*)/);
-    const headingEmojis = ['🧩', '💊', '🩺', '⚖️', '⚠️', '🔄', '🌍'];
-    const isHeading = headingEmojis.some(emoji => trimmedLine.startsWith(emoji)) || trimmedLine.startsWith('###');
+    const headingEmojis = ['🧩', '💊', '🩺', '⚖️', '⚠️', '🔄', '🌍', '💡', '💰', '✨', '✅'];
+    const isHeading = headingEmojis.some(emoji => trimmedLine.startsWith(emoji)) || trimmedLine.startsWith('###') || trimmedLine.startsWith('##');
 
     if (ulMatch) {
       if (listType !== 'ul') {
@@ -57,16 +65,16 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     } else {
       flushList();
       if (isHeading) {
-        elements.push(<h3 key={elements.length} dangerouslySetInnerHTML={createMarkup(line.replace('###',''))} />);
+        elements.push(<h3 key={elements.length} className="text-[10px] font-black text-primary uppercase tracking-widest mt-3 mb-1.5 flex items-center gap-1.5 border-b border-primary/5 pb-1" dir="auto" dangerouslySetInnerHTML={createMarkup(line.replace(/###|##/g,''))} />);
       } else if (trimmedLine) {
-        elements.push(<p key={elements.length} dangerouslySetInnerHTML={createMarkup(line)} />);
+        elements.push(<p key={elements.length} className="mb-2 text-[inherit] leading-snug text-slate-700 dark:text-slate-300 font-medium" dir="auto" dangerouslySetInnerHTML={createMarkup(line)} />);
       }
     }
   });
 
-  flushList(); // Flush any remaining list items at the end of the content
+  flushList();
 
-  return <>{elements}</>;
+  return <div className="markdown-body select-text" dir="auto">{elements}</div>;
 };
 
 export default MarkdownRenderer;

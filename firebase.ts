@@ -1,16 +1,13 @@
-
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { 
   initializeFirestore, 
   persistentLocalCache,
   persistentSingleTabManager,
   Firestore,
-  getFirestore
+  CACHE_SIZE_UNLIMITED
 } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getMessaging, Messaging, getToken, onMessage } from "firebase/messaging";
-import { getFunctions, Functions } from "firebase/functions";
 
 export const FIREBASE_DISABLED = false;
 
@@ -27,58 +24,31 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
-let analytics: any = null;
-let messaging: Messaging = null as any;
-let functions: Functions = null as any;
-
-const getSafeFirestore = (firebaseApp: FirebaseApp): Firestore => {
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    try {
-      const dbInstance = getFirestore(firebaseApp);
-      if (dbInstance) return dbInstance;
-    } catch (e) {
-      console.warn("Re-initializing Firestore...");
-    }
-  }
-
-  // استخدام التخزين الدائم (Persistent Cache) بدلاً من الذاكرة (Memory)
-  // هذا يحل مشكلة الـ 10 ثوانٍ لأن Firestore سيعمل أوفلاين فوراً عند بطء الشبكة
-  const firestore = initializeFirestore(firebaseApp, {
-    localCache: persistentLocalCache({
-        tabManager: persistentSingleTabManager()
-    }),
-    experimentalForceLongPolling: true, // ضروري لبيئات الأندرويد التي تعاني مع WebSockets
-    ignoreUndefinedProperties: true,
-  });
-
-  return firestore;
-};
 
 try {
-  const apps = getApps();
-  app = apps.length > 0 ? apps[0] : initializeApp(firebaseConfig);
-  
-  db = getSafeFirestore(app);
-  auth = getAuth(app);
-  functions = getFunctions(app);
-
-  if (typeof window !== 'undefined') {
-    try {
-      analytics = getAnalytics(app);
-    } catch (e) {}
-
-    if ('serviceWorker' in navigator) {
-      try {
-        messaging = getMessaging(app);
-      } catch (e) {}
+    if (!getApps().length) {
+        app = initializeApp(firebaseConfig);
+    } else {
+        app = getApps()[0];
     }
-  }
-} catch (e) {
-  console.error("Critical Firebase Initialization Error", e);
-  // Fallback object to prevent app crash
-  db = { type: 'firestore' } as any; 
-  auth = {} as any;
+
+    // حل مشكلة الشاشة البيضاء (White Screen Fix):
+    // إجبار Firestore على استخدام Long Polling بدلاً من gRPC الذي قد يُحجب في بعض شبكات الجوال
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentSingleTabManager({ forceOwnership: true }),
+            cacheSizeBytes: CACHE_SIZE_UNLIMITED
+        }),
+        experimentalForceLongPolling: true, // مهم جداً لاستقرار الاتصال في السعودية
+    });
+
+    auth = getAuth(app);
+    
+    if (typeof window !== 'undefined') {
+        getAnalytics(app);
+    }
+} catch (error) {
+    console.error("Firebase Initialization Error:", error);
 }
 
-export { app, db, auth, analytics, messaging, functions, getToken, onMessage };
+export { app, db, auth };

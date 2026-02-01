@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TFunction, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData } from '../types';
+import { TFunction, SelectedInsuranceData, ScientificGroupData } from '../types';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
 
 export interface IndicationGroup {
@@ -22,18 +22,24 @@ const ScientificInfo: React.FC<{ group: ScientificGroupData, t: TFunction, onCli
     
     return (
         <button 
-            onClick={onClick}
-            className="w-full text-left p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group"
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+            }}
+            className="w-full text-left p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group flex justify-between items-center"
         >
-             {hasMatchingTradeNames && (
-                 <p className="font-black text-sm text-slate-800 dark:text-white mb-1 break-words">
-                    {group.matchingTradeNames!.join(' / ')}
+             <div className="min-w-0">
+                {hasMatchingTradeNames && (
+                    <p className="font-black text-sm text-slate-800 dark:text-white mb-1 break-words">
+                        {group.matchingTradeNames!.join(' / ')}
+                    </p>
+                )}
+                <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight break-words`}>
+                    {group.scientificName}
                 </p>
-            )}
-             <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight break-words`}>
-                {group.scientificName}
-            </p>
-             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium break-words">{commonPolicy.drugClass}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium break-words">{commonPolicy.drugClass}</p>
+             </div>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-300 group-hover:text-primary ltr:rotate-0 rtl:rotate-180 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
         </button>
     )
 }

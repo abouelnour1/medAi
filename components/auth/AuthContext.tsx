@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 import { auth, db, FIREBASE_DISABLED } from '../../firebase';
 import { 
@@ -25,13 +24,8 @@ const LOCAL_USER_STORAGE_KEY = 'medai_user_backup_v3';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/**
- * وظيفة محسنة جداً لتنظيف الكائن من أي مراجع دائرية أو خصائص خفية من مكتبة Firebase
- */
 const toPlainObject = (user: any): User | null => {
     if (!user) return null;
-    
-    // نقوم ببناء كائن جديد تماماً بقيم بسيطة فقط (Primitive Types)
     return {
         id: String(user.id || user.uid || ''),
         username: String(user.username || user.displayName || user.email?.split('@')[0] || 'User'),
@@ -50,77 +44,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => {
     try {
       const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-      if (cached) {
-          const parsed = JSON.parse(cached);
-          return toPlainObject(parsed);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+      if (cached) return toPlainObject(JSON.parse(cached));
+    } catch (e) {}
+    return null;
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const loadingTimeoutRef = useRef<number | null>(null);
 
   const syncUserData = useCallback(async (firebaseUser: FirebaseUser) => {
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           let userData: User | null = null;
           
-          try {
-              const userDoc = await getDoc(userDocRef);
-              if (userDoc.exists()) {
-                  const data = userDoc.data();
-                  userData = toPlainObject({
-                      ...data,
-                      id: firebaseUser.uid,
-                      email: firebaseUser.email,
-                      emailVerified: firebaseUser.emailVerified
-                  });
-                  
-                  if (data.emailVerified !== firebaseUser.emailVerified) {
-                      await updateDoc(userDocRef, { emailVerified: firebaseUser.emailVerified }).catch(() => {});
-                  }
-              } else {
-                  userData = toPlainObject({
-                      id: firebaseUser.uid,
-                      username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                      role: 'premium',
-                      email: firebaseUser.email || '',
-                      emailVerified: firebaseUser.emailVerified,
-                      status: 'active',
-                      aiRequestCount: 0,
-                      lastRequestDate: new Date().toISOString().split('T')[0]
-                  });
-                  if (userData) await setDoc(userDocRef, userData).catch(() => {});
-              }
-          } catch (err: any) {
-              console.warn("Sync error (Offline or Permission?):", err.message);
+          const userDoc = await getDoc(userDocRef).catch(() => null);
+          if (userDoc?.exists()) {
+              const data = userDoc.data();
               userData = toPlainObject({
+                  ...data,
                   id: firebaseUser.uid,
                   email: firebaseUser.email,
-                  emailVerified: firebaseUser.emailVerified,
-                  username: firebaseUser.displayName || firebaseUser.email?.split('@')[0]
+                  emailVerified: firebaseUser.emailVerified
               });
+          } else {
+              userData = toPlainObject({
+                  id: firebaseUser.uid,
+                  username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                  role: 'premium',
+                  email: firebaseUser.email || '',
+                  emailVerified: firebaseUser.emailVerified,
+                  status: 'active',
+                  aiRequestCount: 0,
+                  lastRequestDate: new Date().toISOString().split('T')[0]
+              });
+              if (userData) await setDoc(userDocRef, userData).catch(() => {});
           }
           
           if (userData) {
               setUser(userData);
-              try {
-                  // نضمن أننا نخزن كائن "نظيف" تم تنظيفه عبر toPlainObject
-                  localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
-              } catch (storageErr) {
-                  console.error("Local storage save error:", storageErr);
-              }
+              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
           }
       } catch (err) {
           console.error("Critical Auth Sync Error:", err);
       } finally {
           setIsLoading(false);
+          if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       }
   }, []);
 
   useEffect(() => {
+    // حل مشكلة الشاشة البيضاء (Safety Timeout):
+    // إذا لم يستجب Firebase خلال 4 ثوانٍ، سنظهر التطبيق لإتاحة العمل ببيانات الكاش
+    loadingTimeoutRef.current = window.setTimeout(() => {
+        setIsLoading(false);
+        console.warn("Auth initial check timed out, proceeding to app content.");
+    }, 4000);
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         syncUserData(firebaseUser);
@@ -128,10 +107,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
         setUser(null);
         setIsLoading(false);
+        if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       }
+    }, (error) => {
+        console.error("Auth State Change Error:", error);
+        setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribe();
+        if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+    };
   }, [syncUserData]);
 
   const login = async (email: string, password: string) => {
@@ -142,16 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await sendEmailVerification(result.user);
-    
     const userData = toPlainObject({
-        id: result.user.uid,
-        username: email.split('@')[0],
-        email: email,
-        role: role,
-        emailVerified: false,
-        status: 'active',
-        aiRequestCount: 0,
-        lastRequestDate: new Date().toISOString().split('T')[0]
+        id: result.user.uid, username: email.split('@')[0], email: email, role: role,
+        emailVerified: false, status: 'active', aiRequestCount: 0, lastRequestDate: new Date().toISOString().split('T')[0]
     });
     if (userData) {
         await setDoc(doc(db, 'users', result.user.uid), userData);
@@ -181,30 +160,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getAllUsers = () => [];
-
   const updateUser = async (updatedUser: User) => {
       const plain = toPlainObject(updatedUser);
       if (!plain) return;
       const userRef = doc(db, 'users', plain.id);
-      await setDoc(userRef, plain, { merge: true });
+      await setDoc(userRef, plain, { merge: true }).catch(() => {});
       if (user?.id === plain.id) setUser(plain);
   };
-
-  const deleteUser = async (userId: string) => {
-      await deleteDoc(doc(db, 'users', userId));
-  };
-
+  const deleteUser = async (userId: string) => { await deleteDoc(doc(db, 'users', userId)); };
   const getSettings = (): AppSettings => ({ aiRequestLimit: 5, isAiEnabled: true });
-
-  const updateSettings = async (settings: AppSettings) => {
-      await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings);
-  };
+  const updateSettings = async (settings: AppSettings) => { await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings); };
 
   const requestAIAccess = useCallback((callback: () => void, t: TFunction) => {
     if (!user) return;
     const today = new Date().toISOString().split('T')[0];
     const limit = user.customAiLimit || 5;
-
     if (user.lastRequestDate !== today) {
         updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
         callback();

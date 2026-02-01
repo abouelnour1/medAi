@@ -1,9 +1,10 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage, Cosmetic, SerializablePart } from '../types';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';
+import HistoryIcon from './icons/HistoryIcon';
+import CameraIcon from './icons/CameraIcon';
 import MarkdownRenderer from './MarkdownRenderer';
 import PrescriptionView from './PrescriptionView';
 import ProductRecommendationsView from './ProductRecommendationsView';
@@ -21,7 +22,7 @@ interface AssistantModalProps {
   initialHistory?: ChatMessage[];
   t: TFunction;
   language: Language;
-  onShowAlternatives?: (medicine: Medicine) => void;
+  onShowHistory?: () => void;
 }
 
 const blobToBase64 = (blob: Blob): Promise<string> => {
@@ -40,21 +41,21 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     isOpen, 
     onSaveAndClose, 
     contextMedicine, 
-    contextCosmetic, 
+    contextCosmetic,
     allMedicines, 
-    favoriteMedicines, 
     initialPrompt, 
     initialHistory, 
     t, 
     language,
-    onShowAlternatives
+    onShowHistory
 }) => {
+  if (!isOpen) return null;
+
   const { user } = useAuth();
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState('');
   const [uploadedImage, setUploadedImage] = useState<{ blob: Blob, preview: string, mimeType: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isPrescriptionMode, setIsPrescriptionMode] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const aiAvailable = isAIAvailable();
@@ -63,43 +64,42 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     name: 'searchDatabase',
     parameters: {
       type: Type.OBJECT,
-      description: 'Searches the entire SFDA-registered medicine database for prices, ingredients, and alternatives. Use this when the user asks for ANY medicine or ingredient details.',
+      description: 'Finds drug information in the Saudi database. MANDATORY to use if the user mentions any medication name.',
       properties: {
-        tradeName: { type: Type.STRING, description: 'Trade name of the product.' },
-        scientificName: { type: Type.STRING, description: 'Active ingredient name.' },
-        limitResults: { type: Type.NUMBER, description: 'Max number of items to return.' }
+        tradeName: { type: Type.STRING, description: 'Brand name to search for.' },
+        scientificName: { type: Type.STRING, description: 'Active ingredient to search for.' }
       },
     },
   };
 
-  const tools: FunctionDeclaration[] = [searchDatabaseTool];
-
   const searchDatabase = useCallback((args: any) => {
+    if (!args) return { count: 0, results: [] };
     let results = [...allMedicines];
-    if (args.tradeName) results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
-    if (args.scientificName) {
-        results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(args.scientificName!.toLowerCase().trim()));
+    if (args.tradeName) {
+        const term = args.tradeName.toLowerCase();
+        results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(term));
     }
-    if (results.length === 0) return { count: 0, status: "NOT_IN_LOCAL_DB", message: "Item not found in current directory snapshot. Suggest general clinical advice." };
-    
+    if (args.scientificName) {
+        const term = args.scientificName.toLowerCase().trim();
+        results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(term));
+    }
     return {
         count: results.length,
-        results: results.slice(0, args.limitResults || 15).map(r => ({
+        results: results.slice(0, 5).map(r => ({
             tradeName: r['Trade Name'],
             scientificName: r['Scientific Name'],
-            priceSAR: r['Public price'],
+            price: r['Public price'],
             form: r.PharmaceuticalForm,
             strength: `${r.Strength} ${r.StrengthUnit}`,
-            manufacturer: r['Manufacture Name'],
-            status: r['Legal Status']
+            manufacturer: r['Manufacture Name']
         }))
     };
   }, [allMedicines]);
   
   const handleSendMessage = useCallback(async (overrideInput?: string) => {
-    if (!user) return;
+    if (!user || isLoading) return;
     const currentInput = (overrideInput ?? userInput).trim();
-    if ((!currentInput && !uploadedImage) || isLoading) return;
+    if (!currentInput && !uploadedImage) return;
 
     const userParts: SerializablePart[] = [];
     if (uploadedImage) {
@@ -113,181 +113,128 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     setUserInput('');
     setUploadedImage(null);
     setIsLoading(true);
-    
-    let contextInfo = `[DATABASE_SNAPSHOT: ${allMedicines.length} Items Loaded]`;
+
+    // بناء سياق الدواء الحالي ليكون الموديل على علم به
+    let contextInfo = "";
     if (contextMedicine) {
-        contextInfo += `\n[FOCUSED_ITEM]: ${contextMedicine['Trade Name']} (${contextMedicine['Scientific Name']}), Price: ${contextMedicine['Public price']} SAR, Status: ${contextMedicine['Legal Status']}`;
-    } else {
-        contextInfo += `\n[NO_FOCUSED_ITEM]: You are currently in general clinical mode. DO NOT assume the user is talking about any specific medicine unless they provide a name. Use searchDatabase if they ask for details.`;
+        contextInfo = `\n[CONTEXT_DRUG: ${contextMedicine['Trade Name']}. Active: ${contextMedicine['Scientific Name']}, Price: ${contextMedicine['Public price']} SAR, Form: ${contextMedicine.PharmaceuticalForm}.]`;
+    } else if (contextCosmetic) {
+        contextInfo = `\n[CONTEXT_COSMETIC: ${contextCosmetic.SpecificName}. Brand: ${contextCosmetic.BrandName}.]`;
     }
 
-    const clinicalSystemInstruction = `
-أنت "كبير الصيادلة الإكلينيكيين والمستشار الطبي" لمنصة PharmaSource KSA.
-جمهورك هم "أطباء وصيادلة" محترفون في المملكة العربية السعودية.
-
-**قواعد التواصل الـصـارمة:**
-1. تواصل بلغة علمية احترافية دقيقة.
-2. إذا لم يكن هناك دواء محدد في السياق ([FOCUSED_ITEM])، فأنت مساعد عام. لا تفترض دواءً معيناً أبداً.
-3. إذا سأل المستخدم عن سعر أو بديل ولم يذكر اسم الدواء، اطلب منه اسم الصنف أو ابحث عنه باستخدام الأداة.
-4. عندما تُسأل عن أي دواء، ابحث أولاً في قاعدة البيانات باستخدام أداة 'searchDatabase'.
-5. في حال رفع صورة وصفة طبية، حللها طبياً واقترح الأدوية المناسبة من قاعدة البيانات.
-${contextInfo}`;
-
-    const prescriptionSystemInstruction = `أنت طبيب استشاري خبير. قم بتوليد كائن JSON للوصفة الطبية بين علامات ---PRESCRIPTION_START--- و ---PRESCRIPTION_END---.`;
-
-    let systemInstruction = language === 'ar' ? clinicalSystemInstruction : `You are a Senior Clinical Pharmacist Consultant. Use medical terminology. ${contextInfo}`;
-    if (isPrescriptionMode) systemInstruction = prescriptionSystemInstruction;
+    const systemInstruction = `You are "PharmaSource AI", a Senior Clinical Pharmacist. 
+    CORE RULES:
+    1. EXTREME BREVITY: Direct answers only. No greetings (Hi/Hello), no conclusions.
+    2. CONTEXT AWARENESS: If user asks "How to use?" or "Side effects?", ASSUME they mean the drug in [CONTEXT_DRUG] above. Do not ask for name.
+    3. PROFESSIONAL JARGON: Use English medical terms (e.g., BID, TID, QD, Contraindications, Pharmacokinetics, Half-life) within Arabic/English responses.
+    4. DATA SOURCE: Use 'searchDatabase' only for pricing/availability. Use your medical knowledge for clinical data.
+    ${contextInfo}`;
 
     try {
-        const toolImplementations = { searchDatabase: searchDatabase };
-        const finalResponse = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: tools}], toolImplementations, 'gemini-3-flash-preview');
-        const responseParts = finalResponse?.candidates?.[0]?.content?.parts;
-        
-        if (responseParts) {
-            setChatHistory(prev => [...prev, { role: 'model', parts: sanitizeParts(responseParts) }]);
-        } else {
-            setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
-        }
+        const response = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: [searchDatabaseTool]}], { searchDatabase });
+        const parts = response?.candidates?.[0]?.content?.parts;
+        if (parts) setChatHistory(prev => [...prev, { role: 'model', parts: sanitizeParts(parts) }]);
     } catch (err) {
       setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, isPrescriptionMode, language, t, searchDatabase, user, uploadedImage, contextMedicine, allMedicines]);
+  }, [userInput, isLoading, chatHistory, t, searchDatabase, user, uploadedImage, contextMedicine, contextCosmetic, language]);
   
   useEffect(() => {
     if (isOpen) {
-        if (initialPrompt === '##PRESCRIPTION_MODE##') {
-            setIsPrescriptionMode(true);
-            setChatHistory([{ role: 'model', parts: [{ text: language === 'ar' ? 'وضع الوصفات الطبية نشط. كيف يمكنني مساعدتك بروفيسور؟' : 'Rx Mode active. How can I assist you, Doctor?' }] }]);
-        } else if (initialHistory && initialHistory.length > 0) {
-            setIsPrescriptionMode(false);
+        if (initialHistory && initialHistory.length > 0) {
             setChatHistory(initialHistory);
         } else {
-            setIsPrescriptionMode(false);
-            let welcomeMsg = language === 'ar' ? 'أهلاً بك زميلي الطبيب/الصيدلي. كيف يمكنني مساعدتك إكلينيكياً اليوم؟' : 'Welcome, Colleague. Clinical Assistant ready for consultation.';
+            // رسالة ترحيب مقتضبة جداً
+            let welcome = "";
             if (contextMedicine) {
-                welcomeMsg = language === 'ar' ? `ما هي استشارتك بخصوص دواء **${contextMedicine['Trade Name']}**؟` : `Clinical query regarding **${contextMedicine['Trade Name']}**?`;
+                welcome = `Clinical Context: **${contextMedicine['Trade Name']}** active.`;
+            } else if (contextCosmetic) {
+                welcome = `Context: **${contextCosmetic.SpecificName}**.`;
+            } else {
+                welcome = `PharmaSource AI expert ready.`;
             }
-            setChatHistory([{ role: 'model', parts: [{ text: welcomeMsg }] }]);
-            if (initialPrompt) setTimeout(() => { handleSendMessage(initialPrompt); }, 400);
+            
+            setChatHistory([{ role: 'model', parts: [{ text: welcome }] }]);
+            
+            if (initialPrompt) {
+                setTimeout(() => handleSendMessage(initialPrompt), 400);
+            }
         }
-        setUploadedImage(null);
     }
-  }, [isOpen, initialPrompt, initialHistory, language, contextMedicine]);
+  }, [isOpen]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isLoading]);
   
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) setUploadedImage({ blob: file, preview: URL.createObjectURL(file), mimeType: file.type });
-    event.target.value = '';
-  };
-
-  const handleClose = () => {
-      setIsPrescriptionMode(false);
-      onSaveAndClose(chatHistory);
-  };
-
-  if (!isOpen) return null;
-  
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in" onClick={handleClose}>
-      <div className="bg-white dark:bg-dark-card w-full max-w-2xl h-[85vh] sm:h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative m-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center animate-fade-in p-2 sm:p-6" onClick={() => onSaveAndClose(chatHistory)}>
+      <div className="bg-white dark:bg-dark-card w-full max-w-xl h-[80vh] rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden relative border border-white/10" onClick={e => e.stopPropagation()}>
         
-        <header className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-inner border border-primary/20">
-                <AssistantIcon />
-            </div>
+        <header className="flex items-center justify-between p-3 px-5 border-b border-gray-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg shadow-primary/20"><div className="w-4 h-4"><AssistantIcon /></div></div>
             <div>
-                <h2 className="text-lg font-bold">{isPrescriptionMode ? t('prescription') : 'Clinical Assistant'}</h2>
-                <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Scientific Expert</span>
-                </div>
+                <h2 className="text-xs font-black text-slate-800 dark:text-white leading-tight">PharmaSource AI</h2>
+                <div className="flex items-center gap-1"><span className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span><span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Clinical Protocol</span></div>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <ClearIcon/>
-          </button>
+          <div className="flex items-center gap-1">
+              <button onClick={() => { onSaveAndClose(chatHistory); onShowHistory?.(); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><div className="w-4 h-4"><HistoryIcon/></div></button>
+              <button onClick={() => onSaveAndClose(chatHistory)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition-colors"><div className="w-4 h-4"><ClearIcon/></div></button>
+          </div>
         </header>
 
-        <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
+        <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50/20 dark:bg-transparent no-scrollbar">
           {chatHistory.map((msg, index) => {
              const textContent = msg.parts?.find(p => 'text' in p && p.text)?.text;
              const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
              const isProductRecommendation = textContent?.includes('---PRODUCTS_START---');
-
             return (
-                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.role === 'model' && (
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                        <AssistantIcon />
-                    </div>
-                  )}
-                  <div className={`max-w-[90%] sm:max-w-md rounded-2xl shadow-sm flex flex-col gap-2 ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none p-3' : `bg-white dark:bg-dark-card text-light-text dark:text-dark-text rounded-bl-none ${isPrescription || isProductRecommendation ? 'p-0 bg-transparent shadow-none w-full' : 'p-3 border border-slate-100 dark:border-slate-800'}`}`}>
-                     { isPrescription ? (
-                        <PrescriptionView content={textContent!} t={t} />
-                     ) : isProductRecommendation ? (
-                        <ProductRecommendationsView content={textContent!} t={t} />
-                     ) : msg.parts?.map((part, pIndex) => {
-                        if ('text' in part && part.text) return <div key={pIndex} className="text-sm ai-response-content"><MarkdownRenderer content={part.text} /></div>;
-                        if ('inlineData' in part && part.inlineData) return <img key={pIndex} src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} alt="User upload" className="max-w-xs rounded-lg shadow-md border-2 border-white" />;
+                <div key={index} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {msg.role === 'model' && <div className="flex-shrink-0 h-6 w-6 rounded-md bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary"><div className="w-3 h-3"><AssistantIcon /></div></div>}
+                  <div className={`max-w-[90%] rounded-xl shadow-sm ${msg.role === 'user' ? 'bg-primary text-white p-2 px-3 font-bold text-[11px]' : `bg-white dark:bg-slate-800 p-2.5 text-[11px] leading-snug text-slate-700 dark:text-slate-200 border border-slate-50 dark:border-slate-700 ${isPrescription || isProductRecommendation ? 'p-0 bg-transparent border-none shadow-none' : ''}`}`}>
+                     { isPrescription ? <PrescriptionView content={textContent!} t={t} /> : isProductRecommendation ? <ProductRecommendationsView content={textContent!} t={t} /> : msg.parts?.map((part, pIndex) => {
+                        if ('text' in part && part.text) return <div key={pIndex} className="ai-response-content prose prose-slate dark:prose-invert max-w-none"><MarkdownRenderer content={part.text} /></div>;
+                        if ('inlineData' in part && part.inlineData) return <img key={pIndex} src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-w-full rounded-lg mt-1 shadow-sm border border-white" />;
                         return null;
                      })}
                   </div>
                 </div>
             )
           })}
-          {isLoading && (
-              <div className="flex justify-start animate-fade-in">
-                 <div className="bg-white dark:bg-dark-card p-3 rounded-2xl rounded-bl-none flex items-center gap-1 shadow-sm border border-slate-100">
-                    <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                 </div>
-              </div>
-          )}
-          <div ref={chatEndRef} />
+          {isLoading && <div className="pl-8"><div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div></div>}
+          <div ref={chatEndRef} className="h-2" />
         </div>
 
-        <footer className="p-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-dark-card">
-            {uploadedImage && (
-                <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-between border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-3">
-                        <img src={uploadedImage.preview} className="h-12 w-12 object-cover rounded-lg shadow-sm" />
-                        <span className="text-xs font-bold text-slate-500">{t('imagePreview')}</span>
-                    </div>
-                    <button onClick={() => setUploadedImage(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-full">
-                        <ClearIcon/>
-                    </button>
-                </div>
-            )}
-            <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} className="flex items-end gap-2">
-                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-slate-400 hover:text-primary transition-colors bg-slate-100 dark:bg-slate-800 rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+        <footer className="p-3 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} className="flex items-center gap-2">
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={e => { const f = e.target.files?.[0]; if (f) setUploadedImage({ blob: f, preview: URL.createObjectURL(f), mimeType: f.type }); }} className="hidden" />
+                
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg hover:text-primary transition-all">
+                  <div className="w-4 h-4"><CameraIcon /></div>
                 </button>
-                <textarea 
-                    value={userInput} 
-                    onChange={(e) => setUserInput(e.target.value)} 
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
-                    placeholder={aiAvailable ? (language === 'ar' ? 'استشارة طبية بخصوص أي دواء...' : 'Medical consultation or drug query...') : t('aiUnavailableShort')} 
-                    className="flex-grow p-3 bg-slate-100 dark:bg-slate-800 rounded-xl outline-none transition-all focus:ring-2 focus:ring-primary/20 resize-none text-sm min-h-[48px] max-h-32" 
-                    rows={1} 
-                    disabled={isLoading || !aiAvailable} 
-                />
-                <button 
-                    type="submit" 
-                    disabled={isLoading || (!userInput && !uploadedImage) || !aiAvailable} 
-                    className="p-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 active:scale-95 disabled:opacity-50 disabled:grayscale"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                    </svg>
+
+                <div className="flex-grow relative">
+                    <textarea 
+                        value={userInput} 
+                        onChange={(e) => setUserInput(e.target.value)} 
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
+                        placeholder={aiAvailable ? (language === 'ar' ? 'اسأل باختصار (Pros)...' : 'Query (Clinical)...') : t('aiUnavailableShort')} 
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-xs min-h-[40px] max-h-24 focus:border-primary transition-all resize-none" 
+                        rows={1} 
+                    />
+                    {uploadedImage && (
+                        <div className="absolute bottom-full left-0 mb-2">
+                            <div className="relative w-10 h-10 rounded-lg border border-primary overflow-hidden shadow-md">
+                                <img src={uploadedImage.preview} className="w-full h-full object-cover" />
+                                <button onClick={() => setUploadedImage(null)} className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl-md"><ClearIcon /></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <button type="submit" disabled={isLoading || (!userInput && !uploadedImage) || !aiAvailable} className="p-2.5 bg-primary text-white rounded-lg shadow-md active:scale-95 disabled:opacity-40 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 00-1.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
                 </button>
             </form>
         </footer>

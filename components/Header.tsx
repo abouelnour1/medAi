@@ -9,8 +9,6 @@ interface HeaderProps {
   title: string;
   showBack: boolean;
   onBack: () => void;
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
   t: TFunction;
   onLoginClick: () => void;
   onAdminClick: () => void;
@@ -19,7 +17,7 @@ interface HeaderProps {
   unreadCount?: number;
 }
 
-const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, theme, toggleTheme, t, onLoginClick, onAdminClick, onNotificationsClick, view, unreadCount = 0 }, ref) => {
+const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, view, unreadCount = 0 }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -80,18 +78,18 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                     <span className="font-medium text-xs max-w-[70px] truncate drop-shadow-md">{user.username}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 drop-shadow-md flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                 </button>
-                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-xl shadow-xl ring-1 ring-black/5 py-1 transition-all duration-200 z-50 divide-y divide-slate-100 dark:divide-slate-700 origin-top-right ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-48 bg-white rounded-xl shadow-xl ring-1 ring-black/5 py-1 transition-all duration-200 z-50 divide-y divide-slate-100 origin-top-right ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
                     <div className="px-4 py-2">
-                        <div className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('role')}</div>
-                        <div className="font-semibold text-xs text-light-text dark:text-dark-text">
+                        <div className="text-[10px] text-slate-500 uppercase">{t('role')}</div>
+                        <div className="font-semibold text-xs text-slate-900">
                             {user.role === 'admin' ? t('adminRole') : user.role === 'company' ? t('companyRole') : t('premiumRole')}
                         </div>
                     </div>
                     <div className="py-1">
                         {user.role === 'admin' && (
-                             <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-light-text dark:text-dark-text hover:bg-slate-100 dark:hover:bg-slate-700">{t('adminDashboard')}</button>
+                             <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">{t('adminDashboard')}</button>
                         )}
-                        <button onClick={logout} className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700">{t('logout')}</button>
+                        <button onClick={logout} className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-slate-100">{t('logout')}</button>
                     </div>
                 </div>
             </div>

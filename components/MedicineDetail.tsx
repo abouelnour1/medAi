@@ -148,7 +148,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
             <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${scientificName} ${medicine.Strength || ''} ${medicine.StrengthUnit || ''}`.trim()}</p>
           )}
 
-          {!isNaN(price) && <div className="mt-4 text-accent text-2xl font-bold">{`${price.toFixed(2)} ${t('sar')}`}</div>}
+          {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">

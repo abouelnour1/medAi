@@ -170,7 +170,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {!isNaN(price) && (
-              <div className="text-accent text-sm font-bold whitespace-nowrap">
+              <div className="text-orange-600 dark:text-orange-400 text-sm font-black whitespace-nowrap">
                 {price.toFixed(2)} <span className="text-[9px] font-normal text-light-text-secondary dark:text-dark-text-secondary">{t('sar')}</span>
               </div>
             )}

@@ -31,10 +31,9 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
   const filteredProducts = useMemo(() => {
     const trimmedTerm = searchTerm.trim().toLowerCase();
     
-    // تعديل: لا تظهر نتائج الحليب إلا إذا كتب 3 حروف أو اختار شركة
     if (!selectedBrand && trimmedTerm.length < 3) return [];
 
-    return milkProducts.filter(product => {
+    let results = milkProducts.filter(product => {
       if (selectedBrand && selectedBrand !== 'All' && product.brand !== selectedBrand) {
           return false;
       }
@@ -49,6 +48,22 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
 
       return true;
     });
+
+    if (trimmedTerm && trimmedTerm.length >= 3) {
+        results.sort((a, b) => {
+            const aName = a.productName.toLowerCase();
+            const bName = b.productName.toLowerCase();
+            const aStarts = aName.startsWith(trimmedTerm);
+            const bStarts = bName.startsWith(trimmedTerm);
+
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+
+            return aName.localeCompare(bName);
+        });
+    }
+
+    return results;
   }, [milkProducts, searchTerm, selectedBrand]);
 
   const toggleCompare = (e: React.MouseEvent, productId: string) => {
@@ -114,6 +129,7 @@ const MilkView: React.FC<MilkViewProps> = ({ milkProducts, t, language, scrollTo
             >
                 <SearchIcon />
             </button>
+            {/* Fix: use searchTerm directly as inputValue was not defined in this scope */}
             <input
                 type="text"
                 value={searchTerm}

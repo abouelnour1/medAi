@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
   <head>
@@ -11,35 +10,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2dd4bf">
-    <!-- iOS support -->
-    <link rel="apple-touch-icon" href="/logo.png">
+    <meta name="theme-color" content="#14b8a6">
     <link rel="icon" type="image/png" href="/logo.png">
-    <meta name="apple-mobile-web-app-status-bar" content="#2dd4bf">
+    <meta name="apple-mobile-web-app-status-bar" content="#14b8a6">
 
     <style>
+      :root {
+        --primary-color: #14b8a6;
+      }
       html {
         height: 100%;
         width: 100%;
         overflow: hidden;
       }
+      html[lang="ar"] body {
+        font-family: 'Cairo', sans-serif;
+      }
+      html[lang="en"] body {
+        font-family: 'Poppins', sans-serif;
+      }
+      
       body {
         height: 100%;
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Prevent body scroll completely */
-        position: fixed; /* Lock the body in place */
+        overflow: hidden;
+        position: fixed;
         top: 0;
         left: 0;
-        font-family: 'Poppins', 'Cairo', sans-serif;
         -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        background-color: #f8fafc; /* Match light-bg */
+        background-color: #f8fafc;
+        color: #0f172a;
       }
-      * {
-        -webkit-tap-highlight-color: transparent;
-      }
+      
       #root {
         height: 100%;
         width: 100%;
@@ -47,130 +51,17 @@
         flex-direction: column;
         overflow: hidden;
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
       }
+
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
       @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.99); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      @keyframes zoomIn {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      @keyframes bounceSubtle {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
       .animate-fade-in {
-        animation: fadeIn 0.2s ease-out forwards;
-      }
-      .animate-zoom-in {
-        animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      .animate-bounce-subtle {
-        animation: bounceSubtle 3s ease-in-out infinite;
-      }
-      /* Hide scrollbar for webkit-based browsers */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      /* Hide scrollbar for IE, Edge and Firefox */
-      .no-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-      }
-      @media print {
-        .no-print {
-          display: none !important;
-        }
-      }
-      /* Style for AI-generated content */
-      .ai-response-content strong {
-        color: #0d9488; /* A darker teal for better readability */
-        font-weight: 700;
-      }
-      .dark .ai-response-content strong {
-        color: #2dd4bf; /* A lighter teal for dark mode */
-      }
-      .ai-response-content a {
-        color: #0d9488;
-        text-decoration: underline;
-        word-break: break-all; /* Prevents long URLs from overflowing */
-      }
-      .dark .ai-response-content a {
-        color: #2dd4bf;
-      }
-
-      /* Professional Table Styling for AI Responses - Medical/Invoice Look */
-      .ai-response-content table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        margin: 1.25rem 0;
-        border: 1px solid #cbd5e1; /* slate-300 */
-        border-radius: 0.75rem; /* Rounded corners */
-        overflow: hidden;
-        font-size: 0.85rem; /* text-sm */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      }
-      .dark .ai-response-content table {
-        border-color: #334155; /* slate-700 */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-      }
-      
-      .ai-response-content th {
-        background-color: #14b8a6; /* primary teal */
-        color: white;
-        font-weight: 700;
-        padding: 0.85rem;
-        text-align: start;
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        border-bottom: 2px solid #0f766e;
-      }
-      
-      .ai-response-content td {
-        padding: 0.85rem;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-        line-height: 1.4;
-      }
-      .dark .ai-response-content td {
-        border-bottom: 1px solid #334155;
-      }
-      
-      /* Remove border from last row cells */
-      .ai-response-content tr:last-child td {
-        border-bottom: none;
-      }
-      
-      /* Zebra Striping */
-      .ai-response-content tr:nth-child(even) {
-        background-color: #f1f5f9; /* slate-100 */
-      }
-      .dark .ai-response-content tr:nth-child(even) {
-        background-color: #1e293b; /* slate-800 */
-      }
-      .dark .ai-response-content tr:nth-child(odd) {
-        background-color: #0f172a; /* slate-900 */
-      }
-
-      /* Hover effect */
-      .ai-response-content tr:hover {
-        background-color: #e2e8f0; /* slate-200 */
-      }
-      .dark .ai-response-content tr:hover {
-        background-color: #334155; /* slate-700 */
-      }
-      
-      #main-scroll-container {
-        -webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
-        touch-action: pan-y; /* Allow vertical scrolling */
-        overscroll-behavior-y: auto; /* Allow bounce */
+        animation: fadeIn 0.3s ease-out forwards;
       }
     </style>
   <script type="importmap">
@@ -184,12 +75,10 @@
     "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
     "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-    "firebase/functions": "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js",
-    "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4"
+    "firebase/": "https://esm.sh/firebase@^12.8.0/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.0.2"
   }
 }
 </script>
@@ -200,27 +89,10 @@
         extend: {
           colors: {
             primary: {
-              DEFAULT: '#14b8a6', // teal-500
-              light: '#5eead4', // teal-300
-              dark: '#0f766e', // teal-700
-            },
-            secondary: {
-              DEFAULT: '#22c55e', // green-500
-            },
-            accent: {
-              DEFAULT: '#f59e0b', // amber-500
-            },
-            'light-bg': '#f8fafc', // slate-50
-            'dark-bg': '#020617',  // slate-950
-            'light-card': '#ffffff',
-            'dark-card': '#0f172a', // slate-900
-            'light-text': '#0f172a', // slate-900
-            'dark-text': '#f1f5f9',   // slate-100
-            'light-text-secondary': '#64748b', // slate-500
-            'dark-text-secondary': '#94a3b8', // slate-400
-          },
-          fontFamily: {
-            sans: ['Poppins', 'Cairo', 'sans-serif'],
+              DEFAULT: '#14b8a6',
+              light: '#5eead4',
+              dark: '#0f766e',
+            }
           }
         }
       }
@@ -228,19 +100,8 @@
   </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
+  <body class="bg-light-bg text-slate-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registered: ', registration);
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
-        });
-      }
-    </script>
   </body>
 </html>

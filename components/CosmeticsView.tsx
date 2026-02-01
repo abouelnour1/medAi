@@ -49,41 +49,56 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
 
     const trimmedTerm = searchTerm.trim().toLowerCase();
     
-    // تعديل: لا تظهر نتائج التجميل إلا إذا كتب 3 حروف أو اختار ماركة
     if (!selectedBrand && trimmedTerm.length < 3) {
         return [];
     }
 
     if (trimmedTerm && trimmedTerm.length >= 3) {
-      const termParts = trimmedTerm.split(/\s+/).filter(Boolean);
-      
-      if (termParts.length >= 2) {
-          const part1 = termParts[0];
-          const part2 = termParts[1];
-          results = results.filter(c => {
-              const nameEn = String(c.SpecificName).toLowerCase();
-              const nameAr = String(c.SpecificNameAr || '').toLowerCase();
-              const brand = String(c.BrandName).toLowerCase();
-              
-              const match1 = nameEn.startsWith(part1) || nameAr.startsWith(part1) || brand.startsWith(part1);
-              const match2 = nameEn.includes(part2) || nameAr.includes(part2) || brand.includes(part2);
-              return match1 && match2;
-          });
+      // Support advanced wildcard search with *
+      if (trimmedTerm.includes('*')) {
+          const parts = trimmedTerm.split('*').map(p => p.trim()).filter(Boolean);
+          if (parts.length > 0) {
+              const regexPattern = parts.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+              const regex = new RegExp(regexPattern, 'i');
+              results = results.filter(c => 
+                  regex.test(c.SpecificName) || 
+                  (c.SpecificNameAr && regex.test(c.SpecificNameAr)) || 
+                  regex.test(c.BrandName)
+              );
+          }
       } else {
-          results = results.filter(c => {
-              return c.SpecificName.toLowerCase().includes(trimmedTerm) || 
-                     (c.SpecificNameAr && c.SpecificNameAr.toLowerCase().includes(trimmedTerm)) || 
-                     c.BrandName.toLowerCase().includes(trimmedTerm);
-          });
+          const termParts = trimmedTerm.split(/\s+/).filter(Boolean);
+          
+          if (termParts.length >= 2) {
+              const part1 = termParts[0];
+              const part2 = termParts[1];
+              results = results.filter(c => {
+                  const nameEn = String(c.SpecificName).toLowerCase();
+                  const nameAr = String(c.SpecificNameAr || '').toLowerCase();
+                  const brand = String(c.BrandName).toLowerCase();
+                  
+                  const match1 = nameEn.startsWith(part1) || nameAr.startsWith(part1) || brand.startsWith(part1);
+                  const match2 = nameEn.includes(part2) || nameAr.includes(part2) || brand.includes(part2);
+                  return match1 && match2;
+              });
+          } else {
+              results = results.filter(c => {
+                  return c.SpecificName.toLowerCase().includes(trimmedTerm) || 
+                         (c.SpecificNameAr && c.SpecificNameAr.toLowerCase().includes(trimmedTerm)) || 
+                         c.BrandName.toLowerCase().includes(trimmedTerm);
+              });
+          }
       }
       
       results.sort((a, b) => {
         const aVal = String(a.SpecificName).toLowerCase();
         const bVal = String(b.SpecificName).toLowerCase();
-        const aStarts = aVal.startsWith(trimmedTerm);
-        const bStarts = bVal.startsWith(trimmedTerm);
+        const aStarts = aVal.startsWith(trimmedTerm.replace(/\*/g, ''));
+        const bStarts = bVal.startsWith(trimmedTerm.replace(/\*/g, ''));
+
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
+
         return aVal.localeCompare(bVal);
       });
     }
@@ -96,9 +111,9 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
 
   return (
     <div className="animate-fade-in pb-20 relative">
-      <div className="bg-light-bg dark:bg-dark-bg mb-4 space-y-3">
+      <div className="bg-light-bg mb-4 space-y-3">
         <div>
-            <label className="block text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary mb-1 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-light-text-secondary mb-1 uppercase tracking-wide">
                 {t('brandName')}
             </label>
             <SearchableDropdown
@@ -114,7 +129,7 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
         <div className="relative">
             <button 
                 onClick={onSearchIconClick}
-                className="absolute top-1/2 left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary h-5 w-5 hover:text-primary transition-colors cursor-pointer z-10"
+                className="absolute top-1/2 left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 h-5 w-5 hover:text-primary transition-colors cursor-pointer z-10"
             >
                 <SearchIcon />
             </button>
@@ -124,12 +139,12 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('searchCosmeticsPlaceholder')}
-            className="w-full h-[45px] pl-10 pr-10 rtl:pr-10 rtl:pl-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 dark:focus:border-pink-500 rounded-xl outline-none transition-all shadow-sm"
+            className="w-full h-[45px] pl-10 pr-10 rtl:pr-10 rtl:pl-3 bg-white border border-slate-200 focus:border-pink-500 rounded-xl outline-none transition-all shadow-sm"
             />
             {searchTerm && (
                 <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute top-1/2 ltr:right-3 rtl:left-3 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded-full"
+                    className="absolute top-1/2 ltr:right-3 rtl:left-3 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full"
                 >
                     <ClearIcon />
                 </button>
@@ -152,8 +167,8 @@ const CosmeticsView: React.FC<CosmeticsViewProps> = ({
             ))}
         </div>
         ) : (
-        <div className="text-center py-10 px-4 bg-white dark:bg-dark-card rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-text-secondary">{t('noResultsTitle')}</h3>
+        <div className="text-center py-10 px-4 bg-white rounded-xl shadow-sm border border-slate-100">
+            <h3 className="text-lg font-semibold text-light-text-secondary">{t('noResultsTitle')}</h3>
         </div>
         )
       ) : null}

@@ -36,7 +36,7 @@ const CosmeticCard: React.FC<CosmeticCardProps> = ({ cosmetic, t, language, onCl
             
             <div className="flex flex-col items-end gap-1">
                 {!isNaN(price) && (
-                  <div className="text-pink-600 dark:text-pink-400 text-sm font-black whitespace-nowrap">
+                  <div className="text-rose-600 dark:text-rose-400 text-sm font-black whitespace-nowrap">
                     {price.toFixed(2)} <span className="text-[9px] font-normal text-slate-400">{t('sar')}</span>
                   </div>
                 )}
