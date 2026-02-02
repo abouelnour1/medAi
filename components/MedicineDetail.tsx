@@ -105,7 +105,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     matches.forEach(m => {
         const key = m.indication || (language === 'ar' ? 'استخدامات عامة' : 'General Usage');
         
-        // تنظيف قيم NA
+        // تنظيف قيم NA وتصفية البيانات الفارغة
         const cleanEntry = { ...m };
         if (cleanEntry.mddAdults?.toLowerCase().trim() === 'na') cleanEntry.mddAdults = '';
         if (cleanEntry.mddPediatrics?.toLowerCase().trim() === 'na') cleanEntry.mddPediatrics = '';
@@ -191,7 +191,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* 1. قسم الخصائص المادية (أولاً ومفتوحاً افتراضياً) */}
+        {/* 1. قسم الخصائص المادية - مفتوح افتراضياً */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -233,7 +233,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             )}
         </div>
 
-        {/* 2. قسم المعلومات السريرية (ثانياً ومغلقاً افتراضياً) */}
+        {/* 2. قسم المعلومات السريرية - مغلق افتراضياً */}
         {clinicalMatches.length > 0 && (
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
                 <button 
@@ -254,7 +254,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     <div className="pb-6 px-1 animate-fade-in space-y-6">
                         {clinicalMatches.map(([indication, entries]) => (
                             <div key={indication} className="bg-white dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                                {/* Indication Header - لون مميز وبارز */}
+                                {/* Indication Header - لون Teal مميز */}
                                 <div className="bg-teal-600 dark:bg-teal-700 px-4 py-3 border-b border-teal-500 flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></div>
                                     <h4 className="text-sm font-black text-white uppercase tracking-tight leading-tight">

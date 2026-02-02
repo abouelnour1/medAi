@@ -154,7 +154,7 @@ export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
 
 // Fix: Define ProductTypeFilter which was missing and causing errors
-export type ProductTypeFilter = 'all' | 'medicine' | 'supplement';
+export type ProductTypeFilter = 'all' | 'medicine' | 'supplement' | 'food';
 
 export interface Filters {
   productType: ProductTypeFilter;

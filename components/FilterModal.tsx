@@ -109,6 +109,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         <option value="all">{t('allProductTypes')}</option>
                         <option value="medicine">{t('medicines')}</option>
                         <option value="supplement">{t('supplements')}</option>
+                        <option value="food">{t('food')}</option>
                       </select>
                     </FilterItem>
 

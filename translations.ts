@@ -1,6 +1,7 @@
 
 export const translations = {
   ar: {
+    food: 'غذاء (Food)',
     clinicalDetails: 'معلومات سريرية (Clinical)',
     maxDailyDoseAdults: 'الجرعة القصوى (بالغين)',
     maxDailyDosePediatrics: 'الجرعة القصوى (أطفال)',
@@ -315,6 +316,7 @@ export const translations = {
     pleaseUseCompanyAccount: 'يرجى تسجيل الدخول بحساب شركة للمتابعة.'
   },
   en: {
+    food: 'Food',
     clinicalDetails: 'Clinical Details',
     maxDailyDoseAdults: 'Max Daily Dose (Adults)',
     maxDailyDosePediatrics: 'Max Daily Dose (Pediatrics)',
@@ -551,7 +553,9 @@ export const translations = {
     directAlternatives: 'Direct Alternatives',
     noDirectAlternatives: 'No direct alternatives found.',
     therapeuticAlternatives: 'Therapeutic Alternatives',
+    /* Fix: Correct property key and value for English translation */
     noTherapeuticAlternatives: 'No therapeutic alternatives found.',
+    /* Fix: Ensure property name is correctly defined */
     sortBy: 'Sort By',
     alphabetical: 'Alphabetical',
     scientificNameSort: 'Scientific Name',

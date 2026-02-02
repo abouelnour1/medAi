@@ -52,7 +52,9 @@ const normalizeMedicine = (item: any): Medicine => {
     RegisterNumber: String(item.RegisterNumber || item.Id || Math.random()),
     ReferenceNumber: String(item.ReferenceNumber || ''),
     "Old register Number": String(item["Old register Number"] || ''),
-    "Product type": String(item["Product type"] || (item.DrugType === 'Health' ? 'Supplement' : 'Human')),
+    "Product type": String(item["Product type"] || 
+        (item.DrugType === 'food' ? 'Food' : 
+        (item.DrugType === 'Health' || item.DrugType === 'Herbal' ? 'Supplement' : 'Human'))),
     DrugType: String(item.DrugType || ''),
     "Sub-Type": String(item["Sub-Type"] || ''),
     "Scientific Name": String(item["Scientific Name"] || item.ScientificName || ''),
@@ -71,10 +73,10 @@ const normalizeMedicine = (item: any): Medicine => {
     "Product Control": String(item["Product Control"] || ''),
     "Distribute area": String(item["Distribute area"] || ''),
     "Public price": findPrice(item),
-    shelfLife: String(item.shelfLife || ''),
+    shelfLife: String(item.shelfLife || item.ShelfLife || ''),
     "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
     "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
-    "Marketing Company": String(item["Marketing Company"] || ''),
+    "Marketing Company": String(item["Marketing Company"] || item["Company Name"] || ''),
     "Marketing Country": String(item["Marketing Country"] || ''),
     "Manufacture Name": String(item["Manufacture Name"] || item.ManufacturerNameEN || ''),
     "Manufacture Country": String(item["Manufacture Country"] || item.ManufacturerCountry || ''),
@@ -255,7 +257,8 @@ const App: React.FC = () => {
             
             if (!medicinesData) {
                 const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
-                medicinesData = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW] as any[]).map(normalizeMedicine);
+                const { FOOD_DATA_RAW } = await import('./data/food-data');
+                medicinesData = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
                 await setItem(MEDICINES_CACHE_KEY, medicinesData);
             }
             if (!cosmeticsData) {
@@ -315,7 +318,8 @@ const App: React.FC = () => {
       results = results.filter(m => {
         if (!m) return false;
         if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
-        if (filters.productType === 'supplement' && m['Product type'] === 'Human') return false;
+        if (filters.productType === 'supplement' && m['Product type'] !== 'Supplement') return false;
+        if (filters.productType === 'food' && m['Product type'] !== 'Food') return false;
         const mPrice = parseFloat(m['Public price']) || 0;
         if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
         if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;

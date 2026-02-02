@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
@@ -40,7 +41,7 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
             };
         }
         
-        // التعامل مع استدعاءات الوظائف (تدمير المراجع الدائرية في الـ args)
+        // التعامل مع استدعاءات الوظائف (تجنب نسخ المراجع المعقدة)
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
@@ -71,7 +72,7 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // تنظيف التاريخ قبل كل عملية إرسال أو حفظ
+    // تنظيف التاريخ بالكامل لضمان عدم وجود مراجع دائرية قبل الإرسال
     const contents = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
