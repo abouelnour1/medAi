@@ -127,7 +127,7 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v2';
 
 const App: React.FC = () => {
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user } = useAuth();
   const scrollPositionsByView = useRef<Record<string, number>>({});
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -471,22 +471,11 @@ const App: React.FC = () => {
       return <div className="text-center py-20 text-slate-400">Application Error. Please reload.</div>;
   };
 
-  if (isAuthLoading) {
-      return (
-          <div className="flex items-center justify-center h-screen bg-light-bg">
-              <div className="text-center">
-                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-500 font-bold">جارِ التحميل...</p>
-              </div>
-          </div>
-      );
-  }
-
   return (
     <div className="bg-light-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
       <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 space-y-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] w-full max-w-7xl">
-          {isDataLoaded ? renderContent() : <div className="flex items-center justify-center h-full"><div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div></div>}
+          {renderContent()}
       </main>
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':tab==='cosmetics'?'cosmeticsSearch':tab==='milk'?'milkSearch':'settings'); }} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>

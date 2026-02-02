@@ -11,7 +11,7 @@ import AlternativeIcon from './icons/AlternativeIcon';
 import StethoscopeIcon from './icons/StethoscopeIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
-  if (!value || String(value).trim() === '') return null;
+  if (!value || String(value).trim() === '' || String(value).toLowerCase().trim() === 'na' || String(value).toLowerCase().trim() === 'n/a') return null;
   return (
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
       <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{label}</dt>
@@ -79,9 +79,7 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
-  // الخصائص المادية مفتوحة افتراضياً بناءً على طلبك
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(true);
-  // المعلومات السريرية مغلقة افتراضياً
   const [isClinicalExpanded, setIsClinicalExpanded] = useState(false);
   
   const medicineImages = useMemo(() => {
@@ -106,8 +104,26 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     const groupedByIndication = new Map<string, InsuranceDrug[]>();
     matches.forEach(m => {
         const key = m.indication || (language === 'ar' ? 'استخدامات عامة' : 'General Usage');
+        
+        // تنظيف قيم NA
+        const cleanEntry = { ...m };
+        if (cleanEntry.mddAdults?.toLowerCase().trim() === 'na') cleanEntry.mddAdults = '';
+        if (cleanEntry.mddPediatrics?.toLowerCase().trim() === 'na') cleanEntry.mddPediatrics = '';
+        if (cleanEntry.notes?.toLowerCase().trim() === 'na') cleanEntry.notes = '';
+
         if (!groupedByIndication.has(key)) groupedByIndication.set(key, []);
-        groupedByIndication.get(key)!.push(m);
+        
+        // منع التكرار: نتحقق إذا كانت نفس البيانات موجودة مسبقاً لهذا التشخيص
+        const existing = groupedByIndication.get(key)!;
+        const isDuplicate = existing.some(e => 
+            e.mddAdults === cleanEntry.mddAdults && 
+            e.mddPediatrics === cleanEntry.mddPediatrics && 
+            e.notes === cleanEntry.notes
+        );
+        
+        if (!isDuplicate) {
+            groupedByIndication.get(key)!.push(cleanEntry);
+        }
     });
 
     return Array.from(groupedByIndication.entries());
@@ -175,7 +191,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* 1. قسم الخصائص المادية (أصبح أولاً ومفتوحاً افتراضياً) */}
+        {/* 1. قسم الخصائص المادية (أولاً ومفتوحاً افتراضياً) */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -217,7 +233,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             )}
         </div>
 
-        {/* 2. قسم المعلومات السريرية (أصبح ثانياً ومغلقاً افتراضياً) */}
+        {/* 2. قسم المعلومات السريرية (ثانياً ومغلقاً افتراضياً) */}
         {clinicalMatches.length > 0 && (
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
                 <button 
@@ -238,10 +254,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     <div className="pb-6 px-1 animate-fade-in space-y-6">
                         {clinicalMatches.map(([indication, entries]) => (
                             <div key={indication} className="bg-white dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                                {/* Indication Header - High visibility */}
-                                <div className="bg-secondary/20 dark:bg-secondary/30 px-4 py-3 border-b border-secondary/20 flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></div>
-                                    <h4 className="text-sm font-black text-secondary dark:text-green-300 uppercase tracking-tight leading-tight">
+                                {/* Indication Header - لون مميز وبارز */}
+                                <div className="bg-teal-600 dark:bg-teal-700 px-4 py-3 border-b border-teal-500 flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></div>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight leading-tight">
                                         {indication}
                                     </h4>
                                 </div>
@@ -250,13 +266,13 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                                     {entries.map((entry, idx) => (
                                         <div key={idx} className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {(entry.mddAdults) && (
+                                                {(entry.mddAdults && entry.mddAdults.toLowerCase() !== 'na') && (
                                                     <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
                                                         <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDoseAdults')}</dt>
                                                         <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddAdults}</dd>
                                                     </div>
                                                 )}
-                                                {(entry.mddPediatrics) && (
+                                                {(entry.mddPediatrics && entry.mddPediatrics.toLowerCase() !== 'na') && (
                                                     <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
                                                         <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDosePediatrics')}</dt>
                                                         <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddPediatrics}</dd>
@@ -264,7 +280,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                                                 )}
                                             </div>
 
-                                            {entry.notes && (
+                                            {entry.notes && entry.notes.toLowerCase() !== 'na' && (
                                                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                                                     <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2 flex items-center gap-1.5">
                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
