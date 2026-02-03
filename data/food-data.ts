@@ -10,7 +10,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "ACETA C LITE Improves immunity, Potent antioxidant and increase cell power. | Active ingredient: | • Vitamin C | • Zinc"
   },
   {
@@ -24,7 +24,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Aceta C Light is the best dietary supplement with a natural berry flavor, a source of Vitamin C, Zinc, and Vitamin D to support immunity and improve reproductive health."
   },
   {
@@ -38,7 +38,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Arax Choline | is an effective dietary supplement designed to support brain health and improve cognitive and mental functions. With its unique formulation, it is an ideal choice for both children and adults who suffer from memory or concentration issues."
   },
   {
@@ -52,7 +52,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Araxrest Gel provides fast relief for muscle and joint pain, alleviating tension and promoting relaxation with natural ingredients like camphor and peppermint. Ideal for daily use."
   },
   {
@@ -66,7 +66,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "ArgiRoyal for Men | – A natural dietary supplement that enhances sexual health, boosts libido and energy, and improves performance thanks to its active ingredients such as L-Arginine, Maca extract, and Royal Jelly."
   },
   {
@@ -80,7 +80,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Ramadan is your chance to live every moment with confidence and energy with | Argiroyal | ! Order now and take advantage of the special (4+1) offer before supplies run out!"
   },
   {
@@ -94,7 +94,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A natural, innovative dietary supplement that enhances your sexual health and effectively treats erectile dysfunction. A unique formula combining L-arginine, Aspartic acid, and Zinc, | completely safe for diabetics and those with high blood pressure."
   },
   {
@@ -108,7 +108,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A natural, innovative dietary supplement that enhances your sexual health and effectively treats erectile dysfunction. A unique formula combining L-arginine, Aspartic acid, and Zinc, completely safe for diabetics and those with high blood pressure."
   },
   {
@@ -122,7 +122,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Aspermia Gel | is the best vaginal gel for contraception and vaginal lubrication. It contains Nonoxynol-9, Lactic Acid, Chamomile Extract, and L-Arginine to improve sexual function and relieve pain during intercourse. It is a safe, hormone-free method for natural protection and maximum comfort. Try it today!"
   },
   {
@@ -136,7 +136,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "BerryCan Zinc | is a natural syrup formulated with | zinc, beta-glucan, and elderberry extract | to support immune function and protect against colds, flu, and respiratory infections. Safe for children and pregnant women."
   },
   {
@@ -150,7 +150,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bond 3 Extra | is an advanced dietary supplement containing high concentrations of | Vitamin D3 and Vitamin K2 (MK7) | . It is designed to support the health of bones, teeth, immunity, heart, and muscles. With a delicious vanilla-caramel flavor, it is alcohol-free and suitable for all age groups."
   },
   {
@@ -164,7 +164,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bond 3 Drops | are high-absorption Vitamin D3 | supplements with a delicious vanilla-caramel flavor. Alcohol-free and manufactured under an Italian patent, they are designed to treat Vitamin D deficiency and help prevent rickets and osteoporosis. Suitable for all age groups."
   },
   {
@@ -178,7 +178,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A complete supplement containing | Calcium, Magnesium, Vitamin D3, and Vitamin K2 | to support bone and teeth strength, increase density, and prevent osteoporosis. Suitable for adults, pregnant women, and the elderly at risk of calcium or vitamin D deficiency."
   },
   {
@@ -192,7 +192,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A complete supplement containing | Calcium, Magnesium, Vitamin D3, and Vitamin K2 | to support bone and teeth strength, increase density, and prevent osteoporosis. Suitable for adults, pregnant women, and the elderly at risk of calcium or vitamin D deficiency."
   },
   {
@@ -206,7 +206,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bonoflex Extra | is an effective dietary supplement for treating osteoporosis and arthritis. It contains | glucosamine, chondroitin, MSM | , and | vitamins D3, K2, and B12 | , | supporting cartilage and bone health while relieving joint pain."
   },
   {
@@ -220,7 +220,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bonoflex Extra | is an effective dietary supplement for treating osteoporosis and arthritis. It contains | glucosamine, chondroitin, MSM | , and | vitamins D3, K2, and B12 | , | supporting cartilage and bone health while relieving joint pain."
   },
   {
@@ -234,7 +234,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bonoflex Massage Gel | is a natural formula enriched with | glucosamine and medicinal plant extracts | to relieve joint pain, reduce inflammation, and enhance mobility. Effective for | osteoporosis and rheumatoid arthritis | ."
   },
   {
@@ -248,7 +248,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Bonolight Sachets | is a complete dietary supplement made with | hydrolyzed collagen, Vitamin C, and resveratrol. | Designed to fight aging signs, enhance skin glow, and strengthen hair and nails – all with a 100% natural formula made in Spain."
   },
   {
@@ -262,7 +262,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "BontiCal | is a dietary supplement in effervescent tablets that contains Vitamin D3 and calcium to support bone health, dental health, and immunity."
   },
   {
@@ -276,7 +276,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Get optimal bone and dental health with Cal Chew! A complete blend of calcium, magnesium, vitamin D, and K."
   },
   {
@@ -290,7 +290,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Carn Forte Extra is a dietary supplement that supports women’s health, regulates hormones, boosts fertility, and improves ovarian health. It contains effective ingredients like L-Carnitine and Myo-Inositol."
   },
   {
@@ -304,7 +304,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "High-Purity Marine Collagen: Supports joint and bone health, improves skin elasticity, strengthens hair and nails, and reduces inflammation for renewed vitality."
   },
   {
@@ -318,7 +318,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover Chito Arax | , the best | natural supplement for weight loss | , designed to improve | metabolism | and help | reduce appetite safely | . | Achieve your | ideal body | and enjoy | renewed daily energy | . | Order now | and start your | transformation today!"
   },
   {
@@ -332,7 +332,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Co-Lite:- | (30 Capsules) is an important vitamin-like substance required for the proper function of many organs and chemical reactions in the body."
   },
   {
@@ -346,7 +346,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Earherb Ear Drops: A natural product that supports ear health, relieves inflammation, removes wax, and protects against bacterial and fungal infections. Safe for all"
   },
   {
@@ -360,7 +360,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Effertal sachets | treats infertility and increase female fertility and improve their sexual functions with safe natural active ingredients."
   },
   {
@@ -374,7 +374,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "FemiBiotic is a unique Italian-formulated women’s probiotic supplement that contains | beneficial bacteria and Vitamin D3 | to treat vaginal infections, balance vaginal flora, and prevent yeast overgrowth. Suitable for pregnant women after consulting a doctor."
   },
   {
@@ -388,7 +388,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "FemiBiotic is a unique Italian-formulated women’s probiotic supplement that contains | beneficial bacteria and Vitamin D3 | to treat vaginal infections, balance vaginal flora, and prevent yeast overgrowth. Suitable for pregnant women after consulting a doctor."
   },
   {
@@ -402,7 +402,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Ferro light contains iron and folic acid to treat anemia, boost energy, improve hair health, and enhance immunity. Reduces fatigue. Suitable for children and adults."
   },
   {
@@ -416,7 +416,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Ferro light contains iron and folic acid to treat anemia, boost energy, improve hair health, and enhance immunity. Reduces fatigue. Suitable for children and adults."
   },
   {
@@ -430,7 +430,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Fertalight improves male fertility and sexual tonic, Decrease rates of sperms abnormalities , Treat oligospermia and asthenozoospermia."
   },
   {
@@ -444,7 +444,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "GINKOFLEX | (Chewable tablets with artificial cream mint flavour) | Hear Better, Improve Your Balance, Enjoy Life"
   },
   {
@@ -458,7 +458,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "The best multivitamin dietary supplement with Ginkgo Biloba extract, specially designed for you to enjoy a normal life, better hearing, and improved balance."
   },
   {
@@ -472,7 +472,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "The best treatment for osteoporosis, joint inflammation, and stiffness. It helps improve joint flexibility and reduce pain, allowing you to restore your daily life with ease."
   },
   {
@@ -486,7 +486,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Glucolight effervescent tablets provide effective joint pain relief and cartilage regeneration, enhancing flexibility and promoting long-term joint health."
   },
   {
@@ -500,7 +500,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Gluty tablets | contain | glutathione | , | vitamin C | , and | zinc | , designed to whiten the skin by 2 to 3 shades, even out skin tone, treat pigmentation, and combat signs of aging."
   },
   {
@@ -514,7 +514,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Gum Light Gel | is a 100% natural formula made from | aloe vera and chamomile | , | designed to soothe teething pain in infants. It helps reduce inflammation and accelerates gum healing."
   },
   {
@@ -528,7 +528,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": ""
   },
   {
@@ -542,7 +542,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Healthy Skin Cream | features a natural formula with | wheat germ oil | and | honey | , designed to treat | first- and second-degree burns | , accelerate | wound healing | , and moisturize the skin after | laser treatments | and | chemical peels | ."
   },
   {
@@ -556,7 +556,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "HemoGuard Cream | is an Italian natural formula for treating internal and external hemorrhoids. It quickly relieves pain, itching, and bleeding. Contains witch hazel, chamomile, and aloe vera to reduce inflammation and ease bowel movements"
   },
   {
@@ -570,7 +570,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Hyalonose Forte Nasal Spray provides effective relief from nasal congestion, dryness, and mucus buildup with natural ingredients. Safe for children and adults."
   },
   {
@@ -584,7 +584,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Get the intimate care package from | Top Vortex and Femi Biotic | . Vaginal wash for treating infections and probiotics to balance bacteria. 30% discount for Eid al-Fitr!"
   },
   {
@@ -598,7 +598,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover Iron Extra Chocolate 🇮🇹 (30 pieces) for treating anemia and boosting hemoglobin. Delicious taste, quick absorption, and suitable for all ages. Learn about its benefits and how to use it."
   },
   {
@@ -612,7 +612,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "support your blood health"
   },
   {
@@ -626,7 +626,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "IRON CHOCOLATE EXTRA  complete formula from Iron & folic acid"
   },
   {
@@ -640,7 +640,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "IRON CHOCOLATE PLUS  sufficient  daily requirement from iron and folic acid"
   },
   {
@@ -654,7 +654,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Iron Chocolate Plus is the perfect solution that combines health benefits with a delicious taste. With its content of ferrous fumarate and folic acid, this supplement can help improve hemoglobin levels, boost energy, and support overall health."
   },
   {
@@ -668,7 +668,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Glowdix | tablets are rich in vitamins, minerals, and biotin, which stimulate collagen production and increase hair growth, helping you achieve radiant skin, thicker hair, and healthy nails."
   },
   {
@@ -682,7 +682,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "GLOWDEX | High source of vitamins, minerals  and proteins for  hair and nails | With Orange flavour"
   },
   {
@@ -696,7 +696,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Kiddy Lite | is a balanced oral rehydration solution (ORS) designed to | quickly restore lost fluids and electrolytes | due to diarrhea, vomiting, excessive sweating, or physical activity. | Specially formulated for children and infants, it’s also suitable for adults."
   },
   {
@@ -710,7 +710,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Kids Biotic | is a probiotic supplement for children that contains | beneficial bacteria and essential vitamins to treat diarrhea, | improve digestion, and restore nutrients lost after antibiotic use."
   },
   {
@@ -724,7 +724,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Nasal spray for treating symptoms associated with colds, flu, nasal dryness, and relieving sinus and allergy symptoms."
   },
   {
@@ -738,7 +738,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover digestive comfort with Lactotic. The best probiotic and prebiotic supplement for treating irritable bowel syndrome, constipation, and diarrhea."
   },
   {
@@ -752,7 +752,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A dietary supplement that supports nerve health, reduces inflammation, and regulates blood sugar levels with a potent formula containing Alpha Lipoic Acid and Vitamin B12."
   },
   {
@@ -766,7 +766,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A dietary supplement that supports nerve health, reduces inflammation, and regulates blood sugar levels with a potent formula containing Alpha Lipoic Acid and Vitamin B12."
   },
   {
@@ -780,7 +780,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Lutina: A comprehensive formula of lutein, vitamins, and Coenzyme Q10 to enhance eye health, immunity, and energy. The ideal choice for pregnant women, the elderly, and individuals with diabetes and heart conditions."
   },
   {
@@ -794,7 +794,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "MEGAMIND EXTRA | Support immunity and improve mental development and activities"
   },
   {
@@ -808,7 +808,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Choose Megamind Extra, the best dietary supplement to ensure healthy brain growth for your baby and the development of their nervous system, while supporting your overall health and reducing the risks of premature birth."
   },
   {
@@ -822,7 +822,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "“Choose Megamind Extra, the best dietary supplement to ensure healthy brain growth for your baby and the development of their nervous system, while supporting your overall health and reducing the risks of premature birth.”"
   },
   {
@@ -836,7 +836,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Start your child’s day with more energy and focus with Megamind sachets, the practical solution to support immunity, improve memory, and enhance physical performance with ease and convenience. | Order now and enjoy exceptional care for your child’s health."
   },
   {
@@ -850,7 +850,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Megamind syrup with mango peach flavour rich omega3 and multi-vitamins to support children general health and mental abilities"
   },
   {
@@ -864,7 +864,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Melatobed drops for children contain melatonin and help provide a calm and safe sleep to enhance your child’s health and energy throughout the day"
   },
   {
@@ -878,7 +878,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Gummies contain melatonin with natural orange flavour to have safe, quite and delicious sleep."
   },
   {
@@ -892,7 +892,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover how Melatonorm Syrup can improve your sleep quality, reduce stress, and naturally treat insomnia. It contains melatonin, GABA, and 5-HTP to regulate the biological clock and support deep sleep. Safe and effective—order now to enhance your sleep!"
   },
   {
@@ -906,7 +906,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Melatonorm Extra sleep supplement capsules are fast-absorbing and effective. They contain melatonin in a safe and effective concentration suitable for all conditions."
   },
   {
@@ -920,7 +920,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Melatonorm Extra sleep supplement capsules are fast-absorbing and effective. They contain melatonin in a safe and effective concentration suitable for all conditions."
   },
   {
@@ -934,7 +934,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "MOM Chocolate Extra | is an innovative dietary supplement in the form of delicious chocolate that can be easily consumed daily."
   },
   {
@@ -948,7 +948,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A dietary supplement rich in calcium, vitamin D, and vitamin K2, it enhances bone and joint health, strengthens them, and improves calcium absorption in a delicious and easy way."
   },
   {
@@ -962,7 +962,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A dietary supplement rich in calcium and vitamin D, it enhances the health of bones and joints, strengthening them and improving calcium absorption in a delicious and easy way."
   },
   {
@@ -976,7 +976,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "MultiLind: The Key to Optimal Health and Healthy Fetal Growth | “Multi-Lind” tablets are multivitamins designed to meet the body’s needs for vitamins and minerals, support growth, prevent fetal abnormalities, increase energy, and regulate metabolism."
   },
   {
@@ -990,7 +990,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "MultiLind: The Key to Optimal Health and Healthy Fetal Growth | “Multi-Lind” tablets are multivitamins designed to meet the body’s needs for vitamins and minerals, support growth, prevent fetal abnormalities, increase energy, and regulate metabolism."
   },
   {
@@ -1004,7 +1004,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Nasoherb | is a 100% natural nasal spray designed to relieve congestion and runny nose. Formulated with plant extracts like | eucalyptus, propolis, and cumin, it is safe for all ages, including infants."
   },
   {
@@ -1018,7 +1018,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Noor Trypsin Gel is the ultimate solution for inflammation and bruises. It accelerates tissue healing and alleviates pain, making it perfect for sports injuries, bruises, and swelling. Get it now for instant relief!"
   },
   {
@@ -1032,7 +1032,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover Noor trypsin, the ideal product to accelerate healing and reduce inflammation. It combines the enzymes chymotrypsin and trypsin to speed up wound healing and reduce swelling effectively and safely."
   },
   {
@@ -1046,7 +1046,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Nooralyse Syrup | is an enzymatic supplement formulated for both children and adults to help | reduce swelling and inflammation caused by infections or injuries. | It contains a natural, gentle, and safe enzyme that supports the healing process and enhances lymphatic drainage."
   },
   {
@@ -1060,7 +1060,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Nooralyase Tablets are enzyme-based supplements that help | reduce swelling and inflammation from injuries, surgeries, or joint issues | by breaking down fluid-retaining sugar compounds."
   },
   {
@@ -1074,7 +1074,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover the secret to your baby’s digestive comfort with Noorcalm Oral Drops for treating digestive disorders in infants, such as colic and bloating."
   },
   {
@@ -1088,7 +1088,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover the benefits of Noorprost | in relieving benign prostatic hyperplasia (BPH) and inflammation with powerful natural ingredients like pumpkin seed oil and saw palmetto."
   },
   {
@@ -1102,7 +1102,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Discover Noor-Rose , a natural dietary supplement that provides hormonal balance and comprehensive support for your health and beauty, specially designed to meet the needs of women from puberty to post-40."
   },
   {
@@ -1116,7 +1116,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A powerful | L-Arginine | supplement designed to boost memory, concentration, and your children’s academic performance, with natural, safe ingredients and essential vitamins and minerals."
   },
   {
@@ -1130,7 +1130,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "NQ Argitone is a dietary supplement designed to support children’s growth and naturally increase height. It is rich in vitamins, minerals, and amino acids for healthy and comprehensive development."
   },
   {
@@ -1144,7 +1144,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "The best natural dietary supplement for weight loss and fat burning! Contains | Chitosan | and | Green Coffee | to boost metabolism and suppress appetite. Safe and effective for both men and women. | Order now!"
   },
   {
@@ -1158,7 +1158,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "The ultimate supplement for pregnant and breastfeeding women! Rich in choline, folic acid, and iron to support fetal brain development, prevent birth defects, and boost maternal health."
   },
   {
@@ -1172,7 +1172,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "NQ Iron & Folic Acid is a powerful supplement that treats anemia, boosts hemoglobin and hair growth, and is gentle on the stomach. | Safe for pregnant women and children. Try it now!"
   },
   {
@@ -1186,7 +1186,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "NQ Multivitamin Oral Drops… | A balanced formula to support children’s immunity, bone health, and energy boost. | It contains B vitamins, vitamin D, and zinc to help reduce fatigue, support growth, and improve cognitive functions."
   },
   {
@@ -1200,7 +1200,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A premium fish oil supplement that supports heart, brain, and joint health. Enhances memory, reduces inflammation, and boosts immunity. Suitable for adults and children – without the fishy smell!"
   },
   {
@@ -1214,7 +1214,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Omegalight | reduces the risk of preeclampsia, promote healthy development of the brain, eyes, and nervous system of the fetus, support a healthy birth weight, reduce triglyceride levels, and improve bone strength and joint health. | High content of fish oil with premium quality and taste."
   },
   {
@@ -1228,7 +1228,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Enjoy Omega Light, the best dietary supplement containing Omega-3 to support heart and brain health, enhance pregnancy and fetal safety, reduce inflammation, and improve blood lipid levels."
   },
   {
@@ -1242,7 +1242,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "“Omega Light is a gelatin gummy supplement containing Omega-3 (fish oil) to support brain development and improve mental activity, without the fishy smell and with a delicious taste loved by everyone.”"
   },
   {
@@ -1256,7 +1256,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "“Omega Light is a gelatin gummy supplement containing Omega-3 (fish oil) to support brain development and improve mental activity, without the fishy smell and with a delicious taste loved by everyone.”"
   },
   {
@@ -1270,7 +1270,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Omegore Plus syrup is rich in | Omega-3 (EPA+DHA), Vitamin D, and Vitamin E | to improve memory, treat hyperactivity, and strengthen immunity. Suitable for children from 3 years and adults, with a delicious mango and peach flavor."
   },
   {
@@ -1284,7 +1284,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Omegore Plus syrup is rich in | Omega-3 (EPA+DHA), Vitamin D, and Vitamin E | to improve memory, treat hyperactivity, and strengthen immunity. Suitable for children from 3 years and adults, with a delicious mango and peach flavor."
   },
   {
@@ -1298,7 +1298,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Revitalize your oral health with | ORO Guard | mouthwash, designed to protect your teeth from cavities and gum inflammation, providing long-lasting freshness throughout the day."
   },
   {
@@ -1312,7 +1312,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "maintance mouth hygine and attractive mouth breath"
   },
   {
@@ -1326,7 +1326,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Pre Noor tablets are a comprehensive dietary supplement of vitamins and minerals to treat anemia, support overall health, and strengthen bones."
   },
   {
@@ -1340,7 +1340,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "PROLITE BIOTIC is the ideal solution for supporting digestive health, thanks to its advanced formula crafted using Italian technology, combining probiotics and prebiotic fibers."
   },
   {
@@ -1354,7 +1354,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "RENAGRESS | Optimal  treatment of kidney stone and help in rapid elimination of stones ."
   },
   {
@@ -1368,7 +1368,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Renagrass is a natural remedy for kidney stones! It helps quickly eliminate kidney stones, reduce their size, and prevent their formation again. It promotes urinary tract health and alleviates pain and inflammation."
   },
   {
@@ -1382,7 +1382,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Smarty is a gelatin gummy dietary supplement containing Omega-3 (fish oil) to support brain development and improve mental activity, without the fishy smell and with a delicious taste loved by everyone."
   },
   {
@@ -1396,7 +1396,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Get quick and safe relief from your child’s first tooth eruption pain with | Teetho Gel | , the best solution for soothing teething pain in children and treating gum inflammation."
   },
   {
@@ -1410,7 +1410,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "The Best Guard | is a comprehensive product designed for intimate care, containing collagen and elastin to restore the freshness of intimate areas. It combines medical effectiveness with gentle care."
   },
   {
@@ -1424,7 +1424,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "TOP VORTEX | is the ideal choice for intimate care, offering effective treatment and daily hygiene maintenance."
   },
   {
@@ -1438,7 +1438,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "A capsule rich in Omega 3, 6, and 9 to support heart health, prevent joint inflammation, and relieve bone pain."
   },
   {
@@ -1452,7 +1452,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "UROLITE BIOTIC is a powder sachet containing cranberry extract and beneficial bacteria, designed to treat urinary tract infections and inflammation, while boosting your immune system."
   },
   {
@@ -1466,7 +1466,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Utiberry effervescent | tablets with cranberry extract for the treatment and prevention of urinary tract infections. Fortified with | vitamins C, E, and B-complex | to boost urinary immunity and prevent bacterial adhesion. Suitable for both women and men"
   },
   {
@@ -1480,7 +1480,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Utycan Plus is an effective and safe product for preventing urinary tract infections (UTIs) and reducing prostate symptoms. It contains natural ingredients such as cranberry extract and vitamin C to support urinary tract health."
   },
   {
@@ -1494,7 +1494,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Active Ingredient: | Concentration per 3 tablets | • Folic Acid | • Vitamin A | • Vitamin B2 | • Vitamin B3 | • Vitamin B5 | • Vitamin D3 | • Vitamin B6 | • Vitamin B12 | • Vitamin E | • Vitamin K1 | • Iron | • Magnesium | • Calcium | • Zinc | • Manganese | • Chromium | • Selenium | Indication: | 1. Helps in anemia (Folic acid, Iron, | Vitamin b12& Vitamin c). | 2. Helps in male infertility (Selenium, | Zinc& Vitamin A). | 3. Helps in wound healing (Zinc and | Vitamin C). | 4. Enhances Immunity. | Dose: | 1-2 tablets/day. | Made in Italy."
   },
   {
@@ -1508,7 +1508,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Choose Vitaferrin to support your immunity, enhance iron absorption, help the body benefit from the iron consumed, and provide natural protection against viruses and bacteria for a healthy and effective experience."
   },
   {
@@ -1522,7 +1522,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Vitalight is the best vitamin supplement for improving body energy and increasing metabolism, enriched with iron, folic acid, Vitamin B12, and chromium."
   },
   {
@@ -1536,7 +1536,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Vitalight is the best vitamin supplement for improving body energy and increasing metabolism, enriched with iron, folic acid, Vitamin B12, and chromium."
   },
   {
@@ -1550,7 +1550,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Effervescent tablets with a high concentration of Vitamin C and Zinc to support immunity and treat anemia."
   },
   {
@@ -1564,7 +1564,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "Get rid of acidity, heartburn, acid reflux, and indigestion immediately with fast-acting sachets that taste like sweet peach and mint!"
   },
   {
@@ -1578,7 +1578,7 @@ export const FOOD_DATA_RAW = [
     "StorageConditions": "Ambiant 25°C",
     "LegalStatus": "OTC",
     "manufacturer": "",
-    "main agent": "Noor Alqamar fortrading company",
+    "main agent": "Noor Alqamar For Trading Company",
     "Description": "chewable tablets rapid onset of action to relief heartburn and treatment of GERD and indigestion with peach flavour"
   }
 ];
