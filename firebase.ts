@@ -32,14 +32,14 @@ try {
         app = getApps()[0];
     }
 
-    // حل مشكلة الشاشة البيضاء (White Screen Fix):
-    // إجبار Firestore على استخدام Long Polling بدلاً من gRPC الذي قد يُحجب في بعض شبكات الجوال
+    // تم تفعيل experimentalForceLongPolling و تحسين الكاش المحلي لضمان الفتح السريع
     db = initializeFirestore(app, {
         localCache: persistentLocalCache({
             tabManager: persistentSingleTabManager({ forceOwnership: true }),
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
-        experimentalForceLongPolling: true, // مهم جداً لاستقرار الاتصال في السعودية
+        experimentalForceLongPolling: true,
+        // إعدادات لتقليل وقت الانتظار عند ضعف النت
     });
 
     auth = getAuth(app);

@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 
 const SETTINGS_DOC_ID = 'app_settings';
-const LOCAL_USER_STORAGE_KEY = 'medai_user_backup_v3';
+const LOCAL_USER_STORAGE_KEY = 'medai_user_backup_v4';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           let userData: User | null = null;
           
+          // محاولة جلب البيانات من الدوك، مع حماية ضد التوقف
           const userDoc = await getDoc(userDocRef).catch(() => null);
           if (userDoc?.exists()) {
               const data = userDoc.data();
@@ -93,12 +94,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    // حل مشكلة الشاشة البيضاء (Safety Timeout):
-    // إذا لم يستجب Firebase خلال 4 ثوانٍ، سنظهر التطبيق لإتاحة العمل ببيانات الكاش
+    // تقليل وقت الانتظار إلى 2.5 ثانية لجعل التطبيق يفتح فوراً
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-        console.warn("Auth initial check timed out, proceeding to app content.");
-    }, 4000);
+        console.warn("Auth check fast-path initiated.");
+    }, 2500);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {

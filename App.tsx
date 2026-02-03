@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -38,55 +37,59 @@ import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit a
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => {
-  const findPrice = (obj: any) => {
-      const priceKeys = ["Public price", "Price", "public price", "price", "PriceSAR", "CIFPrice"];
-      for (const key of priceKeys) {
-          if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
-              return String(obj[key]).replace(/[^0-9.]/g, '');
+  const findValue = (obj: any, keys: string[]) => {
+      for (const key of keys) {
+          if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== '') {
+              return String(obj[key]).trim();
           }
       }
-      return '0';
+      return '';
+  };
+
+  const findPrice = (obj: any) => {
+      const priceStr = findValue(obj, ["Public price", "Price", "public price", "price", "PriceSAR", "CIFPrice"]);
+      return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
 
   return {
-    RegisterNumber: String(item.RegisterNumber || item.Id || Math.random()),
-    ReferenceNumber: String(item.ReferenceNumber || ''),
-    "Old register Number": String(item["Old register Number"] || ''),
-    "Product type": String(item["Product type"] || 
+    RegisterNumber: findValue(item, ["RegisterNumber", "Id", "id"]) || String(Math.random()),
+    ReferenceNumber: findValue(item, ["ReferenceNumber", "referenceNumber"]),
+    "Old register Number": findValue(item, ["Old register Number", "oldRegisterNumber"]),
+    "Product type": findValue(item, ["Product type", "ProductType"]) || 
         (item.DrugType === 'food' ? 'Food' : 
-        (item.DrugType === 'Health' || item.DrugType === 'Herbal' ? 'Supplement' : 'Human'))),
-    DrugType: String(item.DrugType || ''),
-    "Sub-Type": String(item["Sub-Type"] || ''),
-    "Scientific Name": String(item["Scientific Name"] || item.ScientificName || ''),
-    "Trade Name": String(item["Trade Name"] || item.TradeName || ''),
-    Strength: String(item.Strength || ''),
-    StrengthUnit: String(item.StrengthUnit || ''),
-    PharmaceuticalForm: String(item.PharmaceuticalForm || item.DoesageForm || ''),
-    AdministrationRoute: String(item.AdministrationRoute || ''),
-    AtcCode1: String(item.AtcCode1 || ''),
-    AtcCode2: String(item.AtcCode2 || ''),
-    Size: String(item.Size || ''),
-    SizeUnit: String(item.SizeUnit || ''),
-    PackageTypes: String(item.PackageTypes || ''),
-    PackageSize: String(item.PackageSize || ''),
-    "Legal Status": String(item["Legal Status"] || item.LegalStatus || ''),
-    "Product Control": String(item["Product Control"] || ''),
-    "Distribute area": String(item["Distribute area"] || ''),
+        (item.DrugType === 'Health' || item.DrugType === 'Herbal' ? 'Supplement' : 'Human')),
+    DrugType: findValue(item, ["DrugType", "drugType"]),
+    "Sub-Type": findValue(item, ["Sub-Type", "subType"]),
+    "Scientific Name": findValue(item, ["Scientific Name", "ScientificName", "scientificName"]),
+    "Trade Name": findValue(item, ["Trade Name", "TradeName", "tradeName"]),
+    Strength: findValue(item, ["Strength", "strength"]),
+    StrengthUnit: findValue(item, ["StrengthUnit", "strengthUnit"]),
+    PharmaceuticalForm: findValue(item, ["PharmaceuticalForm", "DoesageForm", "pharmaceuticalForm"]),
+    AdministrationRoute: findValue(item, ["AdministrationRoute", "administrationRoute"]),
+    AtcCode1: findValue(item, ["AtcCode1", "atcCode1", "AtcCode"]),
+    AtcCode2: findValue(item, ["AtcCode2", "atcCode2"]),
+    Size: findValue(item, ["Size", "size"]),
+    SizeUnit: findValue(item, ["SizeUnit", "sizeUnit"]),
+    PackageTypes: findValue(item, ["PackageTypes", "PackageType", "packageType"]),
+    PackageSize: findValue(item, ["PackageSize", "packageSize"]),
+    "Legal Status": findValue(item, ["Legal Status", "LegalStatus", "legalStatus"]),
+    "Product Control": findValue(item, ["Product Control", "productControl"]),
+    "Distribute area": findValue(item, ["Distribute area", "DistributionArea", "distributeArea"]),
     "Public price": findPrice(item),
-    shelfLife: String(item.shelfLife || item.ShelfLife || ''),
-    "Storage conditions": String(item["Storage conditions"] || item.StorageConditions || ''),
-    "Storage Condition Arabic": String(item["Storage Condition Arabic"] || ''),
-    "Marketing Company": String(item["Marketing Company"] || item["Company Name"] || ''),
-    "Marketing Country": String(item["Marketing Country"] || ''),
-    "Manufacture Name": String(item["Manufacture Name"] || item.ManufacturerNameEN || ''),
-    "Manufacture Country": String(item["Manufacture Country"] || item.ManufacturerCountry || ''),
-    "Secondry package  manufacture": String(item["Secondry package  manufacture"] || ''),
-    "Main Agent": String(item["Main Agent"] || item.Agent || ''),
-    "Secosnd Agent": String(item["Secosnd Agent"] || ''),
-    "Third agent": String(item["Third agent"] || ''),
-    "Description Code": String(item["Description Code"] || ''),
-    "Authorization Status": String(item["Authorization Status"] || ''),
-    "Last Update": String(item["Last Update"] || ''),
+    shelfLife: findValue(item, ["shelfLife", "ShelfLife"]),
+    "Storage conditions": findValue(item, ["Storage conditions", "StorageConditions", "storageConditions"]),
+    "Storage Condition Arabic": findValue(item, ["Storage Condition Arabic", "storageConditionArabic"]),
+    "Marketing Company": findValue(item, ["Marketing Company", "MarketingCompany", "CompanyName", "companyName"]),
+    "Marketing Country": findValue(item, ["Marketing Country", "MarketingCountry"]),
+    "Manufacture Name": findValue(item, ["Manufacture Name", "ManufacturerNameEN", "manufacturer", "manufacturerName"]),
+    "Manufacture Country": findValue(item, ["Manufacture Country", "ManufacturerCountry", "manufacturerCountry"]),
+    "Secondry package  manufacture": findValue(item, ["Secondry package  manufacture"]),
+    "Main Agent": findValue(item, ["Main Agent", "MainAgent", "Agent", "main agent", "agent"]),
+    "Secosnd Agent": findValue(item, ["Secosnd Agent", "AddtionalAgentName"]),
+    "Third agent": findValue(item, ["Third agent"]),
+    "Description Code": findValue(item, ["Description Code", "Description", "description"]),
+    "Authorization Status": findValue(item, ["Authorization Status", "AuthorizationStatus"]),
+    "Last Update": findValue(item, ["Last Update", "lastUpdate"]),
     imgBox: item.imgBox || item.boxImage || '',
     imgIndex1: item.imgIndex1 || item.imgStrip || '', 
     imgIndex2: item.imgIndex2 || '',
@@ -123,8 +126,9 @@ const normalizeCosmetic = (item: any): Cosmetic => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v3';
+// تحديث مفتاح الكاش لضمان إعادة معالجة البيانات فوراً بالتنسيق الجديد
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v5';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v4';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v2';
 
@@ -445,7 +449,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="mt-4">
                       {filteredMedicines.length > 0 ? (
-                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
+                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
                       ) : (searchTerm.length >= 3 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
