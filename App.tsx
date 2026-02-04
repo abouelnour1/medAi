@@ -52,14 +52,15 @@ const normalizeMedicine = (item: any): Medicine => {
   };
 
   const regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
+  const drugTypeLower = String(item.DrugType || item.drugType || '').toLowerCase();
 
   return {
     RegisterNumber: regNum || `rnd-${Math.random().toString(36).substr(2, 9)}`,
     ReferenceNumber: findValue(item, ["ReferenceNumber", "referenceNumber"]),
     "Old register Number": findValue(item, ["Old register Number", "oldRegisterNumber"]),
     "Product type": findValue(item, ["Product type", "ProductType"]) || 
-        (item.DrugType === 'food' ? 'Food' : 
-        (item.DrugType === 'Health' || item.DrugType === 'Herbal' ? 'Supplement' : 'Human')),
+        (drugTypeLower === 'food' ? 'Food' : 
+        (drugTypeLower === 'health' || drugTypeLower === 'herbal' ? 'Supplement' : 'Human')),
     DrugType: findValue(item, ["DrugType", "drugType"]),
     "Sub-Type": findValue(item, ["Sub-Type", "subType"]),
     "Scientific Name": findValue(item, ["Scientific Name", "ScientificName", "scientificName"]),

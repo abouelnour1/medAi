@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 import { auth, db, FIREBASE_DISABLED } from '../../firebase';
@@ -8,9 +9,9 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  reload,
-  User as FirebaseUser
+  reload
 } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import { 
   doc, 
   getDoc, 

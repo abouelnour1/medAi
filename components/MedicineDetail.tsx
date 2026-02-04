@@ -76,6 +76,7 @@ interface MedicineDetailProps {
     onDelete?: (medicine: Medicine) => void;
     onOpenAssistant?: () => void;
     onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
+    onImageSearch?: () => void;
     onFindAlternative: (medicine: Medicine) => void;
 }
 
@@ -149,7 +150,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     onImageZoom(allUrls, index, medicine['Trade Name'], indexFlags);
   };
 
-  const isRealRegisterNumber = medicine.RegisterNumber && !medicine.RegisterNumber.startsWith('rnd-');
+  // Improved Logic: Don't show Reg Numbers like "1", "2", or "rnd-..."
+  const isRealRegisterNumber = useMemo(() => {
+    if (!medicine.RegisterNumber) return false;
+    const val = medicine.RegisterNumber.trim();
+    if (val.startsWith('rnd-')) return false;
+    if (val === '1' || val === '2' || val === '3' || val === '0') return false;
+    return true;
+  }, [medicine.RegisterNumber]);
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
