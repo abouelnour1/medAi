@@ -12,10 +12,12 @@ interface EditMedicineModalProps {
 
 const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, medicine, onSave, t }) => {
   const [formData, setFormData] = useState<Medicine | null>(null);
+  const [isRegNumLocked, setIsRegNumLocked] = useState(true);
 
   useEffect(() => {
     if (medicine) {
       setFormData({ ...medicine });
+      setIsRegNumLocked(true);
     }
   }, [medicine]);
 
@@ -44,7 +46,6 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
         className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-white/10"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 sticky top-0 z-10">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-inner">
@@ -60,16 +61,41 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
           </button>
         </div>
 
-        {/* Form Body */}
         <form onSubmit={handleSave} className="flex-grow overflow-y-auto p-6 space-y-8 no-scrollbar">
-          
-          {/* Section: Basic Identity */}
           <div>
             <h4 className={sectionTitle}>البيانات الأساسية (Identity)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-full">
-                 <label className={labelClass}>{t('registrationNumber')} *</label>
-                 <input type="text" name="RegisterNumber" value={formData.RegisterNumber} onChange={handleChange} className={inputClass} required />
+                 <div className="flex justify-between items-end mb-1">
+                    <label className={labelClass}>{t('registrationNumber')} *</label>
+                    <button 
+                        type="button"
+                        onClick={() => setIsRegNumLocked(!isRegNumLocked)}
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${isRegNumLocked ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}
+                        title={isRegNumLocked ? t('unlock') : t('lock')}
+                    >
+                        {isRegNumLocked ? (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                {t('lock')}
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2z" /></svg>
+                                {t('unlock')}
+                            </>
+                        )}
+                    </button>
+                 </div>
+                 <input 
+                    type="text" 
+                    name="RegisterNumber" 
+                    value={formData.RegisterNumber} 
+                    onChange={handleChange} 
+                    className={`${inputClass} ${isRegNumLocked ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`} 
+                    required 
+                    readOnly={isRegNumLocked}
+                 />
               </div>
               <div className="col-span-full">
                  <label className={labelClass}>{t('tradeName')}</label>
@@ -87,69 +113,13 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <label className={labelClass}>{t('pharmaceuticalForm')}</label>
                  <input type="text" name="PharmaceuticalForm" value={formData.PharmaceuticalForm} onChange={handleChange} className={inputClass} />
               </div>
-              <div>
-                 <label className={labelClass}>القوة (Strength)</label>
-                 <input type="text" name="Strength" value={formData.Strength} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                 <label className={labelClass}>الوحدة (Unit)</label>
-                 <input type="text" name="StrengthUnit" value={formData.StrengthUnit} onChange={handleChange} className={inputClass} />
+              <div className="col-span-full">
+                 <label className={labelClass}>نبذة / وصف (Text Description)</label>
+                 <textarea name="description" value={formData.description || ''} onChange={handleChange} rows={3} className={inputClass} placeholder="اكتب وصفاً مفصلاً للمنتج هنا..." />
               </div>
             </div>
           </div>
 
-          {/* Section: Physical Appearance & Images */}
-          <div>
-            <h4 className={sectionTitle}>الخصائص المادية والصور (Physical)</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <div className="col-span-full">
-                 <label className={labelClass}>{t('boxImage')} URL</label>
-                 <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>صورة الفهرس 1 (Index 1) URL</label>
-                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>صورة الفهرس 2 (Index 2) URL</label>
-                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('pillImage')} URL</label>
-                 <input type="text" name="imgPill" value={formData.imgPill || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('pillShape')}</label>
-                 <input type="text" name="pillShape" value={formData.pillShape || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>{t('scored')}</label>
-                 <select name="pillScored" value={formData.pillScored || ''} onChange={handleChange} className={inputClass}>
-                    <option value="">{t('pleaseSelectOrAdd')}</option>
-                    <option value="Yes">{document.documentElement.lang === 'ar' ? 'نعم' : 'Yes'}</option>
-                    <option value="No">{document.documentElement.lang === 'ar' ? 'لا' : 'No'}</option>
-                 </select>
-               </div>
-               <div>
-                 <label className={labelClass}>العلامات (Markings)</label>
-                 <input type="text" name="pillMarkings" value={formData.pillMarkings || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>الطعم (Taste)</label>
-                 <input type="text" name="liquidTaste" value={formData.liquidTaste || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div>
-                 <label className={labelClass}>لون السائل (Color)</label>
-                 <input type="text" name="liquidColor" value={formData.liquidColor || ''} onChange={handleChange} className={inputClass} />
-               </div>
-               <div className="col-span-full">
-                 <label className={labelClass}>{t('notes')}</label>
-                 <textarea name="physicalNotes" value={formData.physicalNotes || ''} onChange={handleChange} rows={3} className={inputClass} />
-               </div>
-            </div>
-          </div>
-
-          {/* Section: Manufacturer & Agent */}
           <div>
             <h4 className={sectionTitle}>التصنيع والوكلاء (Manufacturing)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,32 +138,26 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
             </div>
           </div>
 
-          {/* Section: Storage & Shelf Life */}
           <div>
-            <h4 className={sectionTitle}>التخزين والصلاحية (Logistics)</h4>
+            <h4 className={sectionTitle}>الخصائص المادية والصور (Physical)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="col-span-full">
-                 <label className={labelClass}>{t('storageConditions')} (EN)</label>
-                 <input type="text" name="Storage conditions" value={formData['Storage conditions']} onChange={handleChange} className={inputClass} />
-              </div>
-              <div className="col-span-full">
-                 <label className={labelClass}>{t('storageConditions')} (AR)</label>
-                 <input type="text" name="Storage Condition Arabic" value={formData['Storage Condition Arabic']} onChange={handleChange} className={`${inputClass} text-right`} dir="rtl" />
-              </div>
-              <div>
-                 <label className={labelClass}>{t('shelfLife')} (Months)</label>
-                 <input type="text" name="shelfLife" value={formData.shelfLife} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                 <label className={labelClass}>كود ATC</label>
-                 <input type="text" name="AtcCode1" value={formData.AtcCode1} onChange={handleChange} className={inputClass} />
-              </div>
+               <div className="col-span-full">
+                 <label className={labelClass}>{t('boxImage')} URL</label>
+                 <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('pillShape')}</label>
+                 <input type="text" name="pillShape" value={formData.pillShape || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div className="col-span-full">
+                 <label className={labelClass}>{t('notes')}</label>
+                 <textarea name="physicalNotes" value={formData.physicalNotes || ''} onChange={handleChange} rows={3} className={inputClass} />
+               </div>
             </div>
           </div>
 
-          {/* Section: Regulatory Status */}
           <div>
-            <h4 className={sectionTitle}>الحالة القانونية (Regulatory)</h4>
+            <h4 className={sectionTitle}>التنظيم (Regulatory)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
               <div>
                  <label className={labelClass}>{t('legalStatus')}</label>
@@ -203,24 +167,18 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  </select>
               </div>
               <div>
-                 <label className={labelClass}>الرقابة (Control)</label>
-                 <select name="Product Control" value={formData['Product Control']} onChange={handleChange} className={inputClass}>
-                    <option value="Uncontrolled">Uncontrolled</option>
-                    <option value="Controlled">Controlled</option>
-                    <option value="Restricted">Restricted</option>
-                 </select>
+                 <label className={labelClass}>{t('descriptiveCode')}</label>
+                 <input type="text" name="Description Code" value={formData['Description Code']} onChange={handleChange} className={inputClass} />
               </div>
             </div>
           </div>
-
         </form>
 
-        {/* Footer */}
         <div className="p-4 border-t dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3 sticky bottom-0 z-10">
           <button type="button" onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
             {t('cancel')}
           </button>
-          <button onClick={handleSave} className="px-8 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-black text-sm shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2">
+          <button onClick={handleSave} className="px-8 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             {t('save')}
           </button>

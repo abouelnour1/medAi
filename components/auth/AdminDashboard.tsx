@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification } from '../../types';
 import { useAuth } from './AuthContext';
@@ -43,7 +42,7 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
     </button>
 );
 
-export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement') => void }> = ({ t, allMedicines, onExport }) => {
+export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void }> = ({ t, allMedicines, onExport }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
   const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm dark:text-white";
@@ -350,7 +349,34 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     </div>
                     <div className="w-5 h-5"><DownloadIcon /></div>
                 </button>
+
+                <button 
+                    onClick={() => onExport('food')}
+                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-500/10 hover:text-teal-600 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-teal-600 group-hover:scale-110 transition-transform">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" /></svg>
+                        </div>
+                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportFood')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على منتجات الغذاء</p></div>
+                    </div>
+                    <div className="w-5 h-5"><DownloadIcon /></div>
+                </button>
             </div>
+        </div>
+    </div>
+  );
+
+  const renderNotifications = () => (
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className={sectionTitle}>{t('broadcastTitle')}</h3>
+            <form onSubmit={handleSendBroadcast} className="space-y-4">
+                <div><label className={labelClass}>{t('notificationTitle')}</label><input value={notifForm.title} onChange={e => setNotifForm({...notifForm, title: e.target.value})} className={inputClass} placeholder="عنوان الإشعار..." required /></div>
+                <div><label className={labelClass}>{t('notificationBody')}</label><textarea value={notifForm.body} onChange={e => setNotifForm({...notifForm, body: e.target.value})} className={inputClass} rows={3} placeholder="محتوى الإشعار..." required /></div>
+                <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="premium">الأعضاء المميزين فقط</option><option value="company">الشركات فقط</option></select></div>
+                <button type="submit" disabled={isLoading} className="w-full py-3 bg-red-600 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all">{isLoading ? '...' : t('sendBroadcast')}</button>
+            </form>
         </div>
     </div>
   );
@@ -385,19 +411,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             {activePanel === 'add_manual' && renderAddManual()}
             {activePanel === 'approvals' && renderApprovals()}
             {activePanel === 'export' && renderExportPanel()}
-            {activePanel === 'notifications' && (
-                <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                        <h3 className={sectionTitle}>{t('broadcastTitle')}</h3>
-                        <form onSubmit={handleSendBroadcast} className="space-y-4">
-                            <div><label className={labelClass}>{t('notificationTitle')}</label><input value={notifForm.title} onChange={e => setNotifForm({...notifForm, title: e.target.value})} className={inputClass} placeholder="عنوان الإشعار..." required /></div>
-                            <div><label className={labelClass}>{t('notificationBody')}</label><textarea value={notifForm.body} onChange={e => setNotifForm({...notifForm, body: e.target.value})} className={inputClass} rows={3} placeholder="محتوى الإشعار..." required /></div>
-                            <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="premium">الأعضاء المميزين فقط</option><option value="company">الشركات فقط</option></select></div>
-                            <button type="submit" disabled={isLoading} className="w-full py-3 bg-red-600 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all">{isLoading ? '...' : t('sendBroadcast')}</button>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {activePanel === 'notifications' && renderNotifications()}
             {activePanel === 'settings' && (
                 <div className="max-w-2xl mx-auto animate-fade-in">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
@@ -441,8 +455,8 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <h3 className="text-xl font-black">{t('dbAnalysis')}</h3>
                         <div className="grid grid-cols-3 gap-4 mt-6">
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('medicines')}</p><p className="text-2xl font-black text-primary">{allMedicines.filter(m => m['Product type'] === 'Human').length}</p></div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('supplements')}</p><p className="text-2xl font-black text-accent">{allMedicines.filter(m => m['Product type'] !== 'Human').length}</p></div>
-                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">Cosmetics</p><p className="text-2xl font-black text-pink-500">Certified</p></div>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('supplements')}</p><p className="text-2xl font-black text-accent">{allMedicines.filter(m => m['Product type'] === 'Supplement').length}</p></div>
+                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">Food</p><p className="text-2xl font-black text-teal-600">{allMedicines.filter(m => m['Product type'] === 'Food').length}</p></div>
                         </div>
                     </div>
                 </div>

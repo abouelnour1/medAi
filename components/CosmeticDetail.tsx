@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Cosmetic, TFunction, Language, User } from '../types';
 import EditIcon from './icons/EditIcon';
@@ -23,9 +22,10 @@ interface CosmeticDetailProps {
     language: Language;
     user?: User | null;
     onEdit?: (cosmetic: Cosmetic) => void;
+    onTransferToFood?: (cosmetic: Cosmetic) => void;
 }
 
-const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, user, onEdit }) => {
+const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, user, onEdit, onTransferToFood }) => {
   const handleImageSearch = () => {
       const query = `${cosmetic.BrandName} ${cosmetic.SpecificName}`;
       window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
@@ -39,7 +39,6 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
       if (user.role === 'admin' || user.role === 'company') {
           onEdit?.(cosmetic);
       } else {
-          // إذا كان المستخدم premium (فرد) وليس شركة
           alert(t('onlyCompanyCanEdit') + "\n\n" + t('pleaseUseCompanyAccount'));
       }
   };
@@ -84,17 +83,29 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
               </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-               {!isNaN(price) && (
-                  <div className="bg-pink-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-pink-500/20">
-                      <span className="text-xl font-black">{price.toFixed(2)}</span>
-                      <span className="text-xs font-bold ml-1">{t('sar')}</span>
-                  </div>
-               )}
-               <div className="flex items-center gap-2 text-slate-500 bg-white/50 dark:bg-slate-800/50 px-3 py-2 rounded-lg border border-white/20">
-                  <div className="h-4 w-4"><FactoryIcon /></div>
-                  <span className="text-xs font-bold truncate max-w-[150px]">{cosmetic.manufacturerNameEn}</span>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+               <div className="flex flex-wrap items-center gap-4">
+                    {!isNaN(price) && (
+                        <div className="bg-pink-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-pink-500/20">
+                            <span className="text-xl font-black">{price.toFixed(2)}</span>
+                            <span className="text-xs font-bold ml-1">{t('sar')}</span>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 text-slate-500 bg-white/50 dark:bg-slate-800/50 px-3 py-2 rounded-lg border border-white/20">
+                        <div className="h-4 w-4"><FactoryIcon /></div>
+                        <span className="text-xs font-bold truncate max-w-[150px]">{cosmetic.manufacturerNameEn}</span>
+                    </div>
                </div>
+
+               {user?.role === 'admin' && (
+                   <button 
+                    onClick={() => onTransferToFood?.(cosmetic)}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-black rounded-xl shadow-md flex items-center gap-2 transition-all active:scale-95"
+                   >
+                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                       {t('transferToFood')}
+                   </button>
+               )}
           </div>
       </div>
 

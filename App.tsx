@@ -51,8 +51,10 @@ const normalizeMedicine = (item: any): Medicine => {
       return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
 
+  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
+
   return {
-    RegisterNumber: findValue(item, ["RegisterNumber", "Id", "id"]) || String(Math.random()),
+    RegisterNumber: regNum || `rnd-${Math.random().toString(36).substr(2, 9)}`,
     ReferenceNumber: findValue(item, ["ReferenceNumber", "referenceNumber"]),
     "Old register Number": findValue(item, ["Old register Number", "oldRegisterNumber"]),
     "Product type": findValue(item, ["Product type", "ProductType"]) || 
@@ -371,8 +373,12 @@ const App: React.FC = () => {
     return results;
   }, [medicines, searchTerm, filters, isFilterActive, textSearchMode, sortBy]);
 
-  const handleExportData = useCallback((type: 'medicine' | 'supplement') => {
-      const dataToExport = medicines.filter(m => type === 'medicine' ? m['Product type'] === 'Human' : m['Product type'] !== 'Human');
+  const handleExportData = useCallback((type: 'medicine' | 'supplement' | 'food') => {
+      let dataToExport = [];
+      if (type === 'medicine') dataToExport = medicines.filter(m => m['Product type'] === 'Human');
+      else if (type === 'supplement') dataToExport = medicines.filter(m => m['Product type'] === 'Supplement');
+      else if (type === 'food') dataToExport = medicines.filter(m => m['Product type'] === 'Food');
+      
       const jsonString = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -385,6 +391,20 @@ const App: React.FC = () => {
       URL.revokeObjectURL(url);
       alert(t('exportSuccess'));
   }, [medicines, t]);
+
+  const handleDeleteMedicine = useCallback(async (medicine: Medicine) => {
+      if (user?.role !== 'admin') return;
+      if (!window.confirm(t('confirmDeleteItem'))) return;
+      
+      try {
+          await deleteDoc(doc(db, 'medicines', medicine.RegisterNumber));
+          setMedicines(prev => prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber));
+          setView('search');
+          alert(t('saveSuccess'));
+      } catch (err: any) {
+          alert("Error deleting item: " + err.message);
+      }
+  }, [user, t]);
 
   const handleFindAlternatives = useCallback((medicine: Medicine) => {
       const sciName = String(medicine['Scientific Name']).toLowerCase().trim();
@@ -406,6 +426,33 @@ const App: React.FC = () => {
       setView('alternatives');
       scrollToTop();
   }, [medicines, scrollToTop]);
+
+  const handleTransferToFood = useCallback(async (cosmetic: Cosmetic) => {
+      if (!user) return alert(t('loginRequired'));
+      if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من تحويل هذا المنتج إلى قسم الغذاء؟' : 'Transfer this product to food category?')) return;
+      
+      const newFoodItem = normalizeMedicine({
+          "Trade Name": cosmetic.SpecificName,
+          "Scientific Name": cosmetic.BrandName,
+          "Public price": cosmetic["Public price"],
+          "Product type": "Food",
+          "Manufacture Name": cosmetic.manufacturerNameEn,
+          "Description": cosmetic["Active ingredient"] + "\n" + cosmetic["Key Ingredients"] + "\n" + cosmetic.Highlights,
+          "imgBox": cosmetic.imgBox
+      });
+
+      try {
+          await setDoc(doc(db, 'medicines', newFoodItem.RegisterNumber), newFoodItem);
+          alert(language === 'ar' ? 'تم النقل بنجاح إلى قسم الغذاء' : 'Successfully transferred to Food category');
+          // Update local state
+          setMedicines(prev => [newFoodItem, ...prev]);
+          setActiveTab('search');
+          setView('details');
+          setSelectedMedicine(newFoodItem);
+      } catch (e: any) {
+          alert("Error: " + e.message);
+      }
+  }, [user, language, t]);
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
@@ -439,7 +486,7 @@ const App: React.FC = () => {
       if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={handleFindAlternatives} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onDelete={handleDeleteMedicine} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={handleFindAlternatives} />;
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={()=>{}} t={t} />
@@ -456,7 +503,7 @@ const App: React.FC = () => {
           );
       }
       if (activeTab === 'cosmetics') {
-          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { setEditingCosmetic({...c}); setIsEditCosmeticModalOpen(true); }} />;
+          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { setEditingCosmetic({...c}); setIsEditCosmeticModalOpen(true); }} onTransferToFood={handleTransferToFood} />;
           return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={(c)=>{ captureScrollPosition(); setSelectedCosmetic(c); setView('cosmeticDetails');}} searchTerm={cosmeticsSearchTerm} setSearchTerm={setCosmeticsSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} onSearchIconClick={scrollToTop} />;
       }
       if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} scrollToTop={scrollToTop} />;
@@ -488,10 +535,9 @@ const App: React.FC = () => {
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':tab==='cosmetics'?'cosmeticsSearch':tab==='milk'?'milkSearch':'settings'); }} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} contextCosmetic={view === 'cosmeticDetails' ? selectedCosmetic : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
-      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} groupedPharmaceuticalForms={groupPharmaceuticalForms(Array.from(new Set(medicines.map(m => m.PharmaceuticalForm).filter(Boolean))), t)} uniqueManufactureNames={Array.from(new Set(medicines.map(m => m["Manufacture Name"]).filter(Boolean))).sort()} uniqueMarketingCompanies={Array.from(new Set(medicines.map(m => m["Marketing Company"]).filter(Boolean))).sort()} uniqueMainAgents={Array.from(new Set(medicines.map(m => m["Main Agent"]).filter(Boolean))).sort()} uniqueLegalStatuses={Array.from(new Set(medicines.map(m => m["Legal Status"]).filter(Boolean))).sort()} t={t} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} allMedicines={medicines} t={t} />
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { 
           if (user?.role === 'admin' && editingMedicine) { 
-              // إذا تم تغيير رقم التسجيل، يجب حذف الوثيقة القديمة لأن المعرف اختلف
               if (updatedMed.RegisterNumber !== editingMedicine.RegisterNumber) {
                   await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
               }

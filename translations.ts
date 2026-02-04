@@ -1,4 +1,3 @@
-
 export const translations = {
   ar: {
     food: 'غذاء (Food)',
@@ -27,6 +26,7 @@ export const translations = {
     exportData: 'تصدير البيانات',
     exportMedicines: 'تصدير الأدوية (Human)',
     exportSupplements: 'تصدير المكملات (Supplements)',
+    exportFood: 'تصدير الغذاء (Food)',
     exportSuccess: 'تم تصدير البيانات بنجاح!',
     notifications: 'الإشعارات',
     noNotifications: 'لا توجد إشعارات حالياً.',
@@ -123,6 +123,7 @@ export const translations = {
     actions: 'الإجراءات',
     manageUser: 'إدارة المستخدم',
     confirmDeleteUser: 'هل أنت متأكد من حذف هذا المستخدم نهائياً؟',
+    confirmDeleteItem: 'هل أنت متأكد من حذف هذا الصنف نهائياً من قاعدة البيانات؟',
     broadcastTitle: 'بث إشعار جديد',
     notificationTitle: 'عنوان الإشعار',
     notificationBody: 'نص الرسالة',
@@ -174,7 +175,7 @@ export const translations = {
     verifyEmailDesc: 'لقد أرسلنا رابط تفعيل إلى:',
     iHaveVerified: 'تم التفعيل، دخول',
     resendVerificationEmail: 'إعادة إرسال الرابط',
-    verificationEmailSent: 'تم إعادة إرسال رابط التفعيل.',
+    verificationEmailSent: 'تم إعادة إرسال رابط تفعيل البريد الإلكتروني.',
     navSearch: 'البحث',
     navInsurance: 'التأمين',
     navCosmetics: 'التجميل',
@@ -313,7 +314,12 @@ export const translations = {
     aiToggleLabel: 'تفعيل الذكاء الاصطناعي',
     insufficientPermissions: 'عذراً، صلاحياتك الحالية لا تسمح بهذا الإجراء. فقط حسابات الشركات والمسؤولين يمكنهم اقتراح التعديلات.',
     onlyCompanyCanEdit: 'هذه الميزة متاحة فقط لشركات الأدوية والتجميل المسجلة لدينا.',
-    pleaseUseCompanyAccount: 'يرجى تسجيل الدخول بحساب شركة للمتابعة.'
+    pleaseUseCompanyAccount: 'يرجى تسجيل الدخول بحساب شركة للمتابعة.',
+    transferToFood: 'نقل إلى قسم الغذاء',
+    showDescription: 'عرض الوصف',
+    hideDescription: 'إخفاء الوصف',
+    lock: 'قفل',
+    unlock: 'فتح للتعديل'
   },
   en: {
     food: 'Food',
@@ -342,6 +348,7 @@ export const translations = {
     exportData: 'Export Data',
     exportMedicines: 'Export Medicines (Human)',
     exportSupplements: 'Export Supplements',
+    exportFood: 'Export Food',
     exportSuccess: 'Data exported successfully!',
     notifications: 'Notifications',
     noNotifications: 'No notifications at this time.',
@@ -438,6 +445,7 @@ export const translations = {
     actions: 'Actions',
     manageUser: 'Manage User',
     confirmDeleteUser: 'Confirm delete user?',
+    confirmDeleteItem: 'Are you sure you want to delete this item permanently from the database?',
     broadcastTitle: 'Broadcast New Notification',
     notificationTitle: 'Notification Title',
     notificationBody: 'Message Body',
@@ -553,9 +561,7 @@ export const translations = {
     directAlternatives: 'Direct Alternatives',
     noDirectAlternatives: 'No direct alternatives found.',
     therapeuticAlternatives: 'Therapeutic Alternatives',
-    /* Fix: Correct property key and value for English translation */
     noTherapeuticAlternatives: 'No therapeutic alternatives found.',
-    /* Fix: Ensure property name is correctly defined */
     sortBy: 'Sort By',
     alphabetical: 'Alphabetical',
     scientificNameSort: 'Scientific Name',
@@ -630,7 +636,12 @@ export const translations = {
     aiToggleLabel: 'Enable AI Functionality',
     insufficientPermissions: 'Sorry, your current permissions do not allow this action. Only company accounts and admins can suggest edits.',
     onlyCompanyCanEdit: 'This feature is only available for registered pharmaceutical and cosmetic companies.',
-    pleaseUseCompanyAccount: 'Please log in with a company account to continue.'
+    pleaseUseCompanyAccount: 'Please log in with a company account to continue.',
+    transferToFood: 'Transfer to Food',
+    showDescription: 'Show Description',
+    hideDescription: 'Hide Description',
+    lock: 'Lock',
+    unlock: 'Unlock to Edit'
   }
 };
 

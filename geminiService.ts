@@ -21,7 +21,7 @@ export const isAIAvailable = (): boolean => {
 
 /**
  * وظيفة لتنظيف الأجزاء بشكل عميق وجعلها قابلة للتحويل لـ JSON بأمان.
- * تمنع خطأ "Converting circular structure to JSON" عبر إنشاء كائنات جديدة تماماً.
+ * تمنع خطأ "Converting circular structure to JSON" عبر بناء كائنات جديدة كلياً.
  */
 export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     if (!parts || !Array.isArray(parts)) return [];
@@ -29,17 +29,17 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
     return parts.map(part => {
         const sanitized: SerializablePart = {};
         
-        // التعامل مع النصوص (Text parts)
+        // التعامل مع النصوص
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
         
-        // التعامل مع التفكير (Thought parts)
+        // التعامل مع التفكير
         if (part.thought !== undefined && part.thought !== null) {
             sanitized.thought = String(part.thought);
         }
         
-        // التعامل مع الصور (Inline data)
+        // التعامل مع الصور
         if (part.inlineData) {
             sanitized.inlineData = {
                 mimeType: String(part.inlineData.mimeType),
@@ -47,8 +47,7 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
             };
         }
         
-        // التعامل مع استدعاءات الوظائف (Function Calls)
-        // نقوم بعمل نسخة عميقة للأرقام والنصوص فقط لمنع المراجع الدائرية
+        // التعامل مع استدعاءات الوظائف - تنظيف عميق للوسائط
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
@@ -57,7 +56,7 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
             };
         }
 
-        // التعامل مع ردود الوظائف (Function Responses)
+        // التعامل مع ردود الوظائف
         if (part.functionResponse) {
             sanitized.functionResponse = {
                 name: String(part.functionResponse.name),
@@ -79,7 +78,7 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // تطهير التاريخ بالكامل قبل الإرسال لضمان عدم وجود مراجع دائرية من SDK
+    // تطهير التاريخ بالكامل لضمان عدم وجود أي كائنات SDK معقدة
     const contents = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
@@ -102,7 +101,6 @@ export const runAIChat = async (
     });
 
     let iterations = 0;
-    // حلقة معالجة استدعاء الوظائف (Function Calling Loop)
     while (response.functionCalls && response.functionCalls.length > 0 && iterations < 5) {
         iterations++;
         const functionResponses: any[] = [];
@@ -111,7 +109,6 @@ export const runAIChat = async (
             const implementation = toolImplementations[call.name];
             if (implementation) {
                 const result = await implementation(call.args);
-                // تطهير النتيجة فوراً قبل إضافتها للمصفوفة
                 functionResponses.push({
                     functionResponse: {
                         name: call.name,
@@ -125,7 +122,6 @@ export const runAIChat = async (
         if (functionResponses.length > 0) {
             const modelTurnParts = response.candidates?.[0]?.content?.parts;
             if (modelTurnParts) {
-                // إضافة رد الموديل المطهر ورد المستخدم المطهر (Function Responses)
                 contents.push({ role: 'model', parts: sanitizeParts(modelTurnParts) });
                 contents.push({ role: 'user', parts: functionResponses });
                 

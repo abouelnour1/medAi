@@ -1,8 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
-import { Filters, ProductTypeFilter, TFunction } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Filters, ProductTypeFilter, TFunction, Medicine } from '../types';
 import SearchableDropdown from './SearchableDropdown';
 import ClearIcon from './icons/ClearIcon';
+import { groupPharmaceuticalForms } from '../utils/formHelpers';
 
 // Icons
 const FormIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3h5"/><path d="M9.5 21h5"/><path d="M14 3v2a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V3"/><path d="M14 21v-2a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v2"/><line x1="9" x2="15" y1="12" y2="12"/></svg>;
@@ -11,13 +11,14 @@ const ScaleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
 const TagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.432 0l6.568-6.568a2.426 2.426 0 0 0 0-3.432L12.586 2.586Z"/><path d="M8 8h.01"/></svg>;
 const MoneyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
 
-const FilterItem: React.FC<{icon: React.ReactNode, label: string, children: React.ReactNode}> = ({ icon, label, children }) => (
+const FilterItem: React.FC<{icon: React.ReactNode, label: string, children: React.ReactNode, count?: number}> = ({ icon, label, children, count }) => (
     <div className="space-y-2">
       <label className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest">
             {icon}
             <span>{label}</span>
         </div>
+        {count !== undefined && <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-full">{count}</span>}
       </label>
       {children}
     </div>
@@ -29,11 +30,7 @@ interface FilterModalProps {
     filters: Filters;
     onApply: (newFilters: Filters) => void;
     onClearFilters: () => void;
-    groupedPharmaceuticalForms: { label: string; options: string[] }[];
-    uniqueManufactureNames: string[];
-    uniqueMarketingCompanies: string[];
-    uniqueMainAgents: string[];
-    uniqueLegalStatuses: string[];
+    allMedicines: Medicine[];
     t: TFunction;
 }
 
@@ -43,11 +40,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
     filters,
     onApply,
     onClearFilters,
-    groupedPharmaceuticalForms,
-    uniqueManufactureNames,
-    uniqueMarketingCompanies,
-    uniqueMainAgents,
-    uniqueLegalStatuses,
+    allMedicines,
     t
 }) => {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
@@ -57,6 +50,60 @@ const FilterModal: React.FC<FilterModalProps> = ({
             setLocalFilters(filters);
         }
     }, [isOpen, filters]);
+
+    // وظيفة عامة لفلترة المصفوفة بناءً على مجموعة من المعايير
+    const getFilteredList = (medicines: Medicine[], currentFilters: Filters, excludeKey?: keyof Filters) => {
+        return medicines.filter(m => {
+            // Product Type
+            if (excludeKey !== 'productType' && currentFilters.productType !== 'all') {
+                const type = currentFilters.productType === 'medicine' ? 'Human' : currentFilters.productType === 'supplement' ? 'Supplement' : 'Food';
+                if (m['Product type'] !== type) return false;
+            }
+            // Price Range
+            const price = parseFloat(m['Public price']) || 0;
+            if (currentFilters.priceMin && price < parseFloat(currentFilters.priceMin)) return false;
+            if (currentFilters.priceMax && price > parseFloat(currentFilters.priceMax)) return false;
+            
+            // Pharmaceutical Form
+            if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm) return false;
+            
+            // Legal Status
+            if (excludeKey !== 'legalStatus' && currentFilters.legalStatus && m['Legal Status'] !== currentFilters.legalStatus) return false;
+            
+            // Manufacturers (Multi)
+            if (excludeKey !== 'manufactureName' && currentFilters.manufactureName.length > 0 && !currentFilters.manufactureName.includes(m['Manufacture Name'])) return false;
+            
+            // Marketing Companies (Multi)
+            if (excludeKey !== 'marketingCompany' && currentFilters.marketingCompany.length > 0 && !currentFilters.marketingCompany.includes(m['Marketing Company'])) return false;
+            
+            // Agents (Multi)
+            if (excludeKey !== 'mainAgent' && currentFilters.mainAgent.length > 0 && !currentFilters.mainAgent.includes(m['Main Agent'])) return false;
+
+            return true;
+        });
+    };
+
+    // حساب الخيارات المتاحة ديناميكياً لكل حقل
+    const dynamicOptions = useMemo(() => {
+        const getUnique = (list: Medicine[], key: keyof Medicine) => Array.from(new Set(list.map(m => String(m[key] || '')).filter(Boolean))).sort();
+
+        const listForManufacturers = getFilteredList(allMedicines, localFilters, 'manufactureName');
+        const listForMarketing = getFilteredList(allMedicines, localFilters, 'marketingCompany');
+        const listForAgents = getFilteredList(allMedicines, localFilters, 'mainAgent');
+        const listForForms = getFilteredList(allMedicines, localFilters, 'pharmaceuticalForm');
+        const listForStatus = getFilteredList(allMedicines, localFilters, 'legalStatus');
+
+        return {
+            manufacturers: getUnique(listForManufacturers, 'Manufacture Name'),
+            marketingCompanies: getUnique(listForMarketing, 'Marketing Company'),
+            agents: getUnique(listForAgents, 'Main Agent'),
+            forms: groupPharmaceuticalForms(getUnique(listForForms, 'PharmaceuticalForm'), t),
+            legalStatuses: getUnique(listForStatus, 'Legal Status')
+        };
+    }, [allMedicines, localFilters, t]);
+
+    // حساب إجمالي النتائج المتوقعة
+    const expectedCount = useMemo(() => getFilteredList(allMedicines, localFilters).length, [allMedicines, localFilters]);
 
     const handleFilterChange = <K extends keyof Filters>(filterName: K, value: Filters[K]) => {
         setLocalFilters(prev => ({ ...prev, [filterName]: value } as Filters));
@@ -92,7 +139,10 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         <div className="p-2 bg-primary/10 text-primary rounded-xl">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         </div>
-                        <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{t('filters')}</h2>
+                        <div>
+                            <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{t('filters')}</h2>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{expectedCount} Items Match</p>
+                        </div>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ClearIcon/></button>
                 </header>
@@ -113,36 +163,36 @@ const FilterModal: React.FC<FilterModalProps> = ({
                       </select>
                     </FilterItem>
 
-                    <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')}>
-                      <SearchableDropdown
-                        ariaLabel={t('filterByManufacturer')}
-                        value={localFilters.manufactureName}
-                        onChange={(value) => handleFilterChange('manufactureName', Array.isArray(value) ? value : [])}
-                        options={uniqueManufactureNames}
-                        placeholder={t('allManufacturers')}
-                        t={t}
-                        mode="multi"
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<FactoryIcon />} label={t('marketingCompany') || 'الشركة المسوقة'}>
+                    <FilterItem icon={<FactoryIcon />} label={t('marketingCompany')} count={dynamicOptions.marketingCompanies.length}>
                       <SearchableDropdown
                         ariaLabel={t('marketingCompany')}
                         value={localFilters.marketingCompany}
                         onChange={(value) => handleFilterChange('marketingCompany', Array.isArray(value) ? value : [])}
-                        options={uniqueMarketingCompanies}
+                        options={dynamicOptions.marketingCompanies}
                         placeholder={t('pleaseSelectOrAdd')}
                         t={t}
                         mode="multi"
                       />
                     </FilterItem>
 
-                    <FilterItem icon={<FactoryIcon />} label={t('agents') || 'الوكلاء'}>
+                    <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')} count={dynamicOptions.manufacturers.length}>
+                      <SearchableDropdown
+                        ariaLabel={t('filterByManufacturer')}
+                        value={localFilters.manufactureName}
+                        onChange={(value) => handleFilterChange('manufactureName', Array.isArray(value) ? value : [])}
+                        options={dynamicOptions.manufacturers}
+                        placeholder={t('allManufacturers')}
+                        t={t}
+                        mode="multi"
+                      />
+                    </FilterItem>
+
+                    <FilterItem icon={<FactoryIcon />} label={t('agents')} count={dynamicOptions.agents.length}>
                       <SearchableDropdown
                         ariaLabel={t('agents')}
                         value={localFilters.mainAgent}
                         onChange={(value) => handleFilterChange('mainAgent', Array.isArray(value) ? value : [])}
-                        options={uniqueMainAgents}
+                        options={dynamicOptions.agents}
                         placeholder={t('pleaseSelectOrAdd')}
                         t={t}
                         mode="multi"
@@ -154,7 +204,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         ariaLabel={t('pharmaceuticalForm')}
                         value={localFilters.pharmaceuticalForm}
                         onChange={(value) => handleFilterChange('pharmaceuticalForm', Array.isArray(value) ? '' : value)}
-                        options={groupedPharmaceuticalForms}
+                        options={dynamicOptions.forms}
                         placeholder={t('all')}
                         t={t}
                       />
@@ -165,7 +215,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         ariaLabel={t('filterByLegalStatus')}
                         value={localFilters.legalStatus}
                         onChange={(value) => handleFilterChange('legalStatus', Array.isArray(value) ? '' : value)}
-                        options={uniqueLegalStatuses}
+                        options={dynamicOptions.legalStatuses}
                         placeholder={t('allLegalStatuses')}
                         t={t}
                       />

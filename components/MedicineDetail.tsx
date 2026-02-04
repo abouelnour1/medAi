@@ -8,6 +8,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 import PillBottleIcon from './icons/PillBottleIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StethoscopeIcon from './icons/StethoscopeIcon';
+import TrashIcon from './icons/TrashIcon';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '' || String(value).toLowerCase().trim() === 'na' || String(value).toLowerCase().trim() === 'n/a') return null;
@@ -72,14 +73,16 @@ interface MedicineDetailProps {
     onToggleFavorite: (medicineId: string) => void;
     user?: User | null;
     onEdit?: (medicine: Medicine) => void;
+    onDelete?: (medicine: Medicine) => void;
     onOpenAssistant?: () => void;
     onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
     onFindAlternative: (medicine: Medicine) => void;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onDelete, onOpenAssistant, onImageZoom, onFindAlternative }) => {
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(true);
   const [isClinicalExpanded, setIsClinicalExpanded] = useState(false);
+  const [isDescOpen, setIsDescOpen] = useState(false);
   
   const medicineImages = useMemo(() => {
     return [
@@ -104,7 +107,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     matches.forEach(m => {
         const key = m.indication || (language === 'ar' ? 'استخدامات عامة' : 'General Usage');
         
-        // تنظيف قيم NA وتصفية البيانات الفارغة
         const cleanEntry = { ...m };
         if (cleanEntry.mddAdults?.toLowerCase().trim() === 'na') cleanEntry.mddAdults = '';
         if (cleanEntry.mddPediatrics?.toLowerCase().trim() === 'na') cleanEntry.mddPediatrics = '';
@@ -112,7 +114,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
         if (!groupedByIndication.has(key)) groupedByIndication.set(key, []);
         
-        // منع التكرار: نتحقق إذا كانت نفس البيانات موجودة مسبقاً لهذا التشخيص
         const existing = groupedByIndication.get(key)!;
         const isDuplicate = existing.some(e => 
             e.mddAdults === cleanEntry.mddAdults && 
@@ -128,8 +129,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     return Array.from(groupedByIndication.entries());
   }, [insuranceData, medicine, language]);
 
-  const hasImages = medicineImages.length > 0;
-
   const handleImageSearch = () => {
       const tradeName = medicine['Trade Name'] || '';
       let query = tradeName;
@@ -140,18 +139,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   };
 
   const price = parseFloat(medicine['Public price']);
-  const scientificName = medicine['Scientific Name'] || '';
-  const ingredients = scientificName ? scientificName.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const strengthValues = String(medicine.Strength || '').split(',').map(s => s.trim()).filter(Boolean);
-  const hasMultipleIngredients = ingredients.length > 1 && ingredients.length === strengthValues.length;
-
   const canEdit = user?.role === 'admin' || user?.role === 'company';
+  const isAdmin = user?.role === 'admin';
+  const isFood = medicine['Product type'] === 'Food';
 
   const handleThumbnailClick = (index: number) => {
     const allUrls = medicineImages.map(img => img.url!);
     const indexFlags = medicineImages.map(img => !!img.isIndex);
     onImageZoom(allUrls, index, medicine['Trade Name'], indexFlags);
   };
+
+  const isRealRegisterNumber = medicine.RegisterNumber && !medicine.RegisterNumber.startsWith('rnd-');
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
@@ -167,6 +165,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => onFindAlternative(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('directAlternatives')}><div className="h-5 w-5"><AlternativeIcon /></div></button>
                   <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500" title={t('searchImage')}><div className="h-5 w-5"><CameraIcon /></div></button>
+                  
+                  {isAdmin && isFood && onDelete && (
+                      <button onClick={() => onDelete(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-red-600 transition-colors" title={t('delete')}><div className="h-5 w-5"><TrashIcon /></div></button>
+                  )}
+
                   {canEdit && onEdit && (
                       <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
                   )}
@@ -174,32 +177,33 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </div>
           </div>
           
-          {hasMultipleIngredients ? (
-            <div className="mt-3">
-              <ul className="space-y-1.5">{ingredients.map((ingredient, index) => (
-                  <li key={index} className="flex justify-between items-baseline border-b border-slate-50 dark:border-slate-800 pb-1">
-                      <span className="text-sm text-light-text dark:text-dark-text">{ingredient}</span>
-                      <span className="font-bold text-xs text-primary">{strengthValues[index]}</span>
-                  </li>
-              ))}</ul>
-            </div>
-          ) : scientificName ? (
-            <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${scientificName} ${medicine.Strength || ''} ${medicine.StrengthUnit || ''}`.trim()}</p>
-          ) : null}
+          <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${medicine['Scientific Name'] || ''} ${medicine.Strength || ''} ${medicine.StrengthUnit || ''}`.trim()}</p>
 
           {medicine.description && (
               <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-black text-primary uppercase mb-2 tracking-widest">نبذة عن الصنف</p>
-                  <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                      {medicine.description}
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">نبذة عن الصنف</p>
+                    {isFood && (
+                        <button 
+                            onClick={() => setIsDescOpen(!isDescOpen)}
+                            className="text-[10px] font-bold text-slate-500 hover:text-primary bg-white dark:bg-slate-700 px-2 py-1 rounded shadow-sm border border-slate-100"
+                        >
+                            {isDescOpen ? t('hideDescription') : t('showDescription')}
+                        </button>
+                    )}
                   </div>
+                  {(!isFood || isDescOpen) && (
+                      <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium animate-fade-in">
+                          {medicine.description}
+                      </div>
+                  )}
               </div>
           )}
 
           {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* 1. قسم الخصائص المادية - مفتوح افتراضياً */}
+        {/* قسم الخصائص المادية */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
@@ -214,34 +218,25 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
             {isPhysicalExpanded && (
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {hasImages && (
+                    {medicineImages.length > 0 && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             {medicineImages.map((img, idx) => (
                                 <PhysicalImage key={idx} src={img.url!} label={img.label} onClick={() => handleThumbnailClick(idx)} />
                             ))}
                         </div>
                     )}
-
                     <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">
                         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
                             <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                             <DetailRow label={t('scored')} value={medicine.pillScored} />
                             <DetailRow label={t('markings')} value={medicine.pillMarkings} />
-                            <DetailRow label={t('taste')} value={medicine.liquidTaste} />
-                            <DetailRow label={t('liquidColor')} value={medicine.liquidColor} />
                         </dl>
-                        {medicine.physicalNotes && (
-                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                <p className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{t('notes')}</p>
-                                <div className="text-sm text-slate-600 dark:text-slate-300"><MarkdownRenderer content={medicine.physicalNotes} /></div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
         </div>
 
-        {/* 2. قسم المعلومات السريرية - للأدوية البشرية فقط */}
+        {/* قسم المعلومات السريرية - للأدوية البشرية فقط */}
         {medicine['Product type'] === 'Human' && clinicalMatches.length > 0 && (
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
                 <button 
@@ -263,39 +258,23 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                         {clinicalMatches.map(([indication, entries]) => (
                             <div key={indication} className="bg-white dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <div className="bg-teal-600 dark:bg-teal-700 px-4 py-3 border-b border-teal-500 flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></div>
-                                    <h4 className="text-sm font-black text-white uppercase tracking-tight leading-tight">
-                                        {indication}
-                                    </h4>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight leading-tight">{indication}</h4>
                                 </div>
-                                
                                 <div className="p-4 space-y-4">
                                     {entries.map((entry, idx) => (
                                         <div key={idx} className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {(entry.mddAdults && entry.mddAdults.toLowerCase() !== 'na') && (
+                                                {entry.mddAdults && (
                                                     <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
                                                         <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDoseAdults')}</dt>
                                                         <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddAdults}</dd>
                                                     </div>
                                                 )}
-                                                {(entry.mddPediatrics && entry.mddPediatrics.toLowerCase() !== 'na') && (
-                                                    <div className="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
-                                                        <dt className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('maxDailyDosePediatrics')}</dt>
-                                                        <dd className="text-sm font-bold text-slate-800 dark:text-slate-100">{entry.mddPediatrics}</dd>
-                                                    </div>
-                                                )}
                                             </div>
-
-                                            {entry.notes && entry.notes.toLowerCase() !== 'na' && (
+                                            {entry.notes && (
                                                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-                                                    <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                        {t('clinicalNotes')}
-                                                    </dt>
-                                                    <dd className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 italic bg-white dark:bg-black/20 p-3 rounded-xl border border-slate-50 dark:border-slate-800">
-                                                        <MarkdownRenderer content={entry.notes} />
-                                                    </dd>
+                                                    <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2">{t('clinicalNotes')}</dt>
+                                                    <dd className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 italic"><MarkdownRenderer content={entry.notes} /></dd>
                                                 </div>
                                             )}
                                         </div>
@@ -311,19 +290,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
-            <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />
-            <DetailRow label={t('shelfLife')} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
-            <DetailRow label={language === 'ar' ? 'منطقة التوزيع' : 'Distribute Area'} value={medicine['Distribute area']} />
-            <DetailRow label={language === 'ar' ? 'الرقابة' : 'Product Control'} value={medicine['Product Control']} valueClassName={medicine['Product Control']?.toLowerCase().includes('controlled') ? 'text-red-500 font-bold' : ''} />
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
-            <DetailRow label={t('countryOfManufacture')} value={medicine['Manufacture Country']} />
-            <DetailRow label={t('storageConditions')} value={language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']} />
-            <DetailRow label={t('marketingCompany') || 'الشركة المسوقة'} value={medicine['Marketing Company']} />
             <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
-            <DetailRow label={t('registrationNumber')} value={medicine.RegisterNumber} />
+            {isRealRegisterNumber && (
+                <DetailRow label={t('registrationNumber')} value={medicine.RegisterNumber} />
+            )}
           </dl>
         </div>
       </div>
