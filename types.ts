@@ -1,4 +1,3 @@
-
 import { TranslationKeys } from './translations';
 
 export interface Notification {
@@ -65,6 +64,7 @@ export interface Medicine {
   "Description Code": string;
   "Authorization Status": string;
   "Last Update": string;
+  description?: string; // New: To hold textual description distinct from code
   
   imgBox?: string;
   imgIndex1?: string;
@@ -153,7 +153,6 @@ export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 
 export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
 
-// Fix: Define ProductTypeFilter which was missing and causing errors
 export type ProductTypeFilter = 'all' | 'medicine' | 'supplement' | 'food';
 
 export interface Filters {

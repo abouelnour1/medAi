@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction } from '../types';
 import ClearIcon from './icons/ClearIcon';
@@ -68,6 +67,10 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
           <div>
             <h4 className={sectionTitle}>البيانات الأساسية (Identity)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="col-span-full">
+                 <label className={labelClass}>{t('registrationNumber')} *</label>
+                 <input type="text" name="RegisterNumber" value={formData.RegisterNumber} onChange={handleChange} className={inputClass} required />
+              </div>
               <div className="col-span-full">
                  <label className={labelClass}>{t('tradeName')}</label>
                  <input type="text" name="Trade Name" value={formData['Trade Name']} onChange={handleChange} className={inputClass} required />

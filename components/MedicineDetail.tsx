@@ -1,4 +1,3 @@
-
 import React, { useState, memo, useMemo } from 'react';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
@@ -92,7 +91,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   }, [medicine, t, language]);
 
   const clinicalMatches = useMemo(() => {
-    if (!insuranceData || !medicine['Scientific Name']) return [];
+    if (!insuranceData || !medicine['Scientific Name'] || medicine['Product type'] !== 'Human') return [];
     const medicineSciName = medicine['Scientific Name'].toLowerCase().trim();
     
     const matches = insuranceData.filter(d => {
@@ -184,11 +183,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                   </li>
               ))}</ul>
             </div>
-          ) : (
+          ) : scientificName ? (
             <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${scientificName} ${medicine.Strength || ''} ${medicine.StrengthUnit || ''}`.trim()}</p>
+          ) : null}
+
+          {medicine.description && (
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-black text-primary uppercase mb-2 tracking-widest">نبذة عن الصنف</p>
+                  <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                      {medicine.description}
+                  </div>
+              </div>
           )}
 
-          {!isNaN(price) && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
+          {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
         {/* 1. قسم الخصائص المادية - مفتوح افتراضياً */}
@@ -233,8 +241,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             )}
         </div>
 
-        {/* 2. قسم المعلومات السريرية - مغلق افتراضياً */}
-        {clinicalMatches.length > 0 && (
+        {/* 2. قسم المعلومات السريرية - للأدوية البشرية فقط */}
+        {medicine['Product type'] === 'Human' && clinicalMatches.length > 0 && (
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
                 <button 
                     onClick={() => setIsClinicalExpanded(!isClinicalExpanded)}
@@ -254,7 +262,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     <div className="pb-6 px-1 animate-fade-in space-y-6">
                         {clinicalMatches.map(([indication, entries]) => (
                             <div key={indication} className="bg-white dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                                {/* Indication Header - لون Teal مميز */}
                                 <div className="bg-teal-600 dark:bg-teal-700 px-4 py-3 border-b border-teal-500 flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></div>
                                     <h4 className="text-sm font-black text-white uppercase tracking-tight leading-tight">
@@ -307,7 +314,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             <DetailRow label={t('packageSize')} value={`${medicine.PackageSize || ''} ${medicine.PackageTypes || ''}`.trim()} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />
-            <DetailRow label={t('shelfLife') || 'الكود الوصفي'} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
+            <DetailRow label={t('shelfLife')} value={medicine.shelfLife ? `${medicine.shelfLife} ${language === 'ar' ? 'شهراً' : 'Months'}` : null} />
             <DetailRow label={language === 'ar' ? 'منطقة التوزيع' : 'Distribute Area'} value={medicine['Distribute area']} />
             <DetailRow label={language === 'ar' ? 'الرقابة' : 'Product Control'} value={medicine['Product Control']} valueClassName={medicine['Product Control']?.toLowerCase().includes('controlled') ? 'text-red-500 font-bold' : ''} />
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />

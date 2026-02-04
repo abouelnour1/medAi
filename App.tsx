@@ -87,7 +87,8 @@ const normalizeMedicine = (item: any): Medicine => {
     "Main Agent": findValue(item, ["Main Agent", "MainAgent", "Agent", "main agent", "agent"]),
     "Secosnd Agent": findValue(item, ["Secosnd Agent", "AddtionalAgentName"]),
     "Third agent": findValue(item, ["Third agent"]),
-    "Description Code": findValue(item, ["Description Code", "Description", "description"]),
+    "Description Code": findValue(item, ["Description Code", "descriptionCode"]),
+    description: findValue(item, ["Description", "description"]),
     "Authorization Status": findValue(item, ["Authorization Status", "AuthorizationStatus"]),
     "Last Update": findValue(item, ["Last Update", "lastUpdate"]),
     imgBox: item.imgBox || item.boxImage || '',
@@ -126,9 +127,8 @@ const normalizeCosmetic = (item: any): Cosmetic => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-// تحديث مفتاح الكاش لضمان إعادة معالجة البيانات فوراً بالتنسيق الجديد
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v5';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v4';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v6';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v5';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v2';
 
@@ -489,7 +489,16 @@ const App: React.FC = () => {
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} contextCosmetic={view === 'cosmeticDetails' ? selectedCosmetic : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
       <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} groupedPharmaceuticalForms={groupPharmaceuticalForms(Array.from(new Set(medicines.map(m => m.PharmaceuticalForm).filter(Boolean))), t)} uniqueManufactureNames={Array.from(new Set(medicines.map(m => m["Manufacture Name"]).filter(Boolean))).sort()} uniqueMarketingCompanies={Array.from(new Set(medicines.map(m => m["Marketing Company"]).filter(Boolean))).sort()} uniqueMainAgents={Array.from(new Set(medicines.map(m => m["Main Agent"]).filter(Boolean))).sort()} uniqueLegalStatuses={Array.from(new Set(medicines.map(m => m["Legal Status"]).filter(Boolean))).sort()} t={t} />
-      <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { if (user?.role === 'admin') { await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); alert(t('saveSuccess')); } }} t={t} />
+      <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { 
+          if (user?.role === 'admin' && editingMedicine) { 
+              // إذا تم تغيير رقم التسجيل، يجب حذف الوثيقة القديمة لأن المعرف اختلف
+              if (updatedMed.RegisterNumber !== editingMedicine.RegisterNumber) {
+                  await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
+              }
+              await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); 
+              alert(t('saveSuccess')); 
+          } 
+      }} t={t} />
       <EditCosmeticModal isOpen={isEditCosmeticModalOpen} onClose={() => setIsEditCosmeticModalOpen(false)} cosmetic={editingCosmetic} onSave={async (c) => { if (user?.role === 'admin') { await setDoc(doc(db, 'cosmetics', c.id), c, { merge: true }); alert(t('saveSuccess')); } }} t={t} />
     </div>
   );
