@@ -154,7 +154,7 @@ export const FOOD_DATA_RAW =[
     "Description": ""
   },
   {
-    "RegisterNumber": "",
+    "RegisterNumber": "1",
     "TradeName": "Inovari plus",
     "ScientificName": "",
     "Strength": "",
