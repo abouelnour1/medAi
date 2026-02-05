@@ -175,7 +175,8 @@ export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'pri
 
 export interface SerializablePart {
   text?: string;
-  thought?: string;
+  // Comment: Fixed type mismatch with @google/genai SDK by using any for thought
+  thought?: any;
   inlineData?: {
     mimeType: string;
     data: string;

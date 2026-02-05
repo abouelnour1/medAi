@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 import { auth, db, FIREBASE_DISABLED } from '../../firebase';
+// Fix: Consolidate modular auth imports to improve member resolution
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -9,9 +10,9 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  reload
+  reload,
+  type User as FirebaseUser
 } from 'firebase/auth';
-import type { User as FirebaseUser } from 'firebase/auth';
 import { 
   doc, 
   getDoc, 
@@ -103,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        syncUserData(firebaseUser);
+        syncUserData(firebaseUser as FirebaseUser);
       } else {
         localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
         setUser(null);
@@ -123,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
-    await syncUserData(result.user);
+    await syncUserData(result.user as FirebaseUser);
   };
 
   const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
@@ -148,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const reloadUser = async () => {
       if (auth.currentUser) {
           await reload(auth.currentUser);
-          await syncUserData(auth.currentUser);
+          await syncUserData(auth.currentUser as FirebaseUser);
       }
   };
 

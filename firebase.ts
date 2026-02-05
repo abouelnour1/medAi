@@ -1,6 +1,4 @@
-
-import { initializeApp, getApps } from 'firebase/app';
-import type { FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { 
   initializeFirestore, 
   persistentLocalCache,
@@ -8,8 +6,7 @@ import {
   Firestore,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import type { Auth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
 export const FIREBASE_DISABLED = false;
@@ -35,14 +32,14 @@ try {
         app = getApps()[0];
     }
 
-    // تم التحويل إلى experimentalForceLongPolling لحل مشكلة المهلة (10 ثواني)
-    // حيث تمنع بعض الشبكات أو جدران الحماية اتصالات WebSocket المستمرة
+    // إعدادات محسنة لضمان استقرار الاتصال ومنع الـ Timeout في المتصفحات
     db = initializeFirestore(app, {
         localCache: persistentLocalCache({
-            tabManager: persistentSingleTabManager({ forceOwnership: true }),
+            tabManager: persistentSingleTabManager({ forceOwnership: false }), // تغيير لضمان عدم القفل
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
         experimentalForceLongPolling: true,
+        useFetchStreams: false, // مهم جداً لحل مشكلة تعليق الاتصال في بعض الشبكات
         ignoreUndefinedProperties: true
     });
 

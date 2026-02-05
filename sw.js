@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pharma-source-v15'; // تحديث الإصدار لإجبار المتصفح على تحميل التحديثات
+const CACHE_NAME = 'pharma-source-v16'; 
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
@@ -25,8 +25,19 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const { request } = event;
-  
-  // استراتيجية Network First مع Fallback سريع للكاش لضمان الفتح
+  const url = new URL(request.url);
+
+  // استثناء روابط Firebase و Google APIs من الـ Service Worker تماماً
+  // هذا يحل مشكلة "Could not reach Cloud Firestore backend"
+  if (
+    url.hostname.includes('firestore.googleapis.com') || 
+    url.hostname.includes('firebaseio.com') || 
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebase.google.com')
+  ) {
+    return; // دع المتصفح يتعامل معها مباشرة دون تدخل الـ Cache
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -43,10 +54,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(request, clonedResponse));
         }
         return networkResponse;
-      }).catch(() => {
-          // في حال فشل النت تماماً
-          return null;
-      });
+      }).catch(() => null);
     })
   );
 });

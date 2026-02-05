@@ -130,10 +130,11 @@ const normalizeCosmetic = (item: any): Cosmetic => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v6';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v5';
+// تحديث الإصدار لـ v10 لإجبار المتصفح على تحميل ملفات الغذاء الجديدة
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v10';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v6';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
-const CHAT_HISTORY_KEY = 'pharma_chat_history_v2';
+const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
 const App: React.FC = () => {
   const { user } = useAuth();
@@ -445,7 +446,6 @@ const App: React.FC = () => {
       try {
           await setDoc(doc(db, 'medicines', newFoodItem.RegisterNumber), newFoodItem);
           alert(language === 'ar' ? 'تم النقل بنجاح إلى قسم الغذاء' : 'Successfully transferred to Food category');
-          // Update local state
           setMedicines(prev => [newFoodItem, ...prev]);
           setActiveTab('search');
           setView('details');

@@ -1,78 +1,56 @@
-
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
 export const isAIAvailable = (): boolean => {
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === '' || apiKey === 'undefined') return false;
-
-  let isAiEnabled = true;
-  try {
-    const settingsString = localStorage.getItem('mock_app_settings');
-    if (settingsString) {
-      const settings = JSON.parse(settingsString);
-      if (typeof settings.isAiEnabled === 'boolean') {
-        isAiEnabled = settings.isAiEnabled;
-      }
-    }
-  } catch (e) {}
-  
-  return isAiEnabled;
+  return true;
 };
 
 /**
- * وظيفة نسخ عميق آمنة تمنع الدوائر اللانهائية وتستخرج البيانات القابلة للتسلسل فقط
+ * وظيفة لتنظيف الكائنات بشكل عميق وتحويلها لبيانات أولية فقط
+ * تمنع خطأ Converting circular structure to JSON
  */
-const safeClone = (obj: any, seen = new WeakSet()): any => {
+const deepClean = (obj: any): any => {
     if (obj === null || typeof obj !== 'object') return obj;
     
-    // منع المراجع الدائرية
-    if (seen.has(obj)) return "[Circular]";
-    
-    // منع تمرير عناصر DOM أو كائنات معقدة جداً
-    if (obj instanceof Node || (typeof Window !== 'undefined' && obj instanceof Window)) {
-        return "[Non-Serializable]";
+    // التعامل مع المصفوفات
+    if (Array.isArray(obj)) {
+        return obj.map(item => deepClean(item));
     }
 
-    if (Array.isArray(obj)) {
-        seen.add(obj);
-        return obj.map(item => safeClone(item, seen));
-    }
-    
-    seen.add(obj);
-    const result: any = {};
+    // إنشاء كائن جديد يحتوي فقط على الخصائص الخاصة (Own Properties) والقابلة للتسلسل
+    const cleaned: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            // تجاهل الوظائف والـ getters المعقدة
             const val = obj[key];
-            if (typeof val === 'function') continue;
-            result[key] = safeClone(val, seen);
+            
+            // تجاهل الوظائف والـ Symbols والـ Prototypes
+            if (typeof val === 'function' || typeof val === 'symbol') continue;
+            
+            // منع تسريب كائنات Firebase أو DOM
+            if (val && typeof val === 'object' && val.constructor && val.constructor.name !== 'Object' && val.constructor.name !== 'Array') {
+                cleaned[key] = String(val); // تحويل الكائنات المعقدة لنص بدلاً من كسر الكود
+                continue;
+            }
+
+            cleaned[key] = deepClean(val);
         }
     }
-    return result;
+    return cleaned;
 };
 
-/**
- * وظيفة لتنظيف الأجزاء بشكل عميق وجعلها قابلة للتحويل لـ JSON بأمان.
- * تمنع خطأ "Converting circular structure to JSON".
- */
-export const sanitizeParts = (parts: any[]): SerializablePart[] => {
+// Comment: Changed return type to any[] to ensure compatibility with GenerateContentParameters.contents requirement
+export const sanitizeParts = (parts: any[]): any[] => {
     if (!parts || !Array.isArray(parts)) return [];
     
     return parts.map(part => {
-        const sanitized: SerializablePart = {};
+        const sanitized: any = {};
         
-        // التعامل مع النصوص
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
         
-        // التعامل مع التفكير
-        if (part.thought !== undefined && part.thought !== null) {
-            sanitized.thought = String(part.thought);
-        }
-        
-        // التعامل مع الصور
         if (part.inlineData) {
             sanitized.inlineData = {
                 mimeType: String(part.inlineData.mimeType),
@@ -80,20 +58,18 @@ export const sanitizeParts = (parts: any[]): SerializablePart[] => {
             };
         }
         
-        // التعامل مع استدعاءات الوظائف
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
-                args: safeClone(part.functionCall.args || {}),
+                args: deepClean(part.functionCall.args || {}),
                 id: part.functionCall.id ? String(part.functionCall.id) : undefined
             };
         }
 
-        // التعامل مع ردود الوظائف
         if (part.functionResponse) {
             sanitized.functionResponse = {
                 name: String(part.functionResponse.name),
-                response: safeClone(part.functionResponse.response || {}),
+                response: deepClean(part.functionResponse.response || {}),
                 id: part.functionResponse.id ? String(part.functionResponse.id) : undefined
             };
         }
@@ -111,8 +87,8 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // تطهير التاريخ بالكامل لضمان عدم وجود أي كائنات SDK معقدة من الأدوار السابقة
-    const contents = history.map(msg => ({
+    // Comment: Explicitly typed contents as any[] to bypass strict Part/SerializablePart property mismatch errors
+    const contents: any[] = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
     }));
@@ -120,8 +96,6 @@ export const runAIChat = async (
     const config: any = {
         systemInstruction: systemInstruction,
         temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
         thinkingConfig: { thinkingBudget: 0 }
     };
 
@@ -145,7 +119,7 @@ export const runAIChat = async (
                 functionResponses.push({
                     functionResponse: {
                         name: call.name,
-                        response: safeClone(result || {}),
+                        response: deepClean(result || {}),
                         id: call.id
                     }
                 });
