@@ -35,14 +35,15 @@ try {
         app = getApps()[0];
     }
 
-    // تم تفعيل experimentalForceLongPolling و تحسين الكاش المحلي لضمان الفتح السريع
+    // تم التحويل إلى experimentalForceLongPolling لحل مشكلة المهلة (10 ثواني)
+    // حيث تمنع بعض الشبكات أو جدران الحماية اتصالات WebSocket المستمرة
     db = initializeFirestore(app, {
         localCache: persistentLocalCache({
             tabManager: persistentSingleTabManager({ forceOwnership: true }),
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
         experimentalForceLongPolling: true,
-        // إعدادات لتقليل وقت الانتظار عند ضعف النت
+        ignoreUndefinedProperties: true
     });
 
     auth = getAuth(app);
