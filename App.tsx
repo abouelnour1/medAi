@@ -51,19 +51,19 @@ const normalizeMedicine = (item: any): Medicine => {
       return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
 
-  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
-  const drugTypeLower = String(item.DrugType || item.drugType || '').toLowerCase();
-
+  // معالجة خاصة لمفاتيح ملف الفود (TradeName بدون مسافة، إلخ)
+  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]) || `rnd-${Math.random().toString(36).substr(2, 9)}`;
+  const drugTypeRaw = findValue(item, ["DrugType", "drugType", "Product type", "ProductType"]).toLowerCase();
+  
   return {
-    RegisterNumber: regNum || `rnd-${Math.random().toString(36).substr(2, 9)}`,
+    RegisterNumber: regNum,
     ReferenceNumber: findValue(item, ["ReferenceNumber", "referenceNumber"]),
     "Old register Number": findValue(item, ["Old register Number", "oldRegisterNumber"]),
-    "Product type": findValue(item, ["Product type", "ProductType"]) || 
-        (drugTypeLower === 'food' ? 'Food' : 
-        (drugTypeLower === 'health' || drugTypeLower === 'herbal' ? 'Supplement' : 'Human')),
+    "Product type": (drugTypeRaw.includes('food')) ? 'Food' : 
+        (drugTypeRaw.includes('health') || drugTypeRaw.includes('herbal') || drugTypeRaw.includes('supplement') ? 'Supplement' : 'Human'),
     DrugType: findValue(item, ["DrugType", "drugType"]),
     "Sub-Type": findValue(item, ["Sub-Type", "subType"]),
-    "Scientific Name": findValue(item, ["Scientific Name", "ScientificName", "scientificName"]),
+    "Scientific Name": findValue(item, ["Scientific Name", "ScientificName", "scientificName"]) || 'N/A',
     "Trade Name": findValue(item, ["Trade Name", "TradeName", "tradeName"]),
     Strength: findValue(item, ["Strength", "strength"]),
     StrengthUnit: findValue(item, ["StrengthUnit", "strengthUnit"]),
@@ -75,11 +75,11 @@ const normalizeMedicine = (item: any): Medicine => {
     SizeUnit: findValue(item, ["SizeUnit", "sizeUnit"]),
     PackageTypes: findValue(item, ["PackageTypes", "PackageType", "packageType"]),
     PackageSize: findValue(item, ["PackageSize", "packageSize", "Pack Size"]),
-    "Legal Status": findValue(item, ["Legal Status", "LegalStatus", "legalStatus"]),
+    "Legal Status": findValue(item, ["Legal Status", "LegalStatus", "legalStatus"]) || "OTC",
     "Product Control": findValue(item, ["Product Control", "productControl"]),
     "Distribute area": findValue(item, ["Distribute area", "DistributionArea", "distributeArea"]),
     "Public price": findPrice(item),
-    shelfLife: findValue(item, ["shelfLife", "ShelfLife"]),
+    shelfLife: findValue(item, ["shelfLife", "ShelfLife", "Shelf Life"]),
     "Storage conditions": findValue(item, ["Storage conditions", "StorageConditions", "storageConditions"]),
     "Storage Condition Arabic": findValue(item, ["Storage Condition Arabic", "storageConditionArabic"]),
     "Marketing Company": findValue(item, ["Marketing Company", "MarketingCompany", "CompanyName", "companyName"]),
@@ -130,8 +130,8 @@ const normalizeCosmetic = (item: any): Cosmetic => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v10';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v6';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v25'; // رفع الإصدار لمسح الكاش القديم تماماً
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v10';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -258,44 +258,50 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
         try {
-            let medicinesData = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
-            let cosmeticsData = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY);
-            let historyData = await getItem<Conversation[]>(CHAT_HISTORY_KEY);
-            
-            if (!medicinesData) {
-                const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
-                const { FOOD_DATA_RAW } = await import('./data/food-data');
-                medicinesData = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
-                await setItem(MEDICINES_CACHE_KEY, medicinesData);
+            // جلب البيانات من الملفات دائماً لضمان الحصول على آخر التعديلات اليدوية
+            const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
+            const { FOOD_DATA_RAW } = await import('./data/food-data');
+            const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
+
+            const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
+            const hardcodedCosmetics = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
+
+            let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
+            let finalMedicines = hardcodedMedicines;
+
+            if (cachedMedicines) {
+                // دمج البيانات: الحالات المضافة من Firebase تبقى، والحالات الموجودة في الملفات يتم تحديثها
+                const medMap = new Map<string, Medicine>(cachedMedicines.map(m => [m.RegisterNumber, m]));
+                hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
+                finalMedicines = Array.from(medMap.values());
             }
-            if (!cosmeticsData) {
-                const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
-                cosmeticsData = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
-                await setItem(COSMETICS_CACHE_KEY, cosmeticsData);
-            }
-            if (historyData) setAllConversations(historyData);
+
+            setMedicines(finalMedicines);
+            setCosmetics(hardcodedCosmetics);
             
+            // تخزين البيانات المحدثة فوراً
+            await setItem(MEDICINES_CACHE_KEY, finalMedicines);
+            await setItem(COSMETICS_CACHE_KEY, hardcodedCosmetics);
+
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
             const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
             const { INITIAL_MILK_DATA } = await import('./data/milk-data');
             const { CUSTOM_MILK_DATA } = await import('./data/custom-milk-data');
             
-            setMedicines(medicinesData || []);
-            setCosmetics(cosmeticsData || []);
             setMilkProducts([...(INITIAL_MILK_DATA as any[] || []), ...(CUSTOM_MILK_DATA as any[] || [])]);
             setInsuranceData([...(INITIAL_INSURANCE_DATA as any[]), ...(CUSTOM_INSURANCE_DATA as any[])]);
             setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
+
+            let historyData = await getItem<Conversation[]>(CHAT_HISTORY_KEY);
+            if (historyData) setAllConversations(historyData);
+            
             setIsDataLoaded(true);
 
             if (!FIREBASE_DISABLED && db) {
-                // استخدام docChanges لمعالجة الإضافة، الحذف، والتعديل بشكل دقيق
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
-                    if (snapshot.empty && medicines.length === 0) return;
-                    
                     setMedicines(prev => {
                         const newMedsMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-                        
                         snapshot.docChanges().forEach((change) => {
                             const med = normalizeMedicine(change.doc.data());
                             if (change.type === 'added' || change.type === 'modified') {
@@ -304,26 +310,8 @@ const App: React.FC = () => {
                                 newMedsMap.delete(med.RegisterNumber);
                             }
                         });
-
                         const updatedArray = Array.from(newMedsMap.values());
                         setItem(MEDICINES_CACHE_KEY, updatedArray).catch(() => {});
-                        return updatedArray;
-                    });
-                });
-
-                onSnapshot(collection(db, 'cosmetics'), (snapshot) => {
-                    setCosmetics(prev => {
-                        const newCosmMap = new Map<string, Cosmetic>(prev.map(c => [c.id, c]));
-                        snapshot.docChanges().forEach((change) => {
-                            const cosm = normalizeCosmetic(change.doc.data());
-                            if (change.type === 'added' || change.type === 'modified') {
-                                newCosmMap.set(cosm.id, cosm);
-                            } else if (change.type === 'removed') {
-                                newCosmMap.delete(cosm.id);
-                            }
-                        });
-                        const updatedArray = Array.from(newCosmMap.values());
-                        setItem(COSMETICS_CACHE_KEY, updatedArray).catch(() => {});
                         return updatedArray;
                     });
                 });
@@ -373,7 +361,7 @@ const App: React.FC = () => {
           if (parts.length > 0) {
               const regexPattern = parts.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
               const regex = new RegExp(regexPattern, 'i');
-              results = results.filter(m => m && regex.test(String(m[field])));
+              results = results.filter(m => m && (regex.test(String(m['Trade Name'])) || regex.test(String(m['Scientific Name']))));
           }
       } else {
           results = results.filter(m => m && String(m[field]).toLowerCase().includes(term));
@@ -426,7 +414,6 @@ const App: React.FC = () => {
       
       try {
           await deleteDoc(doc(db, 'medicines', medicine.RegisterNumber));
-          // تحديث محلي فوري
           setMedicines(prev => prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber));
           setView('search');
           alert(t('saveSuccess'));
@@ -473,7 +460,6 @@ const App: React.FC = () => {
       try {
           await setDoc(doc(db, 'medicines', newFoodItem.RegisterNumber), newFoodItem);
           alert(language === 'ar' ? 'تم النقل بنجاح إلى قسم الغذاء' : 'Successfully transferred to Food category');
-          // التحديث المحلي
           setMedicines(prev => [newFoodItem, ...prev]);
           setActiveTab('search');
           setView('details');
@@ -571,21 +557,17 @@ const App: React.FC = () => {
                   await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
               }
               await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); 
-              
-              // تحديث محلي فوري لمنع ظهور القديم
               setMedicines(prev => {
                  const filtered = prev.filter(m => m.RegisterNumber !== editingMedicine.RegisterNumber);
                  return [updatedMed, ...filtered];
               });
               setSelectedMedicine(updatedMed);
-              
               alert(t('saveSuccess')); 
           } 
       }} t={t} />
       <EditCosmeticModal isOpen={isEditCosmeticModalOpen} onClose={() => setIsEditCosmeticModalOpen(false)} cosmetic={editingCosmetic} onSave={async (updatedCosm) => { 
           if (user?.role === 'admin' && editingCosmetic) { 
               await setDoc(doc(db, 'cosmetics', updatedCosm.id), updatedCosm, { merge: true }); 
-              // تحديث محلي فوري
               setCosmetics(prev => {
                   const filtered = prev.filter(c => c.id !== editingCosmetic.id);
                   return [updatedCosm, ...filtered];
