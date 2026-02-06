@@ -105,6 +105,17 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <label className={labelClass}>{t('scientificName')}</label>
                  <input type="text" name="Scientific Name" value={formData['Scientific Name']} onChange={handleChange} className={inputClass} />
               </div>
+              
+              {/* حقول التركيز الجديدة */}
+              <div>
+                 <label className={labelClass}>{t('strength')}</label>
+                 <input type="text" name="Strength" value={formData.Strength} onChange={handleChange} className={inputClass} placeholder="مثال: 500" />
+              </div>
+              <div>
+                 <label className={labelClass}>{t('strengthUnit')}</label>
+                 <input type="text" name="StrengthUnit" value={formData.StrengthUnit} onChange={handleChange} className={inputClass} placeholder="مثال: mg" />
+              </div>
+
               <div>
                  <label className={labelClass}>{t('sar')}</label>
                  <input type="number" step="0.01" name="Public price" value={formData['Public price']} onChange={handleChange} className={inputClass} required />
