@@ -130,7 +130,6 @@ const normalizeCosmetic = (item: any): Cosmetic => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-// تحديث الإصدار لـ v10 لإجبار المتصفح على تحميل ملفات الغذاء الجديدة
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v10';
 const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v6';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
@@ -290,15 +289,42 @@ const App: React.FC = () => {
             setIsDataLoaded(true);
 
             if (!FIREBASE_DISABLED && db) {
+                // استخدام docChanges لمعالجة الإضافة، الحذف، والتعديل بشكل دقيق
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
-                    if (snapshot.empty) return;
-                    const cloudMeds = snapshot.docs.map(doc => normalizeMedicine(doc.data()));
+                    if (snapshot.empty && medicines.length === 0) return;
+                    
                     setMedicines(prev => {
-                        const mergedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-                        cloudMeds.forEach(m => mergedMap.set(m.RegisterNumber, m));
-                        const mergedArray = Array.from(mergedMap.values());
-                        setItem(MEDICINES_CACHE_KEY, mergedArray).catch(() => {});
-                        return mergedArray;
+                        const newMedsMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+                        
+                        snapshot.docChanges().forEach((change) => {
+                            const med = normalizeMedicine(change.doc.data());
+                            if (change.type === 'added' || change.type === 'modified') {
+                                newMedsMap.set(med.RegisterNumber, med);
+                            } else if (change.type === 'removed') {
+                                newMedsMap.delete(med.RegisterNumber);
+                            }
+                        });
+
+                        const updatedArray = Array.from(newMedsMap.values());
+                        setItem(MEDICINES_CACHE_KEY, updatedArray).catch(() => {});
+                        return updatedArray;
+                    });
+                });
+
+                onSnapshot(collection(db, 'cosmetics'), (snapshot) => {
+                    setCosmetics(prev => {
+                        const newCosmMap = new Map<string, Cosmetic>(prev.map(c => [c.id, c]));
+                        snapshot.docChanges().forEach((change) => {
+                            const cosm = normalizeCosmetic(change.doc.data());
+                            if (change.type === 'added' || change.type === 'modified') {
+                                newCosmMap.set(cosm.id, cosm);
+                            } else if (change.type === 'removed') {
+                                newCosmMap.delete(cosm.id);
+                            }
+                        });
+                        const updatedArray = Array.from(newCosmMap.values());
+                        setItem(COSMETICS_CACHE_KEY, updatedArray).catch(() => {});
+                        return updatedArray;
                     });
                 });
 
@@ -400,6 +426,7 @@ const App: React.FC = () => {
       
       try {
           await deleteDoc(doc(db, 'medicines', medicine.RegisterNumber));
+          // تحديث محلي فوري
           setMedicines(prev => prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber));
           setView('search');
           alert(t('saveSuccess'));
@@ -446,6 +473,7 @@ const App: React.FC = () => {
       try {
           await setDoc(doc(db, 'medicines', newFoodItem.RegisterNumber), newFoodItem);
           alert(language === 'ar' ? 'تم النقل بنجاح إلى قسم الغذاء' : 'Successfully transferred to Food category');
+          // التحديث المحلي
           setMedicines(prev => [newFoodItem, ...prev]);
           setActiveTab('search');
           setView('details');
@@ -543,10 +571,29 @@ const App: React.FC = () => {
                   await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
               }
               await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); 
+              
+              // تحديث محلي فوري لمنع ظهور القديم
+              setMedicines(prev => {
+                 const filtered = prev.filter(m => m.RegisterNumber !== editingMedicine.RegisterNumber);
+                 return [updatedMed, ...filtered];
+              });
+              setSelectedMedicine(updatedMed);
+              
               alert(t('saveSuccess')); 
           } 
       }} t={t} />
-      <EditCosmeticModal isOpen={isEditCosmeticModalOpen} onClose={() => setIsEditCosmeticModalOpen(false)} cosmetic={editingCosmetic} onSave={async (c) => { if (user?.role === 'admin') { await setDoc(doc(db, 'cosmetics', c.id), c, { merge: true }); alert(t('saveSuccess')); } }} t={t} />
+      <EditCosmeticModal isOpen={isEditCosmeticModalOpen} onClose={() => setIsEditCosmeticModalOpen(false)} cosmetic={editingCosmetic} onSave={async (updatedCosm) => { 
+          if (user?.role === 'admin' && editingCosmetic) { 
+              await setDoc(doc(db, 'cosmetics', updatedCosm.id), updatedCosm, { merge: true }); 
+              // تحديث محلي فوري
+              setCosmetics(prev => {
+                  const filtered = prev.filter(c => c.id !== editingCosmetic.id);
+                  return [updatedCosm, ...filtered];
+              });
+              setSelectedCosmetic(updatedCosm);
+              alert(t('saveSuccess')); 
+          } 
+      }} t={t} />
     </div>
   );
 };

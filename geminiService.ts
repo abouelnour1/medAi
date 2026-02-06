@@ -9,38 +9,53 @@ export const isAIAvailable = (): boolean => {
 
 /**
  * وظيفة لتنظيف الكائنات بشكل عميق وتحويلها لبيانات أولية فقط
- * تمنع خطأ Converting circular structure to JSON
+ * تستخدم WeakSet لتتبع المراجع ومنع خطأ Converting circular structure to JSON
  */
-const deepClean = (obj: any): any => {
+const deepClean = (obj: any, seen = new WeakSet()): any => {
     if (obj === null || typeof obj !== 'object') return obj;
+    
+    // منع الحلقات الدائرية (Circular References)
+    if (seen.has(obj)) {
+        return '[Circular]';
+    }
     
     // التعامل مع المصفوفات
     if (Array.isArray(obj)) {
-        return obj.map(item => deepClean(item));
+        // لا نضيف المصفوفات لـ seen لأنها تُعالج كقيم، لكننا نحمي محتوياتها
+        return obj.map(item => deepClean(item, seen));
     }
 
-    // إنشاء كائن جديد يحتوي فقط على الخصائص الخاصة (Own Properties) والقابلة للتسلسل
+    seen.add(obj);
+
+    // إنشاء كائن جديد يحتوي فقط على الخصائص القابلة للتسلسل
     const cleaned: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
             
-            // تجاهل الوظائف والـ Symbols والـ Prototypes
+            // تجاهل الوظائف والـ Symbols
             if (typeof val === 'function' || typeof val === 'symbol') continue;
             
-            // منع تسريب كائنات Firebase أو DOM
-            if (val && typeof val === 'object' && val.constructor && val.constructor.name !== 'Object' && val.constructor.name !== 'Array') {
-                cleaned[key] = String(val); // تحويل الكائنات المعقدة لنص بدلاً من كسر الكود
-                continue;
+            // التحقق مما إذا كان الكائن "بسيطاً" (Plain Object)
+            // إذا كان كائناً معقداً من مكتبة (مثل Firebase Reference أو GenAI Internal Object)، نحوله لنص
+            if (val && typeof val === 'object') {
+                const proto = Object.getPrototypeOf(val);
+                const isPlain = proto === null || proto === Object.prototype;
+                const isArr = Array.isArray(val);
+                
+                if (!isPlain && !isArr) {
+                    cleaned[key] = String(val);
+                    continue;
+                }
             }
 
-            cleaned[key] = deepClean(val);
+            cleaned[key] = deepClean(val, seen);
         }
     }
     return cleaned;
 };
 
-// Comment: Changed return type to any[] to ensure compatibility with GenerateContentParameters.contents requirement
+// وظيفة لتنظيف أجزاء الرسالة (Parts) قبل إرسالها للـ SDK
 export const sanitizeParts = (parts: any[]): any[] => {
     if (!parts || !Array.isArray(parts)) return [];
     
@@ -87,7 +102,6 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Comment: Explicitly typed contents as any[] to bypass strict Part/SerializablePart property mismatch errors
     const contents: any[] = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
@@ -115,6 +129,7 @@ export const runAIChat = async (
         for (const call of response.functionCalls) {
             const implementation = toolImplementations[call.name];
             if (implementation) {
+                // تنفيذ الأداة وتنظيف النتيجة فوراً
                 const result = await implementation(call.args);
                 functionResponses.push({
                     functionResponse: {
