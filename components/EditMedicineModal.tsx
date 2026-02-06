@@ -106,7 +106,6 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <input type="text" name="Scientific Name" value={formData['Scientific Name']} onChange={handleChange} className={inputClass} />
               </div>
               
-              {/* حقول التركيز الجديدة */}
               <div>
                  <label className={labelClass}>{t('strength')}</label>
                  <input type="text" name="Strength" value={formData.Strength} onChange={handleChange} className={inputClass} placeholder="مثال: 500" />
@@ -156,9 +155,29 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <label className={labelClass}>{t('boxImage')} URL</label>
                  <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
                </div>
+               <div className="col-span-full">
+                 <label className={labelClass}>{t('pillImage')} URL</label>
+                 <input type="text" name="imgPill" value={formData.imgPill || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
                <div>
+                 <label className={labelClass}>Index 1 (الفهرس 1) URL</label>
+                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div>
+                 <label className={labelClass}>Index 2 (الفهرس 2) URL</label>
+                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+               </div>
+               <div className="col-span-full">
                  <label className={labelClass}>{t('pillShape')}</label>
                  <input type="text" name="pillShape" value={formData.pillShape || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('scored')}</label>
+                 <input type="text" name="pillScored" value={formData.pillScored || ''} onChange={handleChange} className={inputClass} />
+               </div>
+               <div>
+                 <label className={labelClass}>{t('markings')}</label>
+                 <input type="text" name="pillMarkings" value={formData.pillMarkings || ''} onChange={handleChange} className={inputClass} />
                </div>
                <div className="col-span-full">
                  <label className={labelClass}>{t('notes')}</label>

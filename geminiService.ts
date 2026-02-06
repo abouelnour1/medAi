@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
@@ -8,47 +9,53 @@ export const isAIAvailable = (): boolean => {
 };
 
 /**
- * وظيفة لتنظيف الكائنات بشكل عميق وتحويلها لبيانات أولية فقط
- * تستخدم WeakSet لتتبع المراجع ومنع خطأ Converting circular structure to JSON
+ * وظيفة للتحقق مما إذا كان الكائن "بسيطاً" (Object Literal)
+ */
+const isPlainObject = (obj: any): boolean => {
+    return Object.prototype.toString.call(obj) === '[object Object]';
+};
+
+/**
+ * وظيفة لتنظيف الكائنات ومنع الحلقات الدائرية (Circular References)
+ * تضمن تحويل البيانات إلى صيغة قابلة للتحويل لـ JSON بشكل آمن
  */
 const deepClean = (obj: any, seen = new WeakSet()): any => {
     if (obj === null || typeof obj !== 'object') return obj;
     
-    // منع الحلقات الدائرية (Circular References)
+    // منع الحلقات الدائرية
     if (seen.has(obj)) {
         return '[Circular]';
     }
-    
-    // التعامل مع المصفوفات
+
+    // التعامل مع المصفوفات بشكل صحيح
     if (Array.isArray(obj)) {
-        // لا نضيف المصفوفات لـ seen لأنها تُعالج كقيم، لكننا نحمي محتوياتها
+        seen.add(obj);
         return obj.map(item => deepClean(item, seen));
+    }
+
+    // التحقق من نوع الكائن (فقط الكائنات البسيطة يتم فحصها بعمق)
+    if (!isPlainObject(obj)) {
+        // إذا كان كائناً معقداً (مثل DocumentReference من Firebase)
+        // نحوله لنص أو نرجعه ككائن مجهول بدلاً من محاولة الدخول فيه
+        if (typeof obj.toString === 'function') {
+            try {
+                const s = obj.toString();
+                if (s !== '[object Object]') return s;
+            } catch (e) {}
+        }
+        return `[Complex Object]`;
     }
 
     seen.add(obj);
 
-    // إنشاء كائن جديد يحتوي فقط على الخصائص القابلة للتسلسل
     const cleaned: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
             
-            // تجاهل الوظائف والـ Symbols
+            // تجاهل الوظائف والرموز
             if (typeof val === 'function' || typeof val === 'symbol') continue;
             
-            // التحقق مما إذا كان الكائن "بسيطاً" (Plain Object)
-            // إذا كان كائناً معقداً من مكتبة (مثل Firebase Reference أو GenAI Internal Object)، نحوله لنص
-            if (val && typeof val === 'object') {
-                const proto = Object.getPrototypeOf(val);
-                const isPlain = proto === null || proto === Object.prototype;
-                const isArr = Array.isArray(val);
-                
-                if (!isPlain && !isArr) {
-                    cleaned[key] = String(val);
-                    continue;
-                }
-            }
-
             cleaned[key] = deepClean(val, seen);
         }
     }
@@ -62,6 +69,7 @@ export const sanitizeParts = (parts: any[]): any[] => {
     return parts.map(part => {
         const sanitized: any = {};
         
+        // ننسخ فقط الحقول المدعومة رسمياً من قبل Gemini SDK في طلبات الإرسال
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
@@ -129,7 +137,6 @@ export const runAIChat = async (
         for (const call of response.functionCalls) {
             const implementation = toolImplementations[call.name];
             if (implementation) {
-                // تنفيذ الأداة وتنظيف النتيجة فوراً
                 const result = await implementation(call.args);
                 functionResponses.push({
                     functionResponse: {

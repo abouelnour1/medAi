@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FunctionDeclaration, Type, Tool } from '@google/genai';
 import { Medicine, TFunction, Language, ChatMessage, PrescriptionData, InsuranceDrug, SerializablePart } from '../types';
@@ -108,11 +109,17 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     setIsLoading(true);
 
     try {
-        const guidelinesString = JSON.stringify(clinicalGuidelines, null, 2);
+        // استخدام محاولة آمنة لتحويل الإرشادات لنص لمنع أخطاء الدوران
+        let guidelinesInfo = "";
+        try {
+            guidelinesInfo = `Clinical Knowledge Base: ${JSON.stringify(clinicalGuidelines)}`;
+        } catch (e) {
+            guidelinesInfo = "Guidelines context is too complex to serialize but use your internal medical knowledge.";
+        }
         
         const systemInstruction = language === 'ar'
-        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية. وظيفتك الأساسية هي تقديم توصيات سريرية وكتابة الوصفات الطبية.`
-        : `You are a world-class expert physician based in Saudi Arabia. Your function is to provide clinical recommendations and write prescriptions.`;
+        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية. وظيفتك الأساسية هي تقديم توصيات سريرية وكتابة الوصفات الطبية. السياق: ${guidelinesInfo.substring(0, 2000)}`
+        : `You are a world-class expert physician based in Saudi Arabia. Your function is to provide clinical recommendations and write prescriptions. Context: ${guidelinesInfo.substring(0, 2000)}`;
 
         const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
         const toolImplementations = { searchDatabase };

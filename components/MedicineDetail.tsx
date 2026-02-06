@@ -1,3 +1,4 @@
+
 import React, { useState, memo, useMemo } from 'react';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
@@ -9,6 +10,7 @@ import PillBottleIcon from './icons/PillBottleIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StethoscopeIcon from './icons/StethoscopeIcon';
 import TrashIcon from './icons/TrashIcon';
+import { getIngredientsList } from './MedicineCard';
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null; valueClassName?: string }> = ({ label, value, valueClassName }) => {
   if (!value || String(value).trim() === '' || String(value).toLowerCase().trim() === 'na' || String(value).toLowerCase().trim() === 'n/a') return null;
@@ -28,6 +30,8 @@ const PhysicalImage = memo(({ src, label, onClick }: {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
 
+    const hasValue = src && String(src).trim().length > 0;
+
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
@@ -35,29 +39,35 @@ const PhysicalImage = memo(({ src, label, onClick }: {
                 onClick={onClick}
                 className="w-48 h-48 sm:w-64 sm:h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden flex items-center justify-center cursor-zoom-in active:scale-95 transition-all relative"
             >
-                {isLoading && !hasError && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800">
-                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                    </div>
-                )}
-                
-                {hasError ? (
+                {!hasValue || hasError ? (
                     <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 p-4">
                         <div className="w-16 h-16 mb-2 opacity-20"><PillBottleIcon /></div>
-                        <span className="text-[9px] font-bold uppercase tracking-tight text-center">الصورة غير متوفرة</span>
+                        <span className="text-[9px] font-bold uppercase tracking-tight text-center">
+                            {hasError ? 'فشل تحميل الصورة' : 'الصورة غير متوفرة'}
+                        </span>
                     </div>
                 ) : (
-                    <img 
-                        src={src} 
-                        alt={label} 
-                        className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-                        onLoad={() => setIsLoading(false)}
-                        onError={() => {
-                            setIsLoading(false);
-                            setHasError(true);
-                        }}
-                        loading="lazy" 
-                    />
+                    <>
+                        {isLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-800 z-10">
+                                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                            </div>
+                        )}
+                        <img 
+                            src={src} 
+                            alt={label} 
+                            className={`max-w-full max-h-full object-contain transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                            onLoad={() => {
+                                setIsLoading(false);
+                                setHasError(false);
+                            }}
+                            onError={() => {
+                                setIsLoading(false);
+                                setHasError(true);
+                            }}
+                            loading="eager" 
+                        />
+                    </>
                 )}
             </div>
         </div>
@@ -83,16 +93,17 @@ interface MedicineDetailProps {
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, t, language, isFavorite, onToggleFavorite, user, onEdit, onDelete, onOpenAssistant, onImageZoom, onFindAlternative }) => {
   const [isPhysicalExpanded, setIsPhysicalExpanded] = useState(true);
   const [isClinicalExpanded, setIsClinicalExpanded] = useState(false);
-  const [isDescOpen, setIsDescOpen] = useState(false);
   
   const medicineImages = useMemo(() => {
     return [
         { url: medicine.imgBox, label: t('boxImage'), isIndex: false },
+        { url: medicine.imgPill, label: t('pillImage'), isIndex: false },
         { url: medicine.imgIndex1, label: language === 'ar' ? 'الفهرس 1' : 'Index 1', isIndex: true },
-        { url: medicine.imgIndex2, label: language === 'ar' ? 'الفهرس 2' : 'Index 2', isIndex: true },
-        { url: medicine.imgPill, label: t('pillImage'), isIndex: false }
-    ].filter(img => img.url && img.url.trim() !== '');
+        { url: medicine.imgIndex2, label: language === 'ar' ? 'الفهرس 2' : 'Index 2', isIndex: true }
+    ].filter(img => img.url && String(img.url).trim() !== '');
   }, [medicine, t, language]);
+
+  const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
 
   const clinicalMatches = useMemo(() => {
     if (!insuranceData || !medicine['Scientific Name'] || medicine['Product type'] !== 'Human') return [];
@@ -132,10 +143,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
   const handleImageSearch = () => {
       const tradeName = medicine['Trade Name'] || '';
-      let query = tradeName;
-      if (tradeName.trim().split(/\s+/).length === 1) {
-          query = `${tradeName} ${medicine.Strength || ''} ${medicine.PharmaceuticalForm || ''}`;
-      }
+      const sciName = medicine['Scientific Name'] || '';
+      let query = `${tradeName} ${sciName}`.trim();
       window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
   };
 
@@ -150,7 +159,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     onImageZoom(allUrls, index, medicine['Trade Name'], indexFlags);
   };
 
-  // Improved Logic: Don't show Reg Numbers like "1", "2", or "rnd-..."
   const isRealRegisterNumber = useMemo(() => {
     if (!medicine.RegisterNumber) return false;
     const val = medicine.RegisterNumber.trim();
@@ -185,40 +193,31 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </div>
           </div>
           
-          <p className="mt-1 text-sm leading-6 text-light-text-secondary">{`${medicine['Scientific Name'] || ''} ${medicine.Strength || ''} ${medicine.StrengthUnit || ''}`.trim()}</p>
-
-          {medicine.description && (
-              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">نبذة عن الصنف</p>
-                    {isFood && (
-                        <button 
-                            onClick={() => setIsDescOpen(!isDescOpen)}
-                            className="text-[10px] font-bold text-slate-500 hover:text-primary bg-white dark:bg-slate-700 px-2 py-1 rounded shadow-sm border border-slate-100"
-                        >
-                            {isDescOpen ? t('hideDescription') : t('showDescription')}
-                        </button>
-                    )}
-                  </div>
-                  {(!isFood || isDescOpen) && (
-                      <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium animate-fade-in">
-                          {medicine.description}
+          <div className="mt-4 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {ingredients.map((ing, i) => (
+                      <div key={i} className="flex justify-between items-center py-2.5 group">
+                          <span className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-primary transition-colors">{ing.name}</span>
+                          {/* عرض التركيز الرقمي فقط بناءً على طلب المستخدم */}
+                          {ing.strength && (
+                            <span className="text-sm font-black text-primary dark:text-primary-light ml-4 bg-primary/5 px-2 py-0.5 rounded-lg">{ing.strength}</span>
+                          )}
                       </div>
-                  )}
+                  ))}
+                  {ingredients.length === 0 && <span className="text-sm text-slate-400 italic">N/A</span>}
               </div>
-          )}
+          </div>
 
           {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        {/* قسم الخصائص المادية */}
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
             <button 
                 onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
                 className="w-full flex justify-between items-center py-4 text-primary font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" /></svg>
                     <span>{t('physicalDetails')}</span>
                 </div>
                 <svg className={`h-5 w-5 transform transition-transform ${isPhysicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -226,25 +225,38 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
             {isPhysicalExpanded && (
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {medicineImages.length > 0 && (
+                    {medicineImages.length > 0 ? (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             {medicineImages.map((img, idx) => (
                                 <PhysicalImage key={idx} src={img.url!} label={img.label} onClick={() => handleThumbnailClick(idx)} />
                             ))}
                         </div>
+                    ) : (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-100 dark:border-slate-800 text-center space-y-3">
+                            <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-300"><CameraIcon /></div>
+                            <p className="text-sm font-bold text-slate-400">لا توجد صور متوفرة في النظام</p>
+                            <button 
+                                onClick={handleImageSearch}
+                                className="px-6 py-2 bg-blue-600 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all"
+                            >
+                                البحث عن صورة في جوجل
+                            </button>
+                        </div>
                     )}
                     <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">
-                        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+                        <dl className="divide-y divide-slate-100 dark:divide-slate-800">
                             <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                             <DetailRow label={t('scored')} value={medicine.pillScored} />
                             <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                            <DetailRow label={t('taste')} value={medicine.liquidTaste} />
+                            <DetailRow label={t('liquidColor')} value={medicine.liquidColor} />
+                            <DetailRow label={t('notes')} value={medicine.physicalNotes} valueClassName="italic text-slate-500 font-medium" />
                         </dl>
                     </div>
                 </div>
             )}
         </div>
 
-        {/* قسم المعلومات السريرية - للأدوية البشرية فقط */}
         {medicine['Product type'] === 'Human' && clinicalMatches.length > 0 && (
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
                 <button 
@@ -282,7 +294,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                                             {entry.notes && (
                                                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                                                     <dt className="text-[10px] font-black text-secondary uppercase tracking-widest mb-2">{t('clinicalNotes')}</dt>
-                                                    <dd className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 italic"><MarkdownRenderer content={entry.notes} /></dd>
+                                                    <dd className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 italic"><MarkdownRenderer content={entry.notes} /></dd>
                                                 </div>
                                             )}
                                         </div>
@@ -297,6 +309,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+            {/* إضافة التركيز ووحدة القياس هنا في قسم المعلومات بناءً على طلب المستخدم */}
+            <DetailRow label={t('strength')} value={medicine.Strength} />
+            <DetailRow label={t('strengthUnit')} value={medicine.StrengthUnit} />
+            
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />

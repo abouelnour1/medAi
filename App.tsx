@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -40,7 +41,12 @@ const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
       for (const key of keys) {
           if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== '') {
-              return String(obj[key]).trim();
+              const val = String(obj[key]).trim();
+              const lowerVal = val.toLowerCase();
+              if (lowerVal === 'na' || lowerVal === 'n/a' || lowerVal === 'null' || lowerVal === 'none' || lowerVal === 'undefined') {
+                  continue;
+              }
+              return val;
           }
       }
       return '';
@@ -51,9 +57,8 @@ const normalizeMedicine = (item: any): Medicine => {
       return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
 
-  // معالجة خاصة لمفاتيح ملف الفود (TradeName بدون مسافة، إلخ)
   const regNum = findValue(item, ["RegisterNumber", "Id", "id"]) || `rnd-${Math.random().toString(36).substr(2, 9)}`;
-  const drugTypeRaw = findValue(item, ["DrugType", "drugType", "Product type", "ProductType"]).toLowerCase();
+  const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
   
   return {
     RegisterNumber: regNum,
@@ -91,19 +96,22 @@ const normalizeMedicine = (item: any): Medicine => {
     "Secosnd Agent": findValue(item, ["Secosnd Agent", "AddtionalAgentName"]),
     "Third agent": findValue(item, ["Third agent"]),
     "Description Code": findValue(item, ["Description Code", "descriptionCode"]),
-    description: findValue(item, ["Description", "description"]),
+    description: findValue(item, ["Description", "description", "physicalNotes"]),
     "Authorization Status": findValue(item, ["Authorization Status", "AuthorizationStatus"]),
     "Last Update": findValue(item, ["Last Update", "lastUpdate"]),
-    imgBox: item.imgBox || item.boxImage || '',
-    imgIndex1: item.imgIndex1 || item.imgStrip || '', 
-    imgIndex2: item.imgIndex2 || '',
-    imgPill: item.imgPill || item.pillImage || '',
-    pillShape: item.pillShape || '',
-    pillScored: item.pillScored || '',
-    pillMarkings: item.pillMarkings || '',
-    liquidTaste: item.liquidTaste || '',
-    liquidColor: item.liquidColor || '',
-    physicalNotes: item.physicalNotes || ''
+    
+    // توسيع نطاق البحث ليشمل كافة المسميات المحتملة في ملفات الـ JSON بما فيها العربية
+    imgBox: findValue(item, ["imgBox", "boxImage", "img_box", "box_image", "image", "item_image", "imageUrl", "img_url", "photo", "BoxImage", "ImageBox", "الصورة", "صورة المنتج"]),
+    imgIndex1: findValue(item, ["imgIndex1", "imgStrip", "index1", "strip_image", "index_image", "indexImage1", "Index1", "الفهرس 1"]), 
+    imgIndex2: findValue(item, ["imgIndex2", "index2", "index_image2", "indexImage2", "Index2", "الفهرس 2"]),
+    imgPill: findValue(item, ["imgPill", "pillImage", "img_pill", "pill_image", "tablet_image", "capsule_image", "PillImage", "صورة الحبة"]),
+    
+    pillShape: findValue(item, ["pillShape", "pill_shape", "Shape", "شكل الحبة"]),
+    pillScored: findValue(item, ["pillScored", "pill_scored", "scored", "Scored", "محزز"]),
+    pillMarkings: findValue(item, ["pillMarkings", "pill_markings", "markings", "Markings", "علامات"]),
+    liquidTaste: findValue(item, ["liquidTaste", "taste", "Taste", "الطعم"]),
+    liquidColor: findValue(item, ["liquidColor", "color", "Color", "اللون"]),
+    physicalNotes: findValue(item, ["physicalNotes", "PhysicalNotes", "notes", "Notes", "Description", "description", "ملاحظات"])
   };
 };
 
@@ -125,13 +133,13 @@ const normalizeCosmetic = (item: any): Cosmetic => {
       "Key Ingredients": String(item["Key Ingredients"] || ''),
       Highlights: String(item.Highlights || ''),
       "Public price": String(item["Public price"] || ''),
-      imgBox: String(item.imgBox || '')
+      imgBox: String(item.imgBox || item.boxImage || item.image || item.imageUrl || item.img_url || '')
     };
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v25'; // رفع الإصدار لمسح الكاش القديم تماماً
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v10';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v160';
+const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v120';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -258,7 +266,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
         try {
-            // جلب البيانات من الملفات دائماً لضمان الحصول على آخر التعديلات اليدوية
             const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
             const { FOOD_DATA_RAW } = await import('./data/food-data');
             const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
@@ -266,22 +273,25 @@ const App: React.FC = () => {
             const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
             const hardcodedCosmetics = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
 
-            let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY);
-            let finalMedicines = hardcodedMedicines;
+            let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY) || [];
+            let cachedCosmetics = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY) || [];
 
-            if (cachedMedicines) {
-                // دمج البيانات: الحالات المضافة من Firebase تبقى، والحالات الموجودة في الملفات يتم تحديثها
-                const medMap = new Map<string, Medicine>(cachedMedicines.map(m => [m.RegisterNumber, m]));
-                hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
-                finalMedicines = Array.from(medMap.values());
-            }
+            const medMap = new Map<string, Medicine>();
+            cachedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
+            hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m)); 
+            
+            const cosmMap = new Map<string, Cosmetic>();
+            cachedCosmetics.forEach(c => cosmMap.set(c.id, c));
+            hardcodedCosmetics.forEach(c => cosmMap.set(c.id, c));
+
+            const finalMedicines = Array.from(medMap.values());
+            const finalCosmetics = Array.from(cosmMap.values());
 
             setMedicines(finalMedicines);
-            setCosmetics(hardcodedCosmetics);
+            setCosmetics(finalCosmetics);
             
-            // تخزين البيانات المحدثة فوراً
             await setItem(MEDICINES_CACHE_KEY, finalMedicines);
-            await setItem(COSMETICS_CACHE_KEY, hardcodedCosmetics);
+            await setItem(COSMETICS_CACHE_KEY, finalCosmetics);
 
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
@@ -322,7 +332,7 @@ const App: React.FC = () => {
                 });
             }
         } catch (e) { 
-            console.error("Data Load Error", e);
+            console.error("Critical Data Load Error:", e);
             setIsDataLoaded(true); 
         }
     };
@@ -529,7 +539,7 @@ const App: React.FC = () => {
       if (activeTab === 'settings') return (
               <div className="space-y-4 animate-fade-in pb-10">
                   <h2 className="text-xl font-bold px-1">{t('navSettings')}</h2>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 ServiceWorker-100">
                       {user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{t(`${user.role}Role` as any)}</p></div><button onClick={() => setView('chatHistory')} className="p-3 bg-slate-100 text-slate-700 rounded-xl flex items-center gap-2"><span>{t('clearHistory')}</span></button></div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}
                   </div>
                   <div className="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100 border border-slate-100">

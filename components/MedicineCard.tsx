@@ -1,10 +1,58 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
 import FactoryIcon from './icons/FactoryIcon';
 import StarIcon from './icons/StarIcon';
+
+// نمط للبحث عن وجود تركيزات داخل النص (أرقام متبوعة بوحدات قياس)
+const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
+
+/**
+ * دالة لدمج المواد الفعالة مع تركيزاتها في سطر واحد (طبيعي)
+ * تمنع التكرار إذا كان التركيز موجوداً بالفعل في اسم المادة
+ */
+export const zipIngredients = (medicine: Medicine): string => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
+    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return 'N/A';
+
+    return sciNames.map((name, index) => {
+        // إذا كان الاسم يحتوي بالفعل على تركيز (مثل mg أو mcg)، نعرض الاسم فقط
+        if (CONCENTRATION_PATTERN.test(name)) {
+            return name;
+        }
+
+        const s = strengths[index] || strengths[0] || '';
+        const combo = s.trim();
+        
+        // عرض القوة الرقمية فقط بدون الوحدة في نتائج البحث
+        return combo ? `${name} (${combo})` : name;
+    }).join(', ');
+};
+
+/**
+ * دالة لتحويل بيانات المواد الفعالة والتركيزات لمصفوفة كائنات (للعرض المفصل داخلياً)
+ */
+export const getIngredientsList = (medicine: Medicine): { name: string, strength: string, unit: string }[] => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
+    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+    const units = String(medicine.StrengthUnit || '').split(',').map(s => s.trim());
+
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return [];
+
+    return sciNames.map((name, index) => {
+        const hasConcentration = CONCENTRATION_PATTERN.test(name);
+        
+        return {
+            name: name,
+            strength: hasConcentration ? '' : (strengths[index] || strengths[0] || ''),
+            unit: hasConcentration ? '' : (units[index] || units[0] || '')
+        };
+    });
+};
 
 interface MedicineCardProps {
   medicine: Medicine;
@@ -76,6 +124,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const timerRef = useRef<number | undefined>(undefined);
   const startPos = useRef({ x: 0, y: 0 });
   const isLongPressTriggered = useRef(false);
+
+  const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
 
   const startPress = (e: React.MouseEvent | React.TouchEvent) => {
       setIsPressing(true);
@@ -160,11 +210,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <FactoryIcon />
                 <span className="truncate max-w-[150px]" {...rtlTruncateFixProps}>{medicine['Manufacture Name']}</span>
               </div>
-              <h2 className="text-sm font-bold text-light-text dark:text-dark-text break-words leading-tight mb-0.5" {...rtlTruncateFixProps}>
+              <h2 className="text-sm font-bold text-light-text dark:text-dark-text break-words leading-tight mb-1" {...rtlTruncateFixProps}>
                   {medicine['Trade Name']}
               </h2>
-              <p className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary truncate leading-tight" {...rtlTruncateFixProps}>
-                  {medicine['Scientific Name']}
+              
+              <p className="text-[11px] text-primary dark:text-primary-light font-bold leading-tight line-clamp-2" {...rtlTruncateFixProps}>
+                  {ingredientsString}
               </p>
           </div>
 
@@ -176,7 +227,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             )}
             <div className="flex flex-wrap justify-end gap-1 max-w-[80px]">
                 {(isControlled || isRestricted) ? (
-                    <span className={`inline-block font-bold rounded-md px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-500'}`}>
+                    <span className={`inline-block font-bold rounded-md px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-50'}`}>
                         {isControlled ? 'CTRL' : 'REST'}
                     </span>
                 ) : (
@@ -189,11 +240,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
         <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"> 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-grow">
-                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">
-                    {medicine.Strength} {medicine.StrengthUnit}
-                </span>
-                <span className="text-slate-300 dark:text-slate-600">|</span>
-                <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate">
+                <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate font-bold">
                     <PillIcon />
                     <span className="truncate" {...rtlTruncateFixProps}>{medicine.PharmaceuticalForm}</span>
                 </div>
