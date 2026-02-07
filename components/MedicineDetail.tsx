@@ -193,14 +193,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </div>
           </div>
           
-          <div className="mt-4 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+          {/* تم إزالة البوكس وتغيير تنسيق المواد الفعالة والتركيز */}
+          <div className="mt-4 px-1">
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {ingredients.map((ing, i) => (
                       <div key={i} className="flex justify-between items-center py-2.5 group">
-                          <span className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-primary transition-colors">{ing.name}</span>
-                          {/* عرض التركيز الرقمي فقط بناءً على طلب المستخدم */}
+                          {/* اسم المادة: أسود، بدون بولد */}
+                          <span className="text-sm font-normal text-black dark:text-white uppercase tracking-tight group-hover:text-primary transition-colors">{ing.name}</span>
+                          {/* التركيز: بدون بوكس، مع الحفاظ على اللون */}
                           {ing.strength && (
-                            <span className="text-sm font-black text-primary dark:text-primary-light ml-4 bg-primary/5 px-2 py-0.5 rounded-lg">{ing.strength}</span>
+                            <span className="text-sm font-black text-primary dark:text-primary-light ml-4">{ing.strength}</span>
                           )}
                       </div>
                   ))}
@@ -225,22 +227,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
             {isPhysicalExpanded && (
                 <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {medicineImages.length > 0 ? (
+                    {medicineImages.length > 0 && (
                         <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
                             {medicineImages.map((img, idx) => (
                                 <PhysicalImage key={idx} src={img.url!} label={img.label} onClick={() => handleThumbnailClick(idx)} />
                             ))}
-                        </div>
-                    ) : (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-100 dark:border-slate-800 text-center space-y-3">
-                            <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-300"><CameraIcon /></div>
-                            <p className="text-sm font-bold text-slate-400">لا توجد صور متوفرة في النظام</p>
-                            <button 
-                                onClick={handleImageSearch}
-                                className="px-6 py-2 bg-blue-600 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all"
-                            >
-                                البحث عن صورة في جوجل
-                            </button>
                         </div>
                     )}
                     <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">

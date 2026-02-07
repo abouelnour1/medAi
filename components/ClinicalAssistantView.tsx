@@ -109,17 +109,15 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     setIsLoading(true);
 
     try {
-        // استخدام محاولة آمنة لتحويل الإرشادات لنص لمنع أخطاء الدوران
-        let guidelinesInfo = "";
-        try {
-            guidelinesInfo = `Clinical Knowledge Base: ${JSON.stringify(clinicalGuidelines)}`;
-        } catch (e) {
-            guidelinesInfo = "Guidelines context is too complex to serialize but use your internal medical knowledge.";
-        }
+        // Safe summary of guidelines to avoid circular reference stringification issues
+        const conditionList = Object.keys(clinicalGuidelines || {}).join(', ');
+        const guidelinesContext = conditionList 
+            ? `Available Saudi clinical guidelines: ${conditionList}.` 
+            : "Rely on standard clinical practices and Saudi insurance policies.";
         
         const systemInstruction = language === 'ar'
-        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية. وظيفتك الأساسية هي تقديم توصيات سريرية وكتابة الوصفات الطبية. السياق: ${guidelinesInfo.substring(0, 2000)}`
-        : `You are a world-class expert physician based in Saudi Arabia. Your function is to provide clinical recommendations and write prescriptions. Context: ${guidelinesInfo.substring(0, 2000)}`;
+        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية. وظيفتك الأساسية هي تقديم توصيات سريرية وكتابة الوصفات الطبية. ${guidelinesContext}`
+        : `You are a world-class expert physician based in Saudi Arabia. Your function is to provide clinical recommendations and write prescriptions. ${guidelinesContext}`;
 
         const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
         const toolImplementations = { searchDatabase };

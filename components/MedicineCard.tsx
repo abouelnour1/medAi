@@ -214,7 +214,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                   {medicine['Trade Name']}
               </h2>
               
-              <p className="text-[11px] text-primary dark:text-primary-light font-bold leading-tight line-clamp-2" {...rtlTruncateFixProps}>
+              {/* المواد الفعالة باللون الأسود وبخط عادي */}
+              <p className="text-[11px] text-black dark:text-white font-normal leading-tight line-clamp-2" {...rtlTruncateFixProps}>
                   {ingredientsString}
               </p>
           </div>

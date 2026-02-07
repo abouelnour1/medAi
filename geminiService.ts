@@ -9,90 +9,98 @@ export const isAIAvailable = (): boolean => {
 };
 
 /**
- * وظيفة للتحقق مما إذا كان الكائن "بسيطاً" (Object Literal)
- */
-const isPlainObject = (obj: any): boolean => {
-    return Object.prototype.toString.call(obj) === '[object Object]';
-};
-
-/**
- * وظيفة لتنظيف الكائنات ومنع الحلقات الدائرية (Circular References)
- * تضمن تحويل البيانات إلى صيغة قابلة للتحويل لـ JSON بشكل آمن
+ * Robustly deep cleans an object to ensure it is a plain, serializable object 
+ * without circular references or complex class instances (like Firestore internals).
  */
 const deepClean = (obj: any, seen = new WeakSet()): any => {
-    if (obj === null || typeof obj !== 'object') return obj;
+    // Handle primitives
+    if (obj === null || typeof obj !== 'object') {
+        if (typeof obj === 'function' || typeof obj === 'symbol') return undefined;
+        return obj;
+    }
     
-    // منع الحلقات الدائرية
+    // Prevent Circular References
     if (seen.has(obj)) {
         return '[Circular]';
     }
+    seen.add(obj);
 
-    // التعامل مع المصفوفات بشكل صحيح
+    // Handle Arrays
     if (Array.isArray(obj)) {
-        seen.add(obj);
-        return obj.map(item => deepClean(item, seen));
+        return obj.map(item => deepClean(item, seen)).filter(i => i !== undefined);
     }
 
-    // التحقق من نوع الكائن (فقط الكائنات البسيطة يتم فحصها بعمق)
-    if (!isPlainObject(obj)) {
-        // إذا كان كائناً معقداً (مثل DocumentReference من Firebase)
-        // نحوله لنص أو نرجعه ككائن مجهول بدلاً من محاولة الدخول فيه
-        if (typeof obj.toString === 'function') {
+    // Handle Objects
+    const cleaned: any = {};
+    
+    // Check if it's a special object that should be converted to string
+    // e.g. Date, RegExp, or Firebase references
+    const toStringValue = Object.prototype.toString.call(obj);
+    if (toStringValue !== '[object Object]') {
+        if (typeof obj.toString === 'function' && obj.toString !== Object.prototype.toString) {
             try {
                 const s = obj.toString();
                 if (s !== '[object Object]') return s;
-            } catch (e) {}
+            } catch (e) {
+                return `[Complex ${toStringValue}]`;
+            }
         }
-        return `[Complex Object]`;
     }
 
-    seen.add(obj);
-
-    const cleaned: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
             
-            // تجاهل الوظائف والرموز
+            // Skip functions and symbols
             if (typeof val === 'function' || typeof val === 'symbol') continue;
             
-            cleaned[key] = deepClean(val, seen);
+            const cleanedVal = deepClean(val, seen);
+            if (cleanedVal !== undefined) {
+                cleaned[key] = cleanedVal;
+            }
         }
     }
+    
     return cleaned;
 };
 
-// وظيفة لتنظيف أجزاء الرسالة (Parts) قبل إرسالها للـ SDK
+// Defensive function to ensure message parts are safe for the GenAI SDK
 export const sanitizeParts = (parts: any[]): any[] => {
     if (!parts || !Array.isArray(parts)) return [];
     
     return parts.map(part => {
         const sanitized: any = {};
         
-        // ننسخ فقط الحقول المدعومة رسمياً من قبل Gemini SDK في طلبات الإرسال
+        // Use a WeakSet for deepClean to handle recursion locally within each part if needed
+        const seen = new WeakSet();
+
+        // 1. Text Parts
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
         
+        // 2. Inline Data (Image) Parts
         if (part.inlineData) {
             sanitized.inlineData = {
-                mimeType: String(part.inlineData.mimeType),
-                data: String(part.inlineData.data)
+                mimeType: String(part.inlineData.mimeType || ''),
+                data: String(part.inlineData.data || '')
             };
         }
         
+        // 3. Function Call Parts (Model turn)
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
-                args: deepClean(part.functionCall.args || {}),
+                args: deepClean(part.functionCall.args || {}, seen),
                 id: part.functionCall.id ? String(part.functionCall.id) : undefined
             };
         }
 
+        // 4. Function Response Parts (User turn)
         if (part.functionResponse) {
             sanitized.functionResponse = {
                 name: String(part.functionResponse.name),
-                response: deepClean(part.functionResponse.response || {}),
+                response: deepClean(part.functionResponse.response || {}, seen),
                 id: part.functionResponse.id ? String(part.functionResponse.id) : undefined
             };
         }
@@ -110,6 +118,7 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    // Ensure history is clean before building contents
     const contents: any[] = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
