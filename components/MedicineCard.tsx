@@ -10,8 +10,8 @@ import StarIcon from './icons/StarIcon';
 const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
 
 /**
- * دالة لدمج المواد الفعالة مع تركيزاتها في سطر واحد (طبيعي)
- * تمنع التكرار إذا كان التركيز موجوداً بالفعل في اسم المادة
+ * دالة لدمج المواد الفعالة مع تركيزاتها في سطر واحد (طبيعي) لنتائج البحث
+ * تمنع التكرار البصري في القائمة الخارجية فقط
  */
 export const zipIngredients = (medicine: Medicine): string => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -20,21 +20,18 @@ export const zipIngredients = (medicine: Medicine): string => {
     if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return 'N/A';
 
     return sciNames.map((name, index) => {
-        // إذا كان الاسم يحتوي بالفعل على تركيز (مثل mg أو mcg)، نعرض الاسم فقط
         if (CONCENTRATION_PATTERN.test(name)) {
             return name;
         }
-
         const s = strengths[index] || strengths[0] || '';
         const combo = s.trim();
-        
-        // عرض القوة الرقمية فقط بدون الوحدة في نتائج البحث
         return combo ? `${name} (${combo})` : name;
     }).join(', ');
 };
 
 /**
  * دالة لتحويل بيانات المواد الفعالة والتركيزات لمصفوفة كائنات (للعرض المفصل داخلياً)
+ * تم التعديل لترجع القوة والوحدة دائماً كما طلب المستخدم
  */
 export const getIngredientsList = (medicine: Medicine): { name: string, strength: string, unit: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -44,12 +41,11 @@ export const getIngredientsList = (medicine: Medicine): { name: string, strength
     if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return [];
 
     return sciNames.map((name, index) => {
-        const hasConcentration = CONCENTRATION_PATTERN.test(name);
-        
+        // نرسل البيانات كاملة دون استثناءات لضمان عرضها في صفحة التفاصيل
         return {
             name: name,
-            strength: hasConcentration ? '' : (strengths[index] || strengths[0] || ''),
-            unit: hasConcentration ? '' : (units[index] || units[0] || '')
+            strength: (strengths[index] || strengths[0] || ''),
+            unit: (units[index] || units[0] || '')
         };
     });
 };
@@ -67,18 +63,14 @@ interface MedicineCardProps {
 
 const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFunction }> = ({ status, size = 'sm', t }) => {
   if (!status) return null;
-
   const statusText = status === 'OTC' ? 'OTC' : status === 'Prescription' ? 'Rx' : status; 
-  
   let colorClasses = 'bg-slate-100 text-light-text-secondary dark:bg-slate-700 dark:text-dark-text-secondary'; 
   if (status === 'OTC') {
     colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800';
   } else if (status === 'Prescription') {
     colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800';
   }
-  
   const sizeClasses = 'px-1.5 py-0.5 text-[10px]';
-
   return (
     <span className={`inline-block font-bold rounded-md ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
       {statusText}
@@ -88,13 +80,10 @@ const LegalStatusBadge: React.FC<{ status: string; size?: 'sm' | 'base', t: TFun
 
 const DrugTypeBadge: React.FC<{ type: string; subType?: string; size?: 'sm' | 'base', t: TFunction }> = ({ type, subType, size = 'sm', t }) => {
     if (!type) return null;
-    
     let displayType = '';
     let colorClasses = '';
-
     const isBrand = type === 'NCE' || (type === 'Biological' && subType === 'Biological');
     const isGeneric = type === 'Generic' || (type === 'Biological' && subType === 'Biosimilar');
-
     if (isBrand) {
         displayType = 'Brand';
         colorClasses = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
@@ -104,9 +93,7 @@ const DrugTypeBadge: React.FC<{ type: string; subType?: string; size?: 'sm' | 'b
     } else {
         return null;
     }
-
     const sizeClasses = 'px-1.5 py-0.5 text-[10px]';
-
     return (
         <span className={`inline-block font-bold rounded-md ${sizeClasses} ${colorClasses} whitespace-nowrap`}>
             {displayType}
@@ -116,27 +103,22 @@ const DrugTypeBadge: React.FC<{ type: string; subType?: string; size?: 'sm' | 'b
 
 const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, isFavorite, onToggleFavorite, t, language }) => {
   if (!medicine) return null; 
-
   const price = parseFloat(medicine['Public price']);
   const rtlTruncateFixProps = language === 'ar' ? { dir: 'ltr' as const, style: { textAlign: 'right' as const } } : {};
-
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<number | undefined>(undefined);
   const startPos = useRef({ x: 0, y: 0 });
   const isLongPressTriggered = useRef(false);
-
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
 
   const startPress = (e: React.MouseEvent | React.TouchEvent) => {
       setIsPressing(true);
       isLongPressTriggered.current = false;
-      
       if ('touches' in e) {
           startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       } else {
           startPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
       }
-
       timerRef.current = window.setTimeout(() => {
           isLongPressTriggered.current = true;
           if (navigator.vibrate) navigator.vibrate(50);
@@ -147,7 +129,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
   const handleMove = (e: React.TouchEvent | React.MouseEvent) => {
       if (!timerRef.current) return;
-      
       let clientX, clientY;
       if ('touches' in e) {
           clientX = e.touches[0].clientX;
@@ -156,10 +137,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
           clientX = (e as React.MouseEvent).clientX;
           clientY = (e as React.MouseEvent).clientY;
       }
-
       const moveX = Math.abs(clientX - startPos.current.x);
       const moveY = Math.abs(clientY - startPos.current.y);
-
       if (moveX > 10 || moveY > 10) {
           clearTimeout(timerRef.current);
           timerRef.current = undefined;
@@ -213,13 +192,10 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
               <h2 className="text-sm font-bold text-light-text dark:text-dark-text break-words leading-tight mb-1" {...rtlTruncateFixProps}>
                   {medicine['Trade Name']}
               </h2>
-              
-              {/* المواد الفعالة باللون الأسود وبخط عادي */}
               <p className="text-[11px] text-black dark:text-white font-normal leading-tight line-clamp-2" {...rtlTruncateFixProps}>
                   {ingredientsString}
               </p>
           </div>
-
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {!isNaN(price) && (
               <div className="text-orange-600 dark:text-orange-400 text-sm font-black whitespace-nowrap">
@@ -238,7 +214,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             </div>
           </div>
         </div>
-
         <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"> 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-grow">
                 <div className="flex items-center gap-1 text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate font-bold">
@@ -255,7 +230,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                   </>
                 )}
             </div>
-
             <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                     onClick={(e) => {

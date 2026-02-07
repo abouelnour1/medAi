@@ -29,9 +29,7 @@ const PhysicalImage = memo(({ src, label, onClick }: {
 }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
-
     const hasValue = src && String(src).trim().length > 0;
-
     return (
         <div className="flex flex-col items-center gap-2 flex-shrink-0 snap-center">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
@@ -108,36 +106,25 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   const clinicalMatches = useMemo(() => {
     if (!insuranceData || !medicine['Scientific Name'] || medicine['Product type'] !== 'Human') return [];
     const medicineSciName = medicine['Scientific Name'].toLowerCase().trim();
-    
     const matches = insuranceData.filter(d => {
         if (!d.scientificName) return false;
         const entrySciName = d.scientificName.toLowerCase().trim();
         return medicineSciName.includes(entrySciName) || entrySciName.includes(medicineSciName);
     });
-
     const groupedByIndication = new Map<string, InsuranceDrug[]>();
     matches.forEach(m => {
         const key = m.indication || (language === 'ar' ? 'استخدامات عامة' : 'General Usage');
-        
         const cleanEntry = { ...m };
         if (cleanEntry.mddAdults?.toLowerCase().trim() === 'na') cleanEntry.mddAdults = '';
         if (cleanEntry.mddPediatrics?.toLowerCase().trim() === 'na') cleanEntry.mddPediatrics = '';
         if (cleanEntry.notes?.toLowerCase().trim() === 'na') cleanEntry.notes = '';
-
         if (!groupedByIndication.has(key)) groupedByIndication.set(key, []);
-        
         const existing = groupedByIndication.get(key)!;
-        const isDuplicate = existing.some(e => 
-            e.mddAdults === cleanEntry.mddAdults && 
-            e.mddPediatrics === cleanEntry.mddPediatrics && 
-            e.notes === cleanEntry.notes
-        );
-        
+        const isDuplicate = existing.some(e => e.mddAdults === cleanEntry.mddAdults && e.mddPediatrics === cleanEntry.mddPediatrics && e.notes === cleanEntry.notes);
         if (!isDuplicate) {
             groupedByIndication.get(key)!.push(cleanEntry);
         }
     });
-
     return Array.from(groupedByIndication.entries());
   }, [insuranceData, medicine, language]);
 
@@ -167,6 +154,13 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     return true;
   }, [medicine.RegisterNumber]);
 
+  const hasPhysicalData = useMemo(() => {
+    const fields = [medicine.pillShape, medicine.pillScored, medicine.pillMarkings, medicine.liquidTaste, medicine.liquidColor, medicine.physicalNotes];
+    return fields.some(f => f && f.trim() !== '' && f.toLowerCase() !== 'na' && f.toLowerCase() !== 'n/a');
+  }, [medicine]);
+
+  const showPhysicalSection = medicineImages.length > 0 || hasPhysicalData;
+
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
@@ -181,11 +175,9 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => onFindAlternative(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('directAlternatives')}><div className="h-5 w-5"><AlternativeIcon /></div></button>
                   <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500" title={t('searchImage')}><div className="h-5 w-5"><CameraIcon /></div></button>
-                  
                   {isAdmin && isFood && onDelete && (
                       <button onClick={() => onDelete(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-red-600 transition-colors" title={t('delete')}><div className="h-5 w-5"><TrashIcon /></div></button>
                   )}
-
                   {canEdit && onEdit && (
                       <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
                   )}
@@ -193,63 +185,71 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </div>
           </div>
           
-          {/* تم إزالة البوكس وتغيير تنسيق المواد الفعالة والتركيز */}
-          <div className="mt-4 px-1">
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {ingredients.map((ing, i) => (
-                      <div key={i} className="flex justify-between items-center py-2.5 group">
-                          {/* اسم المادة: أسود، بدون بولد */}
-                          <span className="text-sm font-normal text-black dark:text-white uppercase tracking-tight group-hover:text-primary transition-colors">{ing.name}</span>
-                          {/* التركيز: بدون بوكس، مع الحفاظ على اللون */}
-                          {ing.strength && (
-                            <span className="text-sm font-black text-primary dark:text-primary-light ml-4">{ing.strength}</span>
-                          )}
-                      </div>
-                  ))}
-                  {ingredients.length === 0 && <span className="text-sm text-slate-400 italic">N/A</span>}
+          <div className="mt-4">
+              <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-inner">
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {ingredients.map((ing, i) => (
+                          <div key={i} className={`flex justify-between items-center py-2 px-3 group ${i % 2 === 0 ? 'bg-white/50 dark:bg-slate-900/20' : 'bg-transparent'}`}>
+                              <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-primary transition-colors leading-tight flex-grow pr-4">
+                                {ing.name}
+                              </span>
+                              {/* التركيز: الرقم فقط بدون الوحدة كما طلب المستخدم في الأعلى لتنظيم الشكل */}
+                              {ing.strength && ing.strength.toLowerCase() !== 'na' && (
+                                <span className="text-[11px] font-black text-primary dark:text-primary-light whitespace-nowrap min-w-[50px] text-right">
+                                    {ing.strength}
+                                </span>
+                              )}
+                          </div>
+                      ))}
+                      {ingredients.length === 0 && <span className="p-4 text-[11px] text-slate-400 italic block text-center uppercase tracking-widest">No active ingredients found</span>}
+                  </div>
               </div>
           </div>
 
-          {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black">{`${price.toFixed(2)} ${t('sar')}`}</div>}
+          {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black px-1">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
-        <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
-            <button 
-                onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
-                className="w-full flex justify-between items-center py-4 text-primary font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
-            >
-                <div className="flex items-center gap-3">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" /></svg>
-                    <span>{t('physicalDetails')}</span>
-                </div>
-                <svg className={`h-5 w-5 transform transition-transform ${isPhysicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-            </button>
+        {showPhysicalSection && (
+          <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-2">
+              <button 
+                  onClick={() => setIsPhysicalExpanded(!isPhysicalExpanded)}
+                  className="w-full flex justify-between items-center py-4 text-primary font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
+              >
+                  <div className="flex items-center gap-3">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" /></svg>
+                      <span>{t('physicalDetails')}</span>
+                  </div>
+                  <svg className={`h-5 w-5 transform transition-transform ${isPhysicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
 
-            {isPhysicalExpanded && (
-                <div className="pb-6 px-1 animate-fade-in space-y-6">
-                    {medicineImages.length > 0 && (
-                        <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
-                            {medicineImages.map((img, idx) => (
-                                <PhysicalImage key={idx} src={img.url!} label={img.label} onClick={() => handleThumbnailClick(idx)} />
-                            ))}
-                        </div>
-                    )}
-                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">
-                        <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-                            <DetailRow label={t('pillShape')} value={medicine.pillShape} />
-                            <DetailRow label={t('scored')} value={medicine.pillScored} />
-                            <DetailRow label={t('markings')} value={medicine.pillMarkings} />
-                            <DetailRow label={t('taste')} value={medicine.liquidTaste} />
-                            <DetailRow label={t('liquidColor')} value={medicine.liquidColor} />
-                            <DetailRow label={t('notes')} value={medicine.physicalNotes} valueClassName="italic text-slate-500 font-medium" />
-                        </dl>
-                    </div>
-                </div>
-            )}
-        </div>
+              {isPhysicalExpanded && (
+                  <div className="pb-6 px-1 animate-fade-in space-y-6">
+                      {medicineImages.length > 0 && (
+                          <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 snap-x">
+                              {medicineImages.map((img, idx) => (
+                                  <PhysicalImage key={idx} src={img.url!} label={img.label} onClick={() => handleThumbnailClick(idx)} />
+                              ))}
+                          </div>
+                      )}
+                      {hasPhysicalData && (
+                          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-inner">
+                              <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+                                  <DetailRow label={t('pillShape')} value={medicine.pillShape} />
+                                  <DetailRow label={t('scored')} value={medicine.pillScored} />
+                                  <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                                  <DetailRow label={t('taste')} value={medicine.liquidTaste} />
+                                  <DetailRow label={t('liquidColor')} value={medicine.liquidColor} />
+                                  <DetailRow label={t('notes')} value={medicine.physicalNotes} valueClassName="italic text-slate-500 font-medium" />
+                              </dl>
+                          </div>
+                      )}
+                  </div>
+              )}
+          </div>
+        )}
 
         {medicine['Product type'] === 'Human' && clinicalMatches.length > 0 && (
-            <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-2">
                 <button 
                     onClick={() => setIsClinicalExpanded(!isClinicalExpanded)}
                     className="w-full flex justify-between items-center py-4 text-secondary dark:text-green-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 rounded-xl transition-colors"
@@ -263,7 +263,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                         <svg className={`h-5 w-5 transform transition-transform ${isClinicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </div>
                 </button>
-
                 {isClinicalExpanded && (
                     <div className="pb-6 px-1 animate-fade-in space-y-6">
                         {clinicalMatches.map(([indication, entries]) => (
@@ -298,12 +297,9 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             </div>
         )}
 
-        <div className="mt-6 border-t border-slate-100 dark:border-slate-800">
+        <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-            {/* إضافة التركيز ووحدة القياس هنا في قسم المعلومات بناءً على طلب المستخدم */}
-            <DetailRow label={t('strength')} value={medicine.Strength} />
             <DetailRow label={t('strengthUnit')} value={medicine.StrengthUnit} />
-            
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
             <DetailRow label={t('descriptiveCode') || 'الكود الوصفي'} value={medicine['Description Code']} valueClassName="font-mono" />

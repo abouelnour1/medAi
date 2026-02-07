@@ -3,9 +3,7 @@ import React from 'react';
 import { Tab, TFunction, User, View } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
-import CosmeticsIcon from './icons/CosmeticsIcon';
 import SettingsIcon from './icons/SettingsIcon';
-import BabyBottleIcon from './icons/BabyBottleIcon';
 
 interface BottomNavBarProps {
   activeTab: Tab;
@@ -44,8 +42,6 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
   const navItems = [
     { id: 'search', labelKey: t('navSearch'), icon: <SearchIcon /> },
     { id: 'insurance', labelKey: t('navInsurance'), icon: <HealthInsuranceIcon /> },
-    { id: 'cosmetics', labelKey: t('navCosmetics'), icon: <CosmeticsIcon /> },
-    { id: 'milk', labelKey: t('navMilk'), icon: <BabyBottleIcon /> },
     { id: 'settings', labelKey: t('navSettings'), icon: <SettingsIcon /> },
   ];
 

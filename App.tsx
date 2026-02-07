@@ -19,13 +19,9 @@ import AssistantModal from './components/AssistantModal';
 import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
-import CosmeticsView from './components/CosmeticsView';
-import CosmeticDetail from './components/CosmeticDetail';
 import FavoritesView from './components/FavoritesView';
-import MilkView from './components/MilkView';
 import NotificationsView from './components/NotificationsView';
 import EditMedicineModal from './components/EditMedicineModal';
-import EditCosmeticModal from './components/EditCosmeticModal';
 import ImageViewer from './components/ImageViewer';
 import { LoginView } from './components/auth/LoginView';
 import { RegisterView } from './components/auth/RegisterView';
@@ -100,7 +96,6 @@ const normalizeMedicine = (item: any): Medicine => {
     "Authorization Status": findValue(item, ["Authorization Status", "AuthorizationStatus"]),
     "Last Update": findValue(item, ["Last Update", "lastUpdate"]),
     
-    // توسيع نطاق البحث ليشمل كافة المسميات المحتملة في ملفات الـ JSON بما فيها العربية
     imgBox: findValue(item, ["imgBox", "boxImage", "img_box", "box_image", "image", "item_image", "imageUrl", "img_url", "photo", "BoxImage", "ImageBox", "الصورة", "صورة المنتج"]),
     imgIndex1: findValue(item, ["imgIndex1", "imgStrip", "index1", "strip_image", "index_image", "indexImage1", "Index1", "الفهرس 1"]), 
     imgIndex2: findValue(item, ["imgIndex2", "index2", "index_image2", "indexImage2", "Index2", "الفهرس 2"]),
@@ -115,31 +110,8 @@ const normalizeMedicine = (item: any): Medicine => {
   };
 };
 
-const normalizeCosmetic = (item: any): Cosmetic => {
-    const generatedId = `cosm-v1-${String(item.BrandName || 'brand').toLowerCase().replace(/\s+/g, '-')}-${String(item.SpecificName || 'name').toLowerCase().replace(/\s+/g, '-')}`;
-    return {
-      id: String(item.id || item.Id || generatedId),
-      BrandName: String(item.BrandName || ''),
-      SpecificName: String(item.SpecificName || ''),
-      SpecificNameAr: String(item.SpecificNameAr || ''),
-      FirstSubCategoryAr: String(item.FirstSubCategoryAr || ''),
-      FirstSubCategoryEn: String(item.FirstSubCategoryEn || ''),
-      SecondSubCategoryAr: String(item.SecondSubCategoryAr || ''),
-      SecondSubCategoryEn: String(item.SecondSubCategoryEn || ''),
-      manufacturerNameEn: String(item.manufacturerNameEn || ''),
-      manufacturerCountryAr: String(item.manufacturerCountryAr || ''),
-      manufacturerCountryEn: String(item.manufacturerCountryEn || ''),
-      "Active ingredient": String(item["Active ingredient"] || ''),
-      "Key Ingredients": String(item["Key Ingredients"] || ''),
-      Highlights: String(item.Highlights || ''),
-      "Public price": String(item["Public price"] || ''),
-      imgBox: String(item.imgBox || item.boxImage || item.image || item.imageUrl || item.img_url || '')
-    };
-};
-
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v160';
-const COSMETICS_CACHE_KEY = 'saudi_drug_directory_cosmetics_cache_v120';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -175,9 +147,6 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('search');
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
-  const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
-  const [milkProducts, setMilkProducts] = useState<MilkProduct[]>([]);
-  const [clinicalGuidelines, setClinicalGuidelines] = useState<any>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
@@ -204,7 +173,6 @@ const App: React.FC = () => {
   }, [filters]);
 
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
-  const [selectedCosmetic, setSelectedCosmetic] = useState<Cosmetic | null>(null);
   const [selectedInsuranceData, setSelectedInsuranceData] = useState<SelectedInsuranceData | null>(null);
   const [alternatives, setAlternatives] = useState<{ direct: Medicine[], therapeutic: Medicine[] }>({ direct: [], therapeutic: [] });
 
@@ -222,13 +190,9 @@ const App: React.FC = () => {
   
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
-  const [cosmeticsSearchTerm, setCosmeticsSearchTerm] = useState('');
   
-  const [selectedBrand, setSelectedBrand] = useState('');
   const [isEditMedicineModalOpen, setIsEditMedicineModalOpen] = useState(false);
-  const [isEditCosmeticModalOpen, setIsEditCosmeticModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
-  const [editingCosmetic, setEditingCosmetic] = useState<Cosmetic | null>(null);
   
   const [zoomImages, setZoomImages] = useState<string[]>([]);
   const [zoomImageInitialIndex, setZoomImageInitialIndex] = useState(0);
@@ -255,7 +219,7 @@ const App: React.FC = () => {
     const container = document.getElementById('main-scroll-container');
     if (container) {
         const savedPos = scrollPositionsByView.current[view] || 0;
-        if (['search', 'results', 'cosmeticsSearch', 'insuranceSearch', 'milkSearch'].includes(view)) {
+        if (['search', 'results', 'insuranceSearch'].includes(view)) {
             container.scrollTop = savedPos;
         } else {
             container.scrollTop = 0;
@@ -268,40 +232,23 @@ const App: React.FC = () => {
         try {
             const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
             const { FOOD_DATA_RAW } = await import('./data/food-data');
-            const { INITIAL_COSMETICS_DATA } = await import('./data/cosmetics-data');
 
             const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
-            const hardcodedCosmetics = (INITIAL_COSMETICS_DATA as any[]).map(normalizeCosmetic);
 
             let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY) || [];
-            let cachedCosmetics = await getItem<Cosmetic[]>(COSMETICS_CACHE_KEY) || [];
 
             const medMap = new Map<string, Medicine>();
             cachedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
             hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m)); 
             
-            const cosmMap = new Map<string, Cosmetic>();
-            cachedCosmetics.forEach(c => cosmMap.set(c.id, c));
-            hardcodedCosmetics.forEach(c => cosmMap.set(c.id, c));
-
             const finalMedicines = Array.from(medMap.values());
-            const finalCosmetics = Array.from(cosmMap.values());
-
             setMedicines(finalMedicines);
-            setCosmetics(finalCosmetics);
-            
             await setItem(MEDICINES_CACHE_KEY, finalMedicines);
-            await setItem(COSMETICS_CACHE_KEY, finalCosmetics);
 
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
-            const { INITIAL_GUIDELINES_DATA } = await import('./data/guidelines-data');
-            const { INITIAL_MILK_DATA } = await import('./data/milk-data');
-            const { CUSTOM_MILK_DATA } = await import('./data/custom-milk-data');
             
-            setMilkProducts([...(INITIAL_MILK_DATA as any[] || []), ...(CUSTOM_MILK_DATA as any[] || [])]);
             setInsuranceData([...(INITIAL_INSURANCE_DATA as any[]), ...(CUSTOM_INSURANCE_DATA as any[])]);
-            setClinicalGuidelines(INITIAL_GUIDELINES_DATA);
 
             let historyData = await getItem<Conversation[]>(CHAT_HISTORY_KEY);
             if (historyData) setAllConversations(historyData);
@@ -453,39 +400,12 @@ const App: React.FC = () => {
       scrollToTop();
   }, [medicines, scrollToTop]);
 
-  const handleTransferToFood = useCallback(async (cosmetic: Cosmetic) => {
-      if (!user) return alert(t('loginRequired'));
-      if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من تحويل هذا المنتج إلى قسم الغذاء؟' : 'Transfer this product to food category?')) return;
-      
-      const newFoodItem = normalizeMedicine({
-          "Trade Name": cosmetic.SpecificName,
-          "Scientific Name": cosmetic.BrandName,
-          "Public price": cosmetic["Public price"],
-          "Product type": "Food",
-          "Manufacture Name": cosmetic.manufacturerNameEn,
-          "Description": cosmetic["Active ingredient"] + "\n" + cosmetic["Key Ingredients"] + "\n" + cosmetic.Highlights,
-          "imgBox": cosmetic.imgBox
-      });
-
-      try {
-          await setDoc(doc(db, 'medicines', newFoodItem.RegisterNumber), newFoodItem);
-          alert(language === 'ar' ? 'تم النقل بنجاح إلى قسم الغذاء' : 'Successfully transferred to Food category');
-          setMedicines(prev => [newFoodItem, ...prev]);
-          setActiveTab('search');
-          setView('details');
-          setSelectedMedicine(newFoodItem);
-      } catch (e: any) {
-          alert("Error: " + e.message);
-      }
-  }, [user, language, t]);
-
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
       else if (view === 'details' || view === 'alternatives') setView('results'); 
-      else if (view === 'cosmeticDetails') setView('cosmeticsSearch');
       else if (view === 'insuranceDetails') setView('insuranceSearch');
       else if (view === 'chatHistory') setView('search');
-      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : activeTab === 'insurance' ? 'insuranceSearch' : activeTab === 'cosmetics' ? 'cosmeticsSearch' : 'milkSearch');
+      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : 'insuranceSearch');
       else if (view === 'results') { setView('search'); setSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab]);
@@ -527,11 +447,6 @@ const App: React.FC = () => {
               </div>
           );
       }
-      if (activeTab === 'cosmetics') {
-          if (view === 'cosmeticDetails' && selectedCosmetic) return <CosmeticDetail cosmetic={selectedCosmetic} t={t} language={language} user={user} onEdit={(c) => { setEditingCosmetic({...c}); setIsEditCosmeticModalOpen(true); }} onTransferToFood={handleTransferToFood} />;
-          return <CosmeticsView t={t} language={language} cosmetics={cosmetics} onSelectCosmetic={(c)=>{ captureScrollPosition(); setSelectedCosmetic(c); setView('cosmeticDetails');}} searchTerm={cosmeticsSearchTerm} setSearchTerm={setCosmeticsSearchTerm} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} onSearchIconClick={scrollToTop} />;
-      }
-      if (activeTab === 'milk') return <MilkView milkProducts={milkProducts} t={t} language={language} scrollToTop={scrollToTop} />;
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
           return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={handleInsuranceSelect} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
@@ -553,13 +468,13 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch' && view !== 'cosmeticsSearch' && view !== 'milkSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 space-y-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] w-full max-w-7xl">
           {renderContent()}
       </main>
-      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':tab==='cosmetics'?'cosmeticsSearch':tab==='milk'?'milkSearch':'settings'); }} t={t} user={user} view={view} />
+      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':'settings'); }} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
-      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} contextCosmetic={view === 'cosmeticDetails' ? selectedCosmetic : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
+      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
       <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} allMedicines={medicines} t={t} />
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { 
           if (user?.role === 'admin' && editingMedicine) { 
@@ -572,17 +487,6 @@ const App: React.FC = () => {
                  return [updatedMed, ...filtered];
               });
               setSelectedMedicine(updatedMed);
-              alert(t('saveSuccess')); 
-          } 
-      }} t={t} />
-      <EditCosmeticModal isOpen={isEditCosmeticModalOpen} onClose={() => setIsEditCosmeticModalOpen(false)} cosmetic={editingCosmetic} onSave={async (updatedCosm) => { 
-          if (user?.role === 'admin' && editingCosmetic) { 
-              await setDoc(doc(db, 'cosmetics', updatedCosm.id), updatedCosm, { merge: true }); 
-              setCosmetics(prev => {
-                  const filtered = prev.filter(c => c.id !== editingCosmetic.id);
-                  return [updatedCosm, ...filtered];
-              });
-              setSelectedCosmetic(updatedCosm);
               alert(t('saveSuccess')); 
           } 
       }} t={t} />
