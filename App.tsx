@@ -53,7 +53,14 @@ const normalizeMedicine = (item: any): Medicine => {
       return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
 
-  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]) || `rnd-${Math.random().toString(36).substr(2, 9)}`;
+  const tradeName = findValue(item, ["Trade Name", "TradeName", "tradeName"]);
+  const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
+  const strength = findValue(item, ["Strength", "strength"]);
+  
+  // توليد معرف ثابت بناءً على المحتوى لمنع التكرار في حال غياب رقم التسجيل الرسمي
+  const fallbackId = `stable-${String(tradeName).toLowerCase().replace(/\s+/g, '-')}-${String(scientificName).toLowerCase().replace(/\s+/g, '-')}-${String(strength).toLowerCase()}`;
+  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]) || fallbackId;
+  
   const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
   
   return {
@@ -64,9 +71,9 @@ const normalizeMedicine = (item: any): Medicine => {
         (drugTypeRaw.includes('health') || drugTypeRaw.includes('herbal') || drugTypeRaw.includes('supplement') ? 'Supplement' : 'Human'),
     DrugType: findValue(item, ["DrugType", "drugType"]),
     "Sub-Type": findValue(item, ["Sub-Type", "subType"]),
-    "Scientific Name": findValue(item, ["Scientific Name", "ScientificName", "scientificName"]) || 'N/A',
-    "Trade Name": findValue(item, ["Trade Name", "TradeName", "tradeName"]),
-    Strength: findValue(item, ["Strength", "strength"]),
+    "Scientific Name": scientificName || 'N/A',
+    "Trade Name": tradeName,
+    Strength: strength,
     StrengthUnit: findValue(item, ["StrengthUnit", "strengthUnit"]),
     PharmaceuticalForm: findValue(item, ["PharmaceuticalForm", "DoesageForm", "pharmaceuticalForm", "Pharmaceutical Form"]),
     AdministrationRoute: findValue(item, ["AdministrationRoute", "administrationRoute"]),
