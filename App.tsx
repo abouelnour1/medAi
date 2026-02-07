@@ -57,9 +57,18 @@ const normalizeMedicine = (item: any): Medicine => {
   const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
   const strength = findValue(item, ["Strength", "strength"]);
   
-  // توليد معرف ثابت بناءً على المحتوى لمنع التكرار في حال غياب رقم التسجيل الرسمي
-  const fallbackId = `stable-${String(tradeName).toLowerCase().replace(/\s+/g, '-')}-${String(scientificName).toLowerCase().replace(/\s+/g, '-')}-${String(strength).toLowerCase()}`;
-  const regNum = findValue(item, ["RegisterNumber", "Id", "id"]) || fallbackId;
+  // تنظيف القيم لإنشاء معرف فريد ثابت (Deduplication Key)
+  const cleanTrade = String(tradeName).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanSci = String(scientificName).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanStr = String(strength).toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
+  
+  // إذا كان رقم التسجيل فارغاً أو وهمياً (مثل 0 أو 1)، نقوم بإنشاء معرف ثابت بناءً على مواصفات الصنف
+  // هذا يضمن أن "Forti" سيظهر مرة واحدة فقط لأن كل إدخالاته سيكون لها نفس الـ ID المشتق من اسمه
+  if (!regNum || regNum === '0' || regNum === '1' || regNum === '2' || regNum === '3' || regNum.trim() === '') {
+      regNum = `temp-${cleanTrade}-${cleanSci}-${cleanStr}`;
+  }
   
   const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
   
@@ -118,7 +127,7 @@ const normalizeMedicine = (item: any): Medicine => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v160';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v161';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -245,6 +254,8 @@ const App: React.FC = () => {
             let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY) || [];
 
             const medMap = new Map<string, Medicine>();
+            // دمج البيانات من الكاش والمصادر الثابتة
+            // الـ Map سيقوم تلقائياً بدمج أي عناصر لها نفس الـ RegisterNumber
             cachedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
             hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m)); 
             

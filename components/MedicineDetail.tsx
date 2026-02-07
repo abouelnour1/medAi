@@ -146,12 +146,9 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     onImageZoom(allUrls, index, medicine['Trade Name'], indexFlags);
   };
 
-  const isRealRegisterNumber = useMemo(() => {
-    if (!medicine.RegisterNumber) return false;
-    const val = medicine.RegisterNumber.trim();
-    if (val.startsWith('rnd-')) return false;
-    if (val === '1' || val === '2' || val === '3' || val === '0') return false;
-    return true;
+  const isTempRegisterNumber = useMemo(() => {
+    if (!medicine.RegisterNumber) return true;
+    return medicine.RegisterNumber.startsWith('temp-');
   }, [medicine.RegisterNumber]);
 
   const hasPhysicalData = useMemo(() => {
@@ -193,7 +190,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                               <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-primary transition-colors leading-tight flex-grow pr-4">
                                 {ing.name}
                               </span>
-                              {/* التركيز: الرقم فقط بدون الوحدة كما طلب المستخدم في الأعلى لتنظيم الشكل */}
                               {ing.strength && ing.strength.toLowerCase() !== 'na' && (
                                 <span className="text-[11px] font-black text-primary dark:text-primary-light whitespace-nowrap min-w-[50px] text-right">
                                     {ing.strength}
@@ -306,9 +302,19 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
-            {isRealRegisterNumber && (
-                <DetailRow label={t('registrationNumber')} value={medicine.RegisterNumber} />
-            )}
+            <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('registrationNumber')}</dt>
+              <dd className="mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0">
+                {isTempRegisterNumber ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold text-xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                        {language === 'ar' ? 'رقم مؤقت - قيد التحديث' : 'Temporary - Pending Update'}
+                    </span>
+                ) : (
+                    <span className="font-mono">{medicine.RegisterNumber}</span>
+                )}
+              </dd>
+            </div>
           </dl>
         </div>
       </div>
