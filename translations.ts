@@ -1,3 +1,4 @@
+
 export const translations = {
   ar: {
     food: 'غذاء (Food)',
@@ -320,7 +321,9 @@ export const translations = {
     showDescription: 'عرض الوصف',
     hideDescription: 'إخفاء الوصف',
     lock: 'قفل',
-    unlock: 'فتح للتعديل'
+    unlock: 'فتح للتعديل',
+    strengthAsc: 'التركيز (الأقل)',
+    strengthDesc: 'التركيز (الأعلى)'
   },
   en: {
     food: 'Food',
@@ -643,7 +646,9 @@ export const translations = {
     showDescription: 'Show Description',
     hideDescription: 'Hide Description',
     lock: 'Lock',
-    unlock: 'Unlock to Edit'
+    unlock: 'Unlock to Edit',
+    strengthAsc: 'Concentration (Low)',
+    strengthDesc: 'Concentration (High)'
   }
 };
 

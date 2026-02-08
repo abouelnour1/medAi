@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SortByOption, TFunction } from '../types';
 
@@ -20,6 +21,8 @@ const SortControls: React.FC<SortControlsProps> = ({ sortBy, setSortBy, t }) => 
         >
           <option value="alphabetical">{t('alphabetical')}</option>
           <option value="scientificName">{t('scientificNameSort')}</option>
+          <option value="strengthDesc">{t('strengthDesc')}</option>
+          <option value="strengthAsc">{t('strengthAsc')}</option>
           <option value="priceAsc">{t('priceAsc')}</option>
           <option value="priceDesc">{t('priceDesc')}</option>
         </select>

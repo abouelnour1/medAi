@@ -1,3 +1,4 @@
+
 import { TranslationKeys } from './translations';
 
 export interface Notification {
@@ -171,7 +172,7 @@ export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: s
 
 export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
 
-export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc';
+export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc' | 'strengthAsc' | 'strengthDesc';
 
 export interface SerializablePart {
   text?: string;

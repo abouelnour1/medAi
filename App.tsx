@@ -364,6 +364,20 @@ const App: React.FC = () => {
       }
     }
 
+    // Helper to get strength for the specific ingredient being searched
+    const getTargetStrengthValue = (med: Medicine, searchStr: string) => {
+        const names = String(med['Scientific Name']).toLowerCase().split(',').map(s => s.trim());
+        const strengths = String(med.Strength).split(',').map(s => s.trim());
+        const cleanTerm = searchStr.toLowerCase().replace(/\*/g, '');
+        
+        let index = names.findIndex(n => n.includes(cleanTerm));
+        // If searching by trade name or no match, default to first strength
+        if (index === -1) index = 0; 
+        
+        // Parse numerical part only (e.g., "500" from "500mg")
+        return parseFloat(strengths[index]) || 0;
+    };
+
     results.sort((a, b) => {
         if (!a || !b) return 0;
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
@@ -372,12 +386,16 @@ const App: React.FC = () => {
         const cleanTerm = term.replace(/\*/g, '');
         const aStarts = aVal.startsWith(cleanTerm);
         const bStarts = bVal.startsWith(cleanTerm);
+        
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
+
         switch (sortBy) {
             case 'priceAsc': return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
             case 'priceDesc': return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
             case 'scientificName': return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
+            case 'strengthAsc': return getTargetStrengthValue(a, term) - getTargetStrengthValue(b, term);
+            case 'strengthDesc': return getTargetStrengthValue(b, term) - getTargetStrengthValue(a, term);
             default: return aVal.localeCompare(bVal);
         }
     });
