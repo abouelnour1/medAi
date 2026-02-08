@@ -12,6 +12,7 @@ import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
 import DownloadIcon from '../icons/DownloadIcon';
+import SearchableDropdown from '../SearchableDropdown';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
 
@@ -62,7 +63,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   const [isEditingUpdate, setIsEditingUpdate] = useState(false);
   const [editFormData, setEditFormData] = useState<any>({});
   
-  const [notifForm, setNotifForm] = useState({ title: '', body: '', targetRole: 'all' });
+  const [notifForm, setNotifForm] = useState({ title: '', body: '', targetRole: 'all', linkedMedicineTradeName: '' });
   const [userRoleChanges, setUserRoleChanges] = useState<{[key: string]: User['role']}>({});
 
   const [formMed, setFormMed] = useState<any>({
@@ -78,6 +79,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
       manufacturers: Array.from(new Set(allMedicines.map(m => m["Manufacture Name"]).filter(Boolean))).sort(),
       forms: Array.from(new Set(allMedicines.map(m => m.PharmaceuticalForm).filter(Boolean))).sort(),
       units: Array.from(new Set(allMedicines.map(m => m.StrengthUnit).filter(Boolean))).sort(),
+      tradeNames: Array.from(new Set(allMedicines.map(m => m["Trade Name"]).filter(Boolean))).sort(),
     };
   }, [allMedicines]);
 
@@ -112,14 +114,22 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
     if (!notifForm.title || !notifForm.body) return;
     setIsLoading(true);
     try {
+        let relatedMedicineId = '';
+        if (notifForm.linkedMedicineTradeName) {
+            const med = allMedicines.find(m => m["Trade Name"] === notifForm.linkedMedicineTradeName);
+            if (med) relatedMedicineId = med.RegisterNumber;
+        }
+
         await addDoc(collection(db, 'notifications'), {
-            ...notifForm,
+            title: notifForm.title,
+            body: notifForm.body,
             timestamp: Date.now(),
             type: 'info',
-            targetRole: notifForm.targetRole === 'all' ? null : notifForm.targetRole
+            targetRole: notifForm.targetRole === 'all' ? null : notifForm.targetRole,
+            relatedMedicineId: relatedMedicineId || null
         });
         alert(t('saveSuccess'));
-        setNotifForm({ title: '', body: '', targetRole: 'all' });
+        setNotifForm({ title: '', body: '', targetRole: 'all', linkedMedicineTradeName: '' });
     } catch(e:any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
@@ -328,7 +338,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                 <div className={`w-12 h-12 ${update.itemType === 'cosmetic' ? 'bg-pink-100 text-pink-600' : 'bg-primary/10 text-primary'} rounded-xl flex items-center justify-center font-black`}>{update.itemType === 'cosmetic' ? 'C' : 'M'}</div>
                                 <div><p className="font-black text-slate-800 dark:text-white leading-tight">{(update.newData as any)['Trade Name'] || (update.newData as any).SpecificName}</p><p className="text-[10px] text-slate-400 font-bold mt-1">{t('submittedBy', { name: update.submittedByName })}</p></div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-300 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-300 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
                         </button>
                     ))}
                 </div>
@@ -339,18 +349,50 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   const renderExportPanel = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 text-center shadow-sm">
-            <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6"><DownloadIcon /></div>
-            <h3 className="text-xl font-black mb-2">{t('exportData')}</h3>
-            <div className="grid grid-cols-1 gap-4">
-                <button onClick={() => onExport('medicine')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
-                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform"><PillBottleIcon /></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportMedicines')}</p></div></div><DownloadIcon />
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 text-center shadow-sm">
+            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4 p-4">
+                <DownloadIcon />
+            </div>
+            <h3 className="text-lg font-black mb-6">{t('exportData')}</h3>
+            <div className="grid grid-cols-1 gap-3">
+                <button onClick={() => onExport('medicine')} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform">
+                            <PillBottleIcon />
+                        </div>
+                        <div className="text-right rtl:text-right">
+                            <p className="font-bold text-sm">{t('exportMedicines')}</p>
+                        </div>
+                    </div>
+                    <div className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <DownloadIcon />
+                    </div>
                 </button>
-                <button onClick={() => onExport('supplement')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-accent/10 hover:text-accent rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
-                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-accent group-hover:scale-110 transition-transform"><DatabaseIcon /></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportSupplements')}</p></div></div><DownloadIcon />
+                <button onClick={() => onExport('supplement')} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 hover:bg-accent/10 hover:text-accent rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-accent group-hover:scale-110 transition-transform">
+                            <DatabaseIcon />
+                        </div>
+                        <div className="text-right rtl:text-right">
+                            <p className="font-bold text-sm">{t('exportSupplements')}</p>
+                        </div>
+                    </div>
+                    <div className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <DownloadIcon />
+                    </div>
                 </button>
-                <button onClick={() => onExport('food')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-500/10 hover:text-teal-600 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
-                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-teal-600 group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" /></svg></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportFood')}</p></div></div><DownloadIcon />
+                <button onClick={() => onExport('food')} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-500/10 hover:text-teal-600 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-teal-600 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" /></svg>
+                        </div>
+                        <div className="text-right rtl:text-right">
+                            <p className="font-bold text-sm">{t('exportFood')}</p>
+                        </div>
+                    </div>
+                    <div className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <DownloadIcon />
+                    </div>
                 </button>
             </div>
         </div>
@@ -364,6 +406,21 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             <form onSubmit={handleSendBroadcast} className="space-y-4">
                 <div><label className={labelClass}>{t('notificationTitle')}</label><input value={notifForm.title} onChange={e => setNotifForm({...notifForm, title: e.target.value})} className={inputClass} placeholder="عنوان الإشعار..." required /></div>
                 <div><label className={labelClass}>{t('notificationBody')}</label><textarea value={notifForm.body} onChange={e => setNotifForm({...notifForm, body: e.target.value})} className={inputClass} rows={3} placeholder="محتوى الإشعار..." required /></div>
+                
+                {/* قسم ربط الدواء الجديد */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <label className={labelClass}>ربط دواء (اختياري)</label>
+                    <SearchableDropdown
+                        ariaLabel="Linked Medicine"
+                        options={dbLists.tradeNames}
+                        value={notifForm.linkedMedicineTradeName}
+                        onChange={(val) => setNotifForm({...notifForm, linkedMedicineTradeName: String(val)})}
+                        placeholder="ابحث عن دواء لربطه..."
+                        t={t}
+                    />
+                    <p className="text-[9px] text-slate-400 mt-2">سيظهر زر "عرض ملف الدواء" للمستخدم عند النقر على الإشعار.</p>
+                </div>
+
                 <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="company">الشركات فقط</option></select></div>
                 <button type="submit" disabled={isLoading} className="w-full py-3 bg-red-600 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all">{isLoading ? '...' : t('sendBroadcast')}</button>
             </form>
