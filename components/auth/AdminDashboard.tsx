@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification } from '../../types';
 import { useAuth } from './AuthContext';
@@ -12,9 +13,9 @@ import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
 import DownloadIcon from '../icons/DownloadIcon';
 import { db, FIREBASE_DISABLED } from '../../firebase';
-import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
 
-type Panel = 'menu' | 'overview' | 'users' | 'add_manual' | 'approvals' | 'notifications' | 'settings' | 'export';
+type Panel = 'menu' | 'overview' | 'users' | 'approvals' | 'add_manual' | 'notifications' | 'export' | 'settings';
 type ItemCategory = 'Human' | 'Supplement' | 'Cosmetic';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
@@ -83,27 +84,10 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   useEffect(() => {
     if (FIREBASE_DISABLED || !user || user.role !== 'admin') return;
     
-    const unsubUsers = onSnapshot(collection(db, 'users'), 
-      (snap) => {
-        setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as User)));
-      },
-      (err) => console.warn("Admin Dashboard: User list permission denied.", err)
-    );
-
-    const unsubNotifs = onSnapshot(collection(db, 'notifications'), 
-      (snap) => {
-        setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification)));
-      },
-      (err) => console.warn("Admin Dashboard: Notifications permission denied.", err)
-    );
-
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as User))));
+    const unsubNotifs = onSnapshot(collection(db, 'notifications'), (snap) => setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification))));
     const q = query(collection(db, 'pending_updates'), where('status', '==', 'pending'));
-    const unsubApprovals = onSnapshot(q, 
-      (snap) => {
-        setPendingUpdates(snap.docs.map(d => ({ id: d.id, ...d.data() } as PendingUpdate)));
-      },
-      (err) => console.warn("Admin Dashboard: Pending updates permission denied.", err)
-    );
+    const unsubApprovals = onSnapshot(q, (snap) => setPendingUpdates(snap.docs.map(d => ({ id: d.id, ...d.data() } as PendingUpdate))));
 
     getDoc(doc(db, 'settings', 'app_settings')).then(snap => {
         if (snap.exists()) setAppSettings(snap.data() as AppSettings);
@@ -146,18 +130,42 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
           const itemId = update.medicineId || (update.newData as any).RegisterNumber || (update.newData as any).id;
           const dataToMerge = finalDataOverride || update.newData;
           const collectionName = update.itemType === 'cosmetic' ? 'cosmetics' : 'medicines';
+          
           await setDoc(doc(db, collectionName, itemId), dataToMerge, { merge: true });
           await updateDoc(doc(db, 'pending_updates', update.id), { status: 'approved' });
+          
+          const itemName = (dataToMerge as any)['Trade Name'] || (dataToMerge as any).SpecificName || 'الصنف';
           await addDoc(collection(db, 'notifications'), {
-              title: t('requestApproved', { medicine: (dataToMerge as any)['Trade Name'] || (dataToMerge as any).SpecificName || 'Item' }),
-              body: "Review completed. Database updated successfully.",
+              title: "✅ تمت الموافقة على طلب التعديل",
+              body: `أهلاً ${update.submittedByName}، لقد تمت مراجعة تعديلاتك على ${itemName} واعتمادها بنجاح.`,
+              timestamp: Date.now(),
+              type: 'request_result',
+              targetUserId: update.submittedBy 
+          });
+
+          alert(t('saveSuccess'));
+          setSelectedUpdate(null);
+          setIsEditingUpdate(false);
+      } catch (err: any) { alert(err.message); } finally { setIsLoading(false); }
+  };
+
+  const handleRejectUpdate = async (update: PendingUpdate) => {
+      const notes = window.prompt(t('reasonForRejection'));
+      if (notes === null) return;
+      
+      setIsLoading(true);
+      try {
+          await updateDoc(doc(db, 'pending_updates', update.id), { status: 'rejected', adminNotes: notes });
+          const itemName = (update.newData as any)['Trade Name'] || (update.newData as any).SpecificName || 'الصنف';
+          await addDoc(collection(db, 'notifications'), {
+              title: "❌ تم رفض طلب التعديل",
+              body: `عذراً ${update.submittedByName}، لم يتم قبول تعديلك على ${itemName}. السبب: ${notes || 'لم يتم ذكر سبب محدد.'}`,
               timestamp: Date.now(),
               type: 'request_result',
               targetUserId: update.submittedBy
           });
-          alert(t('saveSuccess'));
           setSelectedUpdate(null);
-          setIsEditingUpdate(false);
+          alert(t('saveSuccess'));
       } catch (err: any) { alert(err.message); } finally { setIsLoading(false); }
   };
 
@@ -176,16 +184,13 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     </div>
                 </div>
             </div>
-
             <form onSubmit={async (e) => { 
                 e.preventDefault(); 
                 setIsLoading(true); 
                 try {
                     const collectionName = itemCategory === 'Cosmetic' ? 'cosmetics' : 'medicines';
                     const id = itemCategory === 'Cosmetic' ? `cosm-${Date.now()}` : formMed.RegisterNumber;
-                    const finalData = itemCategory === 'Cosmetic' 
-                        ? { id, ...formMed } 
-                        : { ...formMed, "Product type": itemCategory };
+                    const finalData = itemCategory === 'Cosmetic' ? { id, ...formMed } : { ...formMed, "Product type": itemCategory };
                     await setDoc(doc(db, collectionName, id), finalData); 
                     alert(t('saveSuccess')); 
                     setActivePanel('menu'); 
@@ -215,7 +220,6 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                 <div><label className={labelClass}>كود ATC</label><input value={formMed.AtcCode1} onChange={e => setFormMed({...formMed, AtcCode1: e.target.value})} className={inputClass} placeholder="C09CA01..." /></div>
                             </div>
                         </div>
-
                         <div>
                             <h4 className={sectionTitle}>2. التكوين والصيدلة (Composition)</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -230,7 +234,6 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                 <div><label className={labelClass}>الشركة المصنعة</label><input list="mfr-list" value={formMed["Manufacture Name"]} onChange={e => setFormMed({...formMed, ["Manufacture Name"]: e.target.value})} className={inputClass} placeholder={t('pleaseSelectOrAdd')} /><datalist id="mfr-list">{dbLists.manufacturers.map(m => <option key={m} value={m} />)}</datalist></div>
                             </div>
                         </div>
-
                         <div>
                             <h4 className={sectionTitle}>3. التنظيم واللوجستيك (Regulatory)</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -252,20 +255,27 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
     if (selectedUpdate) {
         const newData = isEditingUpdate ? editFormData : selectedUpdate.newData as any;
         const oldData = selectedUpdate.originalData as any;
-        const changedKeys = Object.keys(selectedUpdate.newData);
+        const changedKeys = Object.keys(selectedUpdate.newData).filter(key => {
+            const newVal = String(selectedUpdate.newData[key as keyof typeof selectedUpdate.newData] || '').trim();
+            const oldVal = String(oldData?.[key] || '').trim();
+            // تجاهل روابط الصور إذا كانت لم تتغير (النجوم)
+            if (newVal === '****************************') return false;
+            return newVal !== oldVal;
+        });
+
         return (
             <div className="animate-fade-in space-y-6 max-w-4xl mx-auto mb-20">
                 <button onClick={() => { setSelectedUpdate(null); setIsEditingUpdate(false); }} className="flex items-center gap-2 text-primary font-bold"><BackIcon /> {t('back')}</button>
                 <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b pb-4 dark:border-slate-700">
                         <div className="text-right rtl:text-right">
-                            <h3 className="text-lg font-black">{isEditingUpdate ? t('editProposal') : t('comparisonTitle')}</h3>
+                            <h3 className="text-lg font-black">{isEditingUpdate ? t('editProposal') : "مراجعة التغييرات المقترحة"}</h3>
                             <p className="text-xs text-slate-400">{t('fromCompany', { name: selectedUpdate.submittedByName })}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                             {!isEditingUpdate ? (
                                 <>
-                                    <button onClick={async () => { const notes = window.prompt(t('reasonForRejection')); if(notes !== null) { setIsLoading(true); await updateDoc(doc(db, 'pending_updates', selectedUpdate.id), { status: 'rejected', adminNotes: notes }); setSelectedUpdate(null); setIsLoading(false); } }} disabled={isLoading} className="flex-1 px-4 py-2 bg-red-100 text-red-600 rounded-xl font-bold text-xs">{t('reject')}</button>
+                                    <button onClick={() => handleRejectUpdate(selectedUpdate)} disabled={isLoading} className="flex-1 px-4 py-2 bg-red-100 text-red-600 rounded-xl font-bold text-xs">{t('reject')}</button>
                                     <button onClick={() => { setEditFormData({...selectedUpdate.newData}); setIsEditingUpdate(true); }} className="flex-1 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs">{t('editProposal')}</button>
                                     <button onClick={() => handleApproveUpdate(selectedUpdate)} disabled={isLoading} className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-bold text-xs shadow-md">{t('directApprove')}</button>
                                 </>
@@ -277,17 +287,26 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                             )}
                         </div>
                     </div>
+                    
                     <div className="space-y-4">
+                        {changedKeys.length === 0 && <p className="text-center py-10 text-slate-400 italic">لا توجد حقول مختلفة حالياً.</p>}
                         {changedKeys.map(key => (
-                            <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
-                                <div className="col-span-full text-[10px] font-black uppercase text-slate-400 tracking-widest">{key}</div>
+                            <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border-2 border-primary/10 bg-slate-50 dark:bg-slate-900/40">
+                                <div className="col-span-full flex justify-between">
+                                    <span className="text-[10px] font-black uppercase text-primary tracking-widest">{key}</span>
+                                    <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-black">MODIFIED</span>
+                                </div>
                                 <div className="text-right">
                                     <p className="text-[10px] text-slate-400 mb-1">{t('currentInSystem')}</p>
-                                    <p className="text-sm font-bold text-slate-400 line-through">{oldData?.[key] || '---'}</p>
+                                    <p className="text-sm font-bold text-red-400/70 line-through truncate">{oldData?.[key] || '(فارغ)'}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] text-primary mb-1">{t('companyProposal')}</p>
-                                    {isEditingUpdate ? <input value={editFormData[key] || ''} onChange={e => setEditFormData({...editFormData, [key]: e.target.value})} className="w-full p-2 bg-white dark:bg-slate-700 border border-primary rounded-lg text-sm font-black text-primary outline-none" /> : <p className="text-sm font-black text-primary">{newData[key] || '---'}</p>}
+                                    {isEditingUpdate ? (
+                                        <input value={editFormData[key] || ''} onChange={e => setEditFormData({...editFormData, [key]: e.target.value})} className="w-full p-2 bg-white dark:bg-slate-700 border-2 border-primary rounded-lg text-sm font-black text-primary outline-none" />
+                                    ) : (
+                                        <p className="text-sm font-black text-green-600 dark:text-green-400 truncate">{newData[key] || '(مسح القيمة)'}</p>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -321,46 +340,17 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   const renderExportPanel = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 text-center shadow-sm">
-            <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-                <DownloadIcon />
-            </div>
+            <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6"><DownloadIcon /></div>
             <h3 className="text-xl font-black mb-2">{t('exportData')}</h3>
-            <p className="text-sm text-slate-400 mb-8 px-4">استخرج قاعدة البيانات الحالية بصيغة ملفات JSON لاستخدامها في تطبيقات أخرى أو كنسخة احتياطية.</p>
-            
             <div className="grid grid-cols-1 gap-4">
-                <button 
-                    onClick={() => onExport('medicine')}
-                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform"><PillBottleIcon /></div>
-                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportMedicines')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على الأدوية البشرية</p></div>
-                    </div>
-                    <div className="w-5 h-5"><DownloadIcon /></div>
+                <button onClick={() => onExport('medicine')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform"><PillBottleIcon /></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportMedicines')}</p></div></div><DownloadIcon />
                 </button>
-
-                <button 
-                    onClick={() => onExport('supplement')}
-                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-accent/10 hover:text-accent rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-accent group-hover:scale-110 transition-transform"><DatabaseIcon /></div>
-                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportSupplements')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على المكملات الغذائية</p></div>
-                    </div>
-                    <div className="w-5 h-5"><DownloadIcon /></div>
+                <button onClick={() => onExport('supplement')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-accent/10 hover:text-accent rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-accent group-hover:scale-110 transition-transform"><DatabaseIcon /></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportSupplements')}</p></div></div><DownloadIcon />
                 </button>
-
-                <button 
-                    onClick={() => onExport('food')}
-                    className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-500/10 hover:text-teal-600 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-teal-600 group-hover:scale-110 transition-transform">
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" /></svg>
-                        </div>
-                        <div className="text-right rtl:text-right"><p className="font-bold">{t('exportFood')}</p><p className="text-[10px] text-slate-400">ملف JSON يحتوي على منتجات الغذاء</p></div>
-                    </div>
-                    <div className="w-5 h-5"><DownloadIcon /></div>
+                <button onClick={() => onExport('food')} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-500/10 hover:text-teal-600 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
+                    <div className="flex items-center gap-4"><div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-teal-600 group-hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" /></svg></div><div className="text-right rtl:text-right"><p className="font-bold">{t('exportFood')}</p></div></div><DownloadIcon />
                 </button>
             </div>
         </div>
@@ -374,7 +364,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             <form onSubmit={handleSendBroadcast} className="space-y-4">
                 <div><label className={labelClass}>{t('notificationTitle')}</label><input value={notifForm.title} onChange={e => setNotifForm({...notifForm, title: e.target.value})} className={inputClass} placeholder="عنوان الإشعار..." required /></div>
                 <div><label className={labelClass}>{t('notificationBody')}</label><textarea value={notifForm.body} onChange={e => setNotifForm({...notifForm, body: e.target.value})} className={inputClass} rows={3} placeholder="محتوى الإشعار..." required /></div>
-                <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="premium">الأعضاء المميزين فقط</option><option value="company">الشركات فقط</option></select></div>
+                <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="company">الشركات فقط</option></select></div>
                 <button type="submit" disabled={isLoading} className="w-full py-3 bg-red-600 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all">{isLoading ? '...' : t('sendBroadcast')}</button>
             </form>
         </div>
@@ -418,10 +408,10 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <h3 className={sectionTitle}>{t('appSettingsTitle')}</h3>
                         <form onSubmit={async (e) => { e.preventDefault(); setIsLoading(true); try { await setDoc(doc(db, 'settings', 'app_settings'), appSettings); updateSettings(appSettings); alert(t('saveSuccess')); } catch(e:any) { alert(e.message); } finally { setIsLoading(false); } }} className="space-y-6">
                             <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl">
-                                <div><p className="text-sm font-bold">{t('aiToggleLabel')}</p><p className="text-[10px] text-slate-400">تفعيل أو تعطيل ميزات الذكاء الاصطناعي للموقع بالكامل</p></div>
+                                <div><p className="text-sm font-bold">{t('aiToggleLabel')}</p></div>
                                 <input type="checkbox" checked={appSettings.isAiEnabled} onChange={e => setAppSettings({...appSettings, isAiEnabled: e.target.checked})} className="w-6 h-6 accent-primary" />
                             </div>
-                            <div><label className={labelClass}>{t('aiLimitLabel')}</label><input type="number" value={appSettings.aiRequestLimit} onChange={e => setAppSettings({...appSettings, aiRequestLimit: parseInt(e.target.value)})} className={inputClass} /><p className="text-[10px] text-slate-400 mt-2 px-1">{t('aiRequestLimitDescription')}</p></div>
+                            <div><label className={labelClass}>{t('aiLimitLabel')}</label><input type="number" value={appSettings.aiRequestLimit} onChange={e => setAppSettings({...appSettings, aiRequestLimit: parseInt(e.target.value)})} className={inputClass} /></div>
                             <button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">{isLoading ? '...' : t('save')}</button>
                         </form>
                     </div>
@@ -433,13 +423,12 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     <div className="grid grid-cols-1 gap-3">
                         {users.filter(u => u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())).map(u => {
                             const currentRole = userRoleChanges[u.id] || u.role;
-                            const isChanged = !!userRoleChanges[u.id];
                             return (
                                 <div key={u.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black">{u.username?.charAt(0).toUpperCase()}</div><div className="text-right rtl:text-right"><p className="font-black text-sm">{u.username}</p><p className="text-[10px] text-slate-400">{u.email}</p></div></div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-100">{(['admin', 'premium', 'company'] as const).map(role => (<button key={role} onClick={() => setUserRoleChanges(prev => ({...prev, [u.id]: role}))} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentRole === role ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{t(`${role}Role` as any)}</button>))}</div>
-                                        {isChanged && <button onClick={() => handleSaveUserRole(u.id)} className="px-4 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase shadow-md">{t('save')}</button>}
+                                        {!!userRoleChanges[u.id] && <button onClick={() => handleSaveUserRole(u.id)} className="px-4 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase shadow-md">{t('save')}</button>}
                                         <button onClick={() => { if(window.confirm(t('confirmDeleteUser'))) deleteUser(u.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><TrashIcon /></button>
                                     </div>
                                 </div>
@@ -456,7 +445,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <div className="grid grid-cols-3 gap-4 mt-6">
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('medicines')}</p><p className="text-2xl font-black text-primary">{allMedicines.filter(m => m['Product type'] === 'Human').length}</p></div>
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('supplements')}</p><p className="text-2xl font-black text-accent">{allMedicines.filter(m => m['Product type'] === 'Supplement').length}</p></div>
-                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">Food</p><p className="text-2xl font-black text-teal-600">{allMedicines.filter(m => m['Product type'] === 'Food').length}</p></div>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">Food</p><p className="text-2xl font-black text-teal-600">{allMedicines.filter(m => m['Product type'] === 'Food').length}</p></div>
                         </div>
                     </div>
                 </div>

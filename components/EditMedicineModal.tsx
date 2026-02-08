@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction } from '../types';
 import ClearIcon from './icons/ClearIcon';
+import { useAuth } from './auth/AuthContext';
 
 interface EditMedicineModalProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface EditMedicineModalProps {
 }
 
 const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, medicine, onSave, t }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<Medicine | null>(null);
   const [isRegNumLocked, setIsRegNumLocked] = useState(true);
 
@@ -40,6 +43,17 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
   const labelClass = "block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1";
   const sectionTitle = "text-xs font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 mt-2";
 
+  const isAdmin = user?.role === 'admin';
+  const isCompany = user?.role === 'company';
+
+  // دالة لإخفاء الرابط إذا كان المستخدم "شركة"
+  const getDisplayUrl = (fieldName: keyof Medicine) => {
+      const val = formData[fieldName];
+      if (!val) return '';
+      if (isCompany && String(val).startsWith('http')) return '****************************';
+      return String(val);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div 
@@ -62,30 +76,38 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
         </div>
 
         <form onSubmit={handleSave} className="flex-grow overflow-y-auto p-6 space-y-8 no-scrollbar">
+          {isCompany && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300">
+                  ⚠️ ملاحظة: تعديلاتك لن تظهر فوراً، سيتم إرسالها للمسؤول للمراجعة أولاً. روابط الصور الحالية مخفية لكن يمكنك كتابة روابط جديدة.
+              </div>
+          )}
+
           <div>
             <h4 className={sectionTitle}>البيانات الأساسية (Identity)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-full">
                  <div className="flex justify-between items-end mb-1">
                     <label className={labelClass}>{t('registrationNumber')} *</label>
-                    <button 
-                        type="button"
-                        onClick={() => setIsRegNumLocked(!isRegNumLocked)}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${isRegNumLocked ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}
-                        title={isRegNumLocked ? t('unlock') : t('lock')}
-                    >
-                        {isRegNumLocked ? (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                {t('lock')}
-                            </>
-                        ) : (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2z" /></svg>
-                                {t('unlock')}
-                            </>
-                        )}
-                    </button>
+                    {isAdmin && (
+                        <button 
+                            type="button"
+                            onClick={() => setIsRegNumLocked(!isRegNumLocked)}
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${isRegNumLocked ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}
+                            title={isRegNumLocked ? t('unlock') : t('lock')}
+                        >
+                            {isRegNumLocked ? (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                    {t('lock')}
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2z" /></svg>
+                                    {t('unlock')}
+                                </>
+                            )}
+                        </button>
+                    )}
                  </div>
                  <input 
                     type="text" 
@@ -153,19 +175,47 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <div className="col-span-full">
                  <label className={labelClass}>{t('boxImage')} URL</label>
-                 <input type="text" name="imgBox" value={formData.imgBox || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+                 <input 
+                    type="text" 
+                    name="imgBox" 
+                    value={getDisplayUrl('imgBox')} 
+                    onChange={handleChange} 
+                    className={inputClass} 
+                    placeholder="https://..." 
+                 />
                </div>
                <div className="col-span-full">
                  <label className={labelClass}>{t('pillImage')} URL</label>
-                 <input type="text" name="imgPill" value={formData.imgPill || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+                 <input 
+                    type="text" 
+                    name="imgPill" 
+                    value={getDisplayUrl('imgPill')} 
+                    onChange={handleChange} 
+                    className={inputClass} 
+                    placeholder="https://..." 
+                 />
                </div>
                <div>
                  <label className={labelClass}>Index 1 (الفهرس 1) URL</label>
-                 <input type="text" name="imgIndex1" value={formData.imgIndex1 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+                 <input 
+                    type="text" 
+                    name="imgIndex1" 
+                    value={getDisplayUrl('imgIndex1')} 
+                    onChange={handleChange} 
+                    className={inputClass} 
+                    placeholder="https://..." 
+                 />
                </div>
                <div>
                  <label className={labelClass}>Index 2 (الفهرس 2) URL</label>
-                 <input type="text" name="imgIndex2" value={formData.imgIndex2 || ''} onChange={handleChange} className={inputClass} placeholder="https://..." />
+                 <input 
+                    type="text" 
+                    name="imgIndex2" 
+                    value={getDisplayUrl('imgIndex2')} 
+                    onChange={handleChange} 
+                    className={inputClass} 
+                    placeholder="https://..." 
+                 />
                </div>
                <div className="col-span-full">
                  <label className={labelClass}>{t('pillShape')}</label>
@@ -210,7 +260,7 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
           </button>
           <button onClick={handleSave} className="px-8 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            {t('save')}
+            {isCompany ? 'إرسال للمراجعة' : t('save')}
           </button>
         </div>
       </div>

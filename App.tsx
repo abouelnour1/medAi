@@ -30,7 +30,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit, addDoc } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -57,15 +57,12 @@ const normalizeMedicine = (item: any): Medicine => {
   const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
   const strength = findValue(item, ["Strength", "strength"]);
   
-  // تنظيف القيم لإنشاء معرف فريد ثابت (Deduplication Key)
   const cleanTrade = String(tradeName).toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanSci = String(scientificName).toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanStr = String(strength).toLowerCase().replace(/[^a-z0-9]/g, '');
   
   let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
   
-  // إذا كان رقم التسجيل فارغاً أو وهمياً (مثل 0 أو 1)، نقوم بإنشاء معرف ثابت بناءً على مواصفات الصنف
-  // هذا يضمن أن "Forti" سيظهر مرة واحدة فقط لأن كل إدخالاته سيكون لها نفس الـ ID المشتق من اسمه
   if (!regNum || regNum === '0' || regNum === '1' || regNum === '2' || regNum === '3' || regNum.trim() === '') {
       regNum = `temp-${cleanTrade}-${cleanSci}-${cleanStr}`;
   }
@@ -127,7 +124,7 @@ const normalizeMedicine = (item: any): Medicine => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v161';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v162';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -254,8 +251,6 @@ const App: React.FC = () => {
             let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY) || [];
 
             const medMap = new Map<string, Medicine>();
-            // دمج البيانات من الكاش والمصادر الثابتة
-            // الـ Map سيقوم تلقائياً بدمج أي عناصر لها نفس الـ RegisterNumber
             cachedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
             hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m)); 
             
@@ -291,7 +286,7 @@ const App: React.FC = () => {
                     });
                 });
 
-                onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), firestoreLimit(20)), (snapshot) => {
+                onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), firestoreLimit(50)), (snapshot) => {
                     const cloudNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
                     setNotifications(cloudNotifs);
                 });
@@ -303,6 +298,32 @@ const App: React.FC = () => {
     };
     loadData();
   }, [user]);
+
+  // فلترة الإشعارات لضمان الخصوصية القصوى
+  const visibleNotifications = useMemo(() => {
+    // إذا لم يكن مسجلاً، يرى فقط الإشعارات العامة التي ليس لها targetUserId ولا targetRole
+    if (!user) {
+        return notifications.filter(n => !n.targetUserId && !n.targetRole);
+    }
+    
+    return notifications.filter(n => {
+        // المسؤول يرى كل شيء لمتابعة العمل
+        if (user.role === 'admin') return true;
+        
+        // إشعار موجه لهذا المستخدم تحديداً (مثل نتيجة طلبه)
+        if (n.targetUserId) {
+            return n.targetUserId === user.id;
+        }
+
+        // إشعار موجه لدور وظيفي محدد (مثل "إعلان لجميع الشركات")
+        if (n.targetRole) {
+            return n.targetRole === user.role;
+        }
+
+        // الإشعارات العامة المتاحة للجميع
+        return !n.targetRole && !n.targetUserId;
+    });
+  }, [notifications, user]);
 
   const filteredMedicines = useMemo(() => {
     if (!medicines || medicines.length === 0) return [];
@@ -444,7 +465,7 @@ const App: React.FC = () => {
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={handleExportData} />;
       if (view === 'chatHistory') return <ChatHistoryView conversations={allConversations} onSelectConversation={(c)=>{setCurrentChatHistory(c.messages); setIsAssistantOpen(true); setView('search');}} onDeleteConversation={async (id) => { const updated = allConversations.filter(c => c.id !== id); setAllConversations(updated); await setItem(CHAT_HISTORY_KEY, updated); }} onClearHistory={async () => { setAllConversations([]); await setItem(CHAT_HISTORY_KEY, []); }} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={notifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = notifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { const med = medicines.find(m => m.RegisterNumber === id); if(med) { setSelectedMedicine(med); setView('details'); } }} />;
+      if (view === 'notifications') return <NotificationsView notifications={visibleNotifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = visibleNotifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { const med = medicines.find(m => m.RegisterNumber === id); if(med) { setSelectedMedicine(med); setView('details'); } }} />;
       if (view === 'imageView') return <ImageViewer images={zoomImages} initialIndex={zoomImageInitialIndex} title={zoomImageTitle} onBack={handleBack} t={t} indexFlags={zoomImageIndexFlags} />;
       if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
 
@@ -486,7 +507,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={visibleNotifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 space-y-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] w-full max-w-7xl">
           {renderContent()}
       </main>
@@ -506,7 +527,32 @@ const App: React.FC = () => {
               });
               setSelectedMedicine(updatedMed);
               alert(t('saveSuccess')); 
-          } 
+          } else if (user?.role === 'company' && editingMedicine) {
+              await addDoc(collection(db, 'pending_updates'), {
+                  medicineId: editingMedicine.RegisterNumber,
+                  itemType: 'medicine',
+                  type: 'edit',
+                  newData: updatedMed,
+                  originalData: editingMedicine,
+                  submittedBy: user.id,
+                  submittedByName: user.username,
+                  timestamp: Date.now(),
+                  status: 'pending'
+              });
+              
+              // إرسال إشعار يستهدف المسؤول (عن طريق الدور) ويستهدف الشركة صاحبة الطلب (عن طريق ID)
+              await addDoc(collection(db, 'notifications'), {
+                  title: "تم استلام طلب التعديل",
+                  body: `تم إرسال اقتراحك لتعديل دواء ${editingMedicine['Trade Name']} بنجاح، وهو بانتظار مراجعة المسؤول.`,
+                  timestamp: Date.now(),
+                  type: 'approval_request',
+                  targetRole: 'admin',
+                  targetUserId: user.id, // لكي يظهر في قائمة إشعارات الشركة التي طلبت فقط
+                  relatedMedicineId: editingMedicine.RegisterNumber
+              });
+
+              alert(t('requestSubmittedBody'));
+          }
       }} t={t} />
     </div>
   );
