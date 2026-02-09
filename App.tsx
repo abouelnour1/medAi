@@ -310,48 +310,21 @@ const App: React.FC = () => {
     });
   }, [notifications, user]);
 
-  const filteredMedicines = useMemo(() => {
+  /**
+   * الخطوة الأولى: تصفية الأدوية بناءً على نص البحث ونوع المنتج فقط.
+   * هذه المصفوفة سنستخدمها كمصدر لخيارات مودال الفلاتر.
+   */
+  const searchOnlyFilteredMedicines = useMemo(() => {
     if (!medicines || medicines.length === 0) return [];
     let results = [...medicines];
     const term = searchTerm.toLowerCase().trim();
-    
-    // الحل الجديد: النجمة لا تحسب حرفاً عند التحقق من الطول
     const cleanTermForLength = term.replace(/\*/g, '');
-    const isSearchTooShort = term.length > 0 && cleanTermForLength.length < 3;
-    const isSearchEmpty = term.length === 0;
 
-    // متطلبات العرض:
-    // 1. إذا كان البحث موجوداً ولكنه أقصر من 3 حروف حقيقية -> لا تعرض شيئاً
-    if (isSearchTooShort) return [];
+    // إذا كان البحث فارغاً والفلتر غير نشط، نرجع مصفوفة فارغة لتقليل الثقل
+    if (term.length === 0 && !isFilterActive) return [];
+    if (term.length > 0 && cleanTermForLength.length < 3) return [];
 
-    // 2. إذا لم يكن هناك بحث والمستخدم استخدم فلتر السعر -> لا تعرض شيئاً لمنع الثقل
-    const isPriceFilterApplied = !!filters.priceMin || !!filters.priceMax;
-    if (isSearchEmpty && isPriceFilterApplied) return [];
-
-    // 3. إذا لم يكن هناك بحث ولا فلتر نشط -> لا تعرض شيئاً
-    if (isSearchEmpty && !isFilterActive) return [];
-
-    if (isFilterActive) {
-      results = results.filter(m => {
-        if (!m) return false;
-        if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
-        if (filters.productType === 'supplement' && m['Product type'] !== 'Supplement') return false;
-        if (filters.productType === 'food' && m['Product type'] !== 'Food') return false;
-        
-        // تطبيق فلتر السعر فقط إذا كان البحث موجوداً (تم التعامل مع الحالة الاستثنائية فوق)
-        const mPrice = parseFloat(m['Public price']) || 0;
-        if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
-        if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;
-        
-        if (filters.pharmaceuticalForm && m.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
-        if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(m['Manufacture Name'])) return false;
-        if (filters.marketingCompany.length > 0 && !filters.marketingCompany.includes(m['Marketing Company'])) return false;
-        if (filters.mainAgent.length > 0 && !filters.mainAgent.includes(m['Main Agent'])) return false;
-        if (filters.legalStatus && m['Legal Status'] !== filters.legalStatus) return false;
-        return true;
-      });
-    }
-
+    // تصفية حسب نص البحث
     if (term && cleanTermForLength.length >= 3) {
       const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
       if (term.includes('*')) {
@@ -364,6 +337,35 @@ const App: React.FC = () => {
       } else {
           results = results.filter(m => m && String(m[field]).toLowerCase().includes(term));
       }
+    }
+
+    return results;
+  }, [medicines, searchTerm, textSearchMode, isFilterActive]);
+
+  /**
+   * الخطوة الثانية: تطبيق الفلاتر المتقدمة على نتائج البحث.
+   */
+  const filteredMedicines = useMemo(() => {
+    let results = [...searchOnlyFilteredMedicines];
+
+    if (isFilterActive) {
+      results = results.filter(m => {
+        if (!m) return false;
+        if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
+        if (filters.productType === 'supplement' && m['Product type'] !== 'Supplement') return false;
+        if (filters.productType === 'food' && m['Product type'] !== 'Food') return false;
+        
+        const mPrice = parseFloat(m['Public price']) || 0;
+        if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
+        if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;
+        
+        if (filters.pharmaceuticalForm && m.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
+        if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(m['Manufacture Name'])) return false;
+        if (filters.marketingCompany.length > 0 && !filters.marketingCompany.includes(m['Marketing Company'])) return false;
+        if (filters.mainAgent.length > 0 && !filters.mainAgent.includes(m['Main Agent'])) return false;
+        if (filters.legalStatus && m['Legal Status'] !== filters.legalStatus) return false;
+        return true;
+      });
     }
 
     const getTargetStrengthValue = (med: Medicine, searchStr: string) => {
@@ -380,6 +382,7 @@ const App: React.FC = () => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         const aVal = String(a[field]).toLowerCase();
         const bVal = String(b[field]).toLowerCase();
+        const term = searchTerm.toLowerCase().trim();
         const cleanTerm = term.replace(/\*/g, '');
         const aStarts = aVal.startsWith(cleanTerm);
         const bStarts = bVal.startsWith(cleanTerm);
@@ -391,8 +394,8 @@ const App: React.FC = () => {
             case 'priceAsc': return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
             case 'priceDesc': return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
             case 'scientificName': return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-            case 'strengthAsc': return getTargetStrengthValue(a, term) - getTargetStrengthValue(b, term);
-            case 'strengthDesc': return getTargetStrengthValue(b, term) - getTargetStrengthValue(a, term);
+            case 'strengthAsc': return getTargetStrengthValue(a, searchTerm) - getTargetStrengthValue(b, searchTerm);
+            case 'strengthDesc': return getTargetStrengthValue(b, searchTerm) - getTargetStrengthValue(a, searchTerm);
             case 'alphabetical': return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
             default: 
                 if (textSearchMode === 'scientificName') {
@@ -403,7 +406,7 @@ const App: React.FC = () => {
     });
 
     return results;
-  }, [medicines, searchTerm, filters, isFilterActive, textSearchMode, sortBy]);
+  }, [searchOnlyFilteredMedicines, filters, isFilterActive, textSearchMode, sortBy, searchTerm]);
 
   const handleExportData = useCallback((type: 'medicine' | 'supplement' | 'food') => {
       let dataToExport = [];
@@ -540,7 +543,21 @@ const App: React.FC = () => {
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':'settings'); }} t={t} user={user} view={view} />
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
-      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} allMedicines={medicines} t={t} />
+      
+      {/* 
+          هنا نقوم بتمرير searchOnlyFilteredMedicines بدلاً من medicines.
+          هذه المصفوفة تحتوي فقط على الأدوية التي تطابق نص البحث الحالي.
+      */}
+      <FilterModal 
+        isOpen={isFilterModalOpen} 
+        onClose={() => setIsFilterModalOpen(false)} 
+        filters={filters} 
+        onApply={(newFilters) => setFilters(newFilters)} 
+        onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} 
+        allMedicines={searchOnlyFilteredMedicines.length > 0 ? searchOnlyFilteredMedicines : medicines} 
+        t={t} 
+      />
+
       <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { 
           if (user?.role === 'admin' && editingMedicine) { 
               if (updatedMed.RegisterNumber !== editingMedicine.RegisterNumber) {
