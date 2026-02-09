@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffe
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, 
-  InsuranceSearchMode, Cosmetic, MilkProduct, Notification as AppNotification, PendingUpdate
+  InsuranceSearchMode, Notification as AppNotification, PendingUpdate
 } from './types';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
@@ -28,7 +28,6 @@ import { RegisterView } from './components/auth/RegisterView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
-import { groupPharmaceuticalForms } from './utils/formHelpers';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit, addDoc } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
@@ -124,7 +123,7 @@ const normalizeMedicine = (item: any): Medicine => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v162';
+const MEDICINES_CACHE_KEY = 'saudi_drug_directory_medicines_cache_v163';
 const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
@@ -260,7 +259,6 @@ const App: React.FC = () => {
 
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             const { CUSTOM_INSURANCE_DATA } = await import('./data/custom-insurance-data');
-            
             setInsuranceData([...(INITIAL_INSURANCE_DATA as any[]), ...(CUSTOM_INSURANCE_DATA as any[])]);
 
             let historyData = await getItem<Conversation[]>(CHAT_HISTORY_KEY);
@@ -299,28 +297,15 @@ const App: React.FC = () => {
     loadData();
   }, [user]);
 
-  // فلترة الإشعارات لضمان الخصوصية القصوى
   const visibleNotifications = useMemo(() => {
-    // إذا لم يكن مسجلاً، يرى فقط الإشعارات العامة التي ليس لها targetUserId ولا targetRole
     if (!user) {
         return notifications.filter(n => !n.targetUserId && !n.targetRole);
     }
     
     return notifications.filter(n => {
-        // المسؤول يرى كل شيء لمتابعة العمل
         if (user.role === 'admin') return true;
-        
-        // إشعار موجه لهذا المستخدم تحديداً (مثل نتيجة طلبه)
-        if (n.targetUserId) {
-            return n.targetUserId === user.id;
-        }
-
-        // إشعار موجه لدور وظيفي محدد (مثل "إعلان لجميع الشركات")
-        if (n.targetRole) {
-            return n.targetRole === user.role;
-        }
-
-        // الإشعارات العامة المتاحة للجميع
+        if (n.targetUserId) return n.targetUserId === user.id;
+        if (n.targetRole) return n.targetRole === user.role;
         return !n.targetRole && !n.targetUserId;
     });
   }, [notifications, user]);
@@ -329,8 +314,22 @@ const App: React.FC = () => {
     if (!medicines || medicines.length === 0) return [];
     let results = [...medicines];
     const term = searchTerm.toLowerCase().trim();
-    if (term.length > 0 && term.length < 3 && !isFilterActive) return [];
-    if (!term && !isFilterActive) return [];
+    
+    // الحل الجديد: النجمة لا تحسب حرفاً عند التحقق من الطول
+    const cleanTermForLength = term.replace(/\*/g, '');
+    const isSearchTooShort = term.length > 0 && cleanTermForLength.length < 3;
+    const isSearchEmpty = term.length === 0;
+
+    // متطلبات العرض:
+    // 1. إذا كان البحث موجوداً ولكنه أقصر من 3 حروف حقيقية -> لا تعرض شيئاً
+    if (isSearchTooShort) return [];
+
+    // 2. إذا لم يكن هناك بحث والمستخدم استخدم فلتر السعر -> لا تعرض شيئاً لمنع الثقل
+    const isPriceFilterApplied = !!filters.priceMin || !!filters.priceMax;
+    if (isSearchEmpty && isPriceFilterApplied) return [];
+
+    // 3. إذا لم يكن هناك بحث ولا فلتر نشط -> لا تعرض شيئاً
+    if (isSearchEmpty && !isFilterActive) return [];
 
     if (isFilterActive) {
       results = results.filter(m => {
@@ -338,9 +337,12 @@ const App: React.FC = () => {
         if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
         if (filters.productType === 'supplement' && m['Product type'] !== 'Supplement') return false;
         if (filters.productType === 'food' && m['Product type'] !== 'Food') return false;
+        
+        // تطبيق فلتر السعر فقط إذا كان البحث موجوداً (تم التعامل مع الحالة الاستثنائية فوق)
         const mPrice = parseFloat(m['Public price']) || 0;
         if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
         if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;
+        
         if (filters.pharmaceuticalForm && m.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
         if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(m['Manufacture Name'])) return false;
         if (filters.marketingCompany.length > 0 && !filters.marketingCompany.includes(m['Marketing Company'])) return false;
@@ -350,7 +352,7 @@ const App: React.FC = () => {
       });
     }
 
-    if (term && term.length >= 3) {
+    if (term && cleanTermForLength.length >= 3) {
       const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
       if (term.includes('*')) {
           const parts = term.split('*').map(p => p.trim()).filter(Boolean);
@@ -364,17 +366,12 @@ const App: React.FC = () => {
       }
     }
 
-    // Helper to get strength for the specific ingredient being searched
     const getTargetStrengthValue = (med: Medicine, searchStr: string) => {
         const names = String(med['Scientific Name']).toLowerCase().split(',').map(s => s.trim());
         const strengths = String(med.Strength).split(',').map(s => s.trim());
         const cleanTerm = searchStr.toLowerCase().replace(/\*/g, '');
-        
         let index = names.findIndex(n => n.includes(cleanTerm));
-        // If searching by trade name or no match, default to first strength
         if (index === -1) index = 0; 
-        
-        // Parse numerical part only (e.g., "500" from "500mg")
         return parseFloat(strengths[index]) || 0;
     };
 
@@ -396,7 +393,12 @@ const App: React.FC = () => {
             case 'scientificName': return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
             case 'strengthAsc': return getTargetStrengthValue(a, term) - getTargetStrengthValue(b, term);
             case 'strengthDesc': return getTargetStrengthValue(b, term) - getTargetStrengthValue(a, term);
-            default: return aVal.localeCompare(bVal);
+            case 'alphabetical': return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
+            default: 
+                if (textSearchMode === 'scientificName') {
+                    return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
+                }
+                return aVal.localeCompare(bVal);
         }
     });
 
@@ -483,7 +485,13 @@ const App: React.FC = () => {
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={handleExportData} />;
       if (view === 'chatHistory') return <ChatHistoryView conversations={allConversations} onSelectConversation={(c)=>{setCurrentChatHistory(c.messages); setIsAssistantOpen(true); setView('search');}} onDeleteConversation={async (id) => { const updated = allConversations.filter(c => c.id !== id); setAllConversations(updated); await setItem(CHAT_HISTORY_KEY, updated); }} onClearHistory={async () => { setAllConversations([]); await setItem(CHAT_HISTORY_KEY, []); }} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={visibleNotifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = visibleNotifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { const med = medicines.find(m => m.RegisterNumber === id); if(med) { setSelectedMedicine(med); setView('details'); } }} />;
+      if (view === 'notifications') return <NotificationsView notifications={visibleNotifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = visibleNotifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { 
+          const med = medicines.find(m => m.RegisterNumber === id); 
+          if(med) { 
+              setSelectedMedicine(med); 
+              setView('details'); 
+          }
+      }} />;
       if (view === 'imageView') return <ImageViewer images={zoomImages} initialIndex={zoomImageInitialIndex} title={zoomImageTitle} onBack={handleBack} t={t} indexFlags={zoomImageIndexFlags} />;
       if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
 
@@ -499,7 +507,7 @@ const App: React.FC = () => {
                   <div className="mt-4">
                       {filteredMedicines.length > 0 ? (
                         <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
-                      ) : (searchTerm.length >= 3 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
+                      ) : (searchTerm.length > 0 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
           );
@@ -557,18 +565,6 @@ const App: React.FC = () => {
                   timestamp: Date.now(),
                   status: 'pending'
               });
-              
-              // إرسال إشعار يستهدف المسؤول (عن طريق الدور) ويستهدف الشركة صاحبة الطلب (عن طريق ID)
-              await addDoc(collection(db, 'notifications'), {
-                  title: "تم استلام طلب التعديل",
-                  body: `تم إرسال اقتراحك لتعديل دواء ${editingMedicine['Trade Name']} بنجاح، وهو بانتظار مراجعة المسؤول.`,
-                  timestamp: Date.now(),
-                  type: 'approval_request',
-                  targetRole: 'admin',
-                  targetUserId: user.id, // لكي يظهر في قائمة إشعارات الشركة التي طلبت فقط
-                  relatedMedicineId: editingMedicine.RegisterNumber
-              });
-
               alert(t('requestSubmittedBody'));
           }
       }} t={t} />

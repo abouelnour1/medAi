@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FunctionDeclaration, Type } from '@google/genai';
-import { Medicine, TFunction, Language, ChatMessage, Cosmetic, SerializablePart } from '../types';
+import { Medicine, TFunction, Language, ChatMessage, SerializablePart } from '../types';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';
 import HistoryIcon from './icons/HistoryIcon';
@@ -15,7 +16,6 @@ interface AssistantModalProps {
   isOpen: boolean;
   onSaveAndClose: (history: ChatMessage[]) => void;
   contextMedicine: Medicine | null;
-  contextCosmetic?: Cosmetic | null;
   allMedicines: Medicine[];
   favoriteMedicines?: Medicine[];
   initialPrompt: string;
@@ -41,7 +41,6 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     isOpen, 
     onSaveAndClose, 
     contextMedicine, 
-    contextCosmetic,
     allMedicines, 
     initialPrompt, 
     initialHistory, 
@@ -114,12 +113,9 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     setUploadedImage(null);
     setIsLoading(true);
 
-    // بناء سياق الدواء الحالي ليكون الموديل على علم به
     let contextInfo = "";
     if (contextMedicine) {
         contextInfo = `\n[CONTEXT_DRUG: ${contextMedicine['Trade Name']}. Active: ${contextMedicine['Scientific Name']}, Price: ${contextMedicine['Public price']} SAR, Form: ${contextMedicine.PharmaceuticalForm}.]`;
-    } else if (contextCosmetic) {
-        contextInfo = `\n[CONTEXT_COSMETIC: ${contextCosmetic.SpecificName}. Brand: ${contextCosmetic.BrandName}.]`;
     }
 
     const systemInstruction = `You are "PharmaSource AI", a Senior Clinical Pharmacist. 
@@ -139,19 +135,16 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, t, searchDatabase, user, uploadedImage, contextMedicine, contextCosmetic, language]);
+  }, [userInput, isLoading, chatHistory, t, searchDatabase, user, uploadedImage, contextMedicine, language]);
   
   useEffect(() => {
     if (isOpen) {
         if (initialHistory && initialHistory.length > 0) {
             setChatHistory(initialHistory);
         } else {
-            // رسالة ترحيب مقتضبة جداً
             let welcome = "";
             if (contextMedicine) {
                 welcome = `Clinical Context: **${contextMedicine['Trade Name']}** active.`;
-            } else if (contextCosmetic) {
-                welcome = `Context: **${contextCosmetic.SpecificName}**.`;
             } else {
                 welcome = `PharmaSource AI expert ready.`;
             }

@@ -9,7 +9,7 @@ export interface Notification {
   type: 'info' | 'alert' | 'update' | 'approval_request' | 'request_result';
   isRead?: boolean;
   relatedId?: string; 
-  relatedMedicineId?: string; // New: To link directly to a medicine
+  relatedMedicineId?: string; 
   targetUserId?: string; 
   targetRole?: 'admin' | 'premium' | 'company'; 
 }
@@ -17,9 +17,9 @@ export interface Notification {
 export interface PendingUpdate {
   id: string;
   medicineId?: string; 
-  itemType: 'medicine' | 'cosmetic'; 
+  itemType: 'medicine' | 'supplement' | 'food'; 
   type: 'add' | 'edit';
-  newData: Partial<Medicine> | Partial<Cosmetic>;
+  newData: Partial<Medicine>;
   originalData?: any;
   submittedBy: string;
   submittedByName: string;
@@ -65,7 +65,7 @@ export interface Medicine {
   "Description Code": string;
   "Authorization Status": string;
   "Last Update": string;
-  description?: string; // New: To hold textual description distinct from code
+  description?: string; 
   
   imgBox?: string;
   imgIndex1?: string;
@@ -111,44 +111,42 @@ export interface Cosmetic {
   FirstSubCategoryEn?: string;
   SecondSubCategoryAr?: string;
   SecondSubCategoryEn?: string;
-  manufacturerNameEn: string;
+  manufacturerNameEn?: string;
   manufacturerCountryAr?: string;
-  manufacturerCountryEn: string;
+  manufacturerCountryEn?: string;
   "Active ingredient"?: string;
   "Key Ingredients"?: string;
   Highlights?: string;
-  "Public price"?: string; 
-  imgBox?: string; 
+  "Public price"?: string;
+  imgBox?: string;
 }
 
+// Added MilkProduct interface
 export interface MilkProduct {
   id: string;
   brand: string;
   productName: string;
   stageType: string;
   ageRange: string;
-  image?: string;
-  
   kcal: number;
   protein: number;
   fat: number;
   carb: number;
-  
   keyFeatures: string;
-  usp: string; 
-  
+  usp: string;
+  image?: string;
   explanation?: {
-    type?: {
+    type: {
       title: string;
       description: string;
       when_to_use: string;
       benefits: string;
       side_effects: string;
-    }
+    };
   };
 }
 
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'addCosmeticsData' | 'cosmeticsSearch' | 'cosmeticDetails' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'milkSearch' | 'notifications' | 'imageView';
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'notifications' | 'imageView';
 
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 
@@ -170,13 +168,12 @@ export interface Filters {
 export type Language = 'ar' | 'en';
 export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: string | number }) => string;
 
-export type Tab = 'search' | 'insurance' | 'prescriptions' | 'cosmetics' | 'milk' | 'settings';
+export type Tab = 'search' | 'insurance' | 'prescriptions' | 'settings';
 
 export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc' | 'strengthAsc' | 'strengthDesc';
 
 export interface SerializablePart {
   text?: string;
-  // Comment: Fixed type mismatch with @google/genai SDK by using any for thought
   thought?: any;
   inlineData?: {
     mimeType: string;

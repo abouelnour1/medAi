@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
@@ -9,49 +8,50 @@ export const isAIAvailable = (): boolean => {
 };
 
 /**
- * Robustly deep cleans an object to ensure it is a plain, serializable object 
- * without circular references or complex class instances (like Firestore internals).
+ * Aggressively cleans an object to ensure it is plain and serializable.
+ * Prevents "Converting circular structure to JSON" by discarding complex SDK internals.
  */
 const deepClean = (obj: any, seen = new WeakSet()): any => {
-    // Handle primitives
+    // 1. Primitive types
     if (obj === null || typeof obj !== 'object') {
         if (typeof obj === 'function' || typeof obj === 'symbol') return undefined;
         return obj;
     }
     
-    // Prevent Circular References
+    // 2. Circular Reference Prevention
     if (seen.has(obj)) {
         return '[Circular]';
     }
     seen.add(obj);
 
-    // Handle Arrays
+    // 3. Date handling
+    if (obj instanceof Date) {
+        return obj.toISOString();
+    }
+
+    // 4. Array handling
     if (Array.isArray(obj)) {
         return obj.map(item => deepClean(item, seen)).filter(i => i !== undefined);
     }
 
-    // Handle Objects
-    const cleaned: any = {};
-    
-    // Check if it's a special object that should be converted to string
-    // e.g. Date, RegExp, or Firebase references
-    const toStringValue = Object.prototype.toString.call(obj);
-    if (toStringValue !== '[object Object]') {
-        if (typeof obj.toString === 'function' && obj.toString !== Object.prototype.toString) {
-            try {
-                const s = obj.toString();
-                if (s !== '[object Object]') return s;
-            } catch (e) {
-                return `[Complex ${toStringValue}]`;
-            }
+    // 5. POJO (Plain Old JavaScript Object) Enforcement
+    // If it's a class instance (like Firebase internals Q$1, Sa), simplify to string or basic fields.
+    const proto = Object.getPrototypeOf(obj);
+    if (proto !== null && proto !== Object.prototype) {
+        // This is a complex class instance.
+        // We only want basic data, so we attempt to extract its enumerable properties 
+        // OR just stringify it if it looks like an SDK internal.
+        if (obj.constructor && (obj.constructor.name.length < 4 || obj.constructor.name.includes('$'))) {
+            return String(obj);
         }
     }
 
+    const cleaned: any = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const val = obj[key];
             
-            // Skip functions and symbols
+            // Skip non-serializable property types
             if (typeof val === 'function' || typeof val === 'symbol') continue;
             
             const cleanedVal = deepClean(val, seen);
@@ -70,16 +70,12 @@ export const sanitizeParts = (parts: any[]): any[] => {
     
     return parts.map(part => {
         const sanitized: any = {};
-        
-        // Use a WeakSet for deepClean to handle recursion locally within each part if needed
         const seen = new WeakSet();
 
-        // 1. Text Parts
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
         
-        // 2. Inline Data (Image) Parts
         if (part.inlineData) {
             sanitized.inlineData = {
                 mimeType: String(part.inlineData.mimeType || ''),
@@ -87,7 +83,6 @@ export const sanitizeParts = (parts: any[]): any[] => {
             };
         }
         
-        // 3. Function Call Parts (Model turn)
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
@@ -96,7 +91,6 @@ export const sanitizeParts = (parts: any[]): any[] => {
             };
         }
 
-        // 4. Function Response Parts (User turn)
         if (part.functionResponse) {
             sanitized.functionResponse = {
                 name: String(part.functionResponse.name),

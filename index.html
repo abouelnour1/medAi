@@ -42,8 +42,27 @@
         -webkit-font-smoothing: antialiased;
         background-color: #f8fafc;
         color: #0f172a;
+        /* Professional Native App Feel: Default cursor everywhere */
+        cursor: default;
+        /* Prevent text selection accidentally */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
       }
       
+      /* Restore text selection and cursor only for input fields */
+      input, textarea, [contenteditable="true"] {
+        cursor: text !important;
+        user-select: text !important;
+        -webkit-user-select: text !important;
+      }
+
+      /* Use pointer for interactive elements */
+      button, a, [role="button"], select {
+        cursor: pointer !important;
+      }
+
       #root {
         height: 100%;
         width: 100%;
