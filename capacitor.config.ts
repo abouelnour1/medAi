@@ -2,17 +2,23 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ahmed.pharmasource',
-  appName: 'pharmasource',
+  appId: 'com.pharmasource.ksa',
+  appName: 'PharmaSource KSA',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    iosScheme: 'https',
+    allowNavigation: ['*']
   },
-  android: {
-    buildOptions: {
-      keystorePassword: 'android', // Default, update if you have a custom keystore
-      keystoreAlias: 'androiddebugkey',
-      keystoreAliasPassword: 'android',
+  plugins: {
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
+      resizeOnFullScreen: true,
+    },
+    StatusBar: {
+      style: 'light',
+      backgroundColor: '#0f766e'
     }
   }
 };

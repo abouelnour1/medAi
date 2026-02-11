@@ -32,6 +32,16 @@ import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit, addDoc } from 'firebase/firestore';
 import { getItem, setItem } from './utils/storage';
 
+// Capacitor Plugins for Native Experience
+const setupNativeListeners = (onBack: () => void) => {
+    // We try to import dynamicly to not break web preview
+    import('@capacitor/app').then(({ App: CapApp }) => {
+        CapApp.addListener('backButton', () => {
+            onBack();
+        });
+    }).catch(() => console.log("Capacitor App plugin not available - web mode"));
+};
+
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
       for (const key of keys) {
@@ -222,6 +232,21 @@ const App: React.FC = () => {
     if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const handleBack = useCallback(() => {
+      if (view === 'imageView') setView('details');
+      else if (view === 'details' || view === 'alternatives') setView('results'); 
+      else if (view === 'insuranceDetails') setView('insuranceSearch');
+      else if (view === 'chatHistory') setView('search');
+      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : 'insuranceSearch');
+      else if (view === 'results') { setView('search'); setSearchTerm(''); }
+      else { setView('search'); setActiveTab('search'); }
+  }, [view, activeTab]);
+
+  // Native Android Back Button Integration
+  useEffect(() => {
+      setupNativeListeners(handleBack);
+  }, [handleBack]);
+
   const captureScrollPosition = useCallback(() => {
     const container = document.getElementById('main-scroll-container');
     if (container) scrollPositionsByView.current[view] = container.scrollTop;
@@ -267,6 +292,7 @@ const App: React.FC = () => {
             setIsDataLoaded(true);
 
             if (!FIREBASE_DISABLED && db) {
+                // Real-time listener for ALL users (Android, iOS, Web)
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
                     setMedicines(prev => {
                         const newMedsMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
@@ -310,21 +336,15 @@ const App: React.FC = () => {
     });
   }, [notifications, user]);
 
-  /**
-   * الخطوة الأولى: تصفية الأدوية بناءً على نص البحث ونوع المنتج فقط.
-   * هذه المصفوفة سنستخدمها كمصدر لخيارات مودال الفلاتر.
-   */
   const searchOnlyFilteredMedicines = useMemo(() => {
     if (!medicines || medicines.length === 0) return [];
     let results = [...medicines];
     const term = searchTerm.toLowerCase().trim();
     const cleanTermForLength = term.replace(/\*/g, '');
 
-    // إذا كان البحث فارغاً والفلتر غير نشط، نرجع مصفوفة فارغة لتقليل الثقل
     if (term.length === 0 && !isFilterActive) return [];
     if (term.length > 0 && cleanTermForLength.length < 3) return [];
 
-    // تصفية حسب نص البحث
     if (term && cleanTermForLength.length >= 3) {
       const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
       if (term.includes('*')) {
@@ -342,9 +362,6 @@ const App: React.FC = () => {
     return results;
   }, [medicines, searchTerm, textSearchMode, isFilterActive]);
 
-  /**
-   * الخطوة الثانية: تطبيق الفلاتر المتقدمة على نتائج البحث.
-   */
   const filteredMedicines = useMemo(() => {
     let results = [...searchOnlyFilteredMedicines];
 
@@ -462,16 +479,6 @@ const App: React.FC = () => {
       scrollToTop();
   }, [medicines, scrollToTop]);
 
-  const handleBack = useCallback(() => {
-      if (view === 'imageView') setView('details');
-      else if (view === 'details' || view === 'alternatives') setView('results'); 
-      else if (view === 'insuranceDetails') setView('insuranceSearch');
-      else if (view === 'chatHistory') setView('search');
-      else if (['login', 'register', 'admin', 'aiHistory', 'addData', 'notifications'].includes(view)) setView(activeTab === 'search' ? 'search' : activeTab === 'settings' ? 'settings' : 'insuranceSearch');
-      else if (view === 'results') { setView('search'); setSearchTerm(''); }
-      else { setView('search'); setActiveTab('search'); }
-  }, [view, activeTab]);
-
   const handleMedicineSelect = useCallback((medicine: Medicine) => { 
       captureScrollPosition();
       setSelectedMedicine(medicine); setView('details'); 
@@ -544,10 +551,6 @@ const App: React.FC = () => {
       <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
       
-      {/* 
-          هنا نقوم بتمرير searchOnlyFilteredMedicines بدلاً من medicines.
-          هذه المصفوفة تحتوي فقط على الأدوية التي تطابق نص البحث الحالي.
-      */}
       <FilterModal 
         isOpen={isFilterModalOpen} 
         onClose={() => setIsFilterModalOpen(false)} 
@@ -564,10 +567,6 @@ const App: React.FC = () => {
                   await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
               }
               await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); 
-              setMedicines(prev => {
-                 const filtered = prev.filter(m => m.RegisterNumber !== editingMedicine.RegisterNumber);
-                 return [updatedMed, ...filtered];
-              });
               setSelectedMedicine(updatedMed);
               alert(t('saveSuccess')); 
           } else if (user?.role === 'company' && editingMedicine) {
