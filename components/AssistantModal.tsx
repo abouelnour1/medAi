@@ -75,22 +75,23 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     if (!args) return { count: 0, results: [] };
     let results = [...allMedicines];
     if (args.tradeName) {
-        const term = args.tradeName.toLowerCase();
+        const term = String(args.tradeName).toLowerCase();
         results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(term));
     }
     if (args.scientificName) {
-        const term = args.scientificName.toLowerCase().trim();
+        const term = String(args.scientificName).toLowerCase().trim();
         results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(term));
     }
+    
     return {
         count: results.length,
         results: results.slice(0, 5).map(r => ({
-            tradeName: r['Trade Name'],
-            scientificName: r['Scientific Name'],
-            price: r['Public price'],
-            form: r.PharmaceuticalForm,
+            tradeName: String(r['Trade Name']),
+            scientificName: String(r['Scientific Name']),
+            price: String(r['Public price']),
+            form: String(r.PharmaceuticalForm),
             strength: `${r.Strength} ${r.StrengthUnit}`,
-            manufacturer: r['Manufacture Name']
+            manufacturer: String(r['Manufacture Name'])
         }))
     };
   }, [allMedicines]);
@@ -102,8 +103,12 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 
     const userParts: SerializablePart[] = [];
     if (uploadedImage) {
-        const base64Data = await blobToBase64(uploadedImage.blob);
-        userParts.push({ inlineData: { mimeType: uploadedImage.mimeType, data: base64Data } });
+        try {
+            const base64Data = await blobToBase64(uploadedImage.blob);
+            userParts.push({ inlineData: { mimeType: uploadedImage.mimeType, data: base64Data } });
+        } catch (e) {
+            console.error("Image processing error", e);
+        }
     }
     if (currentInput) userParts.push({ text: currentInput });
     
@@ -120,17 +125,22 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 
     const systemInstruction = `You are "PharmaSource AI", a Senior Clinical Pharmacist. 
     CORE RULES:
-    1. EXTREME BREVITY: Direct answers only. No greetings (Hi/Hello), no conclusions.
-    2. CONTEXT AWARENESS: If user asks "How to use?" or "Side effects?", ASSUME they mean the drug in [CONTEXT_DRUG] above. Do not ask for name.
-    3. PROFESSIONAL JARGON: Use English medical terms (e.g., BID, TID, QD, Contraindications, Pharmacokinetics, Half-life) within Arabic/English responses.
-    4. DATA SOURCE: Use 'searchDatabase' only for pricing/availability. Use your medical knowledge for clinical data.
+    1. EXTREME BREVITY: Direct answers only. No greetings, no conclusions.
+    2. CONTEXT AWARENESS: If user asks "How to use?" or "Side effects?", ASSUME they mean the drug in [CONTEXT_DRUG] above.
+    3. PROFESSIONAL JARGON: Use English medical terms (BID, TID, QD, etc.) within responses.
+    4. DATA SOURCE: Use 'searchDatabase' for pricing/availability. Use your medical knowledge for clinical data.
     ${contextInfo}`;
 
     try {
         const response = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: [searchDatabaseTool]}], { searchDatabase });
-        const parts = response?.candidates?.[0]?.content?.parts;
-        if (parts) setChatHistory(prev => [...prev, { role: 'model', parts: sanitizeParts(parts) }]);
+        const responseParts = response?.candidates?.[0]?.content?.parts;
+        if (responseParts) {
+            // تطهير الرد القادم من الـ SDK قبل إضافته للـ state لضمان عدم وجود مراجع دائرية
+            const cleanParts = sanitizeParts(responseParts);
+            setChatHistory(prev => [...prev, { role: 'model', parts: cleanParts }]);
+        }
     } catch (err) {
+      console.error("AI Chat Error:", err);
       setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
     } finally {
       setIsLoading(false);
@@ -140,17 +150,15 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   useEffect(() => {
     if (isOpen) {
         if (initialHistory && initialHistory.length > 0) {
-            setChatHistory(initialHistory);
+            // تطهير التاريخ المسترجع أيضاً كإجراء وقائي إضافي
+            const cleanHistory: ChatMessage[] = initialHistory.map(m => ({
+                role: m.role,
+                parts: sanitizeParts(m.parts)
+            }));
+            setChatHistory(cleanHistory);
         } else {
-            let welcome = "";
-            if (contextMedicine) {
-                welcome = `Clinical Context: **${contextMedicine['Trade Name']}** active.`;
-            } else {
-                welcome = `PharmaSource AI expert ready.`;
-            }
-            
+            let welcome = contextMedicine ? `Clinical Context: **${contextMedicine['Trade Name']}** active.` : `PharmaSource AI expert ready.`;
             setChatHistory([{ role: 'model', parts: [{ text: welcome }] }]);
-            
             if (initialPrompt) {
                 setTimeout(() => handleSendMessage(initialPrompt), 400);
             }

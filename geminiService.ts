@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
 import { ChatMessage, SerializablePart } from './types';
 
@@ -8,93 +9,91 @@ export const isAIAvailable = (): boolean => {
 };
 
 /**
- * Aggressively cleans an object to ensure it is plain and serializable.
- * Prevents "Converting circular structure to JSON" by discarding complex SDK internals.
+ * دالة تطهير عميقة جداً (Deep Purge)
+ * تقوم بتحويل أي كائن إلى كائن POJO (Plain Old JavaScript Object) بسيط
+ * وتمنع المراجع الدائرية وتتخلص من أي ميثودز أو خصائص خفية
  */
-const deepClean = (obj: any, seen = new WeakSet()): any => {
-    // 1. Primitive types
+function flattenToPOJO(obj: any, seen = new WeakSet()): any {
+    // 1. التعامل مع القيم البدائية
     if (obj === null || typeof obj !== 'object') {
-        if (typeof obj === 'function' || typeof obj === 'symbol') return undefined;
-        return obj;
+        return (typeof obj === 'function' || typeof obj === 'symbol') ? undefined : obj;
     }
-    
-    // 2. Circular Reference Prevention
+
+    // 2. منع المراجع الدائرية
     if (seen.has(obj)) {
-        return '[Circular]';
+        return undefined; // نتخلص من المرجع الدائري بدلاً من وضع علامة نصية لضمان سلامة الـ JSON
     }
     seen.add(obj);
 
-    // 3. Date handling
-    if (obj instanceof Date) {
-        return obj.toISOString();
-    }
-
-    // 4. Array handling
+    // 3. التعامل مع المصفوفات
     if (Array.isArray(obj)) {
-        return obj.map(item => deepClean(item, seen)).filter(i => i !== undefined);
+        return obj.map(item => flattenToPOJO(item, seen)).filter(i => i !== undefined);
     }
 
-    // 5. POJO (Plain Old JavaScript Object) Enforcement
-    // If it's a class instance (like Firebase internals Q$1, Sa), simplify to string or basic fields.
-    const proto = Object.getPrototypeOf(obj);
-    if (proto !== null && proto !== Object.prototype) {
-        // This is a complex class instance.
-        // We only want basic data, so we attempt to extract its enumerable properties 
-        // OR just stringify it if it looks like an SDK internal.
-        if (obj.constructor && (obj.constructor.name.length < 4 || obj.constructor.name.includes('$'))) {
-            return String(obj);
-        }
-    }
+    // 4. التعامل مع التواريخ والـ Uint8Array (المستخدم في ملفات الميديا)
+    if (obj instanceof Date) return obj.toISOString();
+    if (obj instanceof Uint8Array) return Array.from(obj);
 
-    const cleaned: any = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const val = obj[key];
+    // 5. بناء كائن جديد كلياً
+    const cleanObj: any = {};
+    try {
+        // نستخدم Object.keys للحصول على الخصائص القابلة للتعداد فقط
+        Object.keys(obj).forEach(key => {
+            // تخطي الخصائص الداخلية التي قد تبدأ بـ $ أو _ في بعض المكتبات
+            if (key.startsWith('$')) return;
             
-            // Skip non-serializable property types
-            if (typeof val === 'function' || typeof val === 'symbol') continue;
-            
-            const cleanedVal = deepClean(val, seen);
-            if (cleanedVal !== undefined) {
-                cleaned[key] = cleanedVal;
+            const value = obj[key];
+            const safeValue = flattenToPOJO(value, seen);
+            if (safeValue !== undefined) {
+                cleanObj[key] = safeValue;
             }
-        }
+        });
+    } catch (e) {
+        return undefined;
     }
-    
-    return cleaned;
-};
 
-// Defensive function to ensure message parts are safe for the GenAI SDK
+    return cleanObj;
+}
+
+/**
+ * تضمن أن أجزاء الرسالة تتبع الهيكل الدقيق المتوقع من Gemini API فقط
+ * وتزيل أي خصائص إضافية قد تضعها المكتبة (مثل thought أو خصائص داخلية)
+ */
 export const sanitizeParts = (parts: any[]): any[] => {
     if (!parts || !Array.isArray(parts)) return [];
     
     return parts.map(part => {
         const sanitized: any = {};
-        const seen = new WeakSet();
-
+        
+        // Gemini يقبل أنواع محددة فقط من الخصائص في كل جزء
+        
+        // 1. النصوص
         if (part.text !== undefined && part.text !== null) {
             sanitized.text = String(part.text);
         }
         
+        // 2. الميديا (صور/ملفات)
         if (part.inlineData) {
             sanitized.inlineData = {
-                mimeType: String(part.inlineData.mimeType || ''),
+                mimeType: String(part.inlineData.mimeType || 'image/jpeg'),
                 data: String(part.inlineData.data || '')
             };
         }
         
+        // 3. طلب استدعاء وظيفة (Function Call)
         if (part.functionCall) {
             sanitized.functionCall = {
                 name: String(part.functionCall.name),
-                args: deepClean(part.functionCall.args || {}, seen),
+                args: flattenToPOJO(part.functionCall.args || {}),
                 id: part.functionCall.id ? String(part.functionCall.id) : undefined
             };
         }
 
+        // 4. رد استدعاء وظيفة (Function Response)
         if (part.functionResponse) {
             sanitized.functionResponse = {
                 name: String(part.functionResponse.name),
-                response: deepClean(part.functionResponse.response || {}, seen),
+                response: flattenToPOJO(part.functionResponse.response || {}),
                 id: part.functionResponse.id ? String(part.functionResponse.id) : undefined
             };
         }
@@ -112,19 +111,22 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Ensure history is clean before building contents
+    // تطهير السجل بالكامل لضمان عدم وجود مراجع دائرية من طلبات سابقة
     const contents: any[] = history.map(msg => ({
         role: msg.role,
         parts: sanitizeParts(msg.parts)
     }));
 
     const config: any = {
-        systemInstruction: systemInstruction,
+        systemInstruction: String(systemInstruction),
         temperature: 0.7,
         thinkingConfig: { thinkingBudget: 0 }
     };
 
-    if (tools) config.tools = tools;
+    if (tools) {
+        // تنظيف التولز قبل تمريرها
+        config.tools = flattenToPOJO(tools);
+    }
 
     let response = await ai.models.generateContent({
         model: modelName,
@@ -133,6 +135,7 @@ export const runAIChat = async (
     });
 
     let iterations = 0;
+    // التعامل مع استدعاءات الوظائف المتكررة (حتى 5 محاولات)
     while (response.functionCalls && response.functionCalls.length > 0 && iterations < 5) {
         iterations++;
         const functionResponses: any[] = [];
@@ -140,11 +143,11 @@ export const runAIChat = async (
         for (const call of response.functionCalls) {
             const implementation = toolImplementations[call.name];
             if (implementation) {
-                const result = await implementation(call.args);
+                const rawResult = await implementation(call.args);
                 functionResponses.push({
                     functionResponse: {
                         name: call.name,
-                        response: deepClean(result || {}),
+                        response: flattenToPOJO(rawResult || {}),
                         id: call.id
                     }
                 });
@@ -154,6 +157,7 @@ export const runAIChat = async (
         if (functionResponses.length > 0) {
             const modelTurnParts = response.candidates?.[0]?.content?.parts;
             if (modelTurnParts) {
+                // إضافة رد النموذج الحالي ورد المستخدم (نتائج الوظائف) للسجل المطهّر
                 contents.push({ role: 'model', parts: sanitizeParts(modelTurnParts) });
                 contents.push({ role: 'user', parts: functionResponses });
                 

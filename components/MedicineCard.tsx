@@ -204,7 +204,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             )}
             <div className="flex flex-wrap justify-end gap-1 max-w-[80px]">
                 {(isControlled || isRestricted) ? (
-                    <span className={`inline-block font-bold rounded-md px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap shadow-sm ${isControlled ? 'bg-red-600' : 'bg-orange-50'}`}>
+                    <span className={`inline-block font-black rounded-md px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap shadow-md ${isControlled ? 'bg-red-600' : 'bg-amber-600'}`}>
                         {isControlled ? 'CTRL' : 'REST'}
                     </span>
                 ) : (

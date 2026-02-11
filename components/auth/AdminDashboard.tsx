@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification } from '../../types';
 import { useAuth } from './AuthContext';
@@ -14,7 +15,6 @@ import DownloadIcon from '../icons/DownloadIcon';
 import PillIcon from '../icons/PillIcon';
 import FactoryIcon from '../icons/FactoryIcon';
 import GlobeIcon from '../icons/GlobeIcon';
-import SearchableDropdown from '../SearchableDropdown';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
 
@@ -49,9 +49,9 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
 export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void }> = ({ t, allMedicines, onExport }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
-  const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm dark:text-white";
+  const inputClass = "w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold dark:text-white";
   const labelClass = "block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1";
-  const sectionTitle = "text-[10px] font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 mt-2 flex items-center gap-2";
+  const sectionTitle = "text-[11px] font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 mt-6 flex items-center gap-2";
 
   const [activePanel, setActivePanel] = useState<Panel>('menu');
   const [users, setUsers] = useState<User[]>([]);
@@ -74,18 +74,24 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
       "Manufacture Name": '', "Legal Status": 'Prescription', "Product Control": 'Uncontrolled',
       "Storage Condition Arabic": '', shelfLife: '', AtcCode1: '', imgBox: '', 
       "Marketing Company": '', "Main Agent": '', "Manufacture Country": '', "AdministrationRoute": '',
-      "Description Code": '', "Authorization Status": 'Valid'
+      "Description Code": '', "Authorization Status": 'Valid', description: ''
   });
 
+  // توليد قوائم فريدة من البيانات الحالية للاقتراح التلقائي
   const dbLists = useMemo(() => {
+    const getUnique = (key: keyof Medicine) => 
+        Array.from(new Set(allMedicines.map(m => String(m[key] || '').trim()).filter(val => val !== '' && val.toLowerCase() !== 'n/a'))).sort();
+
     return {
-      scientificNames: Array.from(new Set(allMedicines.map(m => m["Scientific Name"]).filter(Boolean))).sort(),
-      manufacturers: Array.from(new Set(allMedicines.map(m => m["Manufacture Name"]).filter(Boolean))).sort(),
-      forms: Array.from(new Set(allMedicines.map(m => m.PharmaceuticalForm).filter(Boolean))).sort(),
-      units: Array.from(new Set(allMedicines.map(m => m.StrengthUnit).filter(Boolean))).sort(),
-      tradeNames: Array.from(new Set(allMedicines.map(m => m["Trade Name"]).filter(Boolean))).sort(),
-      marketingCompanies: Array.from(new Set(allMedicines.map(m => m["Marketing Company"]).filter(Boolean))).sort(),
-      agents: Array.from(new Set(allMedicines.map(m => m["Main Agent"]).filter(Boolean))).sort(),
+      scientificNames: getUnique('Scientific Name'),
+      manufacturers: getUnique('Manufacture Name'),
+      forms: getUnique('PharmaceuticalForm'),
+      units: getUnique('StrengthUnit'),
+      marketingCompanies: getUnique('Marketing Company'),
+      agents: getUnique('Main Agent'),
+      routes: getUnique('AdministrationRoute'),
+      countries: getUnique('Manufacture Country'),
+      tradeNames: getUnique('Trade Name')
     };
   }, [allMedicines]);
 
@@ -190,7 +196,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
             <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-700">
                 <div>
-                    <h3 className="text-lg font-black">{t('addNewItem')}</h3>
+                    <h3 className="text-lg font-black">إضافة صنف جديد يدوياً</h3>
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl mt-2 border border-slate-200 dark:border-slate-700 w-fit">
                         {(['Human', 'Supplement', 'Food'] as ItemCategory[]).map(cat => (
                             <button key={cat} onClick={() => setItemCategory(cat)} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${itemCategory === cat ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -204,22 +210,23 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                 e.preventDefault(); 
                 setIsLoading(true); 
                 try {
-                    const collectionName = 'medicines';
                     const id = formMed.RegisterNumber || `manual-${Date.now()}`;
                     const finalData = { ...formMed, RegisterNumber: id, "Product type": itemCategory };
-                    await setDoc(doc(db, collectionName, id), finalData); 
+                    await setDoc(doc(db, 'medicines', id), finalData); 
                     alert(t('saveSuccess')); 
                     setActivePanel('menu'); 
                 } catch(e:any) { alert(e.message); } finally { setIsLoading(false); } 
-            }} className="space-y-8">
+            }} className="space-y-4">
+                
+                {/* قسم الهوية */}
                 <div>
                     <h4 className={sectionTitle}><div className="w-3.5 h-3.5"><SearchIcon /></div> الهوية والأسعار (Identity & Pricing)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="sm:col-span-1"><label className={labelClass}>{t('registrationNumber')} *</label><input value={formMed.RegisterNumber} onChange={e => setFormMed({...formMed, RegisterNumber: e.target.value})} className={inputClass} required /></div>
-                        <div className="sm:col-span-2"><label className={labelClass}>{t('tradeName')} *</label><input value={formMed["Trade Name"]} onChange={e => setFormMed({...formMed, ["Trade Name"]: e.target.value})} className={inputClass} required /></div>
+                        <div className="sm:col-span-1"><label className={labelClass}>{t('registrationNumber')} *</label><input value={formMed.RegisterNumber} onChange={e => setFormMed({...formMed, RegisterNumber: e.target.value})} className={inputClass} required placeholder="مثلاً: 1807..." /></div>
+                        <div className="sm:col-span-2"><label className={labelClass}>{t('tradeName')} *</label><input list="all-trade-names" value={formMed["Trade Name"]} onChange={e => setFormMed({...formMed, ["Trade Name"]: e.target.value})} className={inputClass} required placeholder="اسم المنتج التجاري" /><datalist id="all-trade-names">{dbLists.tradeNames.map(s => <option key={s} value={s} />)}</datalist></div>
                         <div className="sm:col-span-3">
                             <label className={labelClass}>{t('scientificName')}</label>
-                            <input list="sci-names" value={formMed["Scientific Name"]} onChange={e => setFormMed({...formMed, ["Scientific Name"]: e.target.value})} className={inputClass} placeholder={t('pleaseSelectOrAdd')} />
+                            <input list="sci-names" value={formMed["Scientific Name"]} onChange={e => setFormMed({...formMed, ["Scientific Name"]: e.target.value})} className={inputClass} placeholder="اختر من القائمة أو اكتب جديد..." />
                             <datalist id="sci-names">{dbLists.scientificNames.map(s => <option key={s} value={s} />)}</datalist>
                         </div>
                         <div><label className={labelClass}>{t('price')} (SAR)</label><input type="number" step="0.01" value={formMed["Public price"]} onChange={e => setFormMed({...formMed, ["Public price"]: e.target.value})} className={inputClass} /></div>
@@ -228,55 +235,66 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     </div>
                 </div>
 
+                {/* قسم الشكل الصيدلاني والتركيز */}
                 <div>
                     <h4 className={sectionTitle}><div className="w-3.5 h-3.5"><PillIcon /></div> التكوين والشكل (Composition & Form)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="sm:col-span-2">
                             <label className={labelClass}>{t('pharmaceuticalForm')}</label>
-                            <input list="form-list" value={formMed.PharmaceuticalForm} onChange={e => setFormMed({...formMed, PharmaceuticalForm: e.target.value})} className={inputClass} placeholder={t('pleaseSelectOrAdd')} />
+                            <input list="form-list" value={formMed.PharmaceuticalForm} onChange={e => setFormMed({...formMed, PharmaceuticalForm: e.target.value})} className={inputClass} placeholder="أقراص، شراب، كبسولات..." />
                             <datalist id="form-list">{dbLists.forms.map(f => <option key={f} value={f} />)}</datalist>
                         </div>
-                        <div><label className={labelClass}>طريقة الإعطاء</label><input value={formMed.AdministrationRoute} onChange={e => setFormMed({...formMed, AdministrationRoute: e.target.value})} className={inputClass} placeholder="Oral, IV, Topical..." /></div>
-                        <div><label className={labelClass}>{t('strength')}</label><input value={formMed.Strength} onChange={e => setFormMed({...formMed, Strength: e.target.value})} className={inputClass} placeholder="500, 10..." /></div>
+                        <div>
+                            <label className={labelClass}>طريقة الإعطاء (Route)</label>
+                            <input list="route-list" value={formMed.AdministrationRoute} onChange={e => setFormMed({...formMed, AdministrationRoute: e.target.value})} className={inputClass} placeholder="Oral, IV, Topical..." />
+                            <datalist id="route-list">{dbLists.routes.map(r => <option key={r} value={r} />)}</datalist>
+                        </div>
+                        <div><label className={labelClass}>{t('strength')}</label><input value={formMed.Strength} onChange={e => setFormMed({...formMed, Strength: e.target.value})} className={inputClass} placeholder="مثلاً: 500" /></div>
                         <div><label className={labelClass}>الوحدة (Unit)</label><input list="unit-list" value={formMed.StrengthUnit} onChange={e => setFormMed({...formMed, StrengthUnit: e.target.value})} className={inputClass} placeholder="mg, ml..." /><datalist id="unit-list">{dbLists.units.map(u => <option key={u} value={u} />)}</datalist></div>
                         <div><label className={labelClass}>{t('packageSize')}</label><input value={formMed.PackageSize} onChange={e => setFormMed({...formMed, PackageSize: e.target.value})} className={inputClass} /></div>
                     </div>
                 </div>
 
+                {/* قسم التصنيع والوكلاء */}
                 <div>
                     <h4 className={sectionTitle}><div className="w-3.5 h-3.5"><FactoryIcon /></div> التصنيع والتسويق (Supply Chain)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelClass}>المصنع (Manufacturer)</label>
-                            <input list="mfr-list" value={formMed["Manufacture Name"]} onChange={e => setFormMed({...formMed, ["Manufacture Name"]: e.target.value})} className={inputClass} placeholder={t('pleaseSelectOrAdd')} />
+                            <input list="mfr-list" value={formMed["Manufacture Name"]} onChange={e => setFormMed({...formMed, ["Manufacture Name"]: e.target.value})} className={inputClass} placeholder="اسم الشركة المصنعة" />
                             <datalist id="mfr-list">{dbLists.manufacturers.map(m => <option key={m} value={m} />)}</datalist>
                         </div>
-                        <div><label className={labelClass}>بلد التصنيع</label><input value={formMed["Manufacture Country"]} onChange={e => setFormMed({...formMed, ["Manufacture Country"]: e.target.value})} className={inputClass} /></div>
                         <div>
-                            <label className={labelClass}>الشركة المسوقة</label>
-                            <input list="mark-list" value={formMed["Marketing Company"]} onChange={e => setFormMed({...formMed, ["Marketing Company"]: e.target.value})} className={inputClass} />
+                            <label className={labelClass}>بلد التصنيع</label>
+                            <input list="country-list" value={formMed["Manufacture Country"]} onChange={e => setFormMed({...formMed, ["Manufacture Country"]: e.target.value})} className={inputClass} placeholder="بلد المنشأ" />
+                            <datalist id="country-list">{dbLists.countries.map(c => <option key={c} value={c} />)}</datalist>
+                        </div>
+                        <div>
+                            <label className={labelClass}>الشركة المسوقة (Marketing)</label>
+                            <input list="mark-list" value={formMed["Marketing Company"]} onChange={e => setFormMed({...formMed, ["Marketing Company"]: e.target.value})} className={inputClass} placeholder="الشركة المسوقة" />
                             <datalist id="mark-list">{dbLists.marketingCompanies.map(m => <option key={m} value={m} />)}</datalist>
                         </div>
                         <div>
                             <label className={labelClass}>الوكيل (Agent)</label>
-                            <input list="agent-list" value={formMed["Main Agent"]} onChange={e => setFormMed({...formMed, ["Main Agent"]: e.target.value})} className={inputClass} />
+                            <input list="agent-list" value={formMed["Main Agent"]} onChange={e => setFormMed({...formMed, ["Main Agent"]: e.target.value})} className={inputClass} placeholder="الوكيل الأساسي في السعودية" />
                             <datalist id="agent-list">{dbLists.agents.map(m => <option key={m} value={m} />)}</datalist>
                         </div>
                     </div>
                 </div>
 
+                {/* قسم التنظيم */}
                 <div>
                     <h4 className={sectionTitle}><div className="w-3.5 h-3.5"><GlobeIcon /></div> التنظيم والصور (Regulatory & Assets)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div><label className={labelClass}>{t('legalStatus')}</label><select value={formMed["Legal Status"]} onChange={e => setFormMed({...formMed, ["Legal Status"]: e.target.value})} className={inputClass}><option value="Prescription">Rx (Prescription)</option><option value="OTC">OTC</option></select></div>
                         <div><label className={labelClass}>الرقابة</label><select value={formMed["Product Control"]} onChange={e => setFormMed({...formMed, ["Product Control"]: e.target.value})} className={inputClass}><option value="Uncontrolled">Uncontrolled</option><option value="Controlled">Controlled</option><option value="Restricted">Restricted</option></select></div>
                         <div><label className={labelClass}>{t('shelfLife')} (Month)</label><input type="number" value={formMed.shelfLife} onChange={e => setFormMed({...formMed, shelfLife: e.target.value})} className={inputClass} /></div>
-                        <div className="sm:col-span-3"><label className={labelClass}>{t('boxImage')} URL</label><input value={formMed.imgBox} onChange={e => setFormMed({...formMed, imgBox: e.target.value})} className={inputClass} placeholder="https://..." /></div>
-                        <div className="sm:col-span-3"><label className={labelClass}>نبذة / وصف (Description)</label><textarea value={formMed.description} onChange={e => setFormMed({...formMed, description: e.target.value})} className={inputClass} rows={3} /></div>
+                        <div className="sm:col-span-3"><label className={labelClass}>{t('boxImage')} URL</label><input value={formMed.imgBox} onChange={e => setFormMed({...formMed, imgBox: e.target.value})} className={inputClass} placeholder="رابط صورة العلبة (HTTPS)" /></div>
+                        <div className="sm:col-span-3"><label className={labelClass}>نبذة / وصف (Description)</label><textarea value={formMed.description} onChange={e => setFormMed({...formMed, description: e.target.value})} className={inputClass} rows={3} placeholder="اكتب تفاصيل إضافية أو ملاحظات هنا..." /></div>
                     </div>
                 </div>
 
-                <div className="pt-4"><button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50">{isLoading ? '...' : t('save')}</button></div>
+                <div className="pt-6"><button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50 text-base">{isLoading ? 'جاري الحفظ...' : 'حفظ الصنف في قاعدة البيانات'}</button></div>
             </form>
         </div>
     </div>
@@ -429,14 +447,8 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                 
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <label className={labelClass}>ربط دواء (اختياري)</label>
-                    <SearchableDropdown
-                        ariaLabel="Linked Medicine"
-                        options={dbLists.tradeNames}
-                        value={notifForm.linkedMedicineTradeName}
-                        onChange={(val) => setNotifForm({...notifForm, linkedMedicineTradeName: String(val)})}
-                        placeholder="ابحث عن دواء لربطه..."
-                        t={t}
-                    />
+                    <input list="linked-trade-names" value={notifForm.linkedMedicineTradeName} onChange={(e) => setNotifForm({...notifForm, linkedMedicineTradeName: e.target.value})} className={inputClass} placeholder="ابحث عن دواء لربطه..." />
+                    <datalist id="linked-trade-names">{dbLists.tradeNames.map(s => <option key={s} value={s} />)}</datalist>
                     <p className="text-[9px] text-slate-400 mt-2">سيظهر زر "عرض ملف الدواء" للمستخدم عند النقر على الإشعار.</p>
                 </div>
 

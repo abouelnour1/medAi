@@ -158,16 +158,28 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
   const showPhysicalSection = medicineImages.length > 0 || hasPhysicalData;
 
+  // Translate distribution area
+  const distAreaRaw = medicine['Distribute area'] || '';
+  const distAreaTranslated = distAreaRaw.toLowerCase().includes('hospital') ? t('hospital') : distAreaRaw.toLowerCase().includes('pharmacy') ? t('pharmacy') : distAreaRaw;
+
+  // Combine package info
+  const packageDisplay = medicine.PackageSize && medicine.PackageSize !== '0' ? `${medicine.PackageSize} ${medicine.PackageTypes || ''}`.trim() : null;
+
+  // Control logic
+  const productControl = medicine['Product Control'] || '';
+  const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
+  const isRestricted = productControl.toLowerCase().includes('restricted');
+
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
         <div className="px-2 sm:px-0">
           <div className="flex items-center justify-between gap-4">
-              <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left">
-                  <h2 className="text-xl md:text-2xl font-bold text-light-text dark:text-dark-text group-hover:text-primary underline decoration-dotted decoration-gray-300 underline-offset-4">
+              <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left min-w-0">
+                  <h2 className="text-xl md:text-2xl font-bold text-light-text dark:text-dark-text group-hover:text-primary underline decoration-dotted decoration-gray-300 underline-offset-4 truncate">
                       {medicine['Trade Name']}
                   </h2>
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><AssistantIcon /></span>
+                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><AssistantIcon /></span>
               </button>
               <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => onFindAlternative(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('directAlternatives')}><div className="h-5 w-5"><AlternativeIcon /></div></button>
@@ -180,6 +192,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                   )}
                   <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}><div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div></button>
               </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+              {(isControlled || isRestricted) && (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-white shadow-lg uppercase tracking-wider ${isControlled ? 'bg-red-600' : 'bg-amber-600'}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                      {isControlled ? 'Controlled Drug (خاضع للرقابة)' : 'Restricted Drug (دواء مقيد)'}
+                  </span>
+              )}
+              <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 rounded-md">
+                {medicine['Legal Status']}
+              </span>
           </div>
           
           <div className="mt-4">
@@ -295,6 +319,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+            {/* Added Distribution and Pack Size Rows */}
+            <DetailRow label={t('distribution')} value={distAreaTranslated} valueClassName="font-bold text-primary" />
+            <DetailRow label={t('packSize')} value={packageDisplay} valueClassName="font-bold" />
+            
             <DetailRow label={t('strengthUnit')} value={medicine.StrengthUnit} />
             <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
             <DetailRow label={t('atcCode') || 'كود ATC'} value={medicine.AtcCode1} valueClassName="font-mono text-primary font-bold" />
@@ -302,6 +330,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             <DetailRow label={t('legalStatus')} value={medicine['Legal Status']} />
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
+            
+            {/* Storage Conditions Section */}
+            <DetailRow label={t('storageConditionsAr') || 'ظروف التخزين (AR)'} value={medicine['Storage Condition Arabic']} />
+            <DetailRow label={t('storageConditionsEn') || 'Storage Conditions (EN)'} value={medicine['Storage conditions']} valueClassName="font-medium text-slate-600 dark:text-slate-400" />
+            
             <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('registrationNumber')}</dt>
               <dd className="mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0">

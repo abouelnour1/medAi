@@ -1,6 +1,12 @@
 
 export const translations = {
   ar: {
+    storageConditionsAr: 'ظروف التخزين (بالعربي)',
+    storageConditionsEn: 'شروط التخزين (EN)',
+    distribution: 'نطاق التوزيع',
+    packSize: 'حجم العبوة',
+    hospital: 'مستشفى',
+    pharmacy: 'صيدلية',
     food: 'غذاء (Food)',
     clinicalDetails: 'معلومات سريرية (Clinical)',
     maxDailyDoseAdults: 'الجرعة القصوى (بالغين)',
@@ -39,7 +45,7 @@ export const translations = {
     notificationDetails: 'تفاصيل الإشعار',
     registerSuccessPending: 'تم التسجيل بنجاح! يرجى تفعيل بريدك الإلكتروني.',
     loginRequired: 'يجب تسجيل الدخول للوصول إلى هذه الميزة.',
-    navSettings: 'الإعدادات',
+    navSettings: 'إعدادات',
     login: 'تسجيل الدخول',
     aiActivityLog: 'سجل نشاط الذكاء الاصطناعي',
     darkMode: 'الوضع الداكن',
@@ -144,7 +150,7 @@ export const translations = {
     suggestedProducts: 'المنتجات المقترحة',
     sellingPoint: 'نقطة البيع',
     searchMilkPlaceholder: 'ابحث عن حليب أطفال...',
-    compareSelected: 'مقارنة ({count})',
+    compareSelected: 'مقارية ({count})',
     clearSelection: 'مسح التحديد',
     compare: 'مقارنة',
     energy: 'الطاقة',
@@ -195,7 +201,7 @@ export const translations = {
     addGuidelinesDataDescription: 'قم بتحديث المعرفة السريرية للذكاء الاصطناعي.',
     errorInvalidJsonObject: 'تنسيق JSON غير صالح (كائن مطلوب).',
     assistantModalTitle: 'المساعد الذكي PharmaSource',
-    noResultsTitle: 'لم يتم العثور على نتائج',
+    noResultsTitle: 'لا توجد نتائج مطابقة',
     noResultsSubtitle: 'حاول تغيير معايير البحث أو الفلاتر.',
     errorInputEmpty: 'المدخل لا يمكن أن يكون فارغاً.',
     errorUnexpected: 'حدث خطأ غير متوقع.',
@@ -321,6 +327,12 @@ export const translations = {
     strengthDesc: 'التركيز (الأعلى)'
   },
   en: {
+    storageConditionsAr: 'Storage Conditions (AR)',
+    storageConditionsEn: 'Storage Conditions (EN)',
+    distribution: 'Distribution',
+    packSize: 'Pack Size',
+    hospital: 'Hospital',
+    pharmacy: 'Pharmacy',
     food: 'Food',
     clinicalDetails: 'Clinical Details',
     maxDailyDoseAdults: 'Max Daily Dose (Adults)',
