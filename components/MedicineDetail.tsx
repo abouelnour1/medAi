@@ -158,14 +158,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
   const showPhysicalSection = medicineImages.length > 0 || hasPhysicalData;
 
-  // Translate distribution area
   const distAreaRaw = medicine['Distribute area'] || '';
   const distAreaTranslated = distAreaRaw.toLowerCase().includes('hospital') ? t('hospital') : distAreaRaw.toLowerCase().includes('pharmacy') ? t('pharmacy') : distAreaRaw;
 
-  // Combine package info
   const packageDisplay = medicine.PackageSize && medicine.PackageSize !== '0' ? `${medicine.PackageSize} ${medicine.PackageTypes || ''}`.trim() : null;
 
-  // Control logic
   const productControl = medicine['Product Control'] || '';
   const isControlled = productControl.toLowerCase().includes('controlled') && !productControl.toLowerCase().includes('uncontrolled');
   const isRestricted = productControl.toLowerCase().includes('restricted');
@@ -174,27 +171,66 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm animate-fade-in space-y-6">
       <div className="space-y-4">
         <div className="px-2 sm:px-0">
-          <div className="flex items-center justify-between gap-4">
-              <button onClick={onOpenAssistant} className="group flex items-center gap-2 text-left min-w-0">
-                  <h2 className="text-xl md:text-2xl font-bold text-light-text dark:text-dark-text group-hover:text-primary underline decoration-dotted decoration-gray-300 underline-offset-4 truncate">
+          <div className="flex flex-col gap-3">
+              {/* Row 1: Action Buttons Toolbar (Now on top, smaller icons) */}
+              <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                  <button 
+                    onClick={() => onFindAlternative(medicine)} 
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-slate-500 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary hover:border-primary transition-all active:scale-95" 
+                    title={t('directAlternatives')}
+                  >
+                    <div className="h-3.5 w-3.5"><AlternativeIcon /></div>
+                    <span className="text-[9px] font-black uppercase tracking-tighter">{t('directAlternatives')}</span>
+                  </button>
+                  
+                  <button 
+                    onClick={handleImageSearch} 
+                    className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-blue-500 transition-all active:scale-95" 
+                    title={t('searchImage')}
+                  >
+                    <div className="h-4 w-4"><CameraIcon /></div>
+                  </button>
+
+                  {isAdmin && isFood && onDelete && (
+                      <button 
+                        onClick={() => onDelete(medicine)} 
+                        className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-red-600 transition-all active:scale-95" 
+                        title={t('delete')}
+                      >
+                        <div className="h-4 w-4"><TrashIcon /></div>
+                      </button>
+                  )}
+
+                  {canEdit && onEdit && (
+                      <button 
+                        onClick={() => onEdit(medicine)} 
+                        className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary transition-all active:scale-95"
+                      >
+                        <div className="h-4 w-4"><EditIcon /></div>
+                      </button>
+                  )}
+
+                  <button 
+                    onClick={() => onToggleFavorite(medicine.RegisterNumber)} 
+                    className={`p-1.5 rounded-md transition-all active:scale-95 border ${isFavorite ? 'text-accent bg-accent/5 border-accent/20' : 'text-slate-400 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}
+                  >
+                    <div className="h-4 w-4"><StarIcon isFilled={isFavorite} /></div>
+                  </button>
+              </div>
+
+              {/* Row 2: The Trade Name with Assistant Trigger (Now below, full width) */}
+              <button 
+                onClick={onOpenAssistant} 
+                className="group flex items-center justify-between w-full text-left pt-2"
+              >
+                  <h2 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white group-hover:text-primary underline decoration-dotted decoration-slate-200 dark:decoration-slate-700 underline-offset-[12px] leading-tight break-words flex-grow pr-3">
                       {medicine['Trade Name']}
                   </h2>
-                  <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><AssistantIcon /></span>
+                  <div className="text-primary p-2.5 bg-primary/10 rounded-2xl shrink-0 shadow-sm group-active:scale-90 transition-transform"><AssistantIcon /></div>
               </button>
-              <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => onFindAlternative(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary" title={t('directAlternatives')}><div className="h-5 w-5"><AlternativeIcon /></div></button>
-                  <button onClick={handleImageSearch} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-blue-500" title={t('searchImage')}><div className="h-5 w-5"><CameraIcon /></div></button>
-                  {isAdmin && isFood && onDelete && (
-                      <button onClick={() => onDelete(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-red-600 transition-colors" title={t('delete')}><div className="h-5 w-5"><TrashIcon /></div></button>
-                  )}
-                  {canEdit && onEdit && (
-                      <button onClick={() => onEdit(medicine)} className="p-2 rounded-full text-gray-400 bg-gray-100 dark:bg-slate-800 hover:text-primary"><div className="h-5 w-5"><EditIcon /></div></button>
-                  )}
-                  <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-accent bg-accent/10' : 'text-gray-400 bg-gray-100 dark:bg-slate-800'}`}><div className="h-5 w-5"><StarIcon isFilled={isFavorite} /></div></button>
-              </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-6">
               {(isControlled || isRestricted) && (
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-white shadow-lg uppercase tracking-wider ${isControlled ? 'bg-red-600' : 'bg-amber-600'}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
@@ -210,12 +246,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-inner">
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {ingredients.map((ing, i) => (
-                          <div key={i} className={`flex justify-between items-center py-2 px-3 group ${i % 2 === 0 ? 'bg-white/50 dark:bg-slate-900/20' : 'bg-transparent'}`}>
-                              <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-primary transition-colors leading-tight flex-grow pr-4">
+                          <div key={i} className={`flex justify-between items-center py-2.5 px-4 group ${i % 2 === 0 ? 'bg-white/50 dark:bg-slate-900/20' : 'bg-transparent'}`}>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-primary transition-colors leading-tight flex-grow pr-4">
                                 {ing.name}
                               </span>
                               {ing.strength && ing.strength.toLowerCase() !== 'na' && (
-                                <span className="text-[11px] font-black text-primary dark:text-primary-light whitespace-nowrap min-w-[50px] text-right">
+                                <span className="text-xs font-black text-primary dark:text-primary-light whitespace-nowrap min-w-[60px] text-right">
                                     {ing.strength}
                                 </span>
                               )}
@@ -226,7 +262,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </div>
           </div>
 
-          {!isNaN(price) && price > 0 && <div className="mt-4 text-orange-600 dark:text-orange-400 text-2xl font-black px-1">{`${price.toFixed(2)} ${t('sar')}`}</div>}
+          {!isNaN(price) && price > 0 && <div className="mt-5 text-orange-600 dark:text-orange-400 text-3xl font-black px-1">{`${price.toFixed(2)} ${t('sar')}`}</div>}
         </div>
 
         {showPhysicalSection && (
@@ -319,7 +355,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4">
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-            {/* Added Distribution and Pack Size Rows */}
             <DetailRow label={t('distribution')} value={distAreaTranslated} valueClassName="font-bold text-primary" />
             <DetailRow label={t('packSize')} value={packageDisplay} valueClassName="font-bold" />
             
@@ -331,7 +366,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
             <DetailRow label={t('mainAgent')} value={medicine['Main Agent']} />
             
-            {/* Storage Conditions Section */}
             <DetailRow label={t('storageConditionsAr') || 'ظروف التخزين (AR)'} value={medicine['Storage Condition Arabic']} />
             <DetailRow label={t('storageConditionsEn') || 'Storage Conditions (EN)'} value={medicine['Storage conditions']} valueClassName="font-medium text-slate-600 dark:text-slate-400" />
             
