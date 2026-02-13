@@ -14,20 +14,22 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// This handles the notification when the app is in the background or closed
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received', payload);
   
   const notificationTitle = payload.notification.title || 'PharmaSource';
   const notificationOptions = {
     body: payload.notification.body || '',
-    icon: '/logo.png',
-    badge: '/logo.png',
-    vibrate: [200, 100, 200], // Vibration pattern
-    tag: 'pharmasource-update', // Groups notifications
+    icon: 'logo.png',
+    badge: 'logo.png',
+    vibrate: [200, 100, 200],
+    tag: 'pharmasource-update',
     renotify: true,
+    // Critical for Android Head-up display
+    priority: 'high',
+    requireInteraction: true,
     data: {
-      url: window.location.origin
+      url: self.location.origin
     }
   };
 

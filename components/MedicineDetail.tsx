@@ -138,7 +138,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   const price = parseFloat(medicine['Public price']);
   const canEdit = user?.role === 'admin' || user?.role === 'company';
   const isAdmin = user?.role === 'admin';
-  const isFood = medicine['Product type'] === 'Food';
 
   const handleThumbnailClick = (index: number) => {
     const allUrls = medicineImages.map(img => img.url!);
@@ -172,11 +171,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       <div className="space-y-4">
         <div className="px-2 sm:px-0">
           <div className="flex flex-col gap-3">
-              {/* Row 1: Action Buttons Toolbar (Now on top, smaller icons) */}
+              {/* Row 1: Action Buttons Toolbar (TOP - Smaller Icons) */}
               <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
                   <button 
                     onClick={() => onFindAlternative(medicine)} 
-                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-md text-slate-500 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary hover:border-primary transition-all active:scale-95" 
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-slate-500 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary transition-all active:scale-95" 
                     title={t('directAlternatives')}
                   >
                     <div className="h-3.5 w-3.5"><AlternativeIcon /></div>
@@ -188,16 +187,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-blue-500 transition-all active:scale-95" 
                     title={t('searchImage')}
                   >
-                    <div className="h-4 w-4"><CameraIcon /></div>
+                    <div className="h-3.5 w-3.5"><CameraIcon /></div>
                   </button>
 
-                  {isAdmin && isFood && onDelete && (
+                  {isAdmin && onDelete && (
                       <button 
                         onClick={() => onDelete(medicine)} 
                         className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-red-600 transition-all active:scale-95" 
                         title={t('delete')}
                       >
-                        <div className="h-4 w-4"><TrashIcon /></div>
+                        <div className="h-3.5 w-3.5"><TrashIcon /></div>
                       </button>
                   )}
 
@@ -205,8 +204,9 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                       <button 
                         onClick={() => onEdit(medicine)} 
                         className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary transition-all active:scale-95"
+                        title={t('editMedicine')}
                       >
-                        <div className="h-4 w-4"><EditIcon /></div>
+                        <div className="h-3.5 w-3.5"><EditIcon /></div>
                       </button>
                   )}
 
@@ -214,11 +214,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     onClick={() => onToggleFavorite(medicine.RegisterNumber)} 
                     className={`p-1.5 rounded-md transition-all active:scale-95 border ${isFavorite ? 'text-accent bg-accent/5 border-accent/20' : 'text-slate-400 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}
                   >
-                    <div className="h-4 w-4"><StarIcon isFilled={isFavorite} /></div>
+                    <div className="h-3.5 w-3.5"><StarIcon isFilled={isFavorite} /></div>
                   </button>
               </div>
 
-              {/* Row 2: The Trade Name with Assistant Trigger (Now below, full width) */}
+              {/* Row 2: The Trade Name with Assistant Trigger (Full width) */}
               <button 
                 onClick={onOpenAssistant} 
                 className="group flex items-center justify-between w-full text-left pt-2"
@@ -226,7 +226,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                   <h2 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white group-hover:text-primary underline decoration-dotted decoration-slate-200 dark:decoration-slate-700 underline-offset-[12px] leading-tight break-words flex-grow pr-3">
                       {medicine['Trade Name']}
                   </h2>
-                  <div className="text-primary p-2.5 bg-primary/10 rounded-2xl shrink-0 shadow-sm group-active:scale-90 transition-transform"><AssistantIcon /></div>
+                  <div className="text-primary p-2 bg-primary/10 rounded-xl shrink-0 shadow-sm group-active:scale-90 transition-transform"><AssistantIcon /></div>
               </button>
           </div>
 

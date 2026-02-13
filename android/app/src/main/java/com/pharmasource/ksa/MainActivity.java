@@ -1,4 +1,4 @@
-package com.ahmed.pharmasource;
+package com.pharmasource.ksa;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#14b8a6">
-    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
     <meta name="apple-mobile-web-app-status-bar" content="#14b8a6">
 
     <style>
@@ -23,7 +23,6 @@
         height: 100%;
         width: 100%;
         overflow: hidden;
-        /* Handle Notch and Home Indicator */
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       }
       html[lang="ar"] body {
@@ -79,11 +78,6 @@
       .animate-fade-in {
         animation: fadeIn 0.3s ease-out forwards;
       }
-      
-      /* Active tab transition for native feel */
-      .nav-active {
-        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      }
     </style>
   <script type="importmap">
 {
@@ -124,6 +118,7 @@
 </head>
   <body class="bg-light-bg text-slate-900">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+    <script type="module" src="index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
