@@ -187,7 +187,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-blue-500 transition-all active:scale-95" 
                     title={t('searchImage')}
                   >
-                    <div className="h-3.5 w-3.5"><CameraIcon /></div>
+                    <div className="h-4 w-4"><CameraIcon /></div>
                   </button>
 
                   {isAdmin && onDelete && (
@@ -196,7 +196,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                         className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-red-600 transition-all active:scale-95" 
                         title={t('delete')}
                       >
-                        <div className="h-3.5 w-3.5"><TrashIcon /></div>
+                        <div className="h-4 w-4"><TrashIcon /></div>
                       </button>
                   )}
 
@@ -206,7 +206,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                         className="p-1.5 rounded-md text-slate-400 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:text-primary transition-all active:scale-95"
                         title={t('editMedicine')}
                       >
-                        <div className="h-3.5 w-3.5"><EditIcon /></div>
+                        <div className="h-4 w-4"><EditIcon /></div>
                       </button>
                   )}
 
@@ -214,7 +214,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     onClick={() => onToggleFavorite(medicine.RegisterNumber)} 
                     className={`p-1.5 rounded-md transition-all active:scale-95 border ${isFavorite ? 'text-accent bg-accent/5 border-accent/20' : 'text-slate-400 bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}
                   >
-                    <div className="h-3.5 w-3.5"><StarIcon isFilled={isFavorite} /></div>
+                    <div className="h-4 w-4"><StarIcon isFilled={isFavorite} /></div>
                   </button>
               </div>
 

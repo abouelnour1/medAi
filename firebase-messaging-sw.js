@@ -14,45 +14,22 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// This handles the notification when the app is in the background or closed
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received', payload);
   
-  const notificationTitle = payload.notification.title || 'PharmaSource KSA';
+  const notificationTitle = payload.notification.title || 'PharmaSource';
   const notificationOptions = {
     body: payload.notification.body || '',
-    icon: 'logo.png',
-    badge: 'logo.png',
-    vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
-    tag: 'pharmasource-update',
+    icon: '/logo.png',
+    badge: '/logo.png',
+    vibrate: [200, 100, 200], // Vibration pattern
+    tag: 'pharmasource-update', // Groups notifications
     renotify: true,
-    // إعدادات ضرورية لظهور الإشعار منبثقاً (Head-up) في أندرويد
-    priority: 'high',
-    requireInteraction: true,
-    actions: [
-      { action: 'open', title: 'فتح التطبيق' }
-    ],
     data: {
-      url: self.location.origin
+      url: window.location.origin
     }
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
-        }
-        return client.focus();
-      }
-      return clients.openWindow('./');
-    })
-  );
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

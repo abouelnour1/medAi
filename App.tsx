@@ -34,7 +34,6 @@ import { getItem, setItem } from './utils/storage';
 
 // Capacitor Plugins for Native Experience
 const setupNativeListeners = (onBack: () => void) => {
-    // We try to import dynamicly to not break web preview
     import('@capacitor/app').then(({ App: CapApp }) => {
         CapApp.addListener('backButton', () => {
             onBack();
@@ -140,6 +139,7 @@ const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 const App: React.FC = () => {
   const { user } = useAuth();
   const scrollPositionsByView = useRef<Record<string, number>>({});
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -150,6 +150,17 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('language');
       return (saved === 'ar' || saved === 'en') ? saved as Language : 'en';
   });
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -242,7 +253,6 @@ const App: React.FC = () => {
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab]);
 
-  // Native Android Back Button Integration
   useEffect(() => {
       setupNativeListeners(handleBack);
   }, [handleBack]);
@@ -291,8 +301,7 @@ const App: React.FC = () => {
             
             setIsDataLoaded(true);
 
-            if (!FIREBASE_DISABLED && db) {
-                // Real-time listener for ALL users (Android, iOS, Web)
+            if (!FIREBASE_DISABLED && db && isOnline) {
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
                     setMedicines(prev => {
                         const newMedsMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
@@ -321,7 +330,7 @@ const App: React.FC = () => {
         }
     };
     loadData();
-  }, [user]);
+  }, [user, isOnline]);
 
   const visibleNotifications = useMemo(() => {
     if (!user) {
@@ -515,6 +524,7 @@ const App: React.FC = () => {
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                   </div>
                   <div className="mt-4">
+                      {!isOnline && <div className="bg-amber-100 text-amber-800 p-2 text-xs font-bold rounded-lg mb-4 text-center">أنت تبحث حالياً في النسخة المحملة مسبقاً (وضع الأوفلاين)</div>}
                       {filteredMedicines.length > 0 ? (
                         <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
                       ) : (searchTerm.length > 0 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
@@ -584,6 +594,14 @@ const App: React.FC = () => {
               alert(t('requestSubmittedBody'));
           }
       }} t={t} />
+      
+      {/* Offline Status Toast */}
+      {!isOnline && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 animate-bounce">
+              <span className="w-2 h-2 bg-white rounded-full"></span>
+              OFFLINE MODE
+          </div>
+      )}
     </div>
   );
 };
