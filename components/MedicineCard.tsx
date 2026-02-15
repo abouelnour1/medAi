@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
@@ -10,7 +11,6 @@ const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
 /**
  * Helper to split scientific names and strengths into a list of ingredient objects.
  */
-// Added export getIngredientsList to fix import error in MedicineDetail.tsx
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
@@ -20,7 +20,6 @@ export const getIngredientsList = (medicine: Medicine): { name: string; strength
     }
 
     return sciNames.map((name, index) => {
-        // Use matching strength if available, otherwise fallback to the first one or empty string
         const strength = strengths[index] || strengths[0] || '';
         return {
             name,
@@ -55,6 +54,9 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   if (!medicine) return null; 
   const price = parseFloat(medicine['Public price']);
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
+  
+  const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
+  const isRestricted = medicine['Product Control']?.toLowerCase() === 'restricted';
 
   return (
     <div
@@ -90,9 +92,22 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             ) : (
                 <div className="bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-xl text-[9px] font-black text-slate-400">N/A</div>
             )}
-            <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
-            </span>
+            
+            <div className="flex flex-col items-end gap-1">
+                <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                    {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+                </span>
+                {isControlled && (
+                    <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-sm">
+                         {language === 'ar' ? 'خاضع للرقابة' : 'Controlled'}
+                    </span>
+                )}
+                {isRestricted && (
+                    <span className="bg-orange-600 text-white px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-sm">
+                         {language === 'ar' ? 'مقيد' : 'Restricted'}
+                    </span>
+                )}
+            </div>
         </div>
       </div>
 
