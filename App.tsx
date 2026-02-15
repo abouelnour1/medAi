@@ -561,13 +561,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(110px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
+      <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(140px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
           {renderContent()}
       </main>
       
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':'settings'); }} t={t} user={user} view={view} />
       
-      <div className="fixed bottom-28 right-6 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
+      <div className="fixed bottom-32 right-6 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
       
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
       

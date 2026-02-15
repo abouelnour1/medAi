@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import PillIcon from './icons/PillIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
 import FactoryIcon from './icons/FactoryIcon';
 import StarIcon from './icons/StarIcon';
-import SparkleIcon from './icons/SparkleIcon';
 
 const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
 
@@ -41,15 +40,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   if (!medicine) return null; 
   const price = parseFloat(medicine['Public price']);
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
-
-  // التحقق من وجود بيانات فيزيائية
-  const physicalData = useMemo(() => {
-    const parts = [];
-    if (medicine.pillShape) parts.push(medicine.pillShape);
-    if (medicine.liquidColor) parts.push(medicine.liquidColor);
-    if (medicine.pillScored && medicine.pillScored !== 'No') parts.push(language === 'ar' ? 'محزز' : 'Scored');
-    return parts.join(' • ');
-  }, [medicine, language]);
+  const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
+  const isRestricted = medicine['Product Control']?.toLowerCase() === 'restricted';
 
   return (
     <div
@@ -57,7 +49,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       className="animate-card bg-white dark:bg-slate-800 rounded-3xl p-4 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-slate-50 dark:border-slate-700/50 flex flex-col gap-2.5 active:scale-[0.98] transition-all cursor-pointer group"
     >
       <div className="flex justify-between items-start gap-3">
-        {/* الصورة المصغرة (Thumbnail) */}
         {medicine.imgBox && (
             <div className="flex-shrink-0 w-14 h-14 bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 p-1">
                 <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
@@ -72,9 +63,14 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight group-hover:text-primary transition-colors truncate">
                 {medicine['Trade Name']}
             </h2>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5 italic line-clamp-1" dir="ltr">
-                {ingredientsString}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic line-clamp-1" dir="ltr">
+                    {ingredientsString}
+                </p>
+                {isControlled && (
+                    <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-1.5 py-0.5 rounded text-[7px] font-black uppercase ring-1 ring-purple-200">Controlled</span>
+                )}
+            </div>
         </div>
         
         <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -86,27 +82,20 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             ) : (
                 <div className="bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-xl text-[9px] font-black text-slate-400">N/A</div>
             )}
-            <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
-            </span>
+            <div className="flex gap-1">
+                {isRestricted && <span className="bg-orange-600 text-white px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-sm">Restricted</span>}
+                <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                    {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+                </span>
+            </div>
         </div>
       </div>
 
-      {/* القسم المادي - يظهر فقط إذا توفرت بيانات */}
-      {physicalData && (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50/50 dark:bg-amber-900/10 rounded-lg border border-amber-100/50 dark:border-amber-800/30">
-              <div className="w-3 h-3 text-amber-500"><SparkleIcon /></div>
-              <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 truncate uppercase tracking-tight">
-                  {physicalData}
-              </span>
-          </div>
-      )}
-
       <div className="flex items-center justify-between pt-2.5 border-t border-slate-50 dark:border-slate-700/50 mt-0.5">
         <div className="flex gap-2">
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div className="w-3 h-3 text-primary"><PillIcon /></div>
-                <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{medicine.PharmaceuticalForm}</span>
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="w-3.5 h-3.5 text-primary shrink-0 flex items-center justify-center overflow-hidden"><PillIcon /></div>
+                <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate max-w-[120px]">{medicine.PharmaceuticalForm}</span>
             </div>
         </div>
 
