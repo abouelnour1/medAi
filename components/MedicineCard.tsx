@@ -82,11 +82,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 max-w-[70%] flex-nowrap">
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 max-w-[75%] flex-nowrap">
             <div className="w-3.5 h-3.5 text-primary shrink-0 flex items-center justify-center overflow-hidden">
                 <PillIcon />
             </div>
-            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate">
+            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate whitespace-nowrap overflow-hidden">
                 {medicine.PharmaceuticalForm}
             </span>
         </div>

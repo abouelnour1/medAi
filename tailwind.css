@@ -1,4 +1,4 @@
-/* PharmaSource Global Styles & Configurations */
+/* PharmaSource KSA - Core Tailwinds Configuration */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,15 +12,27 @@
   --dark-bg: #0f172a;
 }
 
-body {
-  font-family: 'Cairo', 'Poppins', sans-serif;
+/* Global Transitions */
+* {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
-/* Animations */
+body {
+  font-family: 'Cairo', 'Poppins', sans-serif;
+  background-color: var(--light-bg);
+  color: #1e293b;
+  transition: background-color 0.3s ease;
+}
+
+.dark body {
+  background-color: var(--dark-bg);
+  color: #f1f5f9;
+}
+
+/* Custom Animations */
 .animate-card {
-  animation: slideUp 0.4s ease-out forwards;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in {
@@ -43,56 +55,59 @@ body {
   to { opacity: 1; }
 }
 
-/* Custom Shadows */
+/* Shadow Presets */
 .shadow-premium {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -2px rgba(0, 0, 0, 0.03);
 }
 
 .dark .shadow-premium {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2), 0 5px 15px -2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
 }
 
-/* Form Controls */
-input:focus, select:focus, textarea:focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
-}
+/* UI Utility Classes */
+.font-black { font-weight: 900; }
 
-/* Glassmorphism */
-.bg-glass {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.dark .bg-glass {
-  background: rgba(15, 23, 42, 0.85);
-}
-
-/* Scrollbar Hide */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Mobile Optimizations */
-@media (max-width: 640px) {
-  :root {
-    font-size: 14px;
-  }
+/* Form Styling */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
 }
 
-/* Typography Utility */
-.font-black {
-  font-weight: 900;
-}
-
-/* AI Content Styling */
+/* Markdown & AI Response Styling */
 .ai-response-content strong {
-  color: var(--primary);
+  color: var(--primary-dark);
   font-weight: 900;
+}
+
+.dark .ai-response-content strong {
+  color: var(--primary);
+}
+
+/* Glassmorphism */
+.bg-glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dark .bg-glass {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* Animation utilities */
+.animate-bounce-subtle {
+  animation: bounceSubtle 3s infinite;
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
