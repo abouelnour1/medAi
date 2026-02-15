@@ -1,0 +1,32 @@
+/* بما أننا أضفنا Tailwind CDN في index.html، سنستخدم هذا الملف فقط للأنماط المخصصة المعقدة */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #14b8a6;
+  --primary-dark: #0f766e;
+}
+
+.animate-card {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.shadow-premium {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -2px rgba(0, 0, 0, 0.03);
+}
+
+input:focus {
+  border-color: #14b8a6 !important;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
+}
+
+.prose strong {
+  color: #14b8a6;
+  font-weight: 900;
+}

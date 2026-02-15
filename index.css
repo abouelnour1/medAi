@@ -1,7 +1,12 @@
-
-/* استيراد الخطوط */
+/* استيراد الخطوط - لازم يكون أول حاجة */
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Poppins:wght@400;600;700;900&display=swap');
 
+/* استيراد Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Properties */
 :root {
   --primary: #14b8a6;
   --primary-dark: #0f766e;
@@ -10,72 +15,106 @@
   --text-main: #0f172a;
 }
 
-* {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-  margin: 0;
-  padding: 0;
+/* Base Styles */
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    font-family: 'Cairo', 'Poppins', system-ui, -apple-system, sans-serif;
+    color: var(--text-main);
+  }
+
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 16px !important; 
+  }
 }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  background-color: var(--bg-color);
-  font-family: 'Cairo', 'Poppins', system-ui, -apple-system, sans-serif;
-  color: var(--text-main);
+/* Components */
+@layer components {
+  header {
+    background: linear-gradient(to bottom, #2dd4bf, #0f766e) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 50;
+  }
+
+  main {
+    background-color: var(--bg-color);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  button:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
-/* تنسيقات الهيكل الأساسي */
-header {
-  background: linear-gradient(to bottom, #2dd4bf, #0f766e) !important;
-  color: white !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 50;
+/* Utilities */
+@layer utilities {
+  .text-primary { 
+    color: var(--primary) !important; 
+  }
+  
+  .bg-primary { 
+    background-color: var(--primary) !important; 
+  }
+  
+  .bg-light-bg {
+    background-color: #f8fafc;
+  }
+  
+  .border-primary { 
+    border-color: var(--primary) !important; 
+  }
+  
+  .font-black { 
+    font-weight: 900 !important; 
+  }
+  
+  .font-bold { 
+    font-weight: 700 !important; 
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
 }
 
-main {
-  background-color: var(--bg-color);
-  -webkit-overflow-scrolling: touch;
-}
-
-/* تحسينات الواحدة للأندرويد */
-input, select, textarea {
-  font-family: inherit;
-  font-size: 16px !important; 
-}
-
-button:active {
-  transform: scale(0.96);
-  opacity: 0.9;
-}
-
-/* إخفاء شريط التمرير */
-::-webkit-scrollbar {
-  width: 0px;
-  background: transparent;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* فئات مساعدة */
-.text-primary { color: var(--primary) !important; }
-.bg-primary { background-color: var(--primary) !important; }
-.border-primary { border-color: var(--primary) !important; }
-.font-black { font-weight: 900 !important; }
-.font-bold { font-weight: 700 !important; }
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
+/* Markdown */
 .ai-response-content p {
   margin-bottom: 0.75rem;
   line-height: 1.6;

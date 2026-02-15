@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
@@ -137,9 +136,10 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
 const App: React.FC = () => {
-  const { user } = useAuth();
-  const scrollPositionsByView = useRef<Record<string, number>>({});
+  // Added logout destructuring from useAuth
+  const { user, logout } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const scrollPositionsByView = useRef<Record<string, number>>({});
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -152,13 +152,12 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    const handleStatusChange = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatusChange);
+    window.addEventListener('offline', handleStatusChange);
     return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('online', handleStatusChange);
+        window.removeEventListener('offline', handleStatusChange);
     };
   }, []);
 
@@ -519,15 +518,14 @@ const App: React.FC = () => {
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={()=>{}} t={t} />
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={Object.values(filters).filter((f: any) => f && f!=='all' && f.length!==0).length} t={t} />
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                   </div>
-                  <div className="mt-4">
-                      {!isOnline && <div className="bg-amber-100 text-amber-800 p-2 text-xs font-bold rounded-lg mb-4 text-center">أنت تبحث حالياً في النسخة المحملة مسبقاً (وضع الأوفلاين)</div>}
+                  <div className="mt-6">
                       {filteredMedicines.length > 0 ? (
                         <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
-                      ) : (searchTerm.length > 0 || isFilterActive) && <div className="text-center py-10"><p className="text-slate-400">{t('noResultsTitle')}</p></div>}
+                      ) : (searchTerm.length > 0 || isFilterActive) && <div className="text-center py-20 bg-white/50 rounded-[2rem] border-2 border-dashed border-slate-100"><p className="text-slate-400 font-bold">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
           );
@@ -537,28 +535,40 @@ const App: React.FC = () => {
           return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={handleInsuranceSelect} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
       }
       if (activeTab === 'settings') return (
-              <div className="space-y-4 animate-fade-in pb-10">
-                  <h2 className="text-xl font-bold px-1">{t('navSettings')}</h2>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 ServiceWorker-100">
-                      {user ? <div className="flex justify-between items-center"><div><p className="font-bold">{user.username}</p><p className="text-sm text-gray-500">{t(`${user.role}Role` as any)}</p></div><button onClick={() => setView('chatHistory')} className="p-3 bg-slate-100 text-slate-700 rounded-xl flex items-center gap-2"><span>{t('clearHistory')}</span></button></div> : <button onClick={() => setView('login')} className="w-full py-2 bg-primary text-white rounded-lg">{t('login')}</button>}
+              <div className="space-y-6 animate-fade-in pb-10">
+                  <h2 className="text-2xl font-black px-2">{t('navSettings')}</h2>
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800">
+                      {user ? <div className="flex justify-between items-center"><div><p className="font-black text-lg">{user.username}</p><p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">{t(`${user.role}Role` as any)}</p></div><button onClick={() => setView('chatHistory')} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl flex items-center gap-2 font-black text-xs active:scale-95 transition-all"><span>{t('clearHistory')}</span></button></div> : <button onClick={() => setView('login')} className="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-xl shadow-teal-500/20 active:scale-95 transition-all">{t('login')}</button>}
                   </div>
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100 border border-slate-100">
-                      <button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"><span className="flex items-center gap-3"><span className="font-medium">{t('language')}</span></span><span className="font-black text-primary">{language === 'ar' ? 'English' : 'العربية'}</span></button>
+                  <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 border border-slate-100 dark:border-slate-800">
+                      <button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-all"><span className="font-black text-sm">{t('language')}</span><span className="font-black text-teal-600">{language === 'ar' ? 'English' : 'العربية'}</span></button>
                   </div>
-                  {user && <button onClick={() => useAuth().logout()} className="w-full py-4 text-red-500 font-black bg-white rounded-xl shadow-sm hover:bg-red transition-colors mt-4">{t('logout')}</button>}
+                  {user && <button onClick={logout} className="w-full py-5 text-rose-500 font-black bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-rose-50 transition-colors mt-4 active:scale-95">{t('logout')}</button>}
               </div>
           );
       return <div className="text-center py-20 text-slate-400">Application Error. Please reload.</div>;
   };
 
   return (
-    <div className="bg-light-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
+    <div className="bg-light-bg dark:bg-dark-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
       <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={visibleNotifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
-      <main id="main-scroll-container" className="flex-grow mx-auto px-4 space-y-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+80px)] pb-[calc(90px+env(safe-area-inset-bottom))] w-full max-w-7xl">
+      
+      {/* Offline Status Badge */}
+      {!isOnline && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-amber-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 animate-bounce">
+            <span className="w-2 h-2 bg-white rounded-full"></span>
+            وضع عدم الاتصال (Offline)
+        </div>
+      )}
+
+      <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(110px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
           {renderContent()}
       </main>
+      
       <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':'settings'); }} t={t} user={user} view={view} />
-      <div className="fixed bottom-24 right-4 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
+      
+      <div className="fixed bottom-28 right-6 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
+      
       <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
       
       <FilterModal 
@@ -594,14 +604,6 @@ const App: React.FC = () => {
               alert(t('requestSubmittedBody'));
           }
       }} t={t} />
-      
-      {/* Offline Status Toast */}
-      {!isOnline && (
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 animate-bounce">
-              <span className="w-2 h-2 bg-white rounded-full"></span>
-              OFFLINE MODE
-          </div>
-      )}
     </div>
   );
 };

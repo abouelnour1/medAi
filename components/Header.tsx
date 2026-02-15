@@ -1,4 +1,3 @@
-
 import React, { forwardRef, useState, useRef, useEffect } from 'react';
 import BackIcon from './icons/BackIcon';
 import BellIcon from './icons/BellIcon';
@@ -29,72 +28,68 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuRef]);
 
-  const displayTitle = 'PharmaSource';
-  
   return (
     <header 
         ref={ref} 
-        className="bg-gradient-to-b from-[#2dd4bf] to-[#0f766e] text-white fixed top-0 left-0 right-0 z-40 flex-shrink-0 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 shadow-lg h-auto min-h-[calc(env(safe-area-inset-top)+60px)] flex items-center border-b border-primary-dark/30"
+        className="fixed top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-4 transition-all"
     >
-      <div className="container mx-auto px-4 flex justify-between items-center max-w-7xl w-full">
-        <div className="flex-1 flex justify-start items-center gap-1 min-w-0">
-          {showBack && (
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2rem] px-4 h-16 flex justify-between items-center max-w-7xl mx-auto">
+        
+        <div className="flex-1 flex justify-start items-center gap-2">
+          {showBack ? (
             <button
               onClick={onBack}
-              className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"
-              aria-label={t('back')}
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform"
             >
-              <span className={document.documentElement.lang === 'en' ? 'inline-block' : 'inline-block transform scale-x-[-1]'}>
-                 <BackIcon />
-              </span>
+              <div className="w-5 h-5 ltr:rotate-0 rtl:rotate-180"><BackIcon /></div>
             </button>
-          )}
-          {view !== 'notifications' && (
-              <button 
+          ) : (
+             <button 
                 onClick={onNotificationsClick}
-                className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 active:scale-95 flex-shrink-0"
-                aria-label={t('notifications')}
+                className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform relative"
               >
                   <BellIcon unreadCount={unreadCount} />
               </button>
           )}
         </div>
         
-        <div className="flex-[2] flex justify-center items-center min-w-0 px-2"> 
-            <h1 className="text-xl font-bold whitespace-nowrap truncate text-center drop-shadow-md leading-normal pb-1 w-full font-poppins">
-              {displayTitle}
+        <div className="flex-[2] flex justify-center"> 
+            <h1 className="text-lg font-black text-slate-800 dark:text-white font-poppins tracking-tight">
+              Pharma<span className="text-primary">Source</span>
             </h1>
         </div>
 
-        <div className="flex-1 flex justify-end items-center gap-1 min-w-0">
+        <div className="flex-1 flex justify-end items-center">
           {user ? (
             <div className="relative" ref={menuRef}>
-                <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1.5 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/20 flex items-center gap-1.5 active:scale-95 max-w-full">
-                    <span className="font-medium text-xs max-w-[70px] truncate drop-shadow-md">{user.username}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 drop-shadow-md flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-full active:scale-95 transition-all">
+                    <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white text-[10px] font-black">
+                        {user.username.charAt(0).toUpperCase()}
+                    </div>
                 </button>
-                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-48 bg-white rounded-xl shadow-xl ring-1 ring-black/5 py-1 transition-all duration-200 z-50 divide-y divide-slate-100 origin-top-right ${isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                    <div className="px-4 py-2">
-                        <div className="text-[10px] text-slate-500 uppercase">{t('role')}</div>
-                        <div className="font-semibold text-xs text-slate-900">
-                            {user.role === 'admin' ? t('adminRole') : user.role === 'company' ? t('companyRole') : t('premiumRole')}
-                        </div>
+                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-3 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl ring-1 ring-black/5 py-2 transition-all origin-top-right ${isMenuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                    <div className="px-4 py-2 border-b border-slate-50 dark:border-slate-700 mb-1">
+                        <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
+                        <p className="text-[10px] font-bold text-primary uppercase">{t(`${user.role}Role` as any)}</p>
                     </div>
-                    <div className="py-1">
-                        {user.role === 'admin' && (
-                             <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">{t('adminDashboard')}</button>
-                        )}
-                        <button onClick={logout} className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-slate-100">{t('logout')}</button>
-                    </div>
+                    {user.role === 'admin' && (
+                         <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }} className="w-full text-right px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                             <div className="w-4 h-4 opacity-50"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg></div>
+                             {t('adminDashboard')}
+                         </button>
+                    )}
+                    <button onClick={logout} className="w-full text-right px-4 py-2.5 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                        {t('logout')}
+                    </button>
                 </div>
             </div>
           ) : (
-            <button onClick={onLoginClick} className="px-3 py-1.5 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition-all shadow-sm backdrop-blur-sm whitespace-nowrap">{t('login')}</button>
+            <button onClick={onLoginClick} className="bg-primary text-white px-5 py-2 rounded-full text-xs font-black shadow-lg shadow-primary/30 active:scale-95 transition-all">
+                {t('login')}
+            </button>
           )}
         </div>
       </div>
