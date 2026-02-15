@@ -35,11 +35,11 @@ try {
     // إعدادات محسنة لضمان استقرار الاتصال ومنع الـ Timeout في المتصفحات
     db = initializeFirestore(app, {
         localCache: persistentLocalCache({
-            tabManager: persistentSingleTabManager({ forceOwnership: false }), 
+            tabManager: persistentSingleTabManager({ forceOwnership: false }), // تغيير لضمان عدم القفل
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
         experimentalForceLongPolling: true,
-        useFetchStreams: false, 
+        useFetchStreams: false, // مهم جداً لحل مشكلة تعليق الاتصال في بعض الشبكات
         ignoreUndefinedProperties: true
     });
 

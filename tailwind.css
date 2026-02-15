@@ -1,4 +1,4 @@
-/* PharmaSource KSA - Core Tailwinds Configuration */
+/* PharmaSource Global Styles & Configurations */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,27 +12,15 @@
   --dark-bg: #0f172a;
 }
 
-/* Global Transitions */
-* {
+body {
+  font-family: 'Cairo', 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
-body {
-  font-family: 'Cairo', 'Poppins', sans-serif;
-  background-color: var(--light-bg);
-  color: #1e293b;
-  transition: background-color 0.3s ease;
-}
-
-.dark body {
-  background-color: var(--dark-bg);
-  color: #f1f5f9;
-}
-
-/* Custom Animations */
+/* Animations */
 .animate-card {
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 0.4s ease-out forwards;
 }
 
 .animate-fade-in {
@@ -55,59 +43,56 @@ body {
   to { opacity: 1; }
 }
 
-/* Shadow Presets */
+/* Custom Shadows */
 .shadow-premium {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -2px rgba(0, 0, 0, 0.03);
 }
 
 .dark .shadow-premium {
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2), 0 5px 15px -2px rgba(0, 0, 0, 0.1);
 }
 
-/* UI Utility Classes */
-.font-black { font-weight: 900; }
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Form Styling */
+/* Form Controls */
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
 }
 
-/* Markdown & AI Response Styling */
-.ai-response-content strong {
-  color: var(--primary-dark);
-  font-weight: 900;
-}
-
-.dark .ai-response-content strong {
-  color: var(--primary);
-}
-
 /* Glassmorphism */
 .bg-glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .dark .bg-glass {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.85);
 }
 
-/* Animation utilities */
-.animate-bounce-subtle {
-  animation: bounceSubtle 3s infinite;
+/* Scrollbar Hide */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-@keyframes bounceSubtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+/* Typography Utility */
+.font-black {
+  font-weight: 900;
+}
+
+/* AI Content Styling */
+.ai-response-content strong {
+  color: var(--primary);
+  font-weight: 900;
 }

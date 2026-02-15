@@ -7,11 +7,26 @@ import StarIcon from './icons/StarIcon';
 
 const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
 
+/**
+ * Helper to split scientific names and strengths into a list of ingredient objects.
+ */
+// Added export getIngredientsList to fix import error in MedicineDetail.tsx
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
-    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return [];
-    return sciNames.map((name, index) => ({ name, strength: strengths[index] || strengths[0] || '' }));
+    
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) {
+        return [];
+    }
+
+    return sciNames.map((name, index) => {
+        // Use matching strength if available, otherwise fallback to the first one or empty string
+        const strength = strengths[index] || strengths[0] || '';
+        return {
+            name,
+            strength: strength.trim()
+        };
+    });
 };
 
 export const zipIngredients = (medicine: Medicine): string => {
@@ -82,11 +97,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
       </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 max-w-[75%] flex-nowrap">
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 max-w-[70%]">
             <div className="w-3.5 h-3.5 text-primary shrink-0 flex items-center justify-center overflow-hidden">
                 <PillIcon />
             </div>
-            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate whitespace-nowrap overflow-hidden">
+            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate">
                 {medicine.PharmaceuticalForm}
             </span>
         </div>
