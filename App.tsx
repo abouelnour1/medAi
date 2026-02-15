@@ -64,14 +64,11 @@ const normalizeMedicine = (item: any): Medicine => {
   const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
   const strength = findValue(item, ["Strength", "strength"]);
   
-  const cleanTrade = String(tradeName).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cleanSci = String(scientificName).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cleanStr = String(strength).toLowerCase().replace(/[^a-z0-9]/g, '');
-  
   let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
-  
   if (!regNum || regNum === '0' || regNum === '1' || regNum === '2' || regNum === '3' || regNum.trim() === '') {
-      regNum = `temp-${cleanTrade}-${cleanSci}-${cleanStr}`;
+      const cleanTrade = String(tradeName).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanSci = String(scientificName).toLowerCase().replace(/[^a-z0-9]/g, '');
+      regNum = `temp-${cleanTrade}-${cleanSci}`;
   }
   
   const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
@@ -112,21 +109,19 @@ const normalizeMedicine = (item: any): Medicine => {
     "Secosnd Agent": findValue(item, ["Secosnd Agent", "AddtionalAgentName"]),
     "Third agent": findValue(item, ["Third agent"]),
     "Description Code": findValue(item, ["Description Code", "descriptionCode"]),
-    description: findValue(item, ["Description", "description", "physicalNotes"]),
     "Authorization Status": findValue(item, ["Authorization Status", "AuthorizationStatus"]),
     "Last Update": findValue(item, ["Last Update", "lastUpdate"]),
-    
-    imgBox: findValue(item, ["imgBox", "boxImage", "img_box", "box_image", "image", "item_image", "imageUrl", "img_url", "photo", "BoxImage", "ImageBox", "الصورة", "صورة المنتج"]),
-    imgIndex1: findValue(item, ["imgIndex1", "imgStrip", "index1", "strip_image", "index_image", "indexImage1", "Index1", "الفهرس 1"]), 
-    imgIndex2: findValue(item, ["imgIndex2", "index2", "index_image2", "indexImage2", "Index2", "الفهرس 2"]),
-    imgPill: findValue(item, ["imgPill", "pillImage", "img_pill", "pill_image", "tablet_image", "capsule_image", "PillImage", "صورة الحبة"]),
-    
-    pillShape: findValue(item, ["pillShape", "pill_shape", "Shape", "شكل الحبة"]),
-    pillScored: findValue(item, ["pillScored", "pill_scored", "scored", "Scored", "محزز"]),
-    pillMarkings: findValue(item, ["pillMarkings", "pill_markings", "markings", "Markings", "علامات"]),
-    liquidTaste: findValue(item, ["liquidTaste", "taste", "Taste", "الطعم"]),
-    liquidColor: findValue(item, ["liquidColor", "color", "Color", "اللون"]),
-    physicalNotes: findValue(item, ["physicalNotes", "PhysicalNotes", "notes", "Notes", "Description", "description", "ملاحظات"])
+    description: findValue(item, ["Description", "description", "physicalNotes"]),
+    imgBox: findValue(item, ["imgBox", "boxImage", "img_box", "box_image", "image", "item_image", "imageUrl", "img_url", "photo", "BoxImage", "ImageBox"]),
+    imgIndex1: findValue(item, ["imgIndex1", "Index1", "IndexImage1"]),
+    imgIndex2: findValue(item, ["imgIndex2", "Index2", "IndexImage2"]),
+    imgPill: findValue(item, ["imgPill", "pillImage", "pill_image", "tablet_image", "capsule_image"]),
+    pillShape: findValue(item, ["pillShape", "pill_shape", "Shape"]),
+    pillScored: findValue(item, ["pillScored", "pill_scored", "scored", "Scored"]),
+    pillMarkings: findValue(item, ["pillMarkings", "pill_markings", "markings", "Markings"]),
+    liquidTaste: findValue(item, ["liquidTaste", "taste", "Taste"]),
+    liquidColor: findValue(item, ["liquidColor", "color", "Color"]),
+    physicalNotes: findValue(item, ["physicalNotes", "PhysicalNotes", "notes", "Notes"])
   };
 };
 
@@ -136,9 +131,7 @@ const READ_NOTIFICATIONS_KEY = 'pharma_read_notifications';
 const CHAT_HISTORY_KEY = 'pharma_chat_history_v3';
 
 const App: React.FC = () => {
-  // Added logout destructuring from useAuth
   const { user, logout } = useAuth();
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const scrollPositionsByView = useRef<Record<string, number>>({});
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -150,16 +143,6 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('language');
       return (saved === 'ar' || saved === 'en') ? saved as Language : 'en';
   });
-
-  useEffect(() => {
-    const handleStatusChange = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatusChange);
-    window.addEventListener('offline', handleStatusChange);
-    return () => {
-        window.removeEventListener('online', handleStatusChange);
-        window.removeEventListener('offline', handleStatusChange);
-    };
-  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -280,7 +263,6 @@ const App: React.FC = () => {
             const { FOOD_DATA_RAW } = await import('./data/food-data');
 
             const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW] as any[]).map(normalizeMedicine);
-
             let cachedMedicines = await getItem<Medicine[]>(MEDICINES_CACHE_KEY) || [];
 
             const medMap = new Map<string, Medicine>();
@@ -300,7 +282,7 @@ const App: React.FC = () => {
             
             setIsDataLoaded(true);
 
-            if (!FIREBASE_DISABLED && db && isOnline) {
+            if (!FIREBASE_DISABLED && db) {
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
                     setMedicines(prev => {
                         const newMedsMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
@@ -329,281 +311,90 @@ const App: React.FC = () => {
         }
     };
     loadData();
-  }, [user, isOnline]);
-
-  const visibleNotifications = useMemo(() => {
-    if (!user) {
-        return notifications.filter(n => !n.targetUserId && !n.targetRole);
-    }
-    
-    return notifications.filter(n => {
-        if (user.role === 'admin') return true;
-        if (n.targetUserId) return n.targetUserId === user.id;
-        if (n.targetRole) return n.targetRole === user.role;
-        return !n.targetRole && !n.targetUserId;
-    });
-  }, [notifications, user]);
-
-  const searchOnlyFilteredMedicines = useMemo(() => {
-    if (!medicines || medicines.length === 0) return [];
-    let results = [...medicines];
-    const term = searchTerm.toLowerCase().trim();
-    const cleanTermForLength = term.replace(/\*/g, '');
-
-    if (term.length === 0 && !isFilterActive) return [];
-    if (term.length > 0 && cleanTermForLength.length < 3) return [];
-
-    if (term && cleanTermForLength.length >= 3) {
-      const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-      if (term.includes('*')) {
-          const parts = term.split('*').map(p => p.trim()).filter(Boolean);
-          if (parts.length > 0) {
-              const regexPattern = parts.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
-              const regex = new RegExp(regexPattern, 'i');
-              results = results.filter(m => m && (regex.test(String(m['Trade Name'])) || regex.test(String(m['Scientific Name']))));
-          }
-      } else {
-          results = results.filter(m => m && String(m[field]).toLowerCase().includes(term));
-      }
-    }
-
-    return results;
-  }, [medicines, searchTerm, textSearchMode, isFilterActive]);
+  }, [user]);
 
   const filteredMedicines = useMemo(() => {
-    let results = [...searchOnlyFilteredMedicines];
+    let results = medicines.filter(m => {
+        const term = searchTerm.toLowerCase().trim();
+        const cleanTerm = term.replace(/\*/g, '');
+        if (term.length === 0 && !isFilterActive) return false;
+        if (term.length > 0 && cleanTerm.length < 3) return false;
+
+        const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
+        if (term.includes('*')) {
+            const parts = term.split('*').map(p => p.trim()).filter(Boolean);
+            const regex = new RegExp(parts.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*'), 'i');
+            return regex.test(String(m['Trade Name'])) || regex.test(String(m['Scientific Name']));
+        }
+        return String(m[field]).toLowerCase().includes(term);
+    });
 
     if (isFilterActive) {
       results = results.filter(m => {
-        if (!m) return false;
         if (filters.productType === 'medicine' && m['Product type'] !== 'Human') return false;
         if (filters.productType === 'supplement' && m['Product type'] !== 'Supplement') return false;
         if (filters.productType === 'food' && m['Product type'] !== 'Food') return false;
-        
         const mPrice = parseFloat(m['Public price']) || 0;
         if (filters.priceMin && mPrice < parseFloat(filters.priceMin)) return false;
         if (filters.priceMax && mPrice > parseFloat(filters.priceMax)) return false;
-        
         if (filters.pharmaceuticalForm && m.PharmaceuticalForm !== filters.pharmaceuticalForm) return false;
         if (filters.manufactureName.length > 0 && !filters.manufactureName.includes(m['Manufacture Name'])) return false;
         if (filters.marketingCompany.length > 0 && !filters.marketingCompany.includes(m['Marketing Company'])) return false;
         if (filters.mainAgent.length > 0 && !filters.mainAgent.includes(m['Main Agent'])) return false;
-        if (filters.legalStatus && m['Legal Status'] !== filters.legalStatus) return false;
         return true;
       });
     }
 
-    const getTargetStrengthValue = (med: Medicine, searchStr: string) => {
-        const names = String(med['Scientific Name']).toLowerCase().split(',').map(s => s.trim());
-        const strengths = String(med.Strength).split(',').map(s => s.trim());
-        const cleanTerm = searchStr.toLowerCase().replace(/\*/g, '');
-        let index = names.findIndex(n => n.includes(cleanTerm));
-        if (index === -1) index = 0; 
-        return parseFloat(strengths[index]) || 0;
-    };
-
     results.sort((a, b) => {
-        if (!a || !b) return 0;
-        const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-        const aVal = String(a[field]).toLowerCase();
-        const bVal = String(b[field]).toLowerCase();
-        const term = searchTerm.toLowerCase().trim();
-        const cleanTerm = term.replace(/\*/g, '');
-        const aStarts = aVal.startsWith(cleanTerm);
-        const bStarts = bVal.startsWith(cleanTerm);
-        
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-
         switch (sortBy) {
             case 'priceAsc': return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
             case 'priceDesc': return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
-            case 'scientificName': return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-            case 'strengthAsc': return getTargetStrengthValue(a, searchTerm) - getTargetStrengthValue(b, searchTerm);
-            case 'strengthDesc': return getTargetStrengthValue(b, searchTerm) - getTargetStrengthValue(a, searchTerm);
-            case 'alphabetical': return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
-            default: 
-                if (textSearchMode === 'scientificName') {
-                    return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
-                }
-                return aVal.localeCompare(bVal);
+            default: return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
         }
     });
 
     return results;
-  }, [searchOnlyFilteredMedicines, filters, isFilterActive, textSearchMode, sortBy, searchTerm]);
-
-  const handleExportData = useCallback((type: 'medicine' | 'supplement' | 'food') => {
-      let dataToExport = [];
-      if (type === 'medicine') dataToExport = medicines.filter(m => m['Product type'] === 'Human');
-      else if (type === 'supplement') dataToExport = medicines.filter(m => m['Product type'] === 'Supplement');
-      else if (type === 'food') dataToExport = medicines.filter(m => m['Product type'] === 'Food');
-      
-      const jsonString = JSON.stringify(dataToExport, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `pharma_source_${type}_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      alert(t('exportSuccess'));
-  }, [medicines, t]);
-
-  const handleDeleteMedicine = useCallback(async (medicine: Medicine) => {
-      if (user?.role !== 'admin') return;
-      if (!window.confirm(t('confirmDeleteItem'))) return;
-      
-      try {
-          await deleteDoc(doc(db, 'medicines', medicine.RegisterNumber));
-          setMedicines(prev => prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber));
-          setView('search');
-          alert(t('saveSuccess'));
-      } catch (err: any) {
-          alert("Error deleting item: " + err.message);
-      }
-  }, [user, t]);
-
-  const handleFindAlternatives = useCallback((medicine: Medicine) => {
-      const sciName = String(medicine['Scientific Name']).toLowerCase().trim();
-      const atc = medicine.AtcCode1?.substring(0, 4);
-
-      const direct = medicines.filter(m => 
-          m.RegisterNumber !== medicine.RegisterNumber && 
-          String(m['Scientific Name']).toLowerCase().trim() === sciName
-      );
-
-      const therapeutic = medicines.filter(m => 
-          m.RegisterNumber !== medicine.RegisterNumber && 
-          m.AtcCode1 && atc && m.AtcCode1.startsWith(atc) && 
-          String(m['Scientific Name']).toLowerCase().trim() !== sciName
-      );
-
-      setAlternatives({ direct, therapeutic });
-      setSelectedMedicine(medicine);
-      setView('alternatives');
-      scrollToTop();
-  }, [medicines, scrollToTop]);
+  }, [medicines, searchTerm, textSearchMode, isFilterActive, filters, sortBy]);
 
   const handleMedicineSelect = useCallback((medicine: Medicine) => { 
       captureScrollPosition();
-      setSelectedMedicine(medicine); setView('details'); 
-  }, [captureScrollPosition]);
-
-  const handleInsuranceSelect = useCallback((data: SelectedInsuranceData) => {
-      captureScrollPosition();
-      setSelectedInsuranceData(data);
-      setView('insuranceDetails');
+      setSelectedMedicine(medicine); 
+      setView('details'); 
   }, [captureScrollPosition]);
 
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
-      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={handleExportData} />;
-      if (view === 'chatHistory') return <ChatHistoryView conversations={allConversations} onSelectConversation={(c)=>{setCurrentChatHistory(c.messages); setIsAssistantOpen(true); setView('search');}} onDeleteConversation={async (id) => { const updated = allConversations.filter(c => c.id !== id); setAllConversations(updated); await setItem(CHAT_HISTORY_KEY, updated); }} onClearHistory={async () => { setAllConversations([]); await setItem(CHAT_HISTORY_KEY, []); }} t={t} language={language} />;
-      if (view === 'notifications') return <NotificationsView notifications={visibleNotifications.map(n => ({...n, isRead: readNotificationIds.includes(n.id)}))} onMarkAllRead={() => { const ids = visibleNotifications.map(n=>n.id); setReadNotificationIds(ids); localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(ids)); }} onMarkAsRead={(id)=>{ setReadNotificationIds(prev => { const next = [...prev, id]; localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(next)); return next; }); }} onDeleteNotification={async (id)=>{if(!FIREBASE_DISABLED) await deleteDoc(doc(db, 'notifications', id))}} isAdmin={user?.role === 'admin'} t={t} language={language} onMedicineLink={(id) => { 
-          const med = medicines.find(m => m.RegisterNumber === id); 
-          if(med) { 
-              setSelectedMedicine(med); 
-              setView('details'); 
-          }
-      }} />;
-      if (view === 'imageView') return <ImageViewer images={zoomImages} initialIndex={zoomImageInitialIndex} title={zoomImageTitle} onBack={handleBack} t={t} indexFlags={zoomImageIndexFlags} />;
-      if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { setSelectedMedicine(m); setIsAssistantOpen(true); }} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} />;
-
+      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={()=>{}} />;
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onEdit={(med) => { setEditingMedicine({...med}); setIsEditMedicineModalOpen(true); }} onDelete={handleDeleteMedicine} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={handleFindAlternatives} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine!} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine!.RegisterNumber)} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} user={user} onImageZoom={(imgs,idx,ttl,flags)=>{setZoomImages(imgs); setZoomImageInitialIndex(idx); setZoomImageTitle(ttl); setZoomImageIndexFlags(flags); setView('imageView');}} onFindAlternative={()=>{}} onOpenAssistant={() => setIsAssistantOpen(true)} />;
           return (
               <div className={view === 'search' || view === 'results' ? 'contents' : 'hidden'}>
-                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onSearchIconClick={scrollToTop} onBarcodeScanClick={()=>{}} t={t} />
+                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={Object.values(filters).filter((f: any) => f && f!=='all' && f.length!==0).length} t={t} />
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                   </div>
                   <div className="mt-6">
                       {filteredMedicines.length > 0 ? (
-                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={handleFindAlternatives} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
+                        <ResultsList medicines={filteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={handleMedicineSelect} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={(id)=>setFavorites(prev=>prev.includes(id)?prev.filter(f=>f!==id):[...prev,id])} t={t} language={language} resultsState="loaded" />
                       ) : (searchTerm.length > 0 || isFilterActive) && <div className="text-center py-20 bg-white/50 rounded-[2rem] border-2 border-dashed border-slate-100"><p className="text-slate-400 font-bold">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
           );
       }
-      if (activeTab === 'insurance') {
-          if (view === 'insuranceDetails' && selectedInsuranceData) return <InsuranceDetailsView data={selectedInsuranceData} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={handleInsuranceSelect} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} onSearchIconClick={scrollToTop} />;
-      }
-      if (activeTab === 'settings') return (
-              <div className="space-y-6 animate-fade-in pb-10">
-                  <h2 className="text-2xl font-black px-2">{t('navSettings')}</h2>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800">
-                      {user ? <div className="flex justify-between items-center"><div><p className="font-black text-lg">{user.username}</p><p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">{t(`${user.role}Role` as any)}</p></div><button onClick={() => setView('chatHistory')} className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl flex items-center gap-2 font-black text-xs active:scale-95 transition-all"><span>{t('clearHistory')}</span></button></div> : <button onClick={() => setView('login')} className="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-xl shadow-teal-500/20 active:scale-95 transition-all">{t('login')}</button>}
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 border border-slate-100 dark:border-slate-800">
-                      <button onClick={() => setLanguage(prev => prev === 'ar' ? 'en' : 'ar')} className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-all"><span className="font-black text-sm">{t('language')}</span><span className="font-black text-teal-600">{language === 'ar' ? 'English' : 'العربية'}</span></button>
-                  </div>
-                  {user && <button onClick={logout} className="w-full py-5 text-rose-500 font-black bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-rose-50 transition-colors mt-4 active:scale-95">{t('logout')}</button>}
-              </div>
-          );
       return <div className="text-center py-20 text-slate-400">Application Error. Please reload.</div>;
   };
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'settings' && view !== 'insuranceSearch'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={visibleNotifications.filter(n=>!readNotificationIds.includes(n.id)).length} />
-      
-      {/* Offline Status Badge */}
-      {!isOnline && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-amber-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 animate-bounce">
-            <span className="w-2 h-2 bg-white rounded-full"></span>
-            وضع عدم الاتصال (Offline)
-        </div>
-      )}
-
+      <Header title="PharmaSource" showBack={view !== 'search'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} />
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(140px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
           {renderContent()}
       </main>
-      
-      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':tab==='insurance'?'insuranceSearch':'settings'); }} t={t} user={user} view={view} />
-      
-      <div className="fixed bottom-32 right-6 z-30"><FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} /></div>
-      
-      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>{setIsAssistantOpen(false); if(hist.length>1){const titlePart=hist.find(m=>m.role==='user')?.parts.find(p=>'text' in p)?.text||'New Chat'; const newC={id:`chat-${Date.now()}`, title:titlePart.length>30?titlePart.substring(0,30)+'...':titlePart, messages:hist, timestamp:Date.now()}; setAllConversations(prev=>[newC, ...prev]); setItem(CHAT_HISTORY_KEY, [newC, ...allConversations]);}}} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} favoriteMedicines={medicines.filter(m => favorites.includes(m.RegisterNumber))} initialPrompt={assistantPrompt} initialHistory={currentChatHistory} t={t} language={language} onShowHistory={() => setView('chatHistory')} />
-      
-      <FilterModal 
-        isOpen={isFilterModalOpen} 
-        onClose={() => setIsFilterModalOpen(false)} 
-        filters={filters} 
-        onApply={(newFilters) => setFilters(newFilters)} 
-        onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} 
-        allMedicines={searchOnlyFilteredMedicines.length > 0 ? searchOnlyFilteredMedicines : medicines} 
-        t={t} 
-      />
-
-      <EditMedicineModal isOpen={isEditMedicineModalOpen} onClose={() => setIsEditMedicineModalOpen(false)} medicine={editingMedicine} onSave={async (updatedMed) => { 
-          if (user?.role === 'admin' && editingMedicine) { 
-              if (updatedMed.RegisterNumber !== editingMedicine.RegisterNumber) {
-                  await deleteDoc(doc(db, 'medicines', editingMedicine.RegisterNumber));
-              }
-              await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true }); 
-              setSelectedMedicine(updatedMed);
-              alert(t('saveSuccess')); 
-          } else if (user?.role === 'company' && editingMedicine) {
-              await addDoc(collection(db, 'pending_updates'), {
-                  medicineId: editingMedicine.RegisterNumber,
-                  itemType: 'medicine',
-                  type: 'edit',
-                  newData: updatedMed,
-                  originalData: editingMedicine,
-                  submittedBy: user.id,
-                  submittedByName: user.username,
-                  timestamp: Date.now(),
-                  status: 'pending'
-              });
-              alert(t('requestSubmittedBody'));
-          }
-      }} t={t} />
+      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ if (activeTab === tab) scrollToTop(); setActiveTab(tab); setView(tab==='search'?'search':'settings'); }} t={t} user={user} view={view} />
+      <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={(hist)=>setIsAssistantOpen(false)} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} initialPrompt={assistantPrompt} t={t} language={language} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={(newFilters) => setFilters(newFilters)} onClearFilters={() => setFilters({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' })} allMedicines={medicines} t={t} />
     </div>
   );
 };

@@ -7,6 +7,13 @@ import StarIcon from './icons/StarIcon';
 
 const CONCENTRATION_PATTERN = /\d+\s*(mg|mcg|ml|g|iu|%|unit|mc|units|mmol)/i;
 
+export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
+    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return [];
+    return sciNames.map((name, index) => ({ name, strength: strengths[index] || strengths[0] || '' }));
+};
+
 export const zipIngredients = (medicine: Medicine): string => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
@@ -16,13 +23,6 @@ export const zipIngredients = (medicine: Medicine): string => {
         const s = strengths[index] || strengths[0] || '';
         return s.trim() ? `${name} (${s.trim()})` : name;
     }).join(', ');
-};
-
-export const getIngredientsList = (medicine: Medicine) => {
-  const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
-  const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
-  if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return [];
-  return sciNames.map((name, index) => ({ name, strength: strengths[index] || strengths[0] || '' }));
 };
 
 interface MedicineCardProps {
@@ -40,13 +40,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   if (!medicine) return null; 
   const price = parseFloat(medicine['Public price']);
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
-  const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
-  const isRestricted = medicine['Product Control']?.toLowerCase() === 'restricted';
 
   return (
     <div
       onClick={onShortPress}
-      className="animate-card bg-white dark:bg-slate-800 rounded-3xl p-4 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-slate-50 dark:border-slate-700/50 flex flex-col gap-2.5 active:scale-[0.98] transition-all cursor-pointer group"
+      className="animate-card bg-white dark:bg-slate-800 rounded-3xl p-4 shadow-premium border border-slate-50 dark:border-slate-700/50 flex flex-col gap-3 active:scale-[0.98] transition-all cursor-pointer group"
     >
       <div className="flex justify-between items-start gap-3">
         {medicine.imgBox && (
@@ -63,14 +61,9 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight group-hover:text-primary transition-colors truncate">
                 {medicine['Trade Name']}
             </h2>
-            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic line-clamp-1" dir="ltr">
-                    {ingredientsString}
-                </p>
-                {isControlled && (
-                    <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-1.5 py-0.5 rounded text-[7px] font-black uppercase ring-1 ring-purple-200">Controlled</span>
-                )}
-            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic line-clamp-1 mt-0.5" dir="ltr">
+                {ingredientsString}
+            </p>
         </div>
         
         <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -82,21 +75,20 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             ) : (
                 <div className="bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-xl text-[9px] font-black text-slate-400">N/A</div>
             )}
-            <div className="flex gap-1">
-                {isRestricted && <span className="bg-orange-600 text-white px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter shadow-sm">Restricted</span>}
-                <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                    {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
-                </span>
-            </div>
+            <span className={`px-1.5 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-tighter ${medicine['Legal Status'] === 'Prescription' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+            </span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2.5 border-t border-slate-50 dark:border-slate-700/50 mt-0.5">
-        <div className="flex gap-2">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div className="w-3.5 h-3.5 text-primary shrink-0 flex items-center justify-center overflow-hidden"><PillIcon /></div>
-                <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate max-w-[120px]">{medicine.PharmaceuticalForm}</span>
+      <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 max-w-[70%] flex-nowrap">
+            <div className="w-3.5 h-3.5 text-primary shrink-0 flex items-center justify-center overflow-hidden">
+                <PillIcon />
             </div>
+            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 truncate">
+                {medicine.PharmaceuticalForm}
+            </span>
         </div>
 
         <div className="flex items-center gap-1">
