@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
@@ -5,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>PharmaSource KSA</title>
     
-    <!-- تحميل Tailwind عبر CDN لضمان عمله في كل البيئات -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -21,23 +21,24 @@
               secondary: '#0ea5e9',
               accent: '#f59e0b',
               'light-bg': '#f8fafc',
-              'dark-bg': '#0f172a',
-              'dark-card': '#1e293b',
+              'dark-bg': '#020617',
+              'dark-card': '#0f172a',
             },
             animation: {
               'fade-in': 'fadeIn 0.3s ease-out forwards',
               'slide-up': 'slideUp 0.4s ease-out forwards',
+              'bounce-subtle': 'bounceSubtle 2s infinite',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
               slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              bounceSubtle: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-5px)' } }
             }
           }
         }
       }
     </script>
     
-    <!-- Google Fonts: Cairo for Arabic -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
@@ -45,10 +46,7 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f766e">
     <style>
-      :root {
-        /* تقليل حجم الخط الأساسي لعمل زوم أوت بسيط */
-        font-size: 14px; 
-      }
+      :root { font-size: 14px; }
       body {
         font-family: 'Cairo', 'Poppins', sans-serif;
         background-color: #f8fafc;
@@ -57,58 +55,41 @@
         -webkit-font-smoothing: antialiased;
         overflow: hidden;
       }
+      .dark body { background-color: #020617; }
       #root { height: 100vh; display: flex; flex-direction: column; }
       ::-webkit-scrollbar { width: 0px; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
-      /* Glassmorphism Classes */
       .bg-glass {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
       }
       .dark .bg-glass {
-        background: rgba(15, 23, 42, 0.85);
+        background: rgba(2, 6, 23, 0.85);
       }
 
-      /* تحسين المسافات للهواتف الكبيرة */
-      @media (min-width: 640px) {
-        :root { font-size: 16px; }
-      }
+      @media (min-width: 640px) { :root { font-size: 16px; } }
     </style>
-
-    <script type="importmap">
+  <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "@google/genai": "https://esm.sh/@google/genai@0.15.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-    "@capacitor/app": "https://esm.sh/@capacitor/app@6.0.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/",
-    "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
-    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.1.0"
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.1"
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
+<link rel="stylesheet" href="/index.css">
 </head>
   <body>
-    <div id="root">
-        <div class="flex h-screen w-screen items-center justify-center bg-white">
-             <div class="flex flex-col items-center gap-4">
-                 <div class="w-10 h-10 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin"></div>
-                 <p class="font-black text-teal-800 tracking-widest uppercase text-[10px]">PharmaSource KSA</p>
-             </div>
-        </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>

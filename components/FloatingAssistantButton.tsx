@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { TFunction, Language } from '../types';
 import { isAIAvailable } from '../geminiService';
 import AssistantIcon from './icons/AssistantIcon';
@@ -11,32 +11,20 @@ interface FloatingAssistantButtonProps {
     language: Language;
 }
 
-const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onClick, onLongPress, t, language }) => {
-    const [isPressing, setIsPressing] = useState(false);
+const FloatingAssistantButton: React.FC<FloatingAssistantButtonProps> = ({ onClick, t }) => {
     const aiAvailable = isAIAvailable();
-
     return (
-        <button
-            onPointerDown={() => setIsPressing(true)}
-            onPointerUp={() => setIsPressing(false)}
-            onPointerLeave={() => setIsPressing(false)}
-            onClick={onClick}
-            className={`w-16 h-16 bg-gradient-to-br from-primary to-primary-dark text-white rounded-2xl shadow-[0_8px_20px_-5px_rgba(20,184,166,0.6)] flex items-center justify-center
-                       transform transition-all duration-200 active:scale-90 active:shadow-inner
-                       ${!aiAvailable ? 'grayscale opacity-70' : 'animate-bounce-subtle'} 
-                       touch-none select-none overflow-hidden relative group`}
-        >
-            {/* Glow Effect */}
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity"></div>
-            
-            <div className={`w-8 h-8 transition-transform group-hover:scale-110 group-hover:rotate-12`}>
-                <AssistantIcon />
-            </div>
-            
-            {/* Pulsing indicator */}
-            <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm"></div>
-        </button>
+        <div className="fixed bottom-[95px] ltr:right-4 rtl:left-4 z-50 pointer-events-none">
+            <button
+                onClick={onClick}
+                className={`w-14 h-14 bg-gradient-to-br from-primary to-primary-dark text-white rounded-2xl shadow-xl flex items-center justify-center
+                           transform transition-all active:scale-90 pointer-events-auto
+                           ${!aiAvailable ? 'grayscale opacity-70' : 'animate-bounce-subtle'}`}
+            >
+                <div className="w-7 h-7"><AssistantIcon /></div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"></div>
+            </button>
+        </div>
     );
 };
-
 export default FloatingAssistantButton;
