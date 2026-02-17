@@ -31,7 +31,6 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit, addDoc, updateDoc } from 'firebase/firestore';
-import { getItem, setItem } from './utils/storage';
 
 const setupNativeListeners = (onBack: () => void) => {
     import('@capacitor/app').then(({ App: CapApp }) => {
@@ -60,7 +59,6 @@ const normalizeMedicine = (item: any): Medicine => {
   const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
   const strength = findValue(item, ["Strength", "strength"]);
   
-  // Fix: Generate a unique ID based on properties if RegisterNumber is missing to avoid duplications
   let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
   if (!regNum || regNum === '0' || regNum.trim() === '') {
       regNum = `temp-${tradeName}-${scientificName}-${strength}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -143,6 +141,14 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
 
+  // States for Insurance Tab
+  const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
+  const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
+  const [selectedInsurance, setSelectedInsurance] = useState<SelectedInsuranceData | null>(null);
+
+  // Scroll position management
+  const scrollPositions = useRef<Map<string, number>>(new Map());
+
   useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
@@ -164,15 +170,39 @@ const App: React.FC = () => {
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
-      else if (view === 'details' || view === 'alternatives') { setView('results'); } 
+      else if (view === 'details' || view === 'alternatives') setView('results'); 
+      else if (view === 'insuranceDetails') setView('insuranceSearch');
       else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) setView(activeTab === 'search' ? 'search' : 'settings');
-      else if (view === 'results') { setView('search'); setSearchTerm(''); }
+      else if (view === 'results' || view === 'insuranceSearch') { setView('search'); setSearchTerm(''); setInsuranceSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab]);
 
   useEffect(() => { setupNativeListeners(handleBack); }, [handleBack]);
 
-  // Load Initial Data and Sync with Firebase
+  // Save/Restore Scroll Position
+  useLayoutEffect(() => {
+      const container = document.getElementById('main-scroll-container');
+      if (!container) return;
+
+      const handleBeforeChange = () => {
+          if (view === 'results' || view === 'search') {
+              scrollPositions.current.set('search', container.scrollTop);
+          }
+      };
+
+      if (view === 'results' || view === 'search') {
+          const saved = scrollPositions.current.get('search');
+          if (saved !== undefined) {
+              container.scrollTop = saved;
+          }
+      } else {
+          container.scrollTop = 0;
+      }
+      
+      return handleBeforeChange;
+  }, [view]);
+
+  // Initial Data Load
   useEffect(() => {
     const loadData = async () => {
         try {
@@ -180,14 +210,13 @@ const App: React.FC = () => {
             const { FOOD_DATA_RAW } = await import('./data/food-data');
             const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW]).map(normalizeMedicine);
             
-            // Map for quick lookup and avoiding duplicates
             const medMap = new Map<string, Medicine>();
             hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
 
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
+            setIsDataLoaded(true);
 
-            // Listen to Firebase Updates
             if (!FIREBASE_DISABLED && db) {
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
                     snapshot.docs.forEach(doc => {
@@ -195,11 +224,6 @@ const App: React.FC = () => {
                         medMap.set(med.RegisterNumber, med);
                     });
                     setMedicines(Array.from(medMap.values()));
-                    setIsDataLoaded(true);
-                }, (error) => {
-                    console.error("Firebase sync error:", error);
-                    setMedicines(Array.from(medMap.values()));
-                    setIsDataLoaded(true);
                 });
 
                 onSnapshot(collection(db, 'notifications'), (snapshot) => {
@@ -207,7 +231,6 @@ const App: React.FC = () => {
                 });
             } else {
                 setMedicines(Array.from(medMap.values()));
-                setIsDataLoaded(true);
             }
         } catch (e) { 
             console.error(e); 
@@ -229,13 +252,10 @@ const App: React.FC = () => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         const aVal = String(a[field]).toLowerCase();
         const bVal = String(b[field]).toLowerCase();
-        
         const aStarts = aVal.startsWith(term);
         const bStarts = bVal.startsWith(term);
-
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
-
         return aVal.localeCompare(bVal);
     });
     return results;
@@ -243,13 +263,37 @@ const App: React.FC = () => {
 
   const medicineAlternatives = useMemo(() => {
       if (!selectedMedicine) return { direct: [], therapeutic: [] };
-      const mainSci = String(selectedMedicine['Scientific Name']).toLowerCase();
+      
+      const mainSci = String(selectedMedicine['Scientific Name']).toLowerCase().trim();
+      
+      // 1. البدائل المطابقة (نفس المادة الفعالة)
       const direct = medicines.filter(m => 
-          String(m['Scientific Name']).toLowerCase() === mainSci && 
+          String(m['Scientific Name']).toLowerCase().trim() === mainSci && 
           m.RegisterNumber !== selectedMedicine.RegisterNumber
       );
-      return { direct, therapeutic: [] };
-  }, [selectedMedicine, medicines]);
+
+      // 2. البدائل العلاجية (من بوليصة التأمين)
+      // نبحث أولاً عن الدواء في التأمين لمعرفة مجموعته العلاجية
+      const insuranceEntry = insuranceData.find(p => 
+          p.scientificName.toLowerCase().trim() === mainSci || 
+          (selectedMedicine.AtcCode1 && p.atcCode && selectedMedicine.AtcCode1.startsWith(p.atcCode))
+      );
+
+      let therapeutic: Medicine[] = [];
+      if (insuranceEntry?.drugClass) {
+          const sameClassSciNames = new Set(
+              insuranceData
+                .filter(p => p.drugClass === insuranceEntry.drugClass && p.scientificName.toLowerCase().trim() !== mainSci)
+                .map(p => p.scientificName.toLowerCase().trim())
+          );
+
+          therapeutic = medicines.filter(m => 
+              sameClassSciNames.has(String(m['Scientific Name']).toLowerCase().trim())
+          );
+      }
+
+      return { direct, therapeutic };
+  }, [selectedMedicine, medicines, insuranceData]);
 
   const toggleFavorite = (id: string) => {
       const newFavs = favorites.includes(id) ? favorites.filter(f => f !== id) : [...favorites, id];
@@ -259,10 +303,18 @@ const App: React.FC = () => {
 
   const deleteNotification = async (id: string) => {
       if (!db) return;
-      try { 
-          await deleteDoc(doc(db, 'notifications', id)); 
-      } catch(e) { 
-          console.error("Failed to delete notification", e); 
+      try { await deleteDoc(doc(db, 'notifications', id)); } catch(e) { console.error(e); }
+  };
+
+  const handleTabClick = (tab: Tab) => {
+      if (activeTab === tab) {
+          const container = document.getElementById('main-scroll-container');
+          if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+          setActiveTab(tab);
+          if (tab === 'search') setView('search');
+          if (tab === 'insurance') setView('insuranceSearch');
+          if (tab === 'settings') setView('settings');
       }
   };
 
@@ -292,6 +344,11 @@ const App: React.FC = () => {
                   </div>
               </div>
           );
+      }
+
+      if (activeTab === 'insurance') {
+          if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
@@ -325,11 +382,11 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && activeTab === 'search'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
+      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
       <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
-          {!isDataLoaded ? <div className="h-64 flex flex-col items-center justify-center"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div><p className="mt-4 text-xs font-black text-slate-400">LOADING DATA...</p></div> : renderContent()}
+          {!isDataLoaded ? <div className="h-64 flex flex-col items-center justify-center"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div><p className="mt-4 text-xs font-black text-slate-400">تحميل البيانات...</p></div> : renderContent()}
       </main>
-      <BottomNavBar activeTab={activeTab} setActiveTab={(tab)=>{ setActiveTab(tab); setView(tab==='search'?'search':'settings'); }} t={t} user={user} view={view} />
+      <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
       {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
       <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={async (m)=>{ if(db) await setDoc(doc(db, 'medicines', m.RegisterNumber), m); setSelectedMedicine(m); }} t={t} />

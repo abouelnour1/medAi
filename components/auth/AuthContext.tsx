@@ -2,7 +2,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 import { auth, db, FIREBASE_DISABLED } from '../../firebase';
-// Fix: Consolidate modular auth imports to improve member resolution
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -59,7 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           let userData: User | null = null;
           
-          // محاولة جلب البيانات من الدوك، مع حماية ضد التوقف
           const userDoc = await getDoc(userDocRef).catch(() => null);
           if (userDoc?.exists()) {
               const data = userDoc.data();
@@ -96,11 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    // تقليل وقت الانتظار إلى 2.5 ثانية لجعل التطبيق يفتح فوراً
+    // تقليل وقت الانتظار بشكل كبير لجعل التطبيق يفتح فوراً
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-        console.warn("Auth check fast-path initiated.");
-    }, 2500);
+    }, 500);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
