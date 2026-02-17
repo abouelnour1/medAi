@@ -20,24 +20,13 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Animations */
+/* Animations - تم إزالة التمرير (translateY) لجعل الموضوع سلس وثابت */
 .animate-card {
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.25s ease-out forwards;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(15px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 @keyframes fadeIn {

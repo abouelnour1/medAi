@@ -129,8 +129,9 @@ const App: React.FC = () => {
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
+  
+  const savedScrollPos = useRef<number>(0);
 
-  // States for Insurance Tab
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   const [selectedInsurance, setSelectedInsurance] = useState<SelectedInsuranceData | null>(null);
@@ -158,27 +159,30 @@ const App: React.FC = () => {
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') setView('details');
-      else if (view === 'details' || view === 'alternatives') setView('results'); 
+      else if (view === 'details' || view === 'alternatives') {
+          setView('results'); 
+          // استعادة فورية للموضع دون تأخير بصري
+          requestAnimationFrame(() => {
+              if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTo({ top: savedScrollPos.current, behavior: 'auto' });
+              }
+          });
+      }
       else if (view === 'insuranceDetails') setView('insuranceSearch');
       else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) setView(activeTab === 'search' ? (searchTerm.length >= 3 ? 'results' : 'search') : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings'));
       else if (view === 'results' || view === 'insuranceSearch') { setView('search'); setSearchTerm(''); setInsuranceSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
   }, [view, activeTab, searchTerm]);
 
-  const scrollToTop = () => {
-    if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
-    }
-  };
-
   const handleMedicineSelect = (m: Medicine) => {
+    if (scrollContainerRef.current) {
+        savedScrollPos.current = scrollContainerRef.current.scrollTop;
+    }
     setSelectedMedicine(m);
     setView('details');
-    // استخدام setTimeout لضمان اكتمال الرندر قبل التمرير
-    setTimeout(scrollToTop, 10);
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
   };
 
-  // Initial Data Load
   useEffect(() => {
     const loadData = async () => {
         try {
@@ -241,20 +245,16 @@ const App: React.FC = () => {
     if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
     if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
 
-    // تحسين الترتيب بناءً على موقع الكلمة (الأولوية للمطابقة من البداية)
     const term = searchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
     results.sort((a, b) => {
         const aName = String(a[field]).toLowerCase();
         const bName = String(b[field]).toLowerCase();
-        
         const aStarts = aName.startsWith(term);
         const bStarts = bName.startsWith(term);
-        
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
-
         if (sortBy === 'alphabetical') return aName.localeCompare(bName);
         if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
         if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
@@ -266,6 +266,29 @@ const App: React.FC = () => {
 
     return results;
   }, [searchContextMedicines, filters, sortBy, searchTerm, textSearchMode]);
+
+  const alternatives = useMemo(() => {
+    if (!selectedMedicine) return { direct: [], therapeutic: [] };
+    const sciName = String(selectedMedicine['Scientific Name']).toLowerCase();
+    const strength = String(selectedMedicine.Strength).toLowerCase();
+    const form = String(selectedMedicine.PharmaceuticalForm).toLowerCase();
+    const atc = String(selectedMedicine.AtcCode1 || '').substring(0, 4);
+
+    const direct = medicines.filter(m => 
+        m.RegisterNumber !== selectedMedicine.RegisterNumber &&
+        String(m['Scientific Name']).toLowerCase() === sciName &&
+        String(m.Strength).toLowerCase() === strength &&
+        String(m.PharmaceuticalForm).toLowerCase() === form
+    );
+
+    const therapeutic = (atc && atc.length >= 4) ? medicines.filter(m => 
+        m.RegisterNumber !== selectedMedicine.RegisterNumber &&
+        String(m.AtcCode1 || '').startsWith(atc) &&
+        !direct.some(d => d.RegisterNumber === m.RegisterNumber)
+    ) : [];
+
+    return { direct, therapeutic };
+  }, [selectedMedicine, medicines]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -333,7 +356,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} />;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={{direct: [], therapeutic: []}} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in">
