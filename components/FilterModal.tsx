@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Filters, ProductTypeFilter, TFunction, Medicine } from '../types';
 import SearchableDropdown from './SearchableDropdown';
@@ -30,7 +31,7 @@ interface FilterModalProps {
     filters: Filters;
     onApply: (newFilters: Filters) => void;
     onClearFilters: () => void;
-    allMedicines: Medicine[];
+    allMedicines: Medicine[]; // هذا يمثل سياق البحث الحالي (لو البحث فاضي هيبقي كل الداتا)
     t: TFunction;
 }
 
@@ -51,42 +52,44 @@ const FilterModal: React.FC<FilterModalProps> = ({
         }
     }, [isOpen, filters]);
 
-    // وظيفة عامة لفلترة المصفوفة بناءً على مجموعة من المعايير
+    // وظيفة لفلترة مصفوفة بناءً على الفلاتر المختارة حالياً مع استثناء مفتاح معين (لحساب الخيارات المتاحة لهذا المفتاح)
     const getFilteredList = (medicines: Medicine[], currentFilters: Filters, excludeKey?: keyof Filters) => {
         return medicines.filter(m => {
-            // Product Type
+            // النوع
             if (excludeKey !== 'productType' && currentFilters.productType !== 'all') {
                 const type = currentFilters.productType === 'medicine' ? 'Human' : currentFilters.productType === 'supplement' ? 'Supplement' : 'Food';
                 if (m['Product type'] !== type) return false;
             }
-            // Price Range
+            // السعر
             const price = parseFloat(m['Public price']) || 0;
             if (currentFilters.priceMin && price < parseFloat(currentFilters.priceMin)) return false;
             if (currentFilters.priceMax && price > parseFloat(currentFilters.priceMax)) return false;
             
-            // Pharmaceutical Form
+            // الشكل الصيدلاني
             if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm) return false;
             
-            // Legal Status
+            // الحالة القانونية
             if (excludeKey !== 'legalStatus' && currentFilters.legalStatus && m['Legal Status'] !== currentFilters.legalStatus) return false;
             
-            // Manufacturers (Multi)
+            // المصنعين
             if (excludeKey !== 'manufactureName' && currentFilters.manufactureName.length > 0 && !currentFilters.manufactureName.includes(m['Manufacture Name'])) return false;
             
-            // Marketing Companies (Multi)
+            // الشركات المسوقة
             if (excludeKey !== 'marketingCompany' && currentFilters.marketingCompany.length > 0 && !currentFilters.marketingCompany.includes(m['Marketing Company'])) return false;
             
-            // Agents (Multi)
+            // الوكلاء
             if (excludeKey !== 'mainAgent' && currentFilters.mainAgent.length > 0 && !currentFilters.mainAgent.includes(m['Main Agent'])) return false;
 
             return true;
         });
     };
 
-    // حساب الخيارات المتاحة ديناميكياً لكل حقل
+    // حساب الخيارات المتاحة ديناميكياً لكل حقل بناءً على ما تم اختياره في الحقول الأخرى (Cascading Effect)
     const dynamicOptions = useMemo(() => {
-        const getUnique = (list: Medicine[], key: keyof Medicine) => Array.from(new Set(list.map(m => String(m[key] || '')).filter(Boolean))).sort();
+        const getUnique = (list: Medicine[], key: keyof Medicine) => 
+            Array.from(new Set(list.map(m => String(m[key] || '')).filter(Boolean))).sort();
 
+        // لكل قائمة خيارات، بنفلتر الداتا "allMedicines" (سياق البحث) بكل الفلاتر ما عدا الفلتر نفسه
         const listForManufacturers = getFilteredList(allMedicines, localFilters, 'manufactureName');
         const listForMarketing = getFilteredList(allMedicines, localFilters, 'marketingCompany');
         const listForAgents = getFilteredList(allMedicines, localFilters, 'mainAgent');
@@ -102,7 +105,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
         };
     }, [allMedicines, localFilters, t]);
 
-    // حساب إجمالي النتائج المتوقعة
+    // عدد النتائج المتوقعة لو طبقنا الفلاتر الحالية
     const expectedCount = useMemo(() => getFilteredList(allMedicines, localFilters).length, [allMedicines, localFilters]);
 
     const handleFilterChange = <K extends keyof Filters>(filterName: K, value: Filters[K]) => {
@@ -141,7 +144,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{t('filters')}</h2>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{expectedCount} Items Match</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{expectedCount} Results in context</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ClearIcon/></button>
@@ -154,7 +157,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                       <select
                         value={localFilters.productType}
                         onChange={(e) => handleFilterChange('productType', e.target.value as ProductTypeFilter)}
-                        className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all font-bold text-sm"
+                        className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all font-bold text-sm dark:text-white"
                       >
                         <option value="all">{t('allProductTypes')}</option>
                         <option value="medicine">{t('medicines')}</option>
@@ -229,7 +232,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                             value={localFilters.priceMin}
                             onChange={(e) => handleFilterChange('priceMin', e.target.value)}
                             placeholder={t('priceFrom')}
-                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm"
+                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm dark:text-white"
                             min="0"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Min</span>
@@ -240,7 +243,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                             value={localFilters.priceMax}
                             onChange={(e) => handleFilterChange('priceMax', e.target.value)}
                             placeholder={t('priceTo')}
-                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm"
+                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm dark:text-white"
                             min="0"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Max</span>

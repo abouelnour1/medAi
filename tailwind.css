@@ -1,26 +1,28 @@
+
 /* PharmaSource Global Styles & Configurations */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --primary: #14b8a6;
+  --primary: #0d9488;
   --primary-dark: #0f766e;
   --secondary: #0ea5e9;
   --accent: #f59e0b;
-  --light-bg: #f8fafc;
-  --dark-bg: #0f172a;
+  --light-bg: #f1f5f9;
+  --dark-bg: #020617;
 }
 
 body {
   font-family: 'Cairo', 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Animations */
 .animate-card {
-  animation: slideUp 0.4s ease-out forwards;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in {
@@ -30,7 +32,7 @@ body {
 @keyframes slideUp {
   from { 
     opacity: 0; 
-    transform: translateY(20px); 
+    transform: translateY(15px); 
   }
   to { 
     opacity: 1; 
@@ -45,28 +47,32 @@ body {
 
 /* Custom Shadows */
 .shadow-premium {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .dark .shadow-premium {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2), 0 5px 15px -2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
 }
 
 /* Form Controls */
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1) !important;
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1) !important;
+}
+
+.dark input, .dark select, .dark textarea {
+  color: white;
 }
 
 /* Glassmorphism */
 .bg-glass {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .dark .bg-glass {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.7);
 }
 
 /* Scrollbar Hide */
@@ -95,4 +101,8 @@ input:focus, select:focus, textarea:focus {
 .ai-response-content strong {
   color: var(--primary);
   font-weight: 900;
+}
+
+.dark .ai-response-content strong {
+  color: #2dd4bf;
 }

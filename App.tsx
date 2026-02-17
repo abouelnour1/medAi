@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
-  Conversation, ChatMessage, InsuranceDrug, PrescriptionData, SelectedInsuranceData, 
-  InsuranceSearchMode, Notification as AppNotification, PendingUpdate
+  InsuranceDrug, SelectedInsuranceData, InsuranceSearchMode, Notification as AppNotification
 } from './types';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
@@ -16,29 +15,19 @@ import FilterButton from './components/FilterButton';
 import AlternativesView from './components/AlternativesView';
 import FloatingAssistantButton from './components/FloatingAssistantButton';
 import AssistantModal from './components/AssistantModal';
-import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
-import AddDataView from './components/AddDataView';
 import { LoginView } from './components/auth/LoginView';
 import { RegisterView } from './components/auth/RegisterView';
 import { AdminDashboard } from './components/auth/AdminDashboard';
 import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
-import { doc, setDoc, collection, onSnapshot, deleteDoc, query, orderBy, limit as firestoreLimit, addDoc, updateDoc } from 'firebase/firestore';
-
-const setupNativeListeners = (onBack: () => void) => {
-    import('@capacitor/app').then(({ App: CapApp }) => {
-        CapApp.addListener('backButton', () => {
-            onBack();
-        });
-    }).catch(() => {});
-};
+import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -146,8 +135,7 @@ const App: React.FC = () => {
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   const [selectedInsurance, setSelectedInsurance] = useState<SelectedInsuranceData | null>(null);
 
-  // Scroll position management
-  const scrollPositions = useRef<Map<string, number>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -172,35 +160,23 @@ const App: React.FC = () => {
       if (view === 'imageView') setView('details');
       else if (view === 'details' || view === 'alternatives') setView('results'); 
       else if (view === 'insuranceDetails') setView('insuranceSearch');
-      else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) setView(activeTab === 'search' ? 'search' : 'settings');
+      else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) setView(activeTab === 'search' ? (searchTerm.length >= 3 ? 'results' : 'search') : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings'));
       else if (view === 'results' || view === 'insuranceSearch') { setView('search'); setSearchTerm(''); setInsuranceSearchTerm(''); }
       else { setView('search'); setActiveTab('search'); }
-  }, [view, activeTab]);
+  }, [view, activeTab, searchTerm]);
 
-  useEffect(() => { setupNativeListeners(handleBack); }, [handleBack]);
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  };
 
-  // Save/Restore Scroll Position
-  useLayoutEffect(() => {
-      const container = document.getElementById('main-scroll-container');
-      if (!container) return;
-
-      const handleBeforeChange = () => {
-          if (view === 'results' || view === 'search') {
-              scrollPositions.current.set('search', container.scrollTop);
-          }
-      };
-
-      if (view === 'results' || view === 'search') {
-          const saved = scrollPositions.current.get('search');
-          if (saved !== undefined) {
-              container.scrollTop = saved;
-          }
-      } else {
-          container.scrollTop = 0;
-      }
-      
-      return handleBeforeChange;
-  }, [view]);
+  const handleMedicineSelect = (m: Medicine) => {
+    setSelectedMedicine(m);
+    setView('details');
+    // استخدام setTimeout لضمان اكتمال الرندر قبل التمرير
+    setTimeout(scrollToTop, 10);
+  };
 
   // Initial Data Load
   useEffect(() => {
@@ -225,7 +201,6 @@ const App: React.FC = () => {
                     });
                     setMedicines(Array.from(medMap.values()));
                 });
-
                 onSnapshot(collection(db, 'notifications'), (snapshot) => {
                     setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification)));
                 });
@@ -240,60 +215,70 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  const filteredMedicines = useMemo(() => {
+  const searchContextMedicines = useMemo(() => {
     const term = searchTerm.toLowerCase().trim().replace(/\*/g, '');
-    let results = medicines.filter(m => {
-        if (term.length < 3) return false;
+    if (term.length < 3) return medicines;
+    return medicines.filter(m => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         return String(m[field]).toLowerCase().includes(term);
     });
-
-    results.sort((a, b) => {
-        const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-        const aVal = String(a[field]).toLowerCase();
-        const bVal = String(b[field]).toLowerCase();
-        const aStarts = aVal.startsWith(term);
-        const bStarts = bVal.startsWith(term);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        return aVal.localeCompare(bVal);
-    });
-    return results;
   }, [medicines, searchTerm, textSearchMode]);
 
-  const medicineAlternatives = useMemo(() => {
-      if (!selectedMedicine) return { direct: [], therapeutic: [] };
-      
-      const mainSci = String(selectedMedicine['Scientific Name']).toLowerCase().trim();
-      
-      // 1. البدائل المطابقة (نفس المادة الفعالة)
-      const direct = medicines.filter(m => 
-          String(m['Scientific Name']).toLowerCase().trim() === mainSci && 
-          m.RegisterNumber !== selectedMedicine.RegisterNumber
-      );
+  const finalFilteredMedicines = useMemo(() => {
+    let results = [...searchContextMedicines];
+    const hasFilters = Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : (v !== 'all' && v !== ''));
+    if (searchTerm.length < 3 && !hasFilters) return [];
 
-      // 2. البدائل العلاجية (من بوليصة التأمين)
-      // نبحث أولاً عن الدواء في التأمين لمعرفة مجموعته العلاجية
-      const insuranceEntry = insuranceData.find(p => 
-          p.scientificName.toLowerCase().trim() === mainSci || 
-          (selectedMedicine.AtcCode1 && p.atcCode && selectedMedicine.AtcCode1.startsWith(p.atcCode))
-      );
+    if (filters.productType !== 'all') {
+        const type = filters.productType === 'medicine' ? 'Human' : filters.productType === 'supplement' ? 'Supplement' : 'Food';
+        results = results.filter(m => m['Product type'] === type);
+    }
+    if (filters.priceMin) results = results.filter(m => (parseFloat(m['Public price']) || 0) >= parseFloat(filters.priceMin));
+    if (filters.priceMax) results = results.filter(m => (parseFloat(m['Public price']) || 0) <= parseFloat(filters.priceMax));
+    if (filters.pharmaceuticalForm) results = results.filter(m => m.PharmaceuticalForm === filters.pharmaceuticalForm);
+    if (filters.legalStatus) results = results.filter(m => m['Legal Status'] === filters.legalStatus);
+    if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
+    if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
+    if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
 
-      let therapeutic: Medicine[] = [];
-      if (insuranceEntry?.drugClass) {
-          const sameClassSciNames = new Set(
-              insuranceData
-                .filter(p => p.drugClass === insuranceEntry.drugClass && p.scientificName.toLowerCase().trim() !== mainSci)
-                .map(p => p.scientificName.toLowerCase().trim())
-          );
+    // تحسين الترتيب بناءً على موقع الكلمة (الأولوية للمطابقة من البداية)
+    const term = searchTerm.toLowerCase().trim().replace(/\*/g, '');
+    const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
-          therapeutic = medicines.filter(m => 
-              sameClassSciNames.has(String(m['Scientific Name']).toLowerCase().trim())
-          );
-      }
+    results.sort((a, b) => {
+        const aName = String(a[field]).toLowerCase();
+        const bName = String(b[field]).toLowerCase();
+        
+        const aStarts = aName.startsWith(term);
+        const bStarts = bName.startsWith(term);
+        
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
 
-      return { direct, therapeutic };
-  }, [selectedMedicine, medicines, insuranceData]);
+        if (sortBy === 'alphabetical') return aName.localeCompare(bName);
+        if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
+        if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
+        if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
+        if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
+        if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
+        return 0;
+    });
+
+    return results;
+  }, [searchContextMedicines, filters, sortBy, searchTerm, textSearchMode]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.productType !== 'all') count++;
+    if (filters.priceMin !== '') count++;
+    if (filters.priceMax !== '') count++;
+    if (filters.pharmaceuticalForm !== '') count++;
+    if (filters.legalStatus !== '') count++;
+    if (filters.manufactureName.length > 0) count++;
+    if (filters.marketingCompany.length > 0) count++;
+    if (filters.mainAgent.length > 0) count++;
+    return count;
+  }, [filters]);
 
   const toggleFavorite = (id: string) => {
       const newFavs = favorites.includes(id) ? favorites.filter(f => f !== id) : [...favorites, id];
@@ -301,20 +286,40 @@ const App: React.FC = () => {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
   };
 
-  const deleteNotification = async (id: string) => {
-      if (!db) return;
-      try { await deleteDoc(doc(db, 'notifications', id)); } catch(e) { console.error(e); }
+  const handleSaveMedicine = async (updatedMed: Medicine) => {
+    if (!user) return;
+    if (user.role === 'admin') {
+        try {
+            await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
+            setSelectedMedicine(updatedMed);
+            alert(t('saveSuccess'));
+        } catch (e) { alert("Error saving: " + e); }
+    } else if (user.role === 'company') {
+        try {
+            await addDoc(collection(db, 'pending_updates'), {
+                medicineId: updatedMed.RegisterNumber,
+                submittedBy: user.id,
+                submittedByName: user.username,
+                timestamp: Date.now(),
+                status: 'pending',
+                newData: updatedMed,
+                originalData: selectedMedicine,
+                type: 'edit'
+            });
+            alert(t('requestSubmittedTitle'));
+        } catch (e) { alert("Error submitting request: " + e); }
+    }
   };
 
   const handleTabClick = (tab: Tab) => {
       if (activeTab === tab) {
-          const container = document.getElementById('main-scroll-container');
-          if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-          setActiveTab(tab);
           if (tab === 'search') setView('search');
           if (tab === 'insurance') setView('insuranceSearch');
           if (tab === 'settings') setView('settings');
+      } else {
+          setActiveTab(tab);
+          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) setView('insuranceSearch');
+          if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) setView('settings');
       }
   };
 
@@ -322,24 +327,24 @@ const App: React.FC = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={()=>{}} />;
-      if (view === 'notifications') return <NotificationsView notifications={notifications} isAdmin={user?.role==='admin'} t={t} language={language} onMarkAllRead={()=>{}} onMarkAsRead={()=>{}} onDeleteNotification={deleteNotification} />;
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={(m)=>{setSelectedMedicine(m); setView('details');}} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      if (view === 'notifications') return <NotificationsView notifications={notifications} isAdmin={user?.role==='admin'} t={t} language={language} onMarkAllRead={()=>{}} onMarkAsRead={()=>{}} onDeleteNotification={async (id)=>{ if (!db) return; await deleteDoc(doc(db, 'notifications', id)); }} />;
+      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true);}} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} />;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={medicineAlternatives} onMedicineSelect={(m)=>{setSelectedMedicine(m); setView('details');}} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} />;
+          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={{direct: [], therapeutic: []}} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in">
-                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
+                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
                   <div className="flex gap-2 mt-2">
-                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={0} t={t} />
+                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                   </div>
                   <div className="mt-6">
-                      {filteredMedicines.length > 0 ? (
-                        <ResultsList medicines={filteredMedicines} onMedicineSelect={(m)=>{setSelectedMedicine(m); setView('details');}} onMedicineLongPress={()=>{}} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" />
+                      {finalFilteredMedicines.length > 0 ? (
+                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" />
                       ) : searchTerm.length >= 3 && <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800"><p className="text-slate-400 font-black">{t('noResultsTitle')}</p></div>}
                   </div>
               </div>
@@ -383,14 +388,14 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
-      <main id="main-scroll-container" className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
           {!isDataLoaded ? <div className="h-64 flex flex-col items-center justify-center"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div><p className="mt-4 text-xs font-black text-slate-400">تحميل البيانات...</p></div> : renderContent()}
       </main>
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
       {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
-      <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={async (m)=>{ if(db) await setDoc(doc(db, 'medicines', m.RegisterNumber), m); setSelectedMedicine(m); }} t={t} />
-      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={medicines} t={t} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchContextMedicines} t={t} />
+      {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={handleSaveMedicine} t={t} />}
     </div>
   );
 };

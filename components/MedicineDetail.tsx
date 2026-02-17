@@ -14,7 +14,7 @@ import PillIcon from './icons/PillIcon';
 import { getIngredientsList } from './MedicineCard';
 
 const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-slate-800 mb-4 animate-card">
+    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-slate-800 mb-4 animate-fade-in">
         <div className="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-slate-800 pb-3">
             <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center p-1.5">{icon}</div>
             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
@@ -55,14 +55,24 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
   const isRestricted = medicine['Product Control']?.toLowerCase() === 'restricted';
 
+  const productImages = useMemo(() => {
+    const list: string[] = [];
+    if (medicine.imgBox) list.push(medicine.imgBox);
+    if (medicine.imgPill) list.push(medicine.imgPill);
+    if (medicine.imgIndex1) list.push(medicine.imgIndex1);
+    if (medicine.imgIndex2) list.push(medicine.imgIndex2);
+    return list;
+  }, [medicine]);
+
   const handleGoogleImageSearch = () => {
-    const q = encodeURIComponent(`${medicine['Trade Name']} ${medicine['Scientific Name']} pharmaceutical box Saudi`);
+    // تم التعديل ليبحث فقط عن اسم الدواء التجاري مباشرة كما طلبت
+    const q = encodeURIComponent(medicine['Trade Name']);
     window.open(`https://www.google.com/search?tbm=isch&q=${q}`, '_blank');
   };
 
   return (
-    <div className="space-y-6 pb-24">
-      <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-800 border border-teal-100 dark:border-slate-800 rounded-[2.5rem] p-6 shadow-xl relative animate-card">
+    <div className="space-y-6 pb-24 animate-fade-in">
+      <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-800 border border-teal-100 dark:border-slate-800 rounded-[2.5rem] p-6 shadow-xl relative">
           <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 <span className="bg-white dark:bg-slate-800 px-3 py-1 rounded-full text-[9px] font-black uppercase border dark:border-slate-700">{medicine['Legal Status']}</span>
@@ -84,14 +94,28 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                   {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-sm font-bold text-slate-500">{t('sar')}</span></div>}
               </div>
               {medicine.imgBox && (
-                  <button onClick={() => onImageZoom([medicine.imgBox!], 0, medicine['Trade Name'], [false])} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 rotate-2 active:scale-95 transition-all overflow-hidden">
+                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], productImages.map(() => false))} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
                       <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
                   </button>
               )}
           </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-1 animate-card">
+      {productImages.length > 1 && (
+          <div className="px-1 overflow-x-auto no-scrollbar flex gap-3 animate-fade-in">
+              {productImages.map((img, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => onImageZoom(productImages, idx, medicine['Trade Name'], productImages.map(() => false))}
+                    className="flex-shrink-0 w-20 h-20 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden active:scale-90 transition-transform"
+                  >
+                      <img src={img} className="w-full h-full object-contain" alt={`View ${idx}`} />
+                  </button>
+              ))}
+          </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 px-1">
           <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-2 bg-white dark:bg-dark-card p-4 rounded-3xl shadow-sm border dark:border-slate-800 active:scale-95 transition-all font-black text-[11px] uppercase">
               <div className="w-5 h-5 text-primary"><AlternativeIcon /></div>
               {t('directAlternatives')}
@@ -102,7 +126,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           </button>
       </div>
 
-      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm border dark:border-slate-800 overflow-hidden animate-card">
+      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm border dark:border-slate-800 overflow-hidden">
           <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between p-5">
               <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5"><PillIcon /></div>
@@ -116,6 +140,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                     <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                     <DetailRow label={t('scored')} value={medicine.pillScored} />
                     <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                    <DetailRow label={t('notes')} value={medicine.physicalNotes} />
                 </div>
           </div>
       </div>
@@ -148,7 +173,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <DetailRow label={t('shelfLifeLabel')} value={medicine.shelfLife} />
       </InfoCard>
 
-      {user?.role === 'admin' && (
+      {user && (user.role === 'admin' || user.role === 'company') && (
           <div className="pt-6">
               <button onClick={() => onEdit?.(medicine)} className="w-full py-4 bg-slate-800 dark:bg-primary text-white rounded-[2rem] font-black flex items-center justify-center gap-2 active:scale-95 shadow-xl transition-all">
                   <div className="w-5 h-5"><EditIcon /></div>
