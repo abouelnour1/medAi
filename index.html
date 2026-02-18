@@ -1,68 +1,97 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PharmaSource KSA</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>PharmaSource KSA</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: '#0d9488',
+                dark: '#0f766e',
+                light: '#2dd4bf',
+              },
+              secondary: '#0ea5e9',
+              accent: '#f59e0b',
+              'light-bg': '#f1f5f9',
+              'dark-bg': '#020617', // سواد عميق مريح للعين
+              'dark-card': '#0f172a', // بطاقات أفتح قليلاً من الخلفية
+              'dark-border': '#1e293b',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
+              'slide-up': 'slideUp 0.4s ease-out forwards',
+              'bounce-subtle': 'bounceSubtle 2s infinite',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+              bounceSubtle: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-4px)' } }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0d9488">
+    <style>
+      :root { font-size: 14px; }
+      body {
+        font-family: 'Cairo', 'Poppins', sans-serif;
+        background-color: #f1f5f9;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      .dark body { background-color: #020617; color: #f8fafc; }
+      #root { height: 100vh; display: flex; flex-direction: column; }
+      ::-webkit-scrollbar { width: 0px; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .bg-glass {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .dark .bg-glass {
+        background: rgba(15, 23, 42, 0.8);
+      }
 
-  <!-- ✅ CSS محلي (Tailwind بعد build) -->
-  <link rel="stylesheet" href="./dist/style.css">
-
-  <!-- ✅ Manifest -->
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0d9488">
-
-  <!-- ✅ ستايل عام -->
-  <style>
-    :root { font-size: 14px; }
-
-    body {
-      font-family: system-ui, sans-serif; /* مؤقت حتى تضيف الخطوط محليًا */
-      background-color: #f1f5f9;
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-      overflow: hidden;
-    }
-
-    .dark body {
-      background-color: #020617;
-      color: #f8fafc;
-    }
-
-    #root {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    ::-webkit-scrollbar { width: 0; }
-
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    .bg-glass {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-
-    .dark .bg-glass {
-      background: rgba(15, 23, 42, 0.8);
-    }
-
-    @media (min-width: 640px) {
-      :root { font-size: 16px; }
-    }
-  </style>
+      @media (min-width: 640px) { :root { font-size: 16px; } }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
 </head>
-
-<body>
-  <div id="root"></div>
-
-  <!-- ⚠️ اترك سكربت React كما هو -->
-  <script type="module" src="./index.tsx"></script>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
