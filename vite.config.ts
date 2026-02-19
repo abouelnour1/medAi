@@ -6,7 +6,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // 'base' must be relative ('./') for Android WebViews to load assets
-  base: './', 
+  // However, for Vercel/Web, '/' is safer. We use '/' by default.
+  base: '/', 
   server: {
     host: true,
     port: 3000,
@@ -18,6 +19,6 @@ export default defineConfig({
   // هنا نقوم بحل مشكلة "عدم رؤية" المفتاح في Vercel
   // نقوم بتعريف process.env.API_KEY ليكون متاحاً في المتصفح
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
   }
 });
