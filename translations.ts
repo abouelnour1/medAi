@@ -340,7 +340,8 @@ export const translations = {
     lock: 'قفل',
     unlock: 'فتح للتعديل',
     strengthAsc: 'التركيز (الأقل)',
-    strengthDesc: 'التركيز (الأعلى)'
+    strengthDesc: 'التركيز (الأعلى)',
+    fontSize: 'حجم الخط'
   },
   en: {
     storageConditionsAr: 'Storage Conditions (AR)',
@@ -681,7 +682,8 @@ export const translations = {
     lock: 'Lock',
     unlock: 'Unlock',
     strengthAsc: 'Strength (Lowest)',
-    strengthDesc: 'Strength (Highest)'
+    strengthDesc: 'Strength (Highest)',
+    fontSize: 'Font Size'
   }
 };
 

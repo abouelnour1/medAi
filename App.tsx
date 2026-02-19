@@ -119,6 +119,7 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
+  const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem('fontSize') || '16'));
   const [searchTerm, setSearchTerm] = useState('');
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
@@ -171,6 +172,12 @@ const App: React.FC = () => {
     root.setAttribute('lang', language);
     localStorage.setItem('language', language);
   }, [language]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.style.fontSize = `${fontSize}px`;
+    localStorage.setItem('fontSize', fontSize.toString());
+  }, [fontSize]);
 
   const t: TFunction = useCallback((key, replacements) => {
     const text = translations[language][key] || key;
@@ -406,6 +413,45 @@ const App: React.FC = () => {
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
+                          <div className="flex flex-col gap-4 p-5 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/10 dark:border-primary/20 shadow-sm">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 text-primary">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    </div>
+                                    <span className="font-black text-slate-800 dark:text-white">{t('fontSize' as any)}</span>
+                                </div>
+                                <span className="text-sm font-black text-primary bg-white dark:bg-dark-card px-3 py-1 rounded-full border border-primary/20">{fontSize}px</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                  <button 
+                                    onClick={() => setFontSize(Math.max(12, fontSize - 1))} 
+                                    className="w-12 h-12 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xl shadow-sm active:scale-90 transition-transform"
+                                  >
+                                    -
+                                  </button>
+                                  <input 
+                                    type="range" 
+                                    min="12" 
+                                    max="24" 
+                                    value={fontSize} 
+                                    onChange={(e) => setFontSize(parseInt(e.target.value))} 
+                                    className="flex-grow h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" 
+                                  />
+                                  <button 
+                                    onClick={() => setFontSize(Math.min(24, fontSize + 1))} 
+                                    className="w-12 h-12 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xl shadow-sm active:scale-90 transition-transform"
+                                  >
+                                    +
+                                  </button>
+                              </div>
+                              <button 
+                                onClick={() => setFontSize(16)}
+                                className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary transition-colors text-center"
+                              >
+                                {language === 'ar' ? 'إعادة ضبط الحجم الافتراضي' : 'Reset to default'}
+                              </button>
+                          </div>
                           <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -455,22 +501,24 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
-          {!isDataLoaded ? (
-            <div className="h-96 flex flex-col items-center justify-center">
-              <div className="relative w-16 h-16">
-                <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="app-zoom-container flex flex-col">
+        <Header title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
+        <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
+            {!isDataLoaded ? (
+              <div className="h-96 flex flex-col items-center justify-center">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="mt-6 text-sm font-bold text-primary animate-pulse">
+                  {language === 'ar' ? 'جاري تحميل البيانات...' : 'Loading data...'}
+                </p>
               </div>
-              <p className="mt-6 text-sm font-bold text-primary animate-pulse">
-                {language === 'ar' ? 'جاري تحميل البيانات...' : 'Loading data...'}
-              </p>
-            </div>
-          ) : renderContent()}
-      </main>
-      <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
-      <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
+            ) : renderContent()}
+        </main>
+        <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
+        <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
+      </div>
       {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
       <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchContextMedicines} t={t} />
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={handleSaveMedicine} t={t} />}

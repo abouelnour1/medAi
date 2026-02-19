@@ -18,6 +18,24 @@ body {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: var(--light-bg);
+  color: #0f172a;
+}
+
+.dark body {
+  background-color: var(--dark-bg) !important;
+  color: #f8fafc !important;
+}
+
+/* Global Zoom Out Effect - Applied to a wrapper instead of #root to avoid layout breaking */
+.app-zoom-container {
+  transform: scale(0.98);
+  transform-origin: top center;
+  height: 102.04%;
+  width: 102.04%;
+  position: absolute;
+  top: 0;
+  left: -1.02%;
 }
 
 /* Animations - تم إزالة التمرير (translateY) لجعل الموضوع سلس وثابت */
