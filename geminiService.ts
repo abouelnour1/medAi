@@ -76,14 +76,11 @@ export const runAIChat = async (
     systemInstruction: string,
     tools: any[] | null,
     toolImplementations: Record<string, Function>,
-    modelName: string = 'gemini-3-flash-preview'
+    modelName: string = 'gemini-3.1-pro-preview'
 ): Promise<GenerateContentResponse> => {
     // CRITICAL: Obtain API Key exclusively from process.env.API_KEY
     const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        console.error("PharmaSource AI: API Key is missing in environment variables.");
-        throw new Error("API Key is missing");
-    }
+    if (!apiKey) throw new Error("API Key is missing");
 
     // CRITICAL: Initialize right before usage
     const ai = new GoogleGenAI({ apiKey });
@@ -95,7 +92,7 @@ export const runAIChat = async (
 
     const config: any = {
         systemInstruction: String(systemInstruction),
-        temperature: 0.4,
+        temperature: 0.4, // Lower temperature for more professional/stable responses
     };
 
     if (tools) config.tools = flattenToPOJO(tools);

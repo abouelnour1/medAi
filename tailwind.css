@@ -27,15 +27,16 @@ body {
   color: #f8fafc !important;
 }
 
-/* Global Zoom Out Effect - Applied to a wrapper instead of #root to avoid layout breaking */
-.app-zoom-container {
+/* Global Zoom Out Effect */
+#root {
   transform: scale(0.98);
   transform-origin: top center;
-  height: 102.04%;
+  height: 102.04%; /* Compensate for scale 0.98 (1/0.98) */
   width: 102.04%;
-  position: absolute;
+  position: fixed;
   top: 0;
   left: -1.02%;
+  background-color: inherit;
 }
 
 /* Animations - تم إزالة التمرير (translateY) لجعل الموضوع سلس وثابت */
