@@ -42,13 +42,13 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                         <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-tight break-words">
                             {group.scientificName}
                         </p>
-                        <p className="text-[10px] text-slate-400 dark:text-dark-muted font-medium mt-1">مغطى تأمينياً (Covered)</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1">مغطى تأمينياً (Covered)</p>
                     </div>
                 </div>
             </div>
 
             <div className="space-y-2">
-                <p className="text-[10px] font-black text-slate-400 dark:text-dark-muted uppercase tracking-widest px-1">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
                     {t('indication')} ({uniqueIndications.length})
                 </p>
                 {uniqueIndications.map(([indication, policies]) => (
@@ -63,7 +63,7 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                                 matchingTradeNames: group.tradeNames
                             } 
                         })}
-                        className="w-full text-left p-3.5 bg-white dark:bg-dark-card/40 rounded-xl border border-slate-200 dark:border-dark-border hover:border-primary transition-all flex justify-between items-center group"
+                        className="w-full text-left p-3.5 bg-white dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary transition-all flex justify-between items-center group"
                     >
                         <div className="flex-grow min-w-0">
                             <div className="flex items-center gap-2">

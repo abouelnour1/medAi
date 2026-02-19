@@ -36,7 +36,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         ref={ref} 
         className="fixed top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-4 transition-all"
     >
-      <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2rem] px-4 h-16 flex justify-between items-center max-w-7xl mx-auto">
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2rem] px-4 h-16 flex justify-between items-center max-w-7xl mx-auto">
         
         <div className="flex-1 flex justify-start items-center gap-2">
           {showBack ? (
@@ -75,8 +75,8 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                         {user.username.charAt(0).toUpperCase()}
                     </div>
                 </button>
-                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-3 w-56 bg-white dark:bg-dark-card rounded-2xl shadow-2xl ring-1 ring-black/5 py-2 transition-all origin-top-right ${isMenuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'} border dark:border-dark-border`}>
-                    <div className="px-4 py-2 border-b border-slate-50 dark:border-dark-border mb-1">
+                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-3 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl ring-1 ring-black/5 py-2 transition-all origin-top-right ${isMenuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                    <div className="px-4 py-2 border-b border-slate-50 dark:border-slate-700 mb-1">
                         <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
                         <p className="text-[10px] font-bold text-primary uppercase">{t(`${user.role}Role` as any)}</p>
                     </div>

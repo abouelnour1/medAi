@@ -164,12 +164,12 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   return (
     <div className="space-y-4 min-h-[400px]">
-      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border space-y-4">
+      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
           <div className="relative">
             <select
               value={searchMode}
               onChange={(e) => setSearchMode(e.target.value as InsuranceSearchMode)}
-              className="w-full h-12 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-base font-bold bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-dark-border rounded-xl appearance-none cursor-pointer focus:border-primary transition-all shadow-inner"
+              className="w-full h-12 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-base font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl appearance-none cursor-pointer focus:border-primary transition-all shadow-inner"
             >
               <option value="tradeName">{t('tradeName')}</option>
               <option value="scientificName">{t('scientificName')}</option>
@@ -185,7 +185,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder={t('insuranceSearchPlaceholder')}
-              className="w-full h-12 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-lg bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-dark-border rounded-xl focus:border-primary outline-none transition-all shadow-inner"
+              className="w-full h-12 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-lg bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:border-primary outline-none transition-all shadow-inner"
             />
           </div>
       </div>

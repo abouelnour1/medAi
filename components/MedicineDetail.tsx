@@ -14,10 +14,10 @@ import PillIcon from './icons/PillIcon';
 import { getIngredientsList } from './MedicineCard';
 
 const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-dark-border mb-4 animate-fade-in">
-        <div className="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-dark-border pb-3">
+    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-slate-800 mb-4 animate-fade-in">
+        <div className="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-slate-800 pb-3">
             <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center p-1.5">{icon}</div>
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-dark-muted">{title}</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
         </div>
         <div className="space-y-3">{children}</div>
     </div>
@@ -72,18 +72,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
   return (
     <div className="space-y-6 pb-24 animate-fade-in">
-      <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-900/50 border border-teal-100 dark:border-dark-border rounded-[2.5rem] p-6 shadow-xl relative">
+      <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-800 border border-teal-100 dark:border-slate-800 rounded-[2.5rem] p-6 shadow-xl relative">
           <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
-                <span className="bg-white dark:bg-dark-card px-3 py-1 rounded-full text-[9px] font-black uppercase border border-slate-100 dark:border-dark-border">{medicine['Legal Status']}</span>
+                <span className="bg-white dark:bg-slate-800 px-3 py-1 rounded-full text-[9px] font-black uppercase border dark:border-slate-700">{medicine['Legal Status']}</span>
                 {isControlled && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase">Controlled</span>}
                 {isRestricted && <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase">Restricted</span>}
               </div>
               <div className="flex gap-2">
-                  <button onClick={handleGoogleImageSearch} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted hover:text-primary rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all">
+                  <button onClick={handleGoogleImageSearch} className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-primary rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 active:scale-90 transition-all">
                       <div className="w-5 h-5"><CameraIcon /></div>
                   </button>
-                  <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2.5 rounded-2xl active:scale-90 transition-all ${isFavorite ? 'bg-amber-500 text-white shadow-lg' : 'bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted border border-slate-100 dark:border-dark-border'}`}>
+                  <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2.5 rounded-2xl active:scale-90 transition-all ${isFavorite ? 'bg-amber-500 text-white shadow-lg' : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border dark:border-slate-700'}`}>
                     <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
                   </button>
               </div>
@@ -126,16 +126,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           </button>
       </div>
 
-      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm border dark:border-slate-800 overflow-hidden">
           <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between p-5">
               <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5"><PillIcon /></div>
-                  <h3 className="text-[11px] font-black uppercase text-slate-400 dark:text-dark-muted">{t('physicalDetails')}</h3>
+                  <h3 className="text-[11px] font-black uppercase text-slate-400">{t('physicalDetails')}</h3>
               </div>
               <svg className={`w-4 h-4 text-slate-300 transition-transform ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
           <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 p-5 pt-0' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
-                <div className="space-y-3 border-t border-slate-100 dark:border-dark-border pt-3 mt-2">
+                <div className="space-y-3 border-t dark:border-slate-800 pt-3 mt-2">
                     <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
                     <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                     <DetailRow label={t('scored')} value={medicine.pillScored} />

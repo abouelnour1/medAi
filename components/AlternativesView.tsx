@@ -47,7 +47,7 @@ const Section: React.FC<{
                 </div>
             ) : (
                 <div className="text-center py-6 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm" role="status">
-                    <p className="text-sm text-light-text-secondary dark:text-dark-muted">{emptyMessage}</p>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{emptyMessage}</p>
                 </div>
             )}
         </div>
@@ -70,15 +70,15 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
     return (
         <div className="animate-fade-in space-y-8 px-4">
             <div>
-                <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-muted px-2">{t('originalDrug')}</h3>
+                <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-text-secondary px-2">{t('originalDrug')}</h3>
                 <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-md p-5 mt-2 border-l-4 border-primary dark:border-primary-light">
                     <div className="flex items-start justify-between gap-4">
                          <div className="flex-grow">
                             <h2 className="text-xl font-bold text-light-text dark:text-dark-text">{sourceMedicine['Trade Name']}</h2>
-                            <p className="text-sm text-light-text-secondary dark:text-dark-muted">{sourceMedicine['Scientific Name']}</p>
+                            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{sourceMedicine['Scientific Name']}</p>
                         </div>
                         <div className="flex-shrink-0 text-accent text-xl font-bold whitespace-nowrap">
-                            {isNaN(price) ? 'N/A' : price.toFixed(2)} <span className="text-xs text-light-text-secondary dark:text-dark-muted">{t('sar')}</span>
+                            {isNaN(price) ? 'N/A' : price.toFixed(2)} <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary">{t('sar')}</span>
                         </div>
                     </div>
                 </div>

@@ -22,10 +22,10 @@ type Panel = 'menu' | 'overview' | 'users' | 'approvals' | 'add_manual' | 'notif
 type ItemCategory = 'Human' | 'Supplement' | 'Food';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-white dark:bg-dark-card p-5 rounded-2xl flex items-center gap-4 border border-slate-100 dark:border-dark-border shadow-sm transition-all hover:shadow-md">
+    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl flex items-center gap-4 border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
         <div className="bg-primary/10 text-primary p-3 rounded-xl">{icon}</div>
         <div className="min-w-0">
-            <p className="text-[10px] font-black text-slate-400 dark:text-dark-muted uppercase tracking-widest truncate">{title}</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{title}</p>
             <p className="text-xl font-black text-slate-800 dark:text-white">{value}</p>
         </div>
     </div>
@@ -49,9 +49,9 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
 export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void }> = ({ t, allMedicines, onExport }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
-  const inputClass = "w-full p-3 bg-slate-50 dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold dark:text-white";
+  const inputClass = "w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold dark:text-white";
   const labelClass = "block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1";
-  const sectionTitle = "text-[11px] font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-dark-border pb-2 mb-4 mt-6 flex items-center gap-2";
+  const sectionTitle = "text-[11px] font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 mt-6 flex items-center gap-2";
 
   const [activePanel, setActivePanel] = useState<Panel>('menu');
   const [users, setUsers] = useState<User[]>([]);
@@ -193,11 +193,11 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   const renderAddManual = () => (
     <div className="animate-fade-in space-y-6 max-w-5xl mx-auto mb-20">
-        <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
-            <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-dark-border">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+            <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-700">
                 <div>
                     <h3 className="text-lg font-black">إضافة صنف جديد يدوياً</h3>
-                    <div className="flex bg-slate-100 dark:bg-dark-card p-1 rounded-xl mt-2 border border-slate-200 dark:border-dark-border w-fit">
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl mt-2 border border-slate-200 dark:border-slate-700 w-fit">
                         {(['Human', 'Supplement', 'Food'] as ItemCategory[]).map(cat => (
                             <button key={cat} onClick={() => setItemCategory(cat)} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${itemCategory === cat ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
                                 {cat === 'Human' ? t('medicines') : cat === 'Supplement' ? t('supplements') : t('food')}
@@ -439,13 +439,13 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   const renderNotifications = () => (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-        <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <h3 className={sectionTitle}><div className="w-3.5 h-3.5"><BellIcon /></div> {t('broadcastTitle')}</h3>
             <form onSubmit={handleSendBroadcast} className="space-y-4">
                 <div><label className={labelClass}>{t('notificationTitle')}</label><input value={notifForm.title} onChange={e => setNotifForm({...notifForm, title: e.target.value})} className={inputClass} placeholder="عنوان الإشعار..." required /></div>
                 <div><label className={labelClass}>{t('notificationBody')}</label><textarea value={notifForm.body} onChange={e => setNotifForm({...notifForm, body: e.target.value})} className={inputClass} rows={3} placeholder="محتوى الإشعار..." required /></div>
                 
-                <div className="p-4 bg-slate-50 dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <label className={labelClass}>ربط دواء (اختياري)</label>
                     <input list="linked-trade-names" value={notifForm.linkedMedicineTradeName} onChange={(e) => setNotifForm({...notifForm, linkedMedicineTradeName: e.target.value})} className={inputClass} placeholder="ابحث عن دواء لربطه..." />
                     <datalist id="linked-trade-names">{dbLists.tradeNames.map(s => <option key={s} value={s} />)}</datalist>
@@ -476,13 +476,13 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <StatCard title={t('activeNotifications')} value={notifications.length} icon={<BellIcon />} />
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <MenuCard title={t('overviewPanel')} icon={<ChartIcon />} onClick={() => setActivePanel('overview')} colorClass="bg-white dark:bg-dark-card text-blue-600 border-blue-100 dark:border-dark-border" />
-                        <MenuCard title={t('usersPanel')} icon={<UsersIcon />} onClick={() => setActivePanel('users')} colorClass="bg-white dark:bg-dark-card text-green-600 border-green-100 dark:border-dark-border" />
-                        <MenuCard title={t('approvalsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('approvals')} colorClass="bg-white dark:bg-dark-card text-amber-600 border-amber-100 dark:border-dark-border" badge={pendingUpdates.length} />
-                        <MenuCard title={t('addManualPanel')} icon={<div className="text-3xl font-black">+</div>} onClick={() => setActivePanel('add_manual')} colorClass="bg-white dark:bg-dark-card text-purple-600 border-purple-100 dark:border-dark-border" />
-                        <MenuCard title={t('notificationsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-white dark:bg-dark-card text-red-600 border-red-100 dark:border-dark-border" />
-                        <MenuCard title={t('exportPanel')} icon={<DownloadIcon />} onClick={() => setActivePanel('export')} colorClass="bg-white dark:bg-dark-card text-primary border-primary/10 dark:border-dark-border" />
-                        <MenuCard title={t('settingsPanel')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-white dark:bg-dark-card text-slate-600 border-slate-100 dark:border-dark-border" />
+                        <MenuCard title={t('overviewPanel')} icon={<ChartIcon />} onClick={() => setActivePanel('overview')} colorClass="bg-white dark:bg-slate-800 text-blue-600 border-blue-100" />
+                        <MenuCard title={t('usersPanel')} icon={<UsersIcon />} onClick={() => setActivePanel('users')} colorClass="bg-white dark:bg-slate-800 text-green-600 border-green-100" />
+                        <MenuCard title={t('approvalsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('approvals')} colorClass="bg-white dark:bg-slate-800 text-amber-600 border-amber-100" badge={pendingUpdates.length} />
+                        <MenuCard title={t('addManualPanel')} icon={<div className="text-3xl font-black">+</div>} onClick={() => setActivePanel('add_manual')} colorClass="bg-white dark:bg-slate-800 text-purple-600 border-purple-100" />
+                        <MenuCard title={t('notificationsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-white dark:bg-slate-800 text-red-600 border-red-100" />
+                        <MenuCard title={t('exportPanel')} icon={<DownloadIcon />} onClick={() => setActivePanel('export')} colorClass="bg-white dark:bg-slate-800 text-primary border-primary/10" />
+                        <MenuCard title={t('settingsPanel')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-white dark:bg-slate-800 text-slate-600 border-slate-100" />
                     </div>
                 </div>
             )}

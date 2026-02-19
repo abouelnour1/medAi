@@ -20,24 +20,20 @@
               },
               secondary: '#0ea5e9',
               accent: '#f59e0b',
-              'light-bg': '#f8fafc',
-              'dark-bg': '#020617', 
-              'dark-card': '#0f172a', 
+              'light-bg': '#f1f5f9',
+              'dark-bg': '#020617', // سواد عميق مريح للعين
+              'dark-card': '#0f172a', // بطاقات أفتح قليلاً من الخلفية
               'dark-border': '#1e293b',
-              'dark-text': '#f8fafc',
-              'dark-muted': '#94a3b8',
             },
             animation: {
               'fade-in': 'fadeIn 0.3s ease-out forwards',
               'slide-up': 'slideUp 0.4s ease-out forwards',
               'bounce-subtle': 'bounceSubtle 2s infinite',
-              'zoom-in': 'zoomIn 0.2s ease-out forwards',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
               slideUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
-              bounceSubtle: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-4px)' } },
-              zoomIn: { '0%': { transform: 'scale(0.95)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } }
+              bounceSubtle: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-4px)' } }
             }
           }
         }
@@ -54,35 +50,24 @@
       :root { font-size: 14px; }
       body {
         font-family: 'Cairo', 'Poppins', sans-serif;
-        background-color: #f8fafc;
+        background-color: #f1f5f9;
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
         overflow: hidden;
-        color: #0f172a;
       }
-      .dark body { 
-        background-color: #020617; 
-        color: #f8fafc; 
-      }
+      .dark body { background-color: #020617; color: #f8fafc; }
       #root { height: 100vh; display: flex; flex-direction: column; }
       ::-webkit-scrollbar { width: 0px; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
       .bg-glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
       .dark .bg-glass {
-        background: rgba(15, 23, 42, 0.7);
-        border-color: rgba(255, 255, 255, 0.05);
-      }
-
-      /* تحسين مظهر البطاقات في الدارك مود */
-      .dark .animate-card {
-        background-color: #0f172a;
-        border-color: #1e293b;
+        background: rgba(15, 23, 42, 0.8);
       }
 
       @media (min-width: 640px) { :root { font-size: 16px; } }
