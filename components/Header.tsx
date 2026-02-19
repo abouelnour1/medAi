@@ -62,12 +62,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
             </h1>
         </div>
 
-        <div className="flex-1 flex justify-end items-center gap-2">
-          {!navigator.onLine && (
-            <div className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-              OFFLINE
-            </div>
-          )}
+        <div className="flex-1 flex justify-end items-center">
           {user ? (
             <div className="relative" ref={menuRef}>
                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-full active:scale-95 transition-all">
