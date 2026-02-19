@@ -50,20 +50,63 @@
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0d9488">
-    <link rel="stylesheet" href="/tailwind.css">
-    <script>
-      (function() {
-        const theme = localStorage.getItem('theme') || 'light';
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      })();
-    </script>
-  </head>
+    <style>
+      :root { font-size: 14px; }
+      body {
+        font-family: 'Cairo', 'Poppins', sans-serif;
+        background-color: #f8fafc;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+        color: #0f172a;
+      }
+      .dark body { 
+        background-color: #020617; 
+        color: #f8fafc; 
+      }
+      #root { height: 100vh; display: flex; flex-direction: column; }
+      ::-webkit-scrollbar { width: 0px; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .bg-glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .dark .bg-glass {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(255, 255, 255, 0.05);
+      }
+
+      /* تحسين مظهر البطاقات في الدارك مود */
+      .dark .animate-card {
+        background-color: #0f172a;
+        border-color: #1e293b;
+      }
+
+      @media (min-width: 640px) { :root { font-size: 16px; } }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

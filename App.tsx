@@ -119,7 +119,6 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
-  const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem('fontSize') || '16'));
   const [searchTerm, setSearchTerm] = useState('');
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
@@ -172,12 +171,6 @@ const App: React.FC = () => {
     root.setAttribute('lang', language);
     localStorage.setItem('language', language);
   }, [language]);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.style.fontSize = `${fontSize}px`;
-    localStorage.setItem('fontSize', fontSize.toString());
-  }, [fontSize]);
 
   const t: TFunction = useCallback((key, replacements) => {
     const text = translations[language][key] || key;
@@ -426,17 +419,6 @@ const App: React.FC = () => {
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold text-slate-700 dark:text-slate-300">{t('language')}</span>
                               <button onClick={()=>setLanguage(language==='ar'?'en':'ar')} className="px-4 py-1.5 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xs">{language.toUpperCase()}</button>
-                          </div>
-                          <div className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">{t('fontSize' as any)}</span>
-                                <span className="text-xs font-black text-primary">{fontSize}px</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                  <button onClick={() => setFontSize(Math.max(12, fontSize - 1))} className="w-10 h-10 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black">-</button>
-                                  <input type="range" min="12" max="24" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="flex-grow accent-primary" />
-                                  <button onClick={() => setFontSize(Math.min(24, fontSize + 1))} className="w-10 h-10 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black">+</button>
-                              </div>
                           </div>
                           {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>

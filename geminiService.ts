@@ -76,7 +76,7 @@ export const runAIChat = async (
     systemInstruction: string,
     tools: any[] | null,
     toolImplementations: Record<string, Function>,
-    modelName: string = 'gemini-3.1-pro-preview'
+    modelName: string = 'gemini-3-flash-preview'
 ): Promise<GenerateContentResponse> => {
     // CRITICAL: Obtain API Key exclusively from process.env.API_KEY
     const apiKey = process.env.API_KEY;
@@ -92,7 +92,8 @@ export const runAIChat = async (
 
     const config: any = {
         systemInstruction: String(systemInstruction),
-        temperature: 0.4, // Lower temperature for more professional/stable responses
+        temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 }
     };
 
     if (tools) config.tools = flattenToPOJO(tools);
