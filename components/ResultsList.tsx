@@ -32,8 +32,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
   if (resultsState === 'empty') {
     return (
       <div className="text-center py-10 px-4 bg-light-card dark:bg-dark-card rounded-xl shadow-sm animate-fade-in" role="status">
-        <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-text-secondary">{t('noResultsTitle')}</h3>
-        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1">{t('noResultsSubtitle')}</p>
+        <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-muted">{t('noResultsTitle')}</h3>
+        <p className="text-sm text-light-text-secondary dark:text-dark-muted mt-1">{t('noResultsSubtitle')}</p>
       </div>
     );
   }

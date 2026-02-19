@@ -56,7 +56,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
     >
       <div className="flex justify-between items-start gap-4">
         {medicine.imgBox && (
-            <div className="flex-shrink-0 w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 p-1.5 shadow-sm">
+            <div className="flex-shrink-0 w-16 h-16 bg-slate-50 dark:bg-dark-card rounded-2xl overflow-hidden border border-slate-100 dark:border-dark-border p-1.5 shadow-sm">
                 <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
             </div>
         )}

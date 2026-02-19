@@ -60,11 +60,11 @@ const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction
                     <DetailRow label={t('descriptiveCode')} value={getUniqueValues('descriptionCode')} />
                     
                     <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                      <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{t('availableStrengthsForms')}</dt>
+                      <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-muted">{t('availableStrengthsForms')}</dt>
                       <dd className="mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0">
                         {availableStrengths.length > 0 ? (
                            <ul className="space-y-1">
-                                {availableStrengths.map((strength, index) => <li key={index} className="bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-md">{strength}</li>)}
+                                {availableStrengths.map((strength, index) => <li key={index} className="bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-md">{strength}</li>)}
                            </ul>
                         ) : '-'}
                       </dd>
@@ -91,10 +91,10 @@ const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction
                  {scientificGroup.availableMedicines.length > 0 ? (
                     <div className="space-y-2">
                         {scientificGroup.availableMedicines.map(med => (
-                          <div key={med.RegisterNumber} className="flex justify-between items-center text-sm p-2 rounded-md bg-slate-50 dark:bg-slate-800/50">
+                          <div key={med.RegisterNumber} className="flex justify-between items-center text-sm p-2 rounded-md bg-slate-50 dark:bg-slate-900/50">
                             <div>
                               <p className="font-semibold">{med['Trade Name']}</p>
-                              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">{`${med.Strength} ${med.StrengthUnit} | ${med.PharmaceuticalForm}`}</p>
+                              <p className="text-xs text-light-text-secondary dark:text-dark-muted">{`${med.Strength} ${med.StrengthUnit} | ${med.PharmaceuticalForm}`}</p>
                             </div>
                             <p className="font-bold text-accent whitespace-nowrap">
                               {isNaN(parseFloat(med['Public price'])) ? 'N/A' : `${parseFloat(med['Public price']).toFixed(2)} ${t('sar')}`}

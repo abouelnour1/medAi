@@ -10,7 +10,7 @@ const NotCoveredCard: React.FC<{ medicine: Medicine, t: TFunction }> = ({ medici
             <div className="flex justify-between items-start gap-4">
                 <div>
                     <p className="font-bold text-light-text dark:text-dark-text">{medicine['Trade Name']}</p>
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{medicine['Scientific Name']}</p>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-muted">{medicine['Scientific Name']}</p>
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                     <div className="text-light-text dark:text-dark-text text-lg font-bold whitespace-nowrap">

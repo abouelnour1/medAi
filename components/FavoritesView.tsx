@@ -31,9 +31,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
   if (favoriteMedicines.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-light-text-secondary dark:text-dark-text-secondary p-8 animate-fade-in">
+      <div className="flex flex-col items-center justify-center h-full text-center text-light-text-secondary dark:text-dark-muted p-8 animate-fade-in">
         <div className="w-16 h-16 text-accent"><StarIcon isFilled /></div>
-        <h2 className="text-2xl font-bold mt-4">{t('noFavorites')}</h2>
+        <h2 className="text-2xl font-bold mt-4 text-slate-800 dark:text-white">{t('noFavorites')}</h2>
         <p className="mt-1">{t('noFavoritesSubtitle')}</p>
       </div>
     );

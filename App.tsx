@@ -403,8 +403,8 @@ const App: React.FC = () => {
       if (activeTab === 'settings') {
           return (
               <div className="space-y-6 animate-fade-in">
-                  <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                      <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-slate-800">{t('navSettings')}</h3>
+                  <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
+                      <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
                           <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
@@ -418,9 +418,9 @@ const App: React.FC = () => {
                           </div>
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold text-slate-700 dark:text-slate-300">{t('language')}</span>
-                              <button onClick={()=>setLanguage(language==='ar'?'en':'ar')} className="px-4 py-1.5 bg-white dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 font-black text-xs">{language.toUpperCase()}</button>
+                              <button onClick={()=>setLanguage(language==='ar'?'en':'ar')} className="px-4 py-1.5 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xs">{language.toUpperCase()}</button>
                           </div>
-                          {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
+                          {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
               </div>
