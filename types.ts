@@ -135,6 +135,8 @@ export interface MilkProduct {
   keyFeatures: string;
   usp: string;
   image?: string;
+  ingredients?: string;
+  concentration?: string;
   explanation?: {
     type: {
       title: string;
@@ -146,7 +148,7 @@ export interface MilkProduct {
   };
 }
 
-export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'notifications' | 'imageView';
+export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'generalSettings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'notifications' | 'imageView';
 
 export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
 

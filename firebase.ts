@@ -39,7 +39,7 @@ try {
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
         experimentalForceLongPolling: true,
-        useFetchStreams: false, // مهم جداً لحل مشكلة تعليق الاتصال في بعض الشبكات
+        // useFetchStreams removed - not supported in current Firebase SDK
         ignoreUndefinedProperties: true
     });
 
