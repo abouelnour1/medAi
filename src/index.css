@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Cairo", "Poppins", ui-sans-serif, system-ui, sans-serif;
-  
   --color-primary: #0d9488;
   --color-primary-dark: #0f766e;
   --color-primary-light: #2dd4bf;
@@ -13,17 +11,17 @@
   --color-dark-card: #0f172a;
   --color-dark-border: #1e293b;
 
-  --animate-fade-in: fadeIn 0.2s ease-out forwards;
+  --animate-fade-in: fadeIn 0.3s ease-out forwards;
   --animate-slide-up: slideUp 0.4s ease-out forwards;
   --animate-bounce-subtle: bounceSubtle 2s infinite;
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    0% { opacity: 0; }
+    100% { opacity: 1; }
   }
   @keyframes slideUp {
-    from { transform: translateY(15px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    0% { transform: translateY(15px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
   }
   @keyframes bounceSubtle {
     0%, 100% { transform: translateY(0); }
@@ -31,11 +29,31 @@
   }
 }
 
+/* PharmaSource Global Styles & Configurations */
+
+:root {
+  --primary: #0d9488;
+  --primary-dark: #0f766e;
+  --secondary: #0ea5e9;
+  --accent: #f59e0b;
+  --light-bg: #f1f5f9;
+  --dark-bg: #020617;
+}
+
 body {
-  font-family: var(--font-sans);
+  font-family: 'Cairo', 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Animations - تم إزالة التمرير (translateY) لجعل الموضوع سلس وثابت */
+.animate-card {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 /* Custom Shadows */
@@ -49,8 +67,12 @@ body {
 
 /* Form Controls */
 input:focus, select:focus, textarea:focus {
-  border-color: var(--color-primary) !important;
+  border-color: var(--primary) !important;
   box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1) !important;
+}
+
+.dark input, .dark select, .dark textarea {
+  color: white;
 }
 
 /* Glassmorphism */
@@ -74,6 +96,13 @@ input:focus, select:focus, textarea:focus {
   scrollbar-width: none;
 }
 
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
 /* Typography Utility */
 .font-black {
   font-weight: 900;
@@ -81,10 +110,10 @@ input:focus, select:focus, textarea:focus {
 
 /* AI Content Styling */
 .ai-response-content strong {
-  color: var(--color-primary);
+  color: var(--primary);
   font-weight: 900;
 }
 
 .dark .ai-response-content strong {
-  color: var(--color-primary-light);
+  color: #2dd4bf;
 }
