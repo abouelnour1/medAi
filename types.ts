@@ -137,6 +137,15 @@ export interface MilkProduct {
   image?: string;
   ingredients?: string;
   concentration?: string;
+  benefits?: string;
+  pharmacistNote?: string;
+  nutritionalInfo?: {
+    kcal?: number;
+    protein?: number;
+    fat?: number;
+    carb?: number;
+  };
+  [key: string]: any;
   explanation?: {
     type: {
       title: string;
