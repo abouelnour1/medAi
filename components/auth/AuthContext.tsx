@@ -10,8 +10,6 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   reload,
-  signInWithPopup,
-  GoogleAuthProvider,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -125,12 +123,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await signInWithEmailAndPassword(auth, email, password);
     await syncUserData(result.user as FirebaseUser);
   };
-  
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    await syncUserData(result.user as FirebaseUser);
-  };
 
   const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -194,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const value = { 
-      user, login, loginWithGoogle, register, logout, requestAIAccess, resendVerificationEmail, 
+      user, login, register, logout, requestAIAccess, resendVerificationEmail, 
       reloadUser, resetPassword, isLoading, getAllUsers, updateUser, deleteUser, getSettings, updateSettings 
   };
 

@@ -1,22 +1,29 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [react()],
+  // مهم جداً لـ Android WebView
+  base: './',
   server: {
-    host: '0.0.0.0',
-    port: 3000,
+    host: true,
+    port: 5173,
   },
   build: {
     outDir: 'dist',
-    sourcemap: false, // Disable sourcemaps for faster builds and smaller size
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        // تقسيم الكود لتسريع التحميل
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+        }
+      }
+    }
   },
   define: {
-    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_API_KEY || ''),
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   }
 });

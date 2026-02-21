@@ -1,61 +1,55 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>PharmaSource KSA</title>
-    
+
+    <!-- الخطوط محلية - لا تحتاج إنترنت بعد البناء -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-    
+
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0d9488">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
     <style>
       :root { font-size: 14px; }
       body {
         font-family: 'Cairo', 'Poppins', sans-serif;
-        background-color: #f1f5f9;
+        background-color: #f8fafc;
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
         overflow: hidden;
+        color: #0f172a;
       }
-      .dark body { background-color: #020617; color: #f8fafc; }
+      .dark body {
+        background-color: #020617;
+        color: #f8fafc;
+      }
       #root { height: 100vh; display: flex; flex-direction: column; }
       ::-webkit-scrollbar { width: 0px; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
+
       .bg-glass {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
       }
       .dark .bg-glass {
-        background: rgba(15, 23, 42, 0.8);
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(255, 255, 255, 0.05);
       }
 
       @media (min-width: 640px) { :root { font-size: 16px; } }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/",
-    "@capacitor/cli": "https://esm.sh/@capacitor/cli@^8.1.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.1"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

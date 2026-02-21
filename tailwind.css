@@ -1,0 +1,58 @@
+/* PharmaSource Global Styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0d9488;
+  --primary-dark: #0f766e;
+  --secondary: #0ea5e9;
+  --accent: #f59e0b;
+  --light-bg: #f1f5f9;
+  --dark-bg: #020617;
+}
+
+body {
+  font-family: 'Cairo', 'Poppins', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.animate-card {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(15px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Dark mode cards */
+.dark .animate-card {
+  background-color: #0f172a;
+  border-color: #1e293b;
+}
+
+/* Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

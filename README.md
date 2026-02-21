@@ -1,20 +1,52 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# PharmaSource KSA 🏥
 
-# Run and deploy your AI Studio app
+## المتطلبات
+- Node.js v18+
+- npm v9+
 
-This contains everything you need to run your app locally.
+## خطوات التشغيل للمرة الأولى
 
-View your app in AI Studio: https://ai.studio/apps/61ea148c-20b9-40d1-805d-42ae97444a6b
+```bash
+# 1. تنصيب الحزم (مرة واحدة فقط)
+npm install
 
-## Run Locally
+# 2. تشغيل للتطوير
+npm run dev
 
-**Prerequisites:**  Node.js
+# 3. البناء للإنتاج
+npm run build
+```
 
+## متغيرات البيئة
+أنشئ ملف `.env.local` وأضف:
+```
+VITE_API_KEY=your_gemini_api_key
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## البناء لـ Android
+```bash
+npm run build
+npx cap sync
+npx cap open android
+```
+
+## ملاحظات هامة
+- Tailwind يعمل **offline** بالكامل بعد npm install
+- Firebase مدعوم بـ offline cache تلقائياً
+- sw.js يعمل كـ PWA cache
+
+## هيكل المشروع
+```
+├── index.html          # نقطة الدخول
+├── index.tsx           # React entry
+├── App.tsx             # المكون الرئيسي
+├── tailwind.css        # Global styles
+├── tailwind.config.js  # إعدادات Tailwind (offline)
+├── postcss.config.js   # PostCSS
+├── vite.config.ts      # إعدادات Vite
+├── firebase.ts         # Firebase config
+├── components/         # المكونات
+│   └── auth/           # مكونات المصادقة
+├── data/               # بيانات الأدوية
+└── utils/              # أدوات مساعدة
+```
