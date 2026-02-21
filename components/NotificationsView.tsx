@@ -30,14 +30,14 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
                   <div className="w-4 h-4 transform rtl:rotate-180"><BackIcon /></div>
                   {t('backToNotifications')}
               </button>
-              <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
-                  <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-dark-border space-y-4">
+                  <div className="border-b border-slate-100 dark:border-dark-border pb-4">
                       <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">{selectedNotification.title}</h2>
-                      <p className="text-[10px] text-slate-400 mt-2 uppercase font-black">{formatDate(selectedNotification.timestamp)}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-dark-muted mt-2 uppercase font-black">{formatDate(selectedNotification.timestamp)}</p>
                   </div>
                   <div className="text-slate-700 dark:text-slate-300 text-lg leading-relaxed whitespace-pre-wrap">{selectedNotification.body}</div>
                   {selectedNotification.relatedMedicineId && (
-                      <div className="pt-4 mt-4 border-t dark:border-slate-800">
+                      <div className="pt-4 mt-4 border-t border-slate-100 dark:border-dark-border">
                           <button onClick={() => onMedicineLink?.(selectedNotification.relatedMedicineId!)} className="w-full py-4 bg-primary/10 text-primary rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-all">
                               <div className="w-6 h-6"><PillBottleIcon /></div>
                               <span>{language === 'ar' ? 'عرض ملف الدواء' : 'View Medicine File'}</span>
@@ -60,11 +60,11 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
       ) : (
         <div className="space-y-3">
           {sortedNotifications.map(notification => (
-            <div key={notification.id} onClick={() => { setSelectedNotification(notification); if(!notification.isRead) onMarkAsRead(notification.id); }} className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${notification.isRead ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-slate-800' : 'bg-primary/5 dark:bg-primary/10 border-primary/20 shadow-md'}`}>
+            <div key={notification.id} onClick={() => { setSelectedNotification(notification); if(!notification.isRead) onMarkAsRead(notification.id); }} className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${notification.isRead ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-dark-border' : 'bg-primary/5 dark:bg-primary/10 border-primary/20 shadow-md'}`}>
               <div className="flex justify-between items-start mb-1 pr-8 rtl:pl-8"><h3 className={`font-black text-sm ${!notification.isRead ? 'text-primary' : 'text-slate-800 dark:text-slate-200'}`}>{notification.title}</h3>{!notification.isRead && <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />}</div>
               <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{notification.body}</p>
-              <div className="flex justify-between items-center mt-2 border-t dark:border-slate-800 pt-2">
-                  <span className="text-[9px] text-slate-400 font-bold">{formatDate(notification.timestamp)}</span>
+              <div className="flex justify-between items-center mt-2 border-t border-slate-100 dark:border-dark-border pt-2">
+                  <span className="text-[9px] text-slate-400 dark:text-dark-muted font-bold">{formatDate(notification.timestamp)}</span>
                   {isAdmin && <button onClick={(e) => { e.stopPropagation(); if(window.confirm(t('confirmDeleteNotification'))) onDeleteNotification(notification.id); }} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><div className="w-4 h-4"><TrashIcon /></div></button>}
               </div>
             </div>

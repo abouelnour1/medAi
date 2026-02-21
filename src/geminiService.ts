@@ -80,7 +80,10 @@ export const runAIChat = async (
 ): Promise<GenerateContentResponse> => {
     // CRITICAL: Obtain API Key exclusively from process.env.API_KEY
     const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("API Key is missing");
+    if (!apiKey) {
+        console.error("PharmaSource AI: API Key is missing in environment variables.");
+        throw new Error("API Key is missing");
+    }
 
     // CRITICAL: Initialize right before usage
     const ai = new GoogleGenAI({ apiKey });
@@ -92,8 +95,7 @@ export const runAIChat = async (
 
     const config: any = {
         systemInstruction: String(systemInstruction),
-        temperature: 0.7,
-        thinkingConfig: { thinkingBudget: 0 }
+        temperature: 0.4,
     };
 
     if (tools) config.tools = flattenToPOJO(tools);

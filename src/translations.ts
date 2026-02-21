@@ -178,7 +178,6 @@ export const translations = {
     age: 'العمر',
     compareTitle: 'مقارنة المنتجات',
     loginPrompt: 'ليس لديك حساب؟',
-    googleLogin: 'الدخول بواسطة جوجل',
     register: 'إنشاء حساب',
     registerPrompt: 'لديك حساب بالفعل؟',
     forgotPassword: 'نسيت كلمة المرور؟',
@@ -341,7 +340,8 @@ export const translations = {
     lock: 'قفل',
     unlock: 'فتح للتعديل',
     strengthAsc: 'التركيز (الأقل)',
-    strengthDesc: 'التركيز (الأعلى)'
+    strengthDesc: 'التركيز (الأعلى)',
+    fontSize: 'حجم الخط'
   },
   en: {
     storageConditionsAr: 'Storage Conditions (AR)',
@@ -520,7 +520,6 @@ export const translations = {
     age: 'Age',
     compareTitle: 'Product Comparison',
     loginPrompt: "Don't have an account?",
-    googleLogin: 'Login with Google',
     register: 'Create Account',
     registerPrompt: 'Already have an account?',
     forgotPassword: 'Forgot Password?',
@@ -683,7 +682,8 @@ export const translations = {
     lock: 'Lock',
     unlock: 'Unlock',
     strengthAsc: 'Strength (Lowest)',
-    strengthDesc: 'Strength (Highest)'
+    strengthDesc: 'Strength (Highest)',
+    fontSize: 'Font Size'
   }
 };
 

@@ -1,23 +1,22 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  // 'base' must be relative ('./') for Android WebViews to load assets
-  base: './', 
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
   server: {
-    host: true,
-    port: 5173,
+    host: '0.0.0.0',
+    port: 3000,
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps for faster builds and smaller size
   },
-  // هنا نقوم بحل مشكلة "عدم رؤية" المفتاح في Vercel
-  // نقوم بتعريف process.env.API_KEY ليكون متاحاً في المتصفح
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
   }
 });

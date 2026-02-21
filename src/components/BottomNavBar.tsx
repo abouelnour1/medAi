@@ -1,8 +1,6 @@
 import React from 'react';
+import { Search, ShieldCheck, Settings } from 'lucide-react';
 import { Tab, TFunction, User, View } from '../types';
-import SearchIcon from './icons/SearchIcon';
-import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
-import SettingsIcon from './icons/SettingsIcon';
 
 interface BottomNavBarProps {
   activeTab: Tab;
@@ -14,14 +12,14 @@ interface BottomNavBarProps {
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user, view }) => {
   const navItems = [
-    { id: 'search', label: t('navSearch'), icon: <SearchIcon /> },
-    { id: 'insurance', label: t('navInsurance'), icon: <HealthInsuranceIcon /> },
-    { id: 'settings', label: t('navSettings'), icon: <SettingsIcon /> },
+    { id: 'search', label: t('navSearch'), icon: <Search className="w-6 h-6" /> },
+    { id: 'insurance', label: t('navInsurance'), icon: <ShieldCheck className="w-6 h-6" /> },
+    { id: 'settings', label: t('navSettings'), icon: <Settings className="w-6 h-6" /> },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pointer-events-none">
-      <div className="bg-white/40 dark:bg-dark-card/40 backdrop-blur-md border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2.5rem] h-20 flex justify-around items-center max-w-2xl mx-auto px-2 pointer-events-auto">
+      <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-slate-700/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2.5rem] h-20 flex justify-around items-center max-w-2xl mx-auto px-2 pointer-events-auto">
         {navItems.map(item => {
           const isActive = activeTab === item.id;
           return (

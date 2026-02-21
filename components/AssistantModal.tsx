@@ -123,12 +123,14 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
         contextInfo = `\n[CONTEXT_DRUG: ${contextMedicine['Trade Name']}. Active: ${contextMedicine['Scientific Name']}, Price: ${contextMedicine['Public price']} SAR, Form: ${contextMedicine.PharmaceuticalForm}.]`;
     }
 
-    const systemInstruction = `You are "PharmaSource AI", a Senior Clinical Pharmacist. 
+    const systemInstruction = `You are "PharmaSource AI", a Senior Clinical Pharmacist with 20+ years of experience in the Saudi healthcare system.
     CORE RULES:
-    1. EXTREME BREVITY: Direct answers only. No greetings, no conclusions.
-    2. CONTEXT AWARENESS: If user asks "How to use?" or "Side effects?", ASSUME they mean the drug in [CONTEXT_DRUG] above.
-    3. PROFESSIONAL JARGON: Use English medical terms (BID, TID, QD, etc.) within responses.
-    4. DATA SOURCE: Use 'searchDatabase' for pricing/availability. Use your medical knowledge for clinical data.
+    1. PROFESSIONAL PERSONA: Respond with the authority and depth of a seasoned clinical pharmacist. Provide comprehensive, evidence-based medical information.
+    2. NO SELF-INTRODUCTION: Never say "I am a pharmacist" or "As an expert". Just provide the expert data directly.
+    3. COMPREHENSIVE DATA: When asked about a drug, provide: Clinical indications, precise dosage protocols (BID, TID, etc.), critical contraindications, major drug-drug interactions, and patient counseling points.
+    4. SAUDI CONTEXT: Always prioritize information relevant to the Saudi Food and Drug Authority (SFDA) regulations and local clinical practice.
+    5. DATABASE USAGE: Use 'searchDatabase' for real-time pricing, availability, and SFDA registration status.
+    6. BREVITY VS DEPTH: Be concise but never sacrifice clinical accuracy or essential safety warnings.
     ${contextInfo}`;
 
     try {
@@ -172,17 +174,17 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
     <div className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center animate-fade-in p-2 sm:p-6" onClick={() => onSaveAndClose(chatHistory)}>
       <div className="bg-white dark:bg-dark-card w-full max-w-xl h-[80vh] rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden relative border border-white/10" onClick={e => e.stopPropagation()}>
         
-        <header className="flex items-center justify-between p-3 px-5 border-b border-gray-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95">
+        <header className="flex items-center justify-between p-3 px-5 border-b border-gray-100 dark:border-dark-border bg-white/95 dark:bg-dark-card/95">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg shadow-primary/20"><div className="w-4 h-4"><AssistantIcon /></div></div>
             <div>
                 <h2 className="text-xs font-black text-slate-800 dark:text-white leading-tight">PharmaSource AI</h2>
-                <div className="flex items-center gap-1"><span className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span><span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Clinical Protocol</span></div>
+                <div className="flex items-center gap-1"><span className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span><span className="text-[8px] text-slate-400 dark:text-dark-muted font-bold uppercase tracking-widest">Clinical Protocol</span></div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-              <button onClick={() => { onSaveAndClose(chatHistory); onShowHistory?.(); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><div className="w-4 h-4"><HistoryIcon/></div></button>
-              <button onClick={() => onSaveAndClose(chatHistory)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition-colors"><div className="w-4 h-4"><ClearIcon/></div></button>
+              <button onClick={() => { onSaveAndClose(chatHistory); onShowHistory?.(); }} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><div className="w-4 h-4"><HistoryIcon/></div></button>
+              <button onClick={() => onSaveAndClose(chatHistory)} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:text-red-500 transition-colors"><div className="w-4 h-4"><ClearIcon/></div></button>
           </div>
         </header>
 
@@ -208,11 +210,11 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
           <div ref={chatEndRef} className="h-2" />
         </div>
 
-        <footer className="p-3 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <footer className="p-3 border-t border-gray-100 dark:border-dark-border bg-white dark:bg-dark-card">
             <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} className="flex items-center gap-2">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={e => { const f = e.target.files?.[0]; if (f) setUploadedImage({ blob: f, preview: URL.createObjectURL(f), mimeType: f.type }); }} className="hidden" />
                 
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-lg hover:text-primary transition-all">
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 dark:text-dark-muted bg-slate-50 dark:bg-slate-800 rounded-lg hover:text-primary transition-all">
                   <div className="w-4 h-4"><CameraIcon /></div>
                 </button>
 
@@ -222,7 +224,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
                         onChange={(e) => setUserInput(e.target.value)} 
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                         placeholder={aiAvailable ? (language === 'ar' ? 'اسأل باختصار (Pros)...' : 'Query (Clinical)...') : t('aiUnavailableShort')} 
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-xs min-h-[40px] max-h-24 focus:border-primary transition-all resize-none" 
+                        className="w-full p-2.5 bg-slate-50 dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-xl outline-none text-xs min-h-[40px] max-h-24 focus:border-primary transition-all resize-none" 
                         rows={1} 
                     />
                     {uploadedImage && (

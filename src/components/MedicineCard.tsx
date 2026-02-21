@@ -1,10 +1,8 @@
 
 import React, { useMemo } from 'react';
+import { Pill, Star, Info, Factory } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Medicine, TFunction, Language } from '../types';
-import PillIcon from './icons/PillIcon';
-import AlternativeIcon from './icons/AlternativeIcon';
-import FactoryIcon from './icons/FactoryIcon';
-import StarIcon from './icons/StarIcon';
 
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -44,25 +42,28 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
   
-  // إظهار التصنيف فقط للأدوية البشرية (Human)
   const isHumanMed = medicine['Product type'] === 'Human';
   const isGeneric = medicine.DrugType?.toLowerCase().includes('generic');
   const drugTypeLabel = isGeneric ? (language === 'ar' ? 'جنيس' : 'Generic') : (language === 'ar' ? 'أصيل' : 'Brand');
 
   return (
-    <div 
+    <motion.div 
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onShortPress} 
-      className="animate-card bg-white dark:bg-dark-card rounded-[1.75rem] p-5 shadow-sm border border-slate-100 dark:border-dark-border flex flex-col gap-4 active:scale-[0.98] transition-all cursor-pointer group"
+      className="bg-white dark:bg-dark-card rounded-[1.75rem] p-5 shadow-sm border border-slate-100 dark:border-dark-border flex flex-col gap-4 transition-all cursor-pointer group"
     >
       <div className="flex justify-between items-start gap-4">
         {medicine.imgBox && (
-            <div className="flex-shrink-0 w-16 h-16 bg-slate-50 dark:bg-dark-card rounded-2xl overflow-hidden border border-slate-100 dark:border-dark-border p-1.5 shadow-sm">
-                <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
+            <div className="flex-shrink-0 w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 p-1.5 shadow-sm">
+                <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
         )}
         <div className="flex-grow min-w-0">
             <div className="flex items-center gap-1.5 mb-1 text-slate-400 dark:text-slate-500">
-                <div className="w-3 h-3"><FactoryIcon /></div>
+                <Factory className="w-3 h-3" />
                 <span className="text-[9px] font-bold uppercase tracking-widest truncate">{medicine['Manufacture Name']}</span>
             </div>
             <h2 className="text-lg font-black text-slate-800 dark:text-white leading-tight group-hover:text-primary transition-colors truncate">
@@ -70,7 +71,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
             </h2>
             
             <div className="mt-2 inline-flex items-center gap-2 bg-slate-100/70 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50 max-w-full">
-                <div className="w-3 h-3 text-primary shrink-0"><PillIcon /></div>
+                <Pill className="w-3 h-3 text-primary shrink-0" />
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 font-bold leading-none truncate" dir="ltr">
                     {ingredientsString}
                 </p>
@@ -110,17 +111,17 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 onClick={(e) => { e.stopPropagation(); onToggleFavorite(medicine.RegisterNumber); }} 
                 className={`p-2 rounded-xl transition-all ${isFavorite ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
-                <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
+                <Star className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
             </button>
             <button 
                 onClick={(e) => { e.stopPropagation(); onFindAlternative(medicine); }} 
                 className="p-2 text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary-light hover:bg-primary/5 rounded-xl transition-all"
             >
-                <div className="w-5 h-5"><AlternativeIcon /></div>
+                <Info className="w-5 h-5" />
             </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 export default React.memo(MedicineCard);
