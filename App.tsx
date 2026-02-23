@@ -369,24 +369,27 @@ const App: React.FC = () => {
     const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
-    // أولوية بسيطة وواضحة:
-    // 1 = يبدأ بالكلمة المكتوبة (ose...)
-    // 2 = في المنتصف (...ose...)
-    const getPriority = (name: string): number => {
-      if (name.startsWith(term)) return 1;
-      return 2;
-    };
+    // فصل النتائج لمجموعتين ثم دمجهم
+    // المجموعة 1: يبدأ بالحروف المكتوبة (ose → Oseltamivir, Osenil)
+    // المجموعة 2: الحروف في المنتصف (ose → Glucose, Fructose)
+    const startsWithTerm: typeof results = [];
+    const containsTerm: typeof results = [];
 
-    results.sort((a, b) => {
-        const aName = String(a[field]).toLowerCase();
-        const bName = String(b[field]).toLowerCase();
-        const pA = getPriority(aName);
-        const pB = getPriority(bName);
-        // الأولوية الأهم أول
-        if (pA !== pB) return pA - pB;
-        // نفس الأولوية → ترتيب أبجدي
-        return aName.localeCompare(bName);
+    results.forEach(m => {
+      const name = String(m[field]).toLowerCase();
+      if (name.startsWith(term)) {
+        startsWithTerm.push(m);
+      } else {
+        containsTerm.push(m);
+      }
     });
+
+    // ترتيب أبجدي داخل كل مجموعة منفصلة
+    startsWithTerm.sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+    containsTerm.sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+
+    // المجموعة 1 الأول دايماً ثم المجموعة 2
+    results = [...startsWithTerm, ...containsTerm];
 
     return results;
   }, [searchContextMedicines, filters, sortBy, debouncedSearchTerm, textSearchMode]);
