@@ -369,23 +369,23 @@ const App: React.FC = () => {
     const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
+    // أولوية بسيطة وواضحة:
+    // 1 = يبدأ بالكلمة المكتوبة (ose...)
+    // 2 = في المنتصف (...ose...)
+    const getPriority = (name: string): number => {
+      if (name.startsWith(term)) return 1;
+      return 2;
+    };
+
     results.sort((a, b) => {
         const aName = String(a[field]).toLowerCase();
         const bName = String(b[field]).toLowerCase();
-        const scoreA = getMatchScore(aName, term);
-        const scoreB = getMatchScore(bName, term);
-        if (scoreA !== scoreB) return scoreB - scoreA; // الأقوى مطابقة أول
-        const aStarts = aName.startsWith(term.replace(/\*/g, '').split('*')[0] || term);
-        const bStarts = bName.startsWith(term.replace(/\*/g, '').split('*')[0] || term);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        if (sortBy === 'alphabetical') return aName.localeCompare(bName);
-        if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-        if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
-        if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
-        if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
-        if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
-        return 0;
+        const pA = getPriority(aName);
+        const pB = getPriority(bName);
+        // الأولوية الأهم أول
+        if (pA !== pB) return pA - pB;
+        // نفس الأولوية → ترتيب أبجدي
+        return aName.localeCompare(bName);
     });
 
     return results;

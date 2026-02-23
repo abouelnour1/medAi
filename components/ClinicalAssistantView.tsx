@@ -16,41 +16,61 @@ interface ClinicalAssistantViewProps {
   onSavePrescription: (prescription: PrescriptionData) => void;
   chatHistory: ChatMessage[];
   setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  contextMedicine?: Medicine | null; // الدواء اللي المستخدم شايفه
 }
 
 const parsePrescriptionJson = (content: string): Omit<PrescriptionData, 'id'> | null => {
     const match = content.match(/---PRESCRIPTION_START---\s*```json\s*([\s\S]*?)\s*```\s*---PRESCRIPTION_END---/);
     if (!match || !match[1]) return null;
-    try {
-        return JSON.parse(match[1]);
-    } catch (e) {
-        console.error("Failed to parse prescription JSON from AI response", e);
-        return null;
-    }
+    try { return JSON.parse(match[1]); } 
+    catch (e) { return null; }
+};
+
+// Quick suggestion chips حسب الـ context
+const getQuickChips = (language: Language, medicine?: Medicine | null) => {
+  const ar = language === 'ar';
+  if (medicine) {
+    const name = medicine['Trade Name'];
+    return [
+      { label: ar ? '⚠️ تعاملات دوائية' : '⚠️ Drug Interactions', prompt: ar ? `ما هي التعاملات الدوائية المهمة لـ ${name}؟` : `What are the important drug interactions of ${name}?` },
+      { label: ar ? '💊 الجرعة الصحيحة' : '💊 Correct Dose', prompt: ar ? `ما هي الجرعة الصحيحة والطريقة المثلى لاستخدام ${name}؟` : `What is the correct dosage and optimal use of ${name}?` },
+      { label: ar ? '🤰 حمل وإرضاع' : '🤰 Pregnancy', prompt: ar ? `هل ${name} آمن أثناء الحمل والإرضاع؟` : `Is ${name} safe during pregnancy and breastfeeding?` },
+      { label: ar ? '👶 جرعة أطفال' : '👶 Pediatric Dose', prompt: ar ? `ما هي جرعة ${name} للأطفال؟` : `What is the pediatric dose of ${name}?` },
+      { label: ar ? '🔄 بدائل' : '🔄 Alternatives', prompt: ar ? `ما هي أفضل البدائل لـ ${name}؟` : `What are the best alternatives to ${name}?` },
+      { label: ar ? '🚫 موانع الاستخدام' : '🚫 Contraindications', prompt: ar ? `ما هي موانع استخدام ${name}؟` : `What are the contraindications of ${name}?` },
+    ];
+  }
+  return [
+    { label: ar ? '💊 وصفة طبية' : '💊 Write Prescription', prompt: ar ? 'أريد كتابة وصفة طبية' : 'I want to write a prescription' },
+    { label: ar ? '⚖️ مقارنة أدوية' : '⚖️ Compare Drugs', prompt: ar ? 'قارن بين دواءين' : 'Compare two medications' },
+    { label: ar ? '🔍 بروتوكول علاج' : '🔍 Treatment Protocol', prompt: ar ? 'ما هو بروتوكول علاج' : 'What is the treatment protocol for' },
+    { label: ar ? '💉 جرعة الكلى' : '💉 Renal Dose', prompt: ar ? 'جرعة الدواء في قصور الكلى' : 'Drug dose in renal impairment' },
+  ];
 };
 
 const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
-  t,
-  language,
-  allMedicines,
-  insuranceData,
-  clinicalGuidelines,
-  onSavePrescription,
-  chatHistory,
-  setChatHistory
+  t, language, allMedicines, insuranceData, clinicalGuidelines,
+  onSavePrescription, chatHistory, setChatHistory, contextMedicine
 }) => {
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const aiAvailable = isAIAvailable();
+  const ar = language === 'ar';
 
   useEffect(() => {
     if (chatHistory.length === 0) {
-        setChatHistory([
-          { role: 'model', parts: [{ text: t('clinicalAssistantWelcome') }] },
-        ]);
+      const welcome = contextMedicine
+        ? (ar 
+            ? `مرحباً! 👋 أنا **PharmaSource AI**، مساعدك السريري المتخصص.\n\nأرى أنك تتصفح **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nيمكنني مساعدتك في الجرعات، التعاملات الدوائية، موانع الاستخدام، والبدائل. اختر سؤالاً سريعاً أو اكتب سؤالك:`
+            : `Hello! 👋 I'm **PharmaSource AI**, your clinical specialist.\n\nI see you're viewing **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nI can help with dosing, drug interactions, contraindications, and alternatives. Pick a quick question or type yours:`)
+        : (ar
+            ? `مرحباً! 👋 أنا **PharmaSource AI**\n\nمساعدك السريري المتخصص بأدوية المملكة العربية السعودية 🇸🇦\n\nأستطيع مساعدتك في:\n• 💊 الجرعات والتعاملات الدوائية\n• 📋 كتابة الوصفات الطبية\n• 🏥 بروتوكولات العلاج السعودية\n• ⚕️ الأدوية المغطاة بالتأمين\n\nاسألني أي سؤال سريري:`
+            : `Hello! 👋 I'm **PharmaSource AI**\n\nYour clinical specialist for Saudi Arabian medications 🇸🇦\n\nI can help with:\n• 💊 Dosing & drug interactions\n• 📋 Writing prescriptions\n• 🏥 Saudi treatment protocols\n• ⚕️ Insurance-covered medications\n\nAsk me any clinical question:`);
+      setChatHistory([{ role: 'model', parts: [{ text: welcome }] }]);
     }
-  }, [t, chatHistory, setChatHistory]);
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,47 +80,63 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     name: 'searchDatabase',
     parameters: {
       type: Type.OBJECT,
-      description: 'Searches the database for medicines. Can filter by trade name, scientific name, etc.',
+      description: 'Search the PharmaSource KSA drug database',
       properties: {
-        tradeName: { type: Type.STRING, description: 'The trade name of the drug.' },
-        scientificName: { type: Type.STRING, description: 'The scientific (active ingredient) name of the drug.' }
+        tradeName: { type: Type.STRING, description: 'Trade name of the drug' },
+        scientificName: { type: Type.STRING, description: 'Scientific/generic name' }
       }
     }
   };
-  
-  const searchDatabase = useCallback((args: {
-    tradeName?: string;
-    scientificName?: string;
-  }) => {
-    let results = [...allMedicines];
-    if (args.tradeName) {
-        results = results.filter(med => String(med['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
-    }
-    if (args.scientificName) {
-        results = results.filter(med => String(med['Scientific Name']).toLowerCase().includes(args.scientificName!.toLowerCase()));
-    }
-    
-    if (results.length === 0) {
-        return { 
-            count: 0, 
-            status: "NO_MATCH",
-            message: "No drugs found locally. You MUST proceed using your general medical knowledge to recommend appropriate medication and fill the prescription details. Do NOT fail."
-        };
-    }
 
+  const searchDatabase = useCallback((args: { tradeName?: string; scientificName?: string }) => {
+    let results = [...allMedicines];
+    if (args.tradeName) results = results.filter(m => String(m['Trade Name']).toLowerCase().includes(args.tradeName!.toLowerCase()));
+    if (args.scientificName) results = results.filter(m => String(m['Scientific Name']).toLowerCase().includes(args.scientificName!.toLowerCase()));
+    if (results.length === 0) return { count: 0, status: 'NO_MATCH', message: 'Not found locally. Use your medical knowledge.' };
     return {
-        count: results.length,
-        results: results.slice(0, 10).map(r => ({
-            tradeName: r['Trade Name'],
-            scientificName: r['Scientific Name'],
-            price: r['Public price'],
-            form: r.PharmaceuticalForm,
-        }))
+      count: results.length,
+      results: results.slice(0, 8).map(r => ({
+        tradeName: r['Trade Name'], scientificName: r['Scientific Name'],
+        price: r['Public price'], strength: `${r.Strength} ${r.StrengthUnit}`,
+        form: r.PharmaceuticalForm, legal: r['Legal Status'],
+        manufacturer: r['Manufacture Name']
+      }))
     };
   }, [allMedicines]);
-  
-  const handleSendMessage = useCallback(async () => {
-    const currentInput = userInput.trim();
+
+  const buildSystemPrompt = () => {
+    const conditionList = Object.keys(clinicalGuidelines || {}).slice(0, 30).join(', ');
+    const contextDrugInfo = contextMedicine 
+      ? `\n\nCURRENT DRUG CONTEXT - User is viewing:\nTrade Name: ${contextMedicine['Trade Name']}\nScientific Name: ${contextMedicine['Scientific Name']}\nStrength: ${contextMedicine.Strength} ${contextMedicine.StrengthUnit}\nForm: ${contextMedicine.PharmaceuticalForm}\nLegal Status: ${contextMedicine['Legal Status']}\nPrice: ${contextMedicine['Public price']} SAR\nManufacturer: ${contextMedicine['Manufacture Name']}`
+      : '';
+
+    return `You are PharmaSource AI, a Senior Clinical Pharmacist & Consultant Physician with 20+ years in Saudi Arabia.
+
+## LANGUAGE RULE (HIGHEST PRIORITY):
+- Detect the language of each user message automatically
+- Arabic message → respond in Arabic, but keep medical terms in English (e.g. "**Contraindicated** في الحمل", "**500mg BID**")
+- English message → respond in English
+- If user says "رد عربي" or "reply in English" → follow immediately and maintain it
+- NEVER ignore this rule
+
+## STRICT RULES:
+- **Answer immediately** - NEVER: "بالتأكيد"، "Certainly!"، "Sure!"، "Great question!"
+- **Bold** all critical information
+- ⚠️ serious warnings | ✅ positive info | ❌ contraindications | 💊 dosing
+- Dosing: amount + frequency + duration + renal/hepatic adjustments
+- Interactions: classify (major🔴/moderate🟡/minor🟢) + mechanism + alternative
+- For prescriptions: JSON between ---PRESCRIPTION_START--- and ---PRESCRIPTION_END---
+
+## Database:
+Use searchDatabase for Saudi drug availability and pricing.
+${contextDrugInfo}
+
+## Clinical Guidelines Available:
+${conditionList || 'Saudi MOH standard protocols'}`;
+  };
+
+  const handleSend = useCallback(async (input?: string) => {
+    const currentInput = (input || userInput).trim();
     if (!currentInput || isLoading) return;
 
     const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', parts: [{ text: currentInput }] }];
@@ -109,106 +145,141 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     setIsLoading(true);
 
     try {
-        // Safe summary of guidelines to avoid circular reference stringification issues
-        const conditionList = Object.keys(clinicalGuidelines || {}).join(', ');
-        const guidelinesContext = conditionList 
-            ? `Available Saudi clinical guidelines: ${conditionList}.` 
-            : "Rely on standard clinical practices and Saudi insurance policies.";
-        
-        const systemInstruction = language === 'ar'
-        ? `أنت طبيب خبير ومستشار سريري عالمي، مقيم في المملكة العربية السعودية. جمهورك يتكون من متخصصي الرعاية الصحية. وظيفتك الأساسية هي تقديم توصيات سريرية وكتابة الوصفات الطبية. ${guidelinesContext}`
-        : `You are a world-class expert physician based in Saudi Arabia. Your function is to provide clinical recommendations and write prescriptions. ${guidelinesContext}`;
+      const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
+      const finalResponse = await runAIChat(newHistory, buildSystemPrompt(), tools, { searchDatabase }, 'gemini-3-pro-preview');
+      const parts = finalResponse?.candidates?.[0]?.content?.parts;
 
-        const tools: Tool[] = [{ functionDeclarations: [searchDatabaseTool] }];
-        const toolImplementations = { searchDatabase };
-
-        const finalResponse = await runAIChat(newHistory, systemInstruction, tools, toolImplementations, 'gemini-3-pro-preview');
-      
-        const responsePartsFromApi = finalResponse?.candidates?.[0]?.content?.parts;
-
-        if (responsePartsFromApi && responsePartsFromApi.length > 0) {
-            const sanitizedResponseParts = sanitizeParts(responsePartsFromApi);
-            setChatHistory(prev => [...prev, { role: 'model', parts: sanitizedResponseParts }]);
-
-            const prescriptionText = sanitizedResponseParts.find(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))?.text;
-            if (prescriptionText) {
-                const parsedJson = parsePrescriptionJson(prescriptionText);
-                if (parsedJson) {
-                    const fullPrescriptionData: PrescriptionData = { ...parsedJson, id: `p-${Date.now()}`};
-                    onSavePrescription(fullPrescriptionData);
-                }
-            }
-        } else {
-            setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
+      if (parts?.length > 0) {
+        const sanitized = sanitizeParts(parts);
+        setChatHistory(prev => [...prev, { role: 'model', parts: sanitized }]);
+        const prescText = sanitized.find(p => 'text' in p && p.text?.includes('---PRESCRIPTION_START---'))?.text;
+        if (prescText) {
+          const parsed = parsePrescriptionJson(prescText);
+          if (parsed) onSavePrescription({ ...parsed, id: `p-${Date.now()}` });
         }
-    } catch (err) {
+      } else {
+        setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: t('geminiError') }] }]);
+      }
+    } catch {
       setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: t('geminiError') }] }]);
     } finally {
       setIsLoading(false);
     }
-  }, [userInput, isLoading, chatHistory, language, t, onSavePrescription, setChatHistory, allMedicines, searchDatabase, clinicalGuidelines]);
-  
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSendMessage();
-  };
+  }, [userInput, isLoading, chatHistory, language, contextMedicine]);
+
+  const chips = getQuickChips(language, contextMedicine);
+  const showChips = chatHistory.length <= 1 && !isLoading;
 
   return (
-    <div className="bg-light-bg dark:bg-dark-bg flex flex-col h-full">
-        <div className="flex-grow p-4 overflow-y-auto space-y-4">
-          {!aiAvailable && (
-            <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <h3 className="font-bold text-yellow-800 dark:text-yellow-200">{t('aiUnavailableTitle')}</h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">{t('aiUnavailableMessage')}</p>
-            </div>
-          )}
-          {aiAvailable && chatHistory.map((msg, index) => {
-             const textContent = msg.parts?.find(p => 'text' in p && p.text)?.text;
-             const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-dark-bg">
 
-            return (
-                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.role === 'model' && <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary"><StethoscopeIcon /></div>}
-                  <div className={`max-w-md rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none p-3' : `bg-white dark:bg-dark-card text-light-text dark:text-dark-text rounded-bl-none ${isPrescription ? 'p-0 bg-transparent dark:bg-transparent shadow-none' : 'p-3'}`}`}>
-                     { isPrescription ? (
-                        <PrescriptionView content={textContent!} t={t} />
-                     ) : (
-                        <div className="text-sm prose prose-sm dark:prose-invert max-w-none ai-response-content">
-                          <MarkdownRenderer content={textContent || ''} />
-                        </div>
-                     )}
-                  </div>
-                </div>
-            )
-          })}
-          
-          {isLoading && (
-              <div className="flex justify-start animate-fade-in">
-                 <div className="bg-white dark:bg-dark-card p-3 rounded-2xl rounded-bl-none flex items-center gap-1 shadow-sm">
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                 </div>
-              </div>
-          )}
-          <div ref={chatEndRef} />
+      {/* Context badge لما يكون في سياق دواء */}
+      {contextMedicine && (
+        <div className="mx-4 mt-2 flex items-center gap-2 bg-primary/10 dark:bg-primary/20 rounded-2xl px-3 py-2 border border-primary/20">
+          <span className="text-primary text-lg">💊</span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-black text-primary truncate">{contextMedicine['Trade Name']}</p>
+            <p className="text-[9px] text-primary/60 truncate">{contextMedicine['Scientific Name']}</p>
+          </div>
         </div>
+      )}
 
-        <footer className="p-4 border-t border-gray-200 dark:border-slate-700 flex-shrink-0 bg-light-bg dark:bg-dark-bg">
-             <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
-                <textarea
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                    placeholder={aiAvailable ? t('clinicalAssistantWelcome') : t('aiUnavailableShort')}
-                    className="flex-grow w-full p-2 bg-white dark:bg-dark-card border-2 border-gray-200 dark:border-slate-700 focus:border-primary rounded-lg outline-none transition-colors resize-none"
-                    rows={2}
-                    disabled={isLoading || !aiAvailable}
-                    aria-label={t('clinicalAssistantWelcome')}
-                />
-                <button type="submit" disabled={isLoading || !userInput || !aiAvailable} className="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-blue-500 disabled:bg-blue-300 dark:disabled:bg-blue-800 disabled:cursor-not-allowed transition-colors">{t('ask')}</button>
-            </form>
-        </footer>
+      {/* Chat messages */}
+      <div className="flex-grow overflow-y-auto px-4 py-3 space-y-3">
+        {!aiAvailable && (
+          <div className="text-center p-6 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+            <p className="text-2xl mb-2">🔑</p>
+            <h3 className="font-black text-amber-800 dark:text-amber-200 mb-1">{t('aiUnavailableTitle')}</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-300">{t('aiUnavailableMessage')}</p>
+          </div>
+        )}
+
+        {aiAvailable && chatHistory.map((msg, index) => {
+          const textContent = msg.parts?.find(p => 'text' in p && p.text)?.text;
+          const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
+          const isUser = msg.role === 'user';
+
+          return (
+            <div key={index} className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+              {!isUser && (
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center shadow-md">
+                  <span className="text-white text-[11px]">AI</span>
+                </div>
+              )}
+              <div className={`max-w-[85%] ${isUser
+                ? 'bg-primary text-white rounded-3xl rounded-br-sm px-4 py-3 shadow-md shadow-primary/20'
+                : isPrescription
+                  ? 'w-full'
+                  : 'bg-white dark:bg-dark-card rounded-3xl rounded-bl-sm px-4 py-3 shadow-sm border border-slate-100 dark:border-dark-border'
+              }`}>
+                {isPrescription
+                  ? <PrescriptionView content={textContent!} t={t} />
+                  : <div className="text-sm leading-relaxed">
+                      <MarkdownRenderer content={textContent || ''} />
+                    </div>
+                }
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Quick chips */}
+        {showChips && aiAvailable && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {chips.map((chip, i) => (
+              <button
+                key={i}
+                onClick={() => handleSend(chip.prompt)}
+                className="text-[11px] font-bold bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 px-3 py-2 rounded-2xl active:scale-95 transition-all hover:border-primary hover:text-primary shadow-sm"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="flex items-end gap-2 justify-start">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-[11px]">AI</span>
+            </div>
+            <div className="bg-white dark:bg-dark-card px-4 py-3 rounded-3xl rounded-bl-sm shadow-sm border border-slate-100 dark:border-dark-border flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-3 border-t border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card flex-shrink-0">
+        <div className="flex items-end gap-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-2">
+          <textarea
+            ref={textareaRef}
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            placeholder={ar ? 'اسألني أي سؤال سريري...' : 'Ask any clinical question...'}
+            className="flex-grow bg-transparent outline-none text-sm resize-none text-slate-800 dark:text-slate-100 placeholder-slate-400 px-2 py-1 max-h-32"
+            rows={1}
+            disabled={isLoading || !aiAvailable}
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={isLoading || !userInput.trim() || !aiAvailable}
+            className="flex-shrink-0 w-9 h-9 bg-primary disabled:bg-slate-200 dark:disabled:bg-slate-700 rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md shadow-primary/30 disabled:shadow-none"
+          >
+            <svg className="w-4 h-4 text-white rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-center text-[9px] text-slate-300 dark:text-slate-600 mt-1.5 font-medium">
+          {ar ? 'PharmaSource AI · للاستخدام السريري فقط' : 'PharmaSource AI · For clinical use only'}
+        </p>
+      </div>
     </div>
   );
 };
