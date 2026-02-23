@@ -12,9 +12,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      resize: 'body',
+      resize: 'none',
       style: 'dark',
-      resizeOnFullScreen: true,
+      resizeOnFullScreen: false,
     },
     StatusBar: {
       style: 'light',

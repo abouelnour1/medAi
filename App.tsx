@@ -175,6 +175,24 @@ const App: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(90);
 
+  // منع الـ UI من الحركة لما تيجي إشعارات أو يتفتح الكيبورد
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let lastHeight = vv.height;
+    const handleResize = () => {
+      // لو الـ height اتغير بسبب كيبورد أو إشعار - نثبت الـ scrollTop
+      if (Math.abs(vv.height - lastHeight) > 50) {
+        lastHeight = vv.height;
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollPositions.current.get(view) || 0;
+        }
+      }
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, [view]);
+
   useEffect(() => {
     if (!headerRef.current) return;
     const observer = new ResizeObserver(entries => {
@@ -301,32 +319,28 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // دالة مطابقة Wildcard - تدعم * في أي مكان
+  // مطابقة Wildcard - * تعني أي حروف في أي مكان
   const matchesWildcard = (text: string, pattern: string): boolean => {
     if (!pattern.includes('*')) return text.includes(pattern);
-    // تحويل النمط لـ regex - * تعني أي حروف
     const parts = pattern.split('*').map(p => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&'));
     const regex = new RegExp(parts.join('.*'));
     return regex.test(text);
   };
 
-  // حساب قوة المطابقة - كلما كانت المطابقة في البداية كان أفضل
+  // الترتيب: يبدأ بالكلمة (3) > يبدأ بكلمة في الجملة (2) > في المنتصف (1)
   const getMatchScore = (text: string, pattern: string): number => {
-    if (!pattern.includes('*')) {
-      if (text.startsWith(pattern)) return 3;      // يبدأ بالكلمة = أعلى
-      if (text.includes(' ' + pattern)) return 2;  // يبدأ بكلمة جديدة
-      return 1;                                     // في أي مكان
-    }
-    const firstPart = pattern.split('*')[0];
-    if (firstPart && text.startsWith(firstPart)) return 2;
+    const cleanPattern = pattern.replace(/\*/g, '').split('*')[0] || pattern;
+    if (text.startsWith(cleanPattern)) return 3;
+    if (text.includes(' ' + cleanPattern)) return 2;
     return 1;
   };
 
   const searchContextMedicines = useMemo(() => {
     const raw = debouncedSearchTerm.toLowerCase().trim();
-    const hasWildcard = raw.includes('*');
-    const term = hasWildcard ? raw : raw.replace(/\*/g, '');
-    if (term.replace(/\*/g, '').length < 2) return medicines;
+    const term = raw;
+    const cleanTerm = raw.replace(/\*/g, '');
+    // ما يظهرش إلا مع 3 حروف على الأقل (بدون الـ *)
+    if (cleanTerm.length < 3) return medicines;
     
     return medicines.filter(m => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
@@ -338,7 +352,7 @@ const App: React.FC = () => {
   const finalFilteredMedicines = useMemo(() => {
     let results = [...searchContextMedicines];
     const hasFilters = Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : (v !== 'all' && v !== ''));
-    if (debouncedSearchTerm.replace(/\*/g, '').length < 2 && !hasFilters) return [];
+    if (debouncedSearchTerm.replace(/\*/g, '').length < 3 && !hasFilters) return [];
 
     if (filters.productType !== 'all') {
         const type = filters.productType === 'medicine' ? 'Human' : filters.productType === 'supplement' ? 'Supplement' : 'Food';

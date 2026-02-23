@@ -41,6 +41,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onForceSearch()}
           placeholder={t('searchPlaceholder')}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           className="w-full bg-white dark:bg-dark-card h-16 pl-12 pr-12 rounded-[2rem] text-sm font-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border-2 border-transparent focus:border-primary/30 focus:shadow-primary/10 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
         />
         {isSearchActive && (
