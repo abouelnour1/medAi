@@ -3,6 +3,9 @@ import { doc, updateDoc } from 'firebase/firestore';
 
 const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || '';
 
+// ============================================
+// طلب إذن + FCM Token (ويب)
+// ============================================
 export async function requestPushPermission(userId: string): Promise<string | null> {
   try {
     if (!('Notification' in window)) return null;
@@ -18,7 +21,8 @@ export async function requestPushPermission(userId: string): Promise<string | nu
       await updateDoc(doc(db, 'users', userId), {
         fcmToken: token,
         fcmTokenUpdated: new Date().toISOString(),
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        platform: 'web'
       });
       return token;
     }
@@ -29,6 +33,9 @@ export async function requestPushPermission(userId: string): Promise<string | nu
   }
 }
 
+// ============================================
+// استقبال الإشعارات وهو مفتوح (Foreground - ويب)
+// ============================================
 export async function setupForegroundNotifications(
   onNotification: (title: string, body: string, data?: any) => void
 ) {
@@ -47,21 +54,62 @@ export async function setupForegroundNotifications(
   }
 }
 
-// للأندرويد Native - يتم تفعيله يدوياً بعد: npm install @capacitor-firebase/messaging
+// ============================================
+// Capacitor Native Push (أندرويد APK)
+// ============================================
 export async function setupCapacitorPush(
-  _userId: string,
-  _onNotification: (title: string, body: string) => void
+  userId: string,
+  onNotification: (title: string, body: string, data?: any) => void
 ) {
-  // TODO: بعد تنصيب @capacitor-firebase/messaging ارفع التعليق
-  // const { Capacitor } = await import('@capacitor/core');
-  // if (!Capacitor.isNativePlatform()) return;
-  // const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
-  // ...
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (!Capacitor.isNativePlatform()) return;
+
+    const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+
+    // طلب الإذن
+    const { receive } = await FirebaseMessaging.requestPermissions();
+    if (receive !== 'granted') return;
+
+    // جلب وحفظ الـ Token
+    const { token } = await FirebaseMessaging.getToken();
+    if (token) {
+      await updateDoc(doc(db, 'users', userId), {
+        fcmToken: token,
+        fcmTokenUpdated: new Date().toISOString(),
+        notificationsEnabled: true,
+        platform: 'android'
+      });
+      console.log('✅ Android FCM Token saved');
+    }
+
+    // استقبال الإشعارات وهو مفتوح
+    await FirebaseMessaging.addListener('notificationReceived', (event: any) => {
+      const { title, body } = event.notification;
+      onNotification(title || 'PharmaSource', body || '', event.notification.data);
+    });
+
+    // استقبال الإشعارات لما يضغط عليها
+    await FirebaseMessaging.addListener('notificationActionPerformed', (event: any) => {
+      const { title, body } = event.notification;
+      onNotification(title || 'PharmaSource', body || '', event.notification.data);
+    });
+
+    console.log('✅ Android Native Push ready');
+  } catch (error) {
+    console.log('Capacitor Push setup skipped:', error);
+  }
 }
 
+// ============================================
+// تعطيل الإشعارات
+// ============================================
 export async function disablePushNotifications(userId: string) {
   try {
-    await updateDoc(doc(db, 'users', userId), { notificationsEnabled: false, fcmToken: null });
+    await updateDoc(doc(db, 'users', userId), {
+      notificationsEnabled: false,
+      fcmToken: null
+    });
   } catch (e) {
     console.error(e);
   }
