@@ -301,19 +301,44 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
+  // دالة مطابقة Wildcard - تدعم * في أي مكان
+  const matchesWildcard = (text: string, pattern: string): boolean => {
+    if (!pattern.includes('*')) return text.includes(pattern);
+    // تحويل النمط لـ regex - * تعني أي حروف
+    const parts = pattern.split('*').map(p => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(parts.join('.*'));
+    return regex.test(text);
+  };
+
+  // حساب قوة المطابقة - كلما كانت المطابقة في البداية كان أفضل
+  const getMatchScore = (text: string, pattern: string): number => {
+    if (!pattern.includes('*')) {
+      if (text.startsWith(pattern)) return 3;      // يبدأ بالكلمة = أعلى
+      if (text.includes(' ' + pattern)) return 2;  // يبدأ بكلمة جديدة
+      return 1;                                     // في أي مكان
+    }
+    const firstPart = pattern.split('*')[0];
+    if (firstPart && text.startsWith(firstPart)) return 2;
+    return 1;
+  };
+
   const searchContextMedicines = useMemo(() => {
-    const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
-    if (term.length < 3) return medicines;
+    const raw = debouncedSearchTerm.toLowerCase().trim();
+    const hasWildcard = raw.includes('*');
+    const term = hasWildcard ? raw : raw.replace(/\*/g, '');
+    if (term.replace(/\*/g, '').length < 2) return medicines;
+    
     return medicines.filter(m => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-        return String(m[field]).toLowerCase().includes(term);
+        const text = String(m[field]).toLowerCase();
+        return matchesWildcard(text, term);
     });
   }, [medicines, debouncedSearchTerm, textSearchMode]);
 
   const finalFilteredMedicines = useMemo(() => {
     let results = [...searchContextMedicines];
     const hasFilters = Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : (v !== 'all' && v !== ''));
-    if (debouncedSearchTerm.length < 3 && !hasFilters) return [];
+    if (debouncedSearchTerm.replace(/\*/g, '').length < 2 && !hasFilters) return [];
 
     if (filters.productType !== 'all') {
         const type = filters.productType === 'medicine' ? 'Human' : filters.productType === 'supplement' ? 'Supplement' : 'Food';
@@ -333,8 +358,11 @@ const App: React.FC = () => {
     results.sort((a, b) => {
         const aName = String(a[field]).toLowerCase();
         const bName = String(b[field]).toLowerCase();
-        const aStarts = aName.startsWith(term);
-        const bStarts = bName.startsWith(term);
+        const scoreA = getMatchScore(aName, term);
+        const scoreB = getMatchScore(bName, term);
+        if (scoreA !== scoreB) return scoreB - scoreA; // الأقوى مطابقة أول
+        const aStarts = aName.startsWith(term.replace(/\*/g, '').split('*')[0] || term);
+        const bStarts = bName.startsWith(term.replace(/\*/g, '').split('*')[0] || term);
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
         if (sortBy === 'alphabetical') return aName.localeCompare(bName);
@@ -674,7 +702,7 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight + 24, transition: "padding-top 0.2s ease" }}>
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114) }}>
           {!isDataLoaded ? (
             <div className="h-96 flex flex-col items-center justify-center">
               <div className="relative w-16 h-16">

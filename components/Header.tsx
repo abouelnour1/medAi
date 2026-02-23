@@ -16,6 +16,38 @@ interface HeaderProps {
   unreadCount?: number;
 }
 
+const OnlineIndicator: React.FC = () => {
+  const [online, setOnline] = React.useState(navigator.onLine);
+  const [justChanged, setJustChanged] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleChange = (val: boolean) => {
+      setOnline(val);
+      setJustChanged(true);
+      setTimeout(() => setJustChanged(false), 3000);
+    };
+    const on = () => handleChange(true);
+    const off = () => handleChange(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  // لو أونلاين ومافيش تغيير حديث - ما نظهر حاجة
+  if (online && !justChanged) return null;
+
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black transition-all ${
+      online 
+        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' 
+        : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500 animate-pulse'
+    }`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+      {online ? '● متصل' : '✕ بلا نت'}
+    </div>
+  );
+};
+
 const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, view, unreadCount = 0 }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -63,11 +95,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         </div>
 
         <div className="flex-1 flex justify-end items-center gap-2">
-          {!navigator.onLine && (
-            <div className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-              OFFLINE
-            </div>
-          )}
+          <OnlineIndicator />
           {user ? (
             <div className="relative" ref={menuRef}>
                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-full active:scale-95 transition-all">
@@ -75,7 +103,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                         {user.username.charAt(0).toUpperCase()}
                     </div>
                 </button>
-                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-3 w-56 bg-white dark:bg-dark-card rounded-2xl shadow-2xl ring-1 ring-black/5 py-2 transition-all origin-top-right ${isMenuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'} border dark:border-dark-border`}>
+                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-56 bg-white dark:bg-dark-card rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5 py-2 border dark:border-dark-border z-50
+                      transition-all duration-200 ease-out origin-top-right
+                      ${isMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
                     <div className="px-4 py-2 border-b border-slate-50 dark:border-dark-border mb-1">
                         <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
                         <p className="text-[10px] font-bold text-primary uppercase">{t(`${user.role}Role` as any)}</p>

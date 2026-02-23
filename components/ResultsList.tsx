@@ -101,7 +101,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
         {letters.map(letter => (
           <div key={letter} ref={el => { letterRefs.current[letter] = el; }}>
             {/* فاصل الحرف */}
-            <div className="flex items-center gap-3 mb-3 sticky top-0 z-10 py-1">
+            <div className="flex items-center gap-3 mb-3 py-1">
               <div className="w-9 h-9 bg-primary text-white rounded-2xl flex items-center justify-center font-black text-sm shadow-lg shadow-primary/20 flex-shrink-0">
                 {letter}
               </div>

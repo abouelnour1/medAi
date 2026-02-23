@@ -8,8 +8,15 @@ const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || '';
 // ============================================
 export async function requestPushPermission(userId: string): Promise<string | null> {
   try {
+    // على الأندرويد Native نستخدم Capacitor مباشرة
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      await setupCapacitorPush(userId, () => {});
+      return 'android-native';
+    }
+
     if (!('Notification' in window)) {
-      throw new Error('المتصفح لا يدعم الإشعارات');
+      throw new Error('المتصفح لا يدعم الإشعارات - استخدم التطبيق المثبت');
     }
 
     const permission = await Notification.requestPermission();
