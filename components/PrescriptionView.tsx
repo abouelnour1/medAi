@@ -63,7 +63,7 @@ const PrescriptionView: React.FC<{ content?: string; prescriptionData?: Prescrip
             <head>
                 <title>Prescription - ${data.patientName || 'Patient'}</title>
                 <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Poppins:wght@400;700&display=swap');
+                    /* خط محلي - fonts.css */
                     body { 
                         font-family: 'Poppins', 'Cairo', sans-serif; 
                         margin: 0; padding: 10mm; background: #fff; color: #000;

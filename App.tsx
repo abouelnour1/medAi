@@ -19,6 +19,8 @@ import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
+import CompareBar from './components/CompareBar';
+import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
 import { LoginView } from './components/auth/LoginView';
@@ -108,6 +110,8 @@ const normalizeMedicine = (item: any): Medicine => {
 };
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
+const RECENT_SEARCHES_KEY = 'pharma_recent_searches';
+const MAX_RECENT = 8;
 
 const App: React.FC = () => {
   const { user, logout } = useAuth();
@@ -127,6 +131,9 @@ const App: React.FC = () => {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [recentSearches, setRecentSearches] = useState<Medicine[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [compareList, setCompareList] = useState<Medicine[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   
@@ -151,13 +158,27 @@ const App: React.FC = () => {
     }
   }, [isDataLoaded, isOnline]);
 
-  const savedScrollPos = useRef<number>(0);
+  // حفظ scroll position لكل view على حدة
+  const scrollPositions = useRef<Map<string, number>>(new Map());
 
   const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
   const [insuranceSearchMode, setInsuranceSearchMode] = useState<InsuranceSearchMode>('tradeName');
   const [selectedInsurance, setSelectedInsurance] = useState<SelectedInsuranceData | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(90);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setHeaderHeight(entry.contentRect.height + 8);
+      }
+    });
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -178,27 +199,54 @@ const App: React.FC = () => {
     return text;
   }, [language]);
 
+  const restoreScroll = useCallback((targetView: string) => {
+      requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+              const saved = scrollPositions.current.get(targetView) || 0;
+              scrollContainerRef.current.scrollTo({ top: saved, behavior: 'auto' });
+          }
+      });
+  }, []);
+
   const handleBack = useCallback(() => {
-      if (view === 'imageView') setView('details');
-      else if (view === 'details' || view === 'alternatives') {
-          setView('results'); 
-          // استعادة فورية للموضع دون تأخير بصري
-          requestAnimationFrame(() => {
-              if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTo({ top: savedScrollPos.current, behavior: 'auto' });
-              }
-          });
+      if (view === 'imageView') {
+          setView('details');
+          restoreScroll('details');
+      } else if (view === 'details' || view === 'alternatives') {
+          setView('results');
+          restoreScroll('results');
+      } else if (view === 'insuranceDetails') {
+          setView('insuranceSearch');
+          restoreScroll('insuranceSearch');
+      } else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) {
+          const target = activeTab === 'search' 
+              ? (searchTerm.length >= 3 ? 'results' : 'search') 
+              : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
+          setView(target);
+          restoreScroll(target);
+      } else if (view === 'results' || view === 'insuranceSearch') { 
+          setView('search'); 
+          setSearchTerm(''); 
+          setInsuranceSearchTerm(''); 
+          restoreScroll('search');
+      } else { 
+          setView('search'); 
+          setActiveTab('search'); 
+          restoreScroll('search');
       }
-      else if (view === 'insuranceDetails') setView('insuranceSearch');
-      else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) setView(activeTab === 'search' ? (searchTerm.length >= 3 ? 'results' : 'search') : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings'));
-      else if (view === 'results' || view === 'insuranceSearch') { setView('search'); setSearchTerm(''); setInsuranceSearchTerm(''); }
-      else { setView('search'); setActiveTab('search'); }
-  }, [view, activeTab, searchTerm]);
+  }, [view, activeTab, searchTerm, restoreScroll]);
 
   const handleMedicineSelect = (m: Medicine) => {
     if (scrollContainerRef.current) {
-        savedScrollPos.current = scrollContainerRef.current.scrollTop;
+        scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
     }
+    // حفظ في سجل البحث الأخير
+    setRecentSearches(prev => {
+        const filtered = prev.filter(r => r.RegisterNumber !== m.RegisterNumber);
+        const updated = [m, ...filtered].slice(0, MAX_RECENT);
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+        return updated;
+    });
     setSelectedMedicine(m);
     setView('details');
     if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -227,7 +275,14 @@ const App: React.FC = () => {
                     setMedicines(Array.from(medMap.values()));
                 });
                 onSnapshot(collection(db, 'notifications'), (snapshot) => {
-                    setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification)));
+                    const allNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+                    // فلترة الإشعارات - كل إشعار بدون targetUserId يظهر للكل
+                    setNotifications(allNotifs.filter(n => {
+                      if (!n.targetUserId && !n.targetRole) return true; // عام للكل
+                      if (n.targetUserId && user && n.targetUserId === user.id) return true; // خاص بالمستخدم
+                      if (n.targetRole && user && n.targetRole === user.role) return true; // خاص برول معين
+                      return false;
+                    }));
                 });
             } else {
                 setMedicines(Array.from(medMap.values()));
@@ -324,6 +379,34 @@ const App: React.FC = () => {
     return count;
   }, [filters]);
 
+  // مشاركة الدواء
+  const handleShareMedicine = (medicine: Medicine) => {
+    const price = parseFloat(medicine['Public price']);
+    const text = `💊 *${medicine['Trade Name']}*
+🧪 ${medicine['Scientific Name']}
+💰 ${price > 0 ? price.toFixed(2) + ' ريال' : 'غير متاح'}
+🏭 ${medicine['Manufacture Name']}
+📋 ${medicine['Legal Status']}
+
+🔗 عبر تطبيق PharmaSource KSA`;
+    if (navigator.share) {
+        navigator.share({ title: medicine['Trade Name'], text });
+    } else {
+        navigator.clipboard?.writeText(text).then(() => alert('تم نسخ بيانات الدواء!'));
+    }
+  };
+
+  // مقارنة الأدوية
+  const toggleCompare = (medicine: Medicine) => {
+    setCompareList(prev => {
+        if (prev.find(m => m.RegisterNumber === medicine.RegisterNumber)) {
+            return prev.filter(m => m.RegisterNumber !== medicine.RegisterNumber);
+        }
+        if (prev.length >= 2) return [prev[1], medicine];
+        return [...prev, medicine];
+    });
+  };
+
   const toggleFavorite = (id: string) => {
       const newFavs = favorites.includes(id) ? favorites.filter(f => f !== id) : [...favorites, id];
       setFavorites(newFavs);
@@ -356,14 +439,22 @@ const App: React.FC = () => {
   };
 
   const handleTabClick = (tab: Tab) => {
+      // حفظ scroll position للـ view الحالية قبل التنقل
+      if (scrollContainerRef.current) {
+          scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
+      }
       if (activeTab === tab) {
-          if (tab === 'search') setView('search');
-          if (tab === 'insurance') setView('insuranceSearch');
-          if (tab === 'settings') setView('settings');
+          // لو ضغط على نفس الـ tab، يرجع للأول وإيزال الـ scroll
+          if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
+          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
+          if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
       } else {
           setActiveTab(tab);
-          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) setView('insuranceSearch');
-          if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) setView('settings');
+          // استعادة position الـ tab الجديد لو موجود
+          const targetView = tab === 'insurance' ? 'insuranceSearch' : tab === 'settings' ? 'settings' : 'search';
+          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) { setView('insuranceSearch'); restoreScroll('insuranceSearch'); }
+          else if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) { setView('settings'); restoreScroll('settings'); }
+          else if (tab === 'search' && !['search', 'results', 'details', 'alternatives'].includes(view)) { setView('search'); restoreScroll('search'); }
       }
   };
 
@@ -371,12 +462,48 @@ const App: React.FC = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={()=>{}} />;
-      if (view === 'notifications') return <NotificationsView notifications={notifications} isAdmin={user?.role==='admin'} t={t} language={language} onMarkAllRead={()=>{}} onMarkAsRead={()=>{}} onDeleteNotification={async (id)=>{ if (!db) return; await deleteDoc(doc(db, 'notifications', id)); }} />;
+      if (view === 'notifications') return <NotificationsView 
+        notifications={notifications} 
+        isAdmin={user?.role==='admin'} 
+        t={t} 
+        language={language} 
+        onMarkAsRead={async (id) => {
+          // تحديث محلي فوري
+          setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+          // تحديث Firebase
+          if (db) {
+            try { await updateDoc(doc(db, 'notifications', id), { isRead: true }); } catch(e) {}
+          }
+        }}
+        onMarkAllRead={async () => {
+          // تحديث محلي فوري
+          setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+          // تحديث Firebase لكل إشعار
+          if (db) {
+            const unread = notifications.filter(n => !n.isRead);
+            await Promise.all(unread.map(n => 
+              updateDoc(doc(db, 'notifications', n.id), { isRead: true }).catch(()=>{})
+            ));
+          }
+        }}
+        onDeleteNotification={async (id)=>{ 
+          if (!db) return; 
+          await deleteDoc(doc(db, 'notifications', id)); 
+        }}
+        onMedicineLink={(medicineId) => {
+          // البحث عن الدواء وفتح صفحته
+          const medicine = medicines.find(m => m.RegisterNumber === medicineId);
+          if (medicine) {
+            setSelectedMedicine(medicine);
+            setView('details');
+          }
+        }}
+      />;
       if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -388,8 +515,39 @@ const App: React.FC = () => {
                   </div>
                   <div className="mt-6">
                       {finalFilteredMedicines.length > 0 ? (
-                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" />
-                      ) : searchTerm.length >= 3 && <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800"><p className="text-slate-400 font-black">{t('noResultsTitle')}</p></div>}
+                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                      ) : searchTerm.length >= 3 ? (
+                        <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
+                          <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
+                        </div>
+                      ) : recentSearches.length > 0 ? (
+                        <div className="animate-fade-in">
+                          <div className="flex justify-between items-center mb-3 px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                              {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
+                            </h3>
+                            <button onClick={() => { setRecentSearches([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
+                              className="text-[10px] font-black text-rose-400 hover:text-rose-600">
+                              {language === 'ar' ? 'مسح الكل' : 'Clear All'}
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {recentSearches.map(med => (
+                              <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
+                                className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
+                                {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
+                                <div className="flex-grow min-w-0">
+                                  <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
+                                </div>
+                                <span className="text-[11px] font-black text-primary whitespace-nowrap">
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ر.س' : ''}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                   </div>
               </div>
           );
@@ -455,8 +613,8 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
-      <Header title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pt-[calc(env(safe-area-inset-top)+100px)] pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar">
+      <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight }}>
           {!isDataLoaded ? (
             <div className="h-96 flex flex-col items-center justify-center">
               <div className="relative w-16 h-16">
@@ -469,6 +627,18 @@ const App: React.FC = () => {
             </div>
           ) : renderContent()}
       </main>
+      {compareList.length > 0 && !showCompare && (
+        <CompareBar 
+          compareList={compareList} 
+          onRemove={(m) => setCompareList(prev => prev.filter(x => x.RegisterNumber !== m.RegisterNumber))}
+          onCompare={() => setShowCompare(true)}
+          onClose={() => setCompareList([])}
+          language={language}
+        />
+      )}
+      {showCompare && compareList.length === 2 && (
+        <CompareModal medicines={compareList} onClose={() => setShowCompare(false)} language={language} />
+      )}
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
       {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt="" t={t} language={language} />}

@@ -525,19 +525,120 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     </div>
                 </div>
             )}
-            {activePanel === 'overview' && (
-                <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 text-center space-y-4">
-                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary"><ChartIcon /></div>
-                        <h3 className="text-xl font-black">{t('dbAnalysis')}</h3>
-                        <div className="grid grid-cols-3 gap-4 mt-6">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('medicines')}</p><p className="text-2xl font-black text-primary">{allMedicines.filter(m => m['Product type'] === 'Human').length}</p></div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">{t('supplements')}</p><p className="text-2xl font-black text-accent">{allMedicines.filter(m => m['Product type'] === 'Supplement').length}</p></div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl"><p className="text-[10px] font-bold text-slate-400 uppercase">Food</p><p className="text-2xl font-black text-teal-600">{allMedicines.filter(m => m['Product type'] === 'Food').length}</p></div>
-                        </div>
+            {activePanel === 'overview' && (() => {
+                const humanMeds = allMedicines.filter(m => m['Product type'] === 'Human');
+                const suppMeds = allMedicines.filter(m => m['Product type'] === 'Supplement');
+                const foodMeds = allMedicines.filter(m => m['Product type'] === 'Food');
+                const controlled = allMedicines.filter(m => m['Product Control']?.toLowerCase() === 'controlled');
+                const otcMeds = humanMeds.filter(m => m['Legal Status']?.toLowerCase() === 'otc');
+                const rxMeds = humanMeds.filter(m => m['Legal Status']?.toLowerCase() === 'prescription');
+                const genericMeds = humanMeds.filter(m => m.DrugType?.toLowerCase().includes('generic'));
+                const brandMeds = humanMeds.filter(m => !m.DrugType?.toLowerCase().includes('generic'));
+                const adminUsers = users.filter(u => u.role === 'admin');
+                const companyUsers = users.filter(u => u.role === 'company');
+                const premiumUsers = users.filter(u => u.role === 'premium');
+                const topManufacturers = Object.entries(
+                  humanMeds.reduce((acc: Record<string,number>, m) => { const n = m['Manufacture Name'] || 'Unknown'; acc[n] = (acc[n]||0)+1; return acc; }, {})
+                ).sort((a,b) => (b[1] as number)-(a[1] as number)).slice(0,5) as [string, number][];
+
+                return (
+                <div className="max-w-4xl mx-auto space-y-5 animate-fade-in">
+                  {/* إحصائيات سريعة */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gradient-to-br from-primary to-primary-dark text-white p-4 rounded-2xl text-center shadow-lg shadow-primary/20">
+                      <p className="text-2xl font-black">{humanMeds.length}</p>
+                      <p className="text-[9px] font-black uppercase opacity-80 mt-1">أدوية بشرية</p>
                     </div>
+                    <div className="bg-gradient-to-br from-amber-400 to-amber-600 text-white p-4 rounded-2xl text-center shadow-lg shadow-amber-400/20">
+                      <p className="text-2xl font-black">{suppMeds.length}</p>
+                      <p className="text-[9px] font-black uppercase opacity-80 mt-1">مكملات</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-teal-400 to-teal-600 text-white p-4 rounded-2xl text-center shadow-lg shadow-teal-400/20">
+                      <p className="text-2xl font-black">{foodMeds.length}</p>
+                      <p className="text-[9px] font-black uppercase opacity-80 mt-1">غذاء</p>
+                    </div>
+                  </div>
+
+                  {/* تحليل الأدوية */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-4">📊 تحليل قاعدة البيانات</h4>
+                    <div className="space-y-3">
+                      {[
+                        { label: 'وصفة طبية', value: rxMeds.length, total: humanMeds.length, color: 'bg-blue-500' },
+                        { label: 'OTC بدون وصفة', value: otcMeds.length, total: humanMeds.length, color: 'bg-green-500' },
+                        { label: 'جنيس Generic', value: genericMeds.length, total: humanMeds.length, color: 'bg-purple-500' },
+                        { label: 'أصيل Brand', value: brandMeds.length, total: humanMeds.length, color: 'bg-rose-500' },
+                        { label: 'مخدرات Controlled', value: controlled.length, total: allMedicines.length, color: 'bg-orange-500' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[11px] font-black text-slate-600 dark:text-slate-300">{item.label}</span>
+                            <span className="text-[11px] font-black text-slate-400">{item.value} ({Math.round(item.value/item.total*100)}%)</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{width: `${Math.round(item.value/item.total*100)}%`}} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* المستخدمون */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-4">👥 إحصائيات المستخدمين</h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: 'الكل', value: users.length, color: 'text-slate-700' },
+                        { label: 'أدمن', value: adminUsers.length, color: 'text-red-500' },
+                        { label: 'شركات', value: companyUsers.length, color: 'text-blue-500' },
+                        { label: 'مميز', value: premiumUsers.length, color: 'text-amber-500' },
+                      ].map(item => (
+                        <div key={item.label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
+                          <p className={`text-xl font-black ${item.color}`}>{item.value}</p>
+                          <p className="text-[9px] font-bold text-slate-400 mt-1">{item.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* أكبر الشركات المصنعة */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-4">🏭 أكبر 5 مصنعين</h4>
+                    <div className="space-y-2">
+                      {topManufacturers.map(([name, count], idx) => (
+                        <div key={name} className="flex items-center gap-3">
+                          <span className="text-[11px] font-black text-slate-300 w-4">#{idx+1}</span>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">{name}</span>
+                              <span className="text-[11px] font-black text-primary ml-2">{count}</span>
+                            </div>
+                            <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                              <div className="h-full bg-primary rounded-full" style={{width: `${Math.round(count/topManufacturers[0][1]*100)}%`}} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* الإشعارات */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-3">🔔 الإشعارات</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{notifications.length}</p>
+                        <p className="text-[9px] font-bold text-slate-400 mt-1">إجمالي الإشعارات</p>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-black text-amber-600">{pendingUpdates.length}</p>
+                        <p className="text-[9px] font-bold text-amber-500 mt-1">طلبات معلقة</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     </div>
   );

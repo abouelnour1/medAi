@@ -46,9 +46,12 @@ interface MedicineDetailProps {
     onOpenAssistant?: () => void;
     onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
     onFindAlternative: (medicine: Medicine) => void;
+    onShare?: (medicine: Medicine) => void;
+    onToggleCompare?: (medicine: Medicine) => void;
+    isInCompare?: boolean;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
   const [isPhysicalOpen, setIsPhysicalOpen] = useState(false);
   const price = parseFloat(medicine['Public price']);
   const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
@@ -83,6 +86,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                   <button onClick={handleGoogleImageSearch} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted hover:text-primary rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all">
                       <div className="w-5 h-5"><CameraIcon /></div>
                   </button>
+                  {onShare && (
+                    <button onClick={() => onShare(medicine)} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 hover:text-green-500 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all" title="مشاركة">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                    </button>
+                  )}
+                  {onToggleCompare && (
+                    <button onClick={() => onToggleCompare(medicine)} className={`p-2.5 rounded-2xl shadow-sm border active:scale-90 transition-all ${isInCompare ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-dark-card text-slate-400 border-slate-100 dark:border-dark-border'}`} title="مقارنة">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </button>
+                  )}
                   <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2.5 rounded-2xl active:scale-90 transition-all ${isFavorite ? 'bg-amber-500 text-white shadow-lg' : 'bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted border border-slate-100 dark:border-dark-border'}`}>
                     <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
                   </button>
@@ -155,6 +172,41 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
               ))}
           </div>
       </InfoCard>
+
+      {/* معلومات العبوة والتوزيع */}
+      {(medicine.PackageSize || medicine.PackageTypes || medicine['Distribute area']) && (
+        <InfoCard title={t('packagingInfo')} icon={
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        }>
+          <DetailRow label={t('packageSize')} value={
+            medicine.PackageSize && medicine.SizeUnit 
+              ? `${medicine.PackageSize} ${medicine.SizeUnit}` 
+              : medicine.PackageSize
+          } />
+          <DetailRow label={t('packageType')} value={medicine.PackageTypes} />
+          {medicine['Distribute area'] && (
+            <div className="flex justify-between items-center py-1.5">
+              <dt className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('distributeArea')}</dt>
+              <dd>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full ${
+                  medicine['Distribute area']?.toLowerCase().includes('hospital') || medicine['Distribute area']?.toLowerCase().includes('مستشفى')
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                }`}>
+                  {medicine['Distribute area']?.toLowerCase().includes('hospital') || medicine['Distribute area']?.toLowerCase().includes('مستشفى')
+                    ? (language === 'ar' ? '🏥 مستشفى' : '🏥 Hospital')
+                    : medicine['Distribute area']?.toLowerCase().includes('pharmacy') || medicine['Distribute area']?.toLowerCase().includes('صيدلية')
+                    ? (language === 'ar' ? '💊 صيدلية' : '💊 Pharmacy')
+                    : medicine['Distribute area']
+                  }
+                </span>
+              </dd>
+            </div>
+          )}
+        </InfoCard>
+      )}
 
       <InfoCard title={t('regulatory')} icon={<ShieldIcon />}>
           <DetailRow label={t('regNumLabel')} value={medicine.RegisterNumber} />

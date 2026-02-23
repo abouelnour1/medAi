@@ -84,8 +84,8 @@ const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction
             
             {/* Available Products Section */}
             <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm">
-                <h3 className="flex items-center gap-2 text-xl font-bold text-light-text dark:text-dark-text mb-3">
-                    <PillIcon />
+                <h3 className="flex items-center gap-2 text-base font-black text-slate-700 dark:text-dark-text mb-3">
+                    <div className="w-5 h-5 text-primary flex-shrink-0"><PillIcon /></div>
                     <span>{t('availableProducts')}</span>
                 </h3>
                  {scientificGroup.availableMedicines.length > 0 ? (

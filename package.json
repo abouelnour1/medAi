@@ -8,26 +8,28 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
-    "cap:android": "npx cap open android"
+    "cap:android": "npx cap open android",
+    "setup:fonts": "node scripts/download-fonts.js",
+    "setup": "npm install && node scripts/download-fonts.js"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "firebase": "^10.14.0",
-    "@google/genai": "^1.41.0",
+    "@capacitor/app": "^6.0.2",
     "@capacitor/core": "^6.2.0",
-    "@capacitor/app": "^6.0.2"
+    "@google/genai": "^1.41.0",
+    "firebase": "^10.14.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@types/node": "^22.14.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.6.2",
-    "vite": "^5.4.11",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "@capacitor/cli": "^6.2.0"
+    "typescript": "~5.6.2",
+    "vite": "^5.4.11"
   }
 }

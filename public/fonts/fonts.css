@@ -1,0 +1,82 @@
+/*
+  ====================================================
+  خطوط PharmaSource KSA - Offline Ready
+  ====================================================
+  
+  هذا الملف يحتوي على:
+  1. System font fallback (يشتغل فوراً بدون نت)
+  2. بعد تشغيل: node scripts/download-fonts.js
+     سيتم استبدال هذا الملف بخطوط Cairo الحقيقية
+  ====================================================
+*/
+
+/* Fallback يشتغل بدون نت - Tahoma شبه Cairo للعربي */
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'),
+       local('Cairo Regular'),
+       local('Segoe UI'),
+       local('Tahoma'),
+       local('Arial');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'),
+       local('Cairo Regular'),
+       local('Segoe UI'),
+       local('Tahoma'),
+       local('Arial');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'),
+       local('Cairo Bold'),
+       local('Segoe UI Semibold'),
+       local('Tahoma'),
+       local('Arial Bold');
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo Bold'),
+       local('Cairo'),
+       local('Segoe UI Bold'),
+       local('Tahoma Bold'),
+       local('Arial Bold');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: local('Poppins'),
+       local('Poppins Regular'),
+       local('Segoe UI'),
+       local('Arial');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: local('Poppins Bold'),
+       local('Poppins'),
+       local('Segoe UI Bold'),
+       local('Arial Bold');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
