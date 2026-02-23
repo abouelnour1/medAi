@@ -8,9 +8,24 @@ const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || '';
 // ============================================
 export async function requestPushPermission(userId: string): Promise<string | null> {
   try {
-    if (!('Notification' in window)) return null;
+    if (!('Notification' in window)) {
+      throw new Error('المتصفح لا يدعم الإشعارات');
+    }
+
     const permission = await Notification.requestPermission();
+    if (permission === 'denied') throw new Error('تم رفض إذن الإشعارات');
     if (permission !== 'granted') return null;
+
+    if (!VAPID_KEY) {
+      // بدون VAPID key نستخدم الـ Service Worker مباشرة
+      console.warn('VITE_VAPID_KEY غير موجود - الإشعارات تعمل بشكل محدود');
+      // نحفظ في Firestore إن المستخدم وافق بس بدون token
+      await updateDoc(doc(db, 'users', userId), {
+        notificationsEnabled: true,
+        fcmTokenUpdated: new Date().toISOString(),
+      });
+      return 'no-vapid-key';
+    }
 
     const { getMessaging, getToken } = await import('firebase/messaging');
     const { app } = await import('../firebase');
@@ -27,9 +42,9 @@ export async function requestPushPermission(userId: string): Promise<string | nu
       return token;
     }
     return null;
-  } catch (error) {
+  } catch (error: any) {
     console.error('خطأ في الإشعارات:', error);
-    return null;
+    throw error; // نرميه للـ App عشان يعرض رسالة واضحة
   }
 }
 

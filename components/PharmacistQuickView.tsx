@@ -31,7 +31,7 @@ const PharmacistQuickView: React.FC<PharmacistQuickViewProps> = ({
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-2xl bg-white dark:bg-dark-card rounded-t-[2.5rem] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl animate-slide-up"
+        className="relative w-full max-w-2xl bg-white dark:bg-dark-card rounded-t-[2.5rem] p-5 pb-[calc(6rem+env(safe-area-inset-bottom))] shadow-2xl animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}

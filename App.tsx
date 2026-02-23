@@ -622,9 +622,13 @@ const App: React.FC = () => {
                           {user && (
                             <button
                               onClick={async () => {
-                                const token = await requestPushPermission(user.id);
-                                if (token) alert(language === 'ar' ? '✅ تم تفعيل الإشعارات!' : '✅ Notifications enabled!');
-                                else alert(language === 'ar' ? '❌ تعذّر تفعيل الإشعارات' : '❌ Could not enable notifications');
+                                try {
+                                  const token = await requestPushPermission(user.id);
+                                  if (token) alert(language === 'ar' ? '✅ تم تفعيل الإشعارات!' : '✅ Notifications enabled!');
+                                  else alert(language === 'ar' ? '⚠️ لم يتم الحصول على token' : '⚠️ Could not get token');
+                                } catch(e: any) {
+                                  alert((language === 'ar' ? '❌ ' : '❌ ') + (e?.message || 'فشل تفعيل الإشعارات'));
+                                }
                               }}
                               className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl"
                             >
@@ -670,7 +674,7 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight + 16 }}>
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight + 24, transition: "padding-top 0.2s ease" }}>
           {!isDataLoaded ? (
             <div className="h-96 flex flex-col items-center justify-center">
               <div className="relative w-16 h-16">

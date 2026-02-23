@@ -43,13 +43,25 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = React.useRef(false);
+  const touchStartPos = React.useRef({ x: 0, y: 0 });
 
-  const handleTouchStart = () => {
+  const handleTouchStart = (e: React.TouchEvent) => {
     isLongPress.current = false;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     pressTimer.current = setTimeout(() => {
       isLongPress.current = true;
       onLongPress(medicine);
-    }, 500);
+    }, 700); // 700ms عشان ما يتفعلش بالغلط
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // لو اتحرك أكتر من 10px اعتبره scroll مش long press
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      isLongPress.current = false;
+    }
   };
 
   const handleTouchEnd = () => {
@@ -71,6 +83,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
     <div 
       onClick={handleClick}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       className="animate-card bg-white dark:bg-dark-card rounded-[1.75rem] p-5 shadow-sm border border-slate-100 dark:border-dark-border flex flex-col gap-4 active:scale-[0.98] transition-all cursor-pointer group"
