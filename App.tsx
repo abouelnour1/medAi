@@ -670,7 +670,7 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight }}>
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: headerHeight + 16 }}>
           {!isDataLoaded ? (
             <div className="h-96 flex flex-col items-center justify-center">
               <div className="relative w-16 h-16">

@@ -41,6 +41,24 @@ interface MedicineCardProps {
 
 const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onLongPress, onFindAlternative, isFavorite, onToggleFavorite, t, language }) => {
   const price = parseFloat(medicine['Public price']);
+  const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = React.useRef(false);
+
+  const handleTouchStart = () => {
+    isLongPress.current = false;
+    pressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      onLongPress(medicine);
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+  };
+
+  const handleClick = () => {
+    if (!isLongPress.current) onShortPress();
+  };
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
   
@@ -51,7 +69,10 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
 
   return (
     <div 
-      onClick={onShortPress} 
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       className="animate-card bg-white dark:bg-dark-card rounded-[1.75rem] p-5 shadow-sm border border-slate-100 dark:border-dark-border flex flex-col gap-4 active:scale-[0.98] transition-all cursor-pointer group"
     >
       <div className="flex justify-between items-start gap-4">
