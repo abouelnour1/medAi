@@ -165,7 +165,7 @@ export const translations = {
     rationale: 'السبب',
     suggestedProducts: 'المنتجات المقترحة',
     sellingPoint: 'نقطة البيع',
-    searchMilkPlaceholder: 'ابحث عن حليب أطفال...',
+    
     compareSelected: 'مقارية ({count})',
     clearSelection: 'مسح التحديد',
     compare: 'مقارنة',
@@ -199,7 +199,7 @@ export const translations = {
     verificationEmailSent: 'تم إعادة إرسال رابط تفعيل البريد الإلكتروني.',
     navSearch: 'البحث',
     navInsurance: 'التأمين',
-    navMilk: 'حليب الأطفال',
+    
     adminDashboard: 'لوحة التحكم',
     print: 'طباعة',
     insuranceCoverageDetails: 'تفاصيل التأمين',
@@ -509,7 +509,7 @@ export const translations = {
     rationale: 'Rationale',
     suggestedProducts: 'Suggested Products',
     sellingPoint: 'Selling Point',
-    searchMilkPlaceholder: 'Search for baby milk...',
+    
     compareSelected: 'Compare ({count})',
     clearSelection: 'Clear Selection',
     compare: 'Compare',
@@ -542,8 +542,9 @@ export const translations = {
     resendVerificationEmail: 'Resend Link',
     verificationEmailSent: 'Email verification link resent.',
     navSearch: 'Search',
+    searchMilkPlaceholder: 'Search...',
     navInsurance: 'Insurance',
-    navMilk: 'Baby Milk',
+    
     adminDashboard: 'Admin Dashboard',
     print: 'Print',
     insuranceCoverageDetails: 'Insurance Coverage Details',

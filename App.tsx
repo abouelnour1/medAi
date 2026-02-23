@@ -19,6 +19,9 @@ import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
+import { useDebounce } from './hooks/useDebounce';
+import PharmacistQuickView from './components/PharmacistQuickView';
+import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
 import CompareBar from './components/CompareBar';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
@@ -124,6 +127,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 280);
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
@@ -134,6 +138,8 @@ const App: React.FC = () => {
   const [recentSearches, setRecentSearches] = useState<Medicine[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
+  const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   
@@ -296,18 +302,18 @@ const App: React.FC = () => {
   }, []);
 
   const searchContextMedicines = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim().replace(/\*/g, '');
+    const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     if (term.length < 3) return medicines;
     return medicines.filter(m => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         return String(m[field]).toLowerCase().includes(term);
     });
-  }, [medicines, searchTerm, textSearchMode]);
+  }, [medicines, debouncedSearchTerm, textSearchMode]);
 
   const finalFilteredMedicines = useMemo(() => {
     let results = [...searchContextMedicines];
     const hasFilters = Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : (v !== 'all' && v !== ''));
-    if (searchTerm.length < 3 && !hasFilters) return [];
+    if (debouncedSearchTerm.length < 3 && !hasFilters) return [];
 
     if (filters.productType !== 'all') {
         const type = filters.productType === 'medicine' ? 'Human' : filters.productType === 'supplement' ? 'Supplement' : 'Food';
@@ -321,7 +327,7 @@ const App: React.FC = () => {
     if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
     if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
 
-    const term = searchTerm.toLowerCase().trim().replace(/\*/g, '');
+    const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
     results.sort((a, b) => {
@@ -341,7 +347,7 @@ const App: React.FC = () => {
     });
 
     return results;
-  }, [searchContextMedicines, filters, sortBy, searchTerm, textSearchMode]);
+  }, [searchContextMedicines, filters, sortBy, debouncedSearchTerm, textSearchMode]);
 
   const alternatives = useMemo(() => {
     if (!selectedMedicine) return { direct: [], therapeutic: [] };
@@ -461,7 +467,20 @@ const App: React.FC = () => {
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
-      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={()=>{}} />;
+      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={(type) => {
+        const filtered = medicines.filter(m => 
+          type === 'medicine' ? m['Product type'] === 'Human' :
+          type === 'supplement' ? m['Product type'] === 'Supplement' : 
+          m['Product type'] === 'Food'
+        );
+        const headers = ['RegisterNumber','Trade Name','Scientific Name','Strength','StrengthUnit','PharmaceuticalForm','Public price','Legal Status','Manufacture Name','Marketing Company','Main Agent','Distribute area','PackageSize','SizeUnit','AtcCode1'];
+        const csv = [headers.join(','), ...filtered.map(m => headers.map(h => JSON.stringify(String((m as any)[h] || ''))).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `pharmasource_${type}_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+      }} />;
       if (view === 'notifications') return <NotificationsView 
         notifications={notifications} 
         isAdmin={user?.role==='admin'} 
@@ -504,10 +523,10 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
-              <div className="animate-fade-in">
+              <div className="animate-fade-in pt-2">
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
@@ -515,7 +534,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="mt-6">
                       {finalFilteredMedicines.length > 0 ? (
-                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                       ) : searchTerm.length >= 3 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
@@ -578,6 +597,43 @@ const App: React.FC = () => {
                               <span className="font-bold text-slate-700 dark:text-slate-300">{t('language')}</span>
                               <button onClick={()=>setLanguage(language==='ar'?'en':'ar')} className="px-4 py-1.5 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xs">{language.toUpperCase()}</button>
                           </div>
+                          {/* وضع الصيدلاني */}
+                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                            <div>
+                              <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                                💊 {language === 'ar' ? 'وضع الصيدلاني' : 'Pharmacist Mode'}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {language === 'ar' ? 'اضغط طويلاً على أي دواء لعرض سريع' : 'Long press any medicine for quick view'}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const newVal = !pharmacistMode;
+                                setPharmacistMode(newVal);
+                                localStorage.setItem('pharmacist_mode', String(newVal));
+                              }}
+                              className={`w-12 h-6 rounded-full relative transition-all ${pharmacistMode ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${pharmacistMode ? 'right-1' : 'left-1'}`} />
+                            </button>
+                          </div>
+                          {/* إشعارات Push */}
+                          {user && (
+                            <button
+                              onClick={async () => {
+                                const token = await requestPushPermission(user.id);
+                                if (token) alert(language === 'ar' ? '✅ تم تفعيل الإشعارات!' : '✅ Notifications enabled!');
+                                else alert(language === 'ar' ? '❌ تعذّر تفعيل الإشعارات' : '❌ Could not enable notifications');
+                              }}
+                              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl"
+                            >
+                              <span className="font-bold text-slate-700 dark:text-slate-300">
+                                🔔 {language === 'ar' ? 'تفعيل إشعارات Push' : 'Enable Push Notifications'}
+                              </span>
+                              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                          )}
                           {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
@@ -627,6 +683,19 @@ const App: React.FC = () => {
             </div>
           ) : renderContent()}
       </main>
+      {/* Pharmacist Quick View */}
+      {quickViewMedicine && (
+        <PharmacistQuickView
+          medicine={quickViewMedicine}
+          language={language}
+          t={t}
+          onClose={() => setQuickViewMedicine(null)}
+          onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
+          isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
+          onToggleFavorite={(id) => { toggleFavorite(id); }}
+        />
+      )}
+
       {compareList.length > 0 && !showCompare && (
         <CompareBar 
           compareList={compareList} 

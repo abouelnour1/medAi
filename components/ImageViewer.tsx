@@ -119,8 +119,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, title, 
         </div>
         <div className="flex gap-1.5">
           {indexFlags[currentIndex] && (
-            <button onClick={(e) => { e.stopPropagation(); window.open(images[currentIndex], '_blank'); }} className="p-2.5 text-primary bg-white/10 backdrop-blur-xl rounded-full active:scale-90 shadow-lg">
-              <div className="w-5 h-5"><GlobeIcon /></div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); window.open(images[currentIndex], '_blank'); }} 
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary/90 backdrop-blur-xl rounded-full active:scale-90 shadow-lg text-white"
+              title="فتح الصورة في المتصفح"
+            >
+              <div className="w-4 h-4"><GlobeIcon /></div>
+              <span className="text-[10px] font-black uppercase tracking-wide">عرض</span>
             </button>
           )}
           <button onClick={onBack} className="p-2.5 text-white/90 bg-white/10 backdrop-blur-xl rounded-full active:scale-90 shadow-lg">

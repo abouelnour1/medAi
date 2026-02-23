@@ -13,7 +13,7 @@ const CompareBar: React.FC<CompareBarProps> = ({ compareList, onRemove, onCompar
   if (compareList.length === 0) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-40 animate-slide-up max-w-2xl mx-auto">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+8px)] left-4 right-4 z-40 animate-slide-up max-w-2xl mx-auto">
       <div className="bg-primary text-white rounded-[2rem] p-4 shadow-2xl shadow-primary/30 border border-primary-light/20">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-black uppercase tracking-widest opacity-80">

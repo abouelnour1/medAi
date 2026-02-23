@@ -121,30 +121,7 @@ export interface Cosmetic {
   imgBox?: string;
 }
 
-// Added MilkProduct interface
-export interface MilkProduct {
-  id: string;
-  brand: string;
-  productName: string;
-  stageType: string;
-  ageRange: string;
-  kcal: number;
-  protein: number;
-  fat: number;
-  carb: number;
-  keyFeatures: string;
-  usp: string;
-  image?: string;
-  explanation?: {
-    type: {
-      title: string;
-      description: string;
-      when_to_use: string;
-      benefits: string;
-      side_effects: string;
-    };
-  };
-}
+
 
 export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'notifications' | 'imageView' | 'generalSettings';
 
@@ -289,3 +266,13 @@ export type AuthContextType = {
   getSettings: () => AppSettings;
   updateSettings: (settings: AppSettings) => void;
 };
+
+// Stub - تم إلغاء قسم الحليب
+export interface MilkProduct {
+  id: string;
+  brand: string;
+  productName: string;
+  stageType: string;
+  ageRange: string;
+  [key: string]: any;
+}

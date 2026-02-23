@@ -1,5 +1,6 @@
 interface ImportMetaEnv {
   readonly VITE_API_KEY: string;
+    readonly VITE_VAPID_KEY?: string;
   // Add other env variables here if needed
 }
 

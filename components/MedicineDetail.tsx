@@ -67,6 +67,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
     return list;
   }, [medicine]);
 
+  // indexFlags: true = صورة index فيها نص → نضيف لينك للموقع الأصلي
+  const imageIndexFlags = useMemo(() => {
+    const flags: boolean[] = [];
+    if (medicine.imgBox) flags.push(false);
+    if (medicine.imgPill) flags.push(false);
+    if (medicine.imgIndex1) flags.push(true);  // index = يحتاج لينك
+    if (medicine.imgIndex2) flags.push(true);  // index = يحتاج لينك
+    return flags;
+  }, [medicine]);
+
   const handleGoogleImageSearch = () => {
     // تم التعديل ليبحث فقط عن اسم الدواء التجاري مباشرة كما طلبت
     const q = encodeURIComponent(medicine['Trade Name']);
@@ -111,7 +121,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                   {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-sm font-bold text-slate-500">{t('sar')}</span></div>}
               </div>
               {medicine.imgBox && (
-                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], productImages.map(() => false))} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
+                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
                       <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
                   </button>
               )}
@@ -123,7 +133,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
               {productImages.map((img, idx) => (
                   <button 
                     key={idx} 
-                    onClick={() => onImageZoom(productImages, idx, medicine['Trade Name'], productImages.map(() => false))}
+                    onClick={() => onImageZoom(productImages, idx, medicine['Trade Name'], imageIndexFlags)}
                     className="flex-shrink-0 w-20 h-20 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-1 shadow-sm overflow-hidden active:scale-90 transition-transform"
                   >
                       <img src={img} className="w-full h-full object-contain" alt={`View ${idx}`} />
@@ -162,14 +172,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           </div>
       </div>
 
-      <InfoCard title={t('quickActionIngredient')} icon={<PillBottleIcon />}>
+      <InfoCard title={`${t('quickActionIngredient')}${medicine.StrengthUnit ? ` (${medicine.StrengthUnit})` : ''}`} icon={<PillBottleIcon />}>
           <div className="grid grid-cols-1 gap-1.5">
-              {ingredients.map((ing, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border dark:border-slate-800">
-                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">{ing.name}</span>
-                      <span className="bg-primary/5 text-primary text-[10px] font-black px-2 py-0.5 rounded-lg">{ing.strength}</span>
-                  </div>
-              ))}
+              {ingredients.map((ing, idx) => {
+                  const unit = medicine.StrengthUnit || '';
+                  // لو الوحدة مكتوبة جوه الـ strength، ما نضيفهاش تاني
+                  const strengthHasUnit = unit && ing.strength.toLowerCase().includes(unit.toLowerCase());
+                  const displayStrength = strengthHasUnit ? ing.strength : `${ing.strength}${unit ? ' ' + unit : ''}`.trim();
+                  return (
+                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border dark:border-slate-800">
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">{ing.name}</span>
+                        <span className="bg-primary/5 text-primary text-[10px] font-black px-2 py-0.5 rounded-lg">{displayStrength}</span>
+                    </div>
+                  );
+              })}
           </div>
       </InfoCard>
 
