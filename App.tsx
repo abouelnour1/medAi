@@ -369,26 +369,26 @@ const App: React.FC = () => {
     const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
-    // فصل النتائج لمجموعتين ثم دمجهم
-    // المجموعة 1: يبدأ بالحروف المكتوبة (ose → Oseltamivir, Osenil)
-    // المجموعة 2: الحروف في المنتصف (ose → Glucose, Fructose)
-    const startsWithTerm: typeof results = [];
-    const containsTerm: typeof results = [];
+    // الـ sort الداخلي حسب sortBy
+    const sortFn = (a: Medicine, b: Medicine): number => {
+      const aName = String(a[field]).toLowerCase();
+      const bName = String(b[field]).toLowerCase();
+      if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
+      if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
+      if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
+      if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
+      if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
+      return aName.localeCompare(bName); // alphabetical (default)
+    };
 
-    results.forEach(m => {
-      const name = String(m[field]).toLowerCase();
-      if (name.startsWith(term)) {
-        startsWithTerm.push(m);
-      } else {
-        containsTerm.push(m);
-      }
-    });
+    // فصل صارم: يبدأ بالكلمة أولاً، ثم يحتوي عليها
+    const startsWithTerm = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
+    const containsTerm  = results.filter(m => !String(m[field]).toLowerCase().startsWith(term));
 
-    // ترتيب أبجدي داخل كل مجموعة منفصلة
-    startsWithTerm.sort((a, b) => String(a[field]).localeCompare(String(b[field])));
-    containsTerm.sort((a, b) => String(a[field]).localeCompare(String(b[field])));
+    // sortBy يطبق داخل كل مجموعة منفصلة
+    startsWithTerm.sort(sortFn);
+    containsTerm.sort(sortFn);
 
-    // المجموعة 1 الأول دايماً ثم المجموعة 2
     results = [...startsWithTerm, ...containsTerm];
 
     return results;
