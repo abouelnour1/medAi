@@ -12,6 +12,7 @@ import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
 import DownloadIcon from '../icons/DownloadIcon';
+import { getTopSearched, getTotalSearches, clearAnalytics } from '../../utils/analytics';
 import PillIcon from '../icons/PillIcon';
 import FactoryIcon from '../icons/FactoryIcon';
 import GlobeIcon from '../icons/GlobeIcon';
@@ -526,6 +527,8 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                 </div>
             )}
             {activePanel === 'overview' && (() => {
+                const topSearched = getTopSearched(10);
+                const totalSearches = getTotalSearches();
                 const humanMeds = allMedicines.filter(m => m['Product type'] === 'Human');
                 const suppMeds = allMedicines.filter(m => m['Product type'] === 'Supplement');
                 const foodMeds = allMedicines.filter(m => m['Product type'] === 'Food');

@@ -20,6 +20,11 @@ import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
 import { useDebounce } from './hooks/useDebounce';
+import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
+import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
+import { SkeletonList } from './components/SkeletonCard';
+import MedicineOfTheDay from './components/MedicineOfTheDay';
+import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
 import CompareBar from './components/CompareBar';
@@ -345,7 +350,10 @@ const App: React.FC = () => {
     return medicines.filter(m => {
         const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
         const text = String(m[field]).toLowerCase();
-        return matchesWildcard(text, term);
+        // Wildcard mode
+        if (raw.includes('*')) return matchesWildcard(text, term);
+        // Fuzzy mode - يتسامح مع الأخطاء
+        return fuzzyMatch(text, term);
     });
   }, [medicines, debouncedSearchTerm, textSearchMode]);
 
@@ -369,7 +377,6 @@ const App: React.FC = () => {
     const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
 
-    // الـ sort الداخلي حسب sortBy
     const sortFn = (a: Medicine, b: Medicine): number => {
       const aName = String(a[field]).toLowerCase();
       const bName = String(b[field]).toLowerCase();
@@ -378,18 +385,24 @@ const App: React.FC = () => {
       if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
       if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
       if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-      return aName.localeCompare(bName); // alphabetical (default)
+      return aName.localeCompare(bName);
     };
 
-    // فصل صارم: يبدأ بالكلمة أولاً، ثم يحتوي عليها
-    const startsWithTerm = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
-    const containsTerm  = results.filter(m => !String(m[field]).toLowerCase().startsWith(term));
+    // فصل صارم: يبدأ بالكلمة أولاً ثم يحتوي عليها ثم Fuzzy
+    const exactStart  = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
+    const exactContain = results.filter(m => {
+      const n = String(m[field]).toLowerCase();
+      return !n.startsWith(term) && n.includes(term);
+    });
+    const fuzzyOnly = results.filter(m => {
+      const n = String(m[field]).toLowerCase();
+      return !n.includes(term);
+    }).sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
 
-    // sortBy يطبق داخل كل مجموعة منفصلة
-    startsWithTerm.sort(sortFn);
-    containsTerm.sort(sortFn);
+    exactStart.sort(sortFn);
+    exactContain.sort(sortFn);
 
-    results = [...startsWithTerm, ...containsTerm];
+    results = [...exactStart, ...exactContain, ...fuzzyOnly];
 
     return results;
   }, [searchContextMedicines, filters, sortBy, debouncedSearchTerm, textSearchMode]);
@@ -572,6 +585,15 @@ const App: React.FC = () => {
           
           return (
               <div className="animate-fade-in pt-2">
+                  {/* Medicine of the Day - يظهر لما مفيش بحث */}
+                  {searchTerm.length === 0 && medicines.length > 0 && (
+                    <MedicineOfTheDay
+                      medicines={medicines.filter(m => m.imgBox)}
+                      language={language}
+                      t={t}
+                      onSelect={handleMedicineSelect}
+                    />
+                  )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
@@ -719,16 +741,11 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114) }}>
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114) }} onTouchStart={(e) => { if ((e.currentTarget as HTMLElement).scrollTop === 0) e.currentTarget.dataset.pullStart = e.touches[0].clientY.toString(); }}>
           {!isDataLoaded ? (
-            <div className="h-96 flex flex-col items-center justify-center">
-              <div className="relative w-16 h-16">
-                <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-              <p className="mt-6 text-sm font-bold text-primary animate-pulse">
-                {language === 'ar' ? 'جاري تحميل البيانات...' : 'Loading data...'}
-              </p>
+            <div className="space-y-4 pt-2">
+              <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />
+              <SkeletonList count={4} />
             </div>
           ) : renderContent()}
       </main>
