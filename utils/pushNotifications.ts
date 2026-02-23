@@ -65,7 +65,8 @@ export async function setupCapacitorPush(
     const { Capacitor } = await import('@capacitor/core');
     if (!Capacitor.isNativePlatform()) return;
 
-    const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { FirebaseMessaging } = await (Function('return import("@capacitor-firebase/messaging")')() as Promise<any>);
 
     // طلب الإذن
     const { receive } = await FirebaseMessaging.requestPermissions();
