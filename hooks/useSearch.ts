@@ -16,12 +16,15 @@ export function useSearch(
   sortBy: SortByOption,
   exactOnly: boolean = false
 ) {
-  const raw = debouncedSearchTerm.toLowerCase().trim();
+  const rawFull = debouncedSearchTerm.toLowerCase().trim();
+  // نحسب الحروف بدون مسافات للـ minimum check
+  const rawNoSpaces = rawFull.replace(/\s/g, '');
+  const raw = rawFull; // نستخدم الكلمة كاملة في البحث
   const term = raw.replace(/\*/g, '');
 
   // نتائج البحث النصي بدون فلاتر - تُستخدم كـ options source للـ FilterModal
   const searchTextResults = useMemo(() => {
-    if (!medicines.length || raw.length < 1) return medicines;
+    if (!medicines.length || rawNoSpaces.length < 3) return medicines;
     const field = debouncedSearchTerm ? (textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name') : 'Trade Name';
     return medicines.filter(m => fuzzyMatch(String(m[field]).toLowerCase(), raw));
   }, [medicines, raw, textSearchMode, debouncedSearchTerm]);
@@ -58,7 +61,7 @@ export function useSearch(
 
   const finalFilteredMedicines = useMemo(() => {
     // لو مش في بحث ومش في فلاتر → لا ترجع نتائج
-    if (raw.length < 1 && !hasActiveFilters) return [];
+    if (rawNoSpaces.length < 3 && !hasActiveFilters) return [];
 
     // sortFn مشترك
     const sortFnEarly = (a: Medicine, b: Medicine): number => {
@@ -71,7 +74,7 @@ export function useSearch(
     };
 
     // لو في فلاتر بس بدون بحث → رجّع الفلاتر مع sort
-    if (raw.length < 1 && hasActiveFilters) return [...searchContextMedicines].sort(sortFnEarly);
+    if (rawNoSpaces.length < 3 && hasActiveFilters) return [...searchContextMedicines].sort(sortFnEarly);
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     let results = searchContextMedicines.filter(m => {

@@ -4,7 +4,8 @@
  */
 
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
+import type { Unsubscribe } from 'firebase/firestore';
 
 export interface ScheduledDay {
   date: string;           // YYYY-MM-DD
@@ -50,6 +51,19 @@ export async function getScheduledMedicines(date: string): Promise<string[] | nu
     if (snap.exists()) return (snap.data() as ScheduledDay).medicines;
     return null;
   } catch { return null; }
+}
+
+// Subscribe real-time للجدول
+export function subscribeSchedule(callback: (data: Record<string, ScheduledDay>) => void): Unsubscribe {
+  const ref = collection(db, 'featuredSchedule');
+  return onSnapshot(ref, (snap) => {
+    const result: Record<string, ScheduledDay> = {};
+    snap.forEach(d => { result[d.id] = d.data() as ScheduledDay; });
+    callback(result);
+  }, () => {
+    // fallback لو فشل الـ snapshot
+    getSchedule().then(callback);
+  });
 }
 
 // جيب أيام الأسبوع القادم

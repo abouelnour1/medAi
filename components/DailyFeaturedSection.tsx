@@ -316,13 +316,23 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     // اقرأ الجدول اليدوي من الأدمن
     const scheduledRegNums = await getScheduledMedicines(today);
     let selected: Medicine[];
-    if (scheduledRegNums && scheduledRegNums.length === 3) {
-      // الأدمن جدول اليوم ده
-      selected = scheduledRegNums
+    if (scheduledRegNums && scheduledRegNums.length > 0) {
+      // الأدمن جدول بعض الأدوية - نكمل الباقي عشوائياً
+      const scheduledList = scheduledRegNums
         .map(r => medicines.find(m => m.RegisterNumber === r))
         .filter(Boolean) as Medicine[];
+      
+      if (scheduledList.length >= 3) {
+        selected = scheduledList.slice(0, 3);
+      } else {
+        // نكمل للـ 3 من الاختيار العشوائي
+        const scheduled_ids = new Set(scheduledList.map(m => m.RegisterNumber));
+        const autoSelected = selectDailyMedicines(medicines)
+          .filter(m => !scheduled_ids.has(m.RegisterNumber));
+        selected = [...scheduledList, ...autoSelected].slice(0, 3);
+      }
     } else {
-      // اختيار تلقائي
+      // مفيش جدول - اختيار تلقائي كامل
       selected = selectDailyMedicines(medicines);
     }
     const featuredMeds: FeaturedMedicine[] = selected.map((m, i) => ({
@@ -447,12 +457,16 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
           tradeName={editingMed.tradeName}
           language={language}
           onClose={() => setEditingMed(null)}
-          onSaved={(data) => {
-            setFeatured(prev => prev.map(m =>
+          onSaved={async (data) => {
+            const updated = featured.map(m =>
               m.registerNumber === editingMed.registerNumber
                 ? { ...m, clinicalData: data }
                 : m
-            ));
+            );
+            setFeatured(updated);
+            // حفظ الـ dailyFeatured المحدث في Firestore عشان يتذكره
+            const today = new Date().toISOString().split('T')[0];
+            await saveDailyFeatured({ date: today, medicines: updated, generatedAt: new Date().toISOString() });
             setEditingMed(null);
           }}
         />

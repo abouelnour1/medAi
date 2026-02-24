@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction, Language } from '../../types';
 import { 
-  getSchedule, saveScheduleDay, deleteScheduleDay,
+  subscribeSchedule, saveScheduleDay, deleteScheduleDay,
   getWeekDays, formatDateAr, ScheduledDay
 } from '../../utils/featuredSchedule';
 
@@ -26,7 +26,8 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
   const weekDays = getWeekDays(-1);
 
   useEffect(() => {
-    getSchedule().then(s => { setSchedule(s); setLoading(false); });
+    const unsub = subscribeSchedule(s => { setSchedule(s); setLoading(false); });
+    return () => unsub();
   }, []);
 
   const handleDayClick = (date: string) => {
@@ -51,7 +52,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
   };
 
   const handleSave = async () => {
-    if (!selectedDay || selectedMeds.length !== 3) return;
+    if (!selectedDay || selectedMeds.length === 0) return;
     setSaving(true);
     const day: ScheduledDay = {
       date: selectedDay,
@@ -92,7 +93,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
     <div className="space-y-4">
       <p className="text-[11px] text-slate-400 font-bold">
         {ar 
-          ? 'جدول أدوية اليوم - اختر 3 أدوية لكل يوم. لو اليوم مش مجدول سيتم الاختيار تلقائياً'
+          ? 'جدول أدوية اليوم - اختر 1 أو 2 أو 3 أدوية. الباقي يُختار عشوائياً تلقائياً'
           : 'Featured schedule - pick 3 medicines per day. Unscheduled days auto-select.'}
       </p>
 
@@ -201,7 +202,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
                 <p className="text-center text-slate-400 text-xs py-4">{ar ? 'لا نتائج' : 'No results'}</p>
               ) : filteredMeds.map(m => {
                 const isSelected = selectedMeds.includes(m.RegisterNumber);
-                const isFull = selectedMeds.length >= 3 && !isSelected;
+                const isFull = selectedMeds.length >= 3 && !isSelected; // الحد الأقصى 3
                 return (
                   <button
                     key={m.RegisterNumber}
@@ -240,7 +241,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
           {/* زرار الحفظ */}
           <button
             onClick={handleSave}
-            disabled={selectedMeds.length !== 3 || saving}
+            disabled={selectedMeds.length === 0 || saving}
             className="w-full py-3 bg-primary disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400 text-white font-black rounded-2xl transition-all active:scale-95"
           >
             {saving ? (
@@ -248,9 +249,11 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 {ar ? 'جاري الحفظ...' : 'Saving...'}
               </span>
-            ) : selectedMeds.length === 3
+            ) : selectedMeds.length === 0
+              ? (ar ? 'اختر دواء واحد على الأقل' : 'Pick at least 1')
+              : selectedMeds.length === 3
               ? (ar ? '✅ حفظ الجدول' : '✅ Save Schedule')
-              : (ar ? `اختر ${3 - selectedMeds.length} دواء بعد` : `Pick ${3 - selectedMeds.length} more`)
+              : (ar ? `✅ حفظ (${selectedMeds.length}/3) - الباقي عشوائي` : `✅ Save (${selectedMeds.length}/3) - rest random`)
             }
           </button>
         </div>

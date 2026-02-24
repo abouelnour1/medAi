@@ -321,7 +321,7 @@ const App: React.FC = () => {
           restoreScroll('insuranceSearch');
       } else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) {
           const target = activeTab === 'search' 
-              ? (searchTerm.length >= 1 ? 'results' : 'search') 
+              ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
           setView(target);
           restoreScroll(target);
@@ -654,9 +654,9 @@ const App: React.FC = () => {
                   </div>
                   <div className="mt-6">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
-                      {(searchTerm.length >= 1 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
+                      {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
                         <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
-                      ) : (searchTerm.length >= 1 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
+                      ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
                         </div>

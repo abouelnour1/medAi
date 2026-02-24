@@ -139,7 +139,8 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 - Dosing: amount + frequency + duration + renal/hepatic dose adjustments
 - Drug interactions: classify (major🔴/moderate🟡/minor🟢) + mechanism + alternative
 - Arabic responses: write in Arabic but keep medical terms in English (e.g. "**Contraindicated** في الحمل", "جرعة **500mg BID**")
-- For prescriptions: JSON between ---PRESCRIPTION_START--- and ---PRESCRIPTION_END---
+- PRESCRIPTION RULE: NEVER generate a prescription automatically. Only generate prescription JSON (between ---PRESCRIPTION_START--- and ---PRESCRIPTION_END---) when the user EXPLICITLY asks: "اعمل وصفة"، "أنشئ وصفة"، "generate prescription"، "create prescription". For all other drug questions, just provide clinical information as text.
+- If unsure what the user wants → ask ONE clarifying question before answering
 
 ## Knowledge Sources:
 1. searchDatabase → drug availability & pricing in Saudi Arabia

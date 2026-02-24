@@ -38,16 +38,25 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
   }, [registerNumber]);
 
   const handleSave = async () => {
+    if (!form.indication.trim()) return;
     setSaving(true);
-    const data: ClinicalData = {
-      ...form,
-      generatedAt: new Date().toISOString(),
-      language,
-    };
-    await saveClinicalData(registerNumber, data);
-    onSaved(data);
-    setSaving(false);
-    onClose();
+    try {
+      const data: ClinicalData = {
+        ...form,
+        generatedAt: new Date().toISOString(),
+        language,
+      };
+      // 1. حفظ في clinicalData collection (دائم للأبد)
+      await saveClinicalData(registerNumber, data);
+      // 2. إخطار الـ parent عشان يحدث الـ UI
+      onSaved(data);
+      onClose();
+    } catch (e) {
+      console.error('Save failed:', e);
+      alert('فشل الحفظ - تأكد من اتصال الإنترنت');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const fields = [
