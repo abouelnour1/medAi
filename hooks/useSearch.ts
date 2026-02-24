@@ -21,7 +21,7 @@ export function useSearch(
 
   // نتائج البحث النصي بدون فلاتر - تُستخدم كـ options source للـ FilterModal
   const searchTextResults = useMemo(() => {
-    if (!medicines.length || raw.length < 3) return medicines;
+    if (!medicines.length || raw.length < 1) return medicines;
     const field = debouncedSearchTerm ? (textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name') : 'Trade Name';
     return medicines.filter(m => fuzzyMatch(String(m[field]).toLowerCase(), raw));
   }, [medicines, raw, textSearchMode, debouncedSearchTerm]);
@@ -58,9 +58,20 @@ export function useSearch(
 
   const finalFilteredMedicines = useMemo(() => {
     // لو مش في بحث ومش في فلاتر → لا ترجع نتائج
-    if (raw.length < 3 && !hasActiveFilters) return [];
-    // لو في فلاتر بس بدون بحث → رجّع الفلاتر على كل الداتا
-    if (raw.length < 3 && hasActiveFilters) return searchContextMedicines;
+    if (raw.length < 1 && !hasActiveFilters) return [];
+
+    // sortFn مشترك
+    const sortFnEarly = (a: Medicine, b: Medicine): number => {
+      if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
+      if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
+      if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
+      if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
+      if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
+      return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
+    };
+
+    // لو في فلاتر بس بدون بحث → رجّع الفلاتر مع sort
+    if (raw.length < 1 && hasActiveFilters) return [...searchContextMedicines].sort(sortFnEarly);
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     let results = searchContextMedicines.filter(m => {

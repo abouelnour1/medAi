@@ -59,8 +59,19 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
   ] as const;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-dark-card rounded-t-[2rem] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col" style={{maxHeight: '85dvh', paddingBottom: 'calc(env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()}>
+    <div 
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+      style={{ touchAction: 'none' }}
+    >
+      <div 
+        className="absolute left-0 right-0 bg-white dark:bg-dark-card rounded-t-[2rem] shadow-2xl flex flex-col"
+        style={{ 
+          bottom: 'calc(80px + env(safe-area-inset-bottom))',
+          maxHeight: 'calc(100dvh - 160px)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
           <div>
@@ -79,7 +90,7 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="overflow-y-auto flex-grow p-5 space-y-4">
+          <div className="overflow-y-auto flex-grow p-5 space-y-4" style={{overscrollBehavior: "contain"}}>
             {fields.map(f => (
               <div key={f.key}>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
@@ -98,7 +109,7 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
           </div>
         )}
 
-        <div className="px-5 pb-4 flex gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-700 pt-4">
+        <div className="px-5 py-4 flex gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-700">
           <button onClick={onClose} className="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-500 font-black rounded-2xl text-sm">
             {ar ? 'إلغاء' : 'Cancel'}
           </button>
