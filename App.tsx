@@ -193,7 +193,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 280);
+  const debouncedSearchTerm = useDebounce(searchTerm, 100); // شبه live
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
@@ -208,7 +208,7 @@ const App: React.FC = () => {
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [exactSearchOnly, setExactSearchOnly] = useState(false); // التدقيق الإملائي = بحث حرفي
+  const [exactSearchOnly, setExactSearchOnly] = useState(true); // الافتراضي = بحث حرفي دقيق
   // Gemini API Key - يجرب المتغيرين
   const geminiApiKey = React.useMemo(() => {
     const k1 = (import.meta.env as any)['VITE_GEMINI_API_KEY'];
