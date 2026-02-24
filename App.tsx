@@ -451,14 +451,14 @@ const App: React.FC = () => {
     const text = ar
       ? `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'غير متاح'}
+💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
 🔗 افتح في PharmaSource: ${deepLink}`
       : `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'N/A'}
+💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
@@ -548,8 +548,33 @@ const App: React.FC = () => {
           type === 'supplement' ? m['Product type'] === 'Supplement' : 
           m['Product type'] === 'Food'
         );
-        const headers = ['RegisterNumber','Trade Name','Scientific Name','Strength','StrengthUnit','PharmaceuticalForm','Public price','Legal Status','Manufacture Name','Marketing Company','Main Agent','Distribute area','PackageSize','SizeUnit','AtcCode1'];
-        const csv = [headers.join(','), ...filtered.map(m => headers.map(h => JSON.stringify(String((m as any)[h] || ''))).join(','))].join('\n');
+        // نجمع كل الـ keys من كل الـ objects عشان نمسك أي field أضافه الأدمن في Firebase
+        const allKeys = new Set<string>();
+        // الحقول الأساسية أول
+        const baseHeaders = [
+          'RegisterNumber','ReferenceNumber','Old register Number',
+          'Product type','DrugType','Sub-Type',
+          'Scientific Name','Trade Name',
+          'Strength','StrengthUnit','PharmaceuticalForm','AdministrationRoute',
+          'AtcCode1','AtcCode2',
+          'Size','SizeUnit','PackageTypes','PackageSize',
+          'Legal Status','Product Control','Distribute area',
+          'Public price','shelfLife','Storage conditions','Storage Condition Arabic',
+          'Marketing Company','Marketing Country',
+          'Manufacture Name','Manufacture Country',
+          'Secondry package  manufacture',
+          'Main Agent','Secosnd Agent','Third agent',
+          'Description Code','Authorization Status','Last Update',
+          'description',
+          'imgBox','imgIndex1','imgIndex2','imgPill',
+          'pillShape','pillScored','pillMarkings',
+          'liquidTaste','liquidColor','physicalNotes'
+        ];
+        baseHeaders.forEach(h => allKeys.add(h));
+        // نضيف أي keys إضافية من Firebase مش في القائمة الأساسية
+        filtered.forEach(m => Object.keys(m).forEach(k => allKeys.add(k)));
+        const headers = Array.from(allKeys);
+        const csv = [headers.join(','), ...filtered.map(m => headers.map(h => JSON.stringify(String((m as any)[h] ?? ''))).join(','))].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -609,7 +634,7 @@ const App: React.FC = () => {
                       language={language}
                       t={t}
                       onSelect={handleMedicineSelect}
-                      geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY']}
+                      geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY'] || (import.meta.env as any)['VITE_API_KEY']}
                     />
                   )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
@@ -645,7 +670,7 @@ const App: React.FC = () => {
                                   <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
                                 </div>
                                 <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ﷼' : ''}
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (language === 'ar' ? ' ر.س' : ' SAR') : ''}
                                 </span>
                               </button>
                             ))}
@@ -784,7 +809,7 @@ const App: React.FC = () => {
           language={language}
           t={t}
           onClose={() => setDrugToolsModal({ open: false, mode: 'interaction' })}
-          geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY']}
+          geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY'] || (import.meta.env as any)['VITE_API_KEY']}
           initialMedicine={drugToolsModal.medicine}
         />
       )}

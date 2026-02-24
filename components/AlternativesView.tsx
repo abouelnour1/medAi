@@ -78,7 +78,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                             <p className="text-sm text-light-text-secondary dark:text-dark-muted">{sourceMedicine['Scientific Name']}</p>
                         </div>
                         <div className="flex-shrink-0 text-accent text-xl font-bold whitespace-nowrap">
-                            {isNaN(price) ? 'N/A' : `${price.toFixed(2)} ﷼`}
+                            {isNaN(price) ? 'N/A' : `${price.toFixed(2)} ${language === 'ar' ? 'ر.س' : 'SAR'}`}
                         </div>
                     </div>
                 </div>

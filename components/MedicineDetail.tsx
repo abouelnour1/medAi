@@ -120,7 +120,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
                   <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
-                  {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">﷼</span></div>}
+                  {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
               </div>
               {medicine.imgBox && (
                   <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
