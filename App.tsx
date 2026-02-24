@@ -208,6 +208,7 @@ const App: React.FC = () => {
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [exactSearchOnly, setExactSearchOnly] = useState(false); // التدقيق الإملائي = بحث حرفي
   // Gemini API Key - يجرب المتغيرين
   const geminiApiKey = React.useMemo(() => {
     const k1 = (import.meta.env as any)['VITE_GEMINI_API_KEY'];
@@ -412,7 +413,7 @@ const App: React.FC = () => {
   };
 
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
-    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy
+    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, exactSearchOnly
   );
 
   const alternatives = useMemo(() => {
@@ -646,7 +647,7 @@ const App: React.FC = () => {
                       isAdmin={user?.role === 'admin'}
                     />
                   )}
-                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
+                  <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />

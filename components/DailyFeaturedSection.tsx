@@ -244,26 +244,17 @@ const FeaturedCard: React.FC<{
           </div>
         )}
 
-        {!medicine.clinicalData && (
-          <div className="px-4 pb-4 space-y-2">
-            {/* رسالة التحميل */}
-            <div className="bg-white/10 rounded-2xl px-3 py-2 flex items-center gap-2">
-              <div className="w-3 h-3 border-2 border-white/40 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-              <p className="text-white/60 text-[9px]">
-                {ar ? 'جاري توليد المعلومات...' : 'Generating info...'}
-              </p>
-            </div>
+        {!medicine.clinicalData && isAdminMode && onEditClinical && (
+          <div className="px-4 pb-4">
             {/* زرار الإضافة اليدوية - للأدمن بس */}
-            {onEditClinical && isAdminMode && (
-              <button
-                onClick={e => { e.stopPropagation(); onEditClinical(); }}
-                className="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3 py-2 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-              >
-                <span className="text-white/80 text-[10px] font-black">
-                  ✏️ {ar ? 'أضف المعلومات يدوياً' : 'Add info manually'}
-                </span>
-              </button>
-            )}
+            <button
+              onClick={e => { e.stopPropagation(); onEditClinical(); }}
+              className="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3 py-2 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <span className="text-white/80 text-[10px] font-black">
+                ✏️ {ar ? 'أضف المعلومات السريرية' : 'Add clinical info'}
+              </span>
+            </button>
           </div>
         )}
       </div>

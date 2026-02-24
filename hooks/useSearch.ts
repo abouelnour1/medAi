@@ -13,7 +13,8 @@ export function useSearch(
   debouncedSearchTerm: string,
   textSearchMode: TextSearchMode,
   filters: Filters,
-  sortBy: SortByOption
+  sortBy: SortByOption,
+  exactOnly: boolean = false
 ) {
   const raw = debouncedSearchTerm.toLowerCase().trim();
   const term = raw.replace(/\*/g, '');
@@ -65,6 +66,8 @@ export function useSearch(
     let results = searchContextMedicines.filter(m => {
       const text = String(m[field]).toLowerCase();
       if (raw.includes('*')) return matchesWildcard(text, term);
+      // exactOnly = بحث حرفي: الحروف لازم تكون موجودة بالترتيب متتالية
+      if (exactOnly) return text.includes(term);
       return fuzzyMatch(text, term);
     });
 
@@ -81,11 +84,17 @@ export function useSearch(
 
     const exactStart   = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
     const exactContain = results.filter(m => { const n = String(m[field]).toLowerCase(); return !n.startsWith(term) && n.includes(term); });
-    const fuzzyOnly    = results.filter(m => !String(m[field]).toLowerCase().includes(term))
-                                .sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
-
+    
     exactStart.sort(sortFn);
     exactContain.sort(sortFn);
+
+    if (exactOnly) {
+      // وضع التدقيق: حرفي فقط - مش fuzzy
+      return [...exactStart, ...exactContain];
+    }
+
+    const fuzzyOnly = results.filter(m => !String(m[field]).toLowerCase().includes(term))
+                             .sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
     return [...exactStart, ...exactContain, ...fuzzyOnly];
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy]);
 

@@ -59,8 +59,8 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
   ] as const;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-dark-card rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white dark:bg-dark-card rounded-t-[2rem] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col" style={{maxHeight: '85dvh', paddingBottom: 'calc(env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()}>
         
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
           <div>
@@ -98,7 +98,7 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
           </div>
         )}
 
-        <div className="px-5 pb-5 flex gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-700 pt-4">
+        <div className="px-5 pb-4 flex gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-700 pt-4">
           <button onClick={onClose} className="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-500 font-black rounded-2xl text-sm">
             {ar ? 'إلغاء' : 'Cancel'}
           </button>
