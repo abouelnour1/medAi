@@ -46,9 +46,20 @@ export function useSearch(
     return results;
   }, [medicines, filters]);
 
+  // هل في فلاتر نشطة؟
+  const hasActiveFilters = 
+    filters.productType !== 'all' ||
+    !!filters.priceMin || !!filters.priceMax ||
+    !!filters.pharmaceuticalForm || !!filters.legalStatus ||
+    filters.manufactureName.length > 0 ||
+    filters.marketingCompany.length > 0 ||
+    filters.mainAgent.length > 0;
+
   const finalFilteredMedicines = useMemo(() => {
-    // لا تُرجع نتائج إلا لما في بحث فعلي
-    if (raw.length < 3) return [];
+    // لو مش في بحث ومش في فلاتر → لا ترجع نتائج
+    if (raw.length < 3 && !hasActiveFilters) return [];
+    // لو في فلاتر بس بدون بحث → رجّع الفلاتر على كل الداتا
+    if (raw.length < 3 && hasActiveFilters) return searchContextMedicines;
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     let results = searchContextMedicines.filter(m => {

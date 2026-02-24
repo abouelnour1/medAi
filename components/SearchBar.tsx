@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TFunction, TextSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import ClearIcon from './icons/ClearIcon';
@@ -27,6 +27,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onSearchIconClick,
   t,
 }) => {
+  const [spellCheckOn, setSpellCheckOn] = useState(false);
 
   return (
     <div className="space-y-4 animate-card">
@@ -42,11 +43,26 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onKeyDown={(e) => e.key === 'Enter' && onForceSearch()}
           placeholder={t('searchPlaceholder')}
           autoComplete="off"
-          autoCorrect="off"
+          autoCorrect={spellCheckOn ? 'on' : 'off'}
           autoCapitalize="off"
-          spellCheck={false}
-          className="w-full bg-white dark:bg-dark-card h-16 pl-12 pr-12 rounded-[2rem] text-sm font-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border-2 border-transparent focus:border-primary/30 focus:shadow-primary/10 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
+          spellCheck={spellCheckOn}
+          lang={spellCheckOn ? 'ar' : undefined}
+          className="w-full bg-white dark:bg-dark-card h-16 pl-12 pr-24 rounded-[2rem] text-sm font-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border-2 border-transparent focus:border-primary/30 focus:shadow-primary/10 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
         />
+        {/* زرار التدقيق الإملائي - دايماً ظاهر */}
+        <button
+          onClick={() => setSpellCheckOn(v => !v)}
+          className={`absolute inset-y-0 flex items-center transition-all ${isSearchActive ? 'right-10 pr-2' : 'right-0 pr-4'}`}
+          title={spellCheckOn ? 'إيقاف التدقيق الإملائي' : 'تفعيل التدقيق الإملائي'}
+        >
+          <div className={`flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black transition-all ${
+            spellCheckOn 
+              ? 'bg-primary text-white shadow-md shadow-primary/30' 
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+          }`}>
+            ✓a
+          </div>
+        </button>
         {isSearchActive && (
           <button
             onClick={onClearSearch}

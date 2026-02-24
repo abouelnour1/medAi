@@ -14,6 +14,7 @@ interface Props {
   t: TFunction;
   onSelect: (medicine: Medicine) => void;
   geminiApiKey?: string;
+  isAdmin?: boolean;
 }
 
 // توليد Clinical Data بالـ Gemini
@@ -123,7 +124,8 @@ const FeaturedCard: React.FC<{
   ar: boolean;
   onSelect: () => void;
   onEditClinical?: () => void;
-}> = ({ medicine, index, ar, onSelect, onEditClinical }) => {
+  isAdminMode?: boolean;
+}> = ({ medicine, index, ar, onSelect, onEditClinical, isAdminMode }) => {
   const [expanded, setExpanded] = useState(false);
   const colors = [
     'from-primary via-teal-600 to-emerald-700',
@@ -251,8 +253,8 @@ const FeaturedCard: React.FC<{
                 {ar ? 'جاري توليد المعلومات...' : 'Generating info...'}
               </p>
             </div>
-            {/* زرار الإضافة اليدوية */}
-            {onEditClinical && (
+            {/* زرار الإضافة اليدوية - للأدمن بس */}
+            {onEditClinical && isAdminMode && (
               <button
                 onClick={e => { e.stopPropagation(); onEditClinical(); }}
                 className="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3 py-2 flex items-center justify-center gap-1.5 transition-all active:scale-95"
@@ -269,7 +271,7 @@ const FeaturedCard: React.FC<{
   );
 };
 
-const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey }) => {
+const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey, isAdmin }) => {
   const [featured, setFeatured] = useState<FeaturedMedicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
@@ -284,8 +286,39 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     // جرب تجيب من Firestore الأول (cached)
     const cached = await getDailyFeatured();
     if (cached && cached.date === today && cached.medicines.length === 3) {
-      setFeatured(cached.medicines);
+      // نجيب clinicalData للأدوية اللي مش عندها
+      const enrichedCached = [...cached.medicines];
+      let needsUpdate = false;
+      for (let i = 0; i < enrichedCached.length; i++) {
+        if (!enrichedCached[i].clinicalData) {
+          try {
+            const saved = await getClinicalData(enrichedCached[i].registerNumber);
+            if (saved) {
+              enrichedCached[i] = { ...enrichedCached[i], clinicalData: saved };
+              needsUpdate = true;
+            }
+          } catch {}
+        }
+      }
+      setFeatured(enrichedCached);
       setIsLoading(false);
+      // لو في داتا جديدة نولدها بالـ AI في الخلفية
+      if (geminiApiKey) {
+        for (let i = 0; i < enrichedCached.length; i++) {
+          if (enrichedCached[i].clinicalData) continue;
+          try {
+            const regNum = enrichedCached[i].registerNumber;
+            const fullMed = medicines.find(m => m.RegisterNumber === regNum);
+            if (!fullMed) continue;
+            const clinical = await generateClinicalData(fullMed, language, geminiApiKey);
+            if (clinical) {
+              enrichedCached[i] = { ...enrichedCached[i], clinicalData: clinical };
+              setFeatured([...enrichedCached]);
+              await saveClinicalData(regNum, clinical);
+            }
+          } catch {}
+        }
+      }
       return;
     }
 
@@ -403,6 +436,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
               ar={ar}
               onSelect={() => fullMed && onSelect(fullMed)}
               onEditClinical={() => setEditingMed(med)}
+              isAdminMode={isAdmin}
             />
           );
         })}
