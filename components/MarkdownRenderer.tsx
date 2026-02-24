@@ -12,7 +12,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     const withLinks = htmlString.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-primary underline font-bold">$1</a>');
     
     // Highlight Prices (X SAR or X ريال) - Vibrant Orange
-    const withPrice = withLinks.replace(/(\d+\.?\d*)\s*(SAR|SR|ريال|ر.س)/gi, '<span class="text-orange-600 dark:text-orange-400 font-black px-1 py-0.5 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-100 dark:border-orange-800/30">$1 $2</span>');
+    const withPrice = withLinks.replace(/(\d+\.?\d*)\s*(SAR|SR|ريال|ر.س|﷼)/gi, '<span class="text-orange-600 dark:text-orange-400 font-black px-1 py-0.5 bg-orange-50 dark:bg-orange-900/30 rounded-md border border-orange-100 dark:border-orange-800/30">$1 ﷼</span>');
     
     // Highlight Key Medical Terms in Bold - Deep Teal
     const withBold = withPrice.replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-teal-700 dark:text-teal-300">$1</strong>');

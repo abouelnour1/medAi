@@ -451,14 +451,14 @@ const App: React.FC = () => {
     const text = ar
       ? `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ريال' : 'غير متاح'}
+💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'غير متاح'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
 🔗 افتح في PharmaSource: ${deepLink}`
       : `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}
+💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'N/A'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
@@ -542,7 +542,7 @@ const App: React.FC = () => {
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
-      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} onExport={(type) => {
+      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={(type) => {
         const filtered = medicines.filter(m => 
           type === 'medicine' ? m['Product type'] === 'Human' :
           type === 'supplement' ? m['Product type'] === 'Supplement' : 
@@ -645,7 +645,7 @@ const App: React.FC = () => {
                                   <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
                                 </div>
                                 <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ر.س' : ''}
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ﷼' : ''}
                                 </span>
                               </button>
                             ))}

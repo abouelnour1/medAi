@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification } from '../../types';
+import { TFunction, User, Medicine, AppSettings, PendingUpdate, Notification as AppNotification, Language } from '../../types';
 import { useAuth } from './AuthContext';
 import ChartIcon from '../icons/ChartIcon';
 import UsersIcon from '../icons/UsersIcon';
@@ -48,7 +48,7 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
     </button>
 );
 
-export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void }> = ({ t, allMedicines, onExport }) => {
+export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void, language?: Language }> = ({ t, allMedicines, onExport, language = 'ar' }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
   const inputClass = "w-full p-3 bg-slate-50 dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold dark:text-white";

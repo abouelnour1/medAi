@@ -79,8 +79,7 @@ const PharmacistQuickView: React.FC<PharmacistQuickViewProps> = ({
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 text-center">
             <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{ar ? 'السعر' : 'Price'}</p>
-            <p className="text-base font-black text-primary">{price > 0 ? `${price.toFixed(2)}` : '—'}</p>
-            {price > 0 && <p className="text-[8px] text-slate-400">{ar ? 'ريال' : 'SAR'}</p>}
+            <p className="text-base font-black text-primary">{price > 0 ? `${price.toFixed(2)} ﷼` : '—'}</p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 text-center">
             <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{ar ? 'العبوة' : 'Pack'}</p>

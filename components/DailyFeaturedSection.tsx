@@ -167,7 +167,7 @@ const FeaturedCard: React.FC<{
               <p className="text-white/60 text-[10px] mt-0.5 truncate">{medicine.scientificName}</p>
               {parseFloat(medicine.price) > 0 && (
                 <p className="text-white/80 text-[11px] font-black mt-1">
-                  {parseFloat(medicine.price).toFixed(2)} {ar ? 'ريال' : 'SAR'}
+                  {parseFloat(medicine.price).toFixed(2)} ﷼
                 </p>
               )}
             </div>

@@ -31,7 +31,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation,
                   <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">{product.concentration}</p>
                 </div>
                 {product.price && product.price !== 'N/A' && (
-                  <p className="font-bold text-accent text-sm whitespace-nowrap">{product.price} {t('sar')}</p>
+                  <p className="font-bold text-accent text-sm whitespace-nowrap">{product.price} ﷼</p>
                 )}
               </div>
               <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-600">

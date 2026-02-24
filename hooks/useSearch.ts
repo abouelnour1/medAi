@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Medicine, TextSearchMode, SortOption, FilterState } from '../types';
+import { Medicine, TextSearchMode, SortByOption, Filters } from '../types';
 import { fuzzyMatch, fuzzyScore } from '../utils/fuzzySearch';
 
 function matchesWildcard(text: string, pattern: string): boolean {
@@ -12,8 +12,8 @@ export function useSearch(
   medicines: Medicine[],
   debouncedSearchTerm: string,
   textSearchMode: TextSearchMode,
-  filters: FilterState,
-  sortBy: SortOption
+  filters: Filters,
+  sortBy: SortByOption
 ) {
   const raw = debouncedSearchTerm.toLowerCase().trim();
   const term = raw.replace(/\*/g, '');
@@ -56,7 +56,7 @@ export function useSearch(
       if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
       if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
       if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-      return aName.localeCompare(bName);
+      return aName.localeCompare(bName); // alphabetical default
     };
 
     const exactStart   = results.filter(m => String(m[field]).toLowerCase().startsWith(term));

@@ -56,12 +56,12 @@ const CompareModal: React.FC<CompareModalProps> = ({ medicines, onClose, languag
           <div className={`grid grid-cols-2 gap-3`}>
             <div className={`rounded-2xl p-3 text-center ${cheaper === 'a' ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
               <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'السعر' : 'Price'}</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceA > 0 ? priceA.toFixed(2) : '—'}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceA > 0 ? `${priceA.toFixed(2)} ﷼` : '—'}</p>
               {cheaper === 'a' && <p className="text-[9px] font-black text-green-600 mt-1">✅ {language === 'ar' ? 'الأرخص' : 'Cheaper'}</p>}
             </div>
             <div className={`rounded-2xl p-3 text-center ${cheaper === 'b' ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
               <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'السعر' : 'Price'}</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceB > 0 ? priceB.toFixed(2) : '—'}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceB > 0 ? `${priceB.toFixed(2)} ﷼` : '—'}</p>
               {cheaper === 'b' && <p className="text-[9px] font-black text-green-600 mt-1">✅ {language === 'ar' ? 'الأرخص' : 'Cheaper'}</p>}
             </div>
           </div>
@@ -91,7 +91,7 @@ const CompareModal: React.FC<CompareModalProps> = ({ medicines, onClose, languag
               {cheaper !== 'same' && (
                 <p className="text-center text-[10px] font-black text-emerald-600 mt-2">
                   {language === 'ar' 
-                    ? `توفير ${Math.abs(priceA - priceB).toFixed(2)} ريال (${Math.round(Math.abs(priceA - priceB) / Math.max(priceA, priceB) * 100)}%)`
+                    ? `توفير ${Math.abs(priceA - priceB).toFixed(2)} ﷼ (${Math.round(Math.abs(priceA - priceB) / Math.max(priceA, priceB) * 100)}%)`
                     : `Save ${Math.abs(priceA - priceB).toFixed(2)} SAR (${Math.round(Math.abs(priceA - priceB) / Math.max(priceA, priceB) * 100)}%)`
                   }
                 </p>

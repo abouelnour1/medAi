@@ -114,7 +114,7 @@ const MedicineOfTheDay: React.FC<Props> = ({ medicines, language, t, onSelect })
             </span>
             {price > 0 && (
               <span className="bg-white/20 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
-                {price.toFixed(2)} {ar ? 'ريال' : 'SAR'}
+                {price.toFixed(2)} ﷼
               </span>
             )}
           </div>
