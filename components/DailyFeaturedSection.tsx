@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Medicine, Language, TFunction } from '../types';
 import { 
   getDailyFeatured, saveDailyFeatured, saveClinicalData, getClinicalData,
   FeaturedMedicine, DailyFeatured, ClinicalData 
 } from '../utils/dailyMedicines';
 import { getScheduledMedicines } from '../utils/featuredSchedule';
+import ClinicalDataEditorModal from './ClinicalDataEditorModal';
 import { getTopSearched } from '../utils/analytics';
 
 interface Props {
@@ -121,7 +122,8 @@ const FeaturedCard: React.FC<{
   index: number;
   ar: boolean;
   onSelect: () => void;
-}> = ({ medicine, index, ar, onSelect }) => {
+  onEditClinical?: () => void;
+}> = ({ medicine, index, ar, onSelect, onEditClinical }) => {
   const [expanded, setExpanded] = useState(false);
   const colors = [
     'from-primary via-teal-600 to-emerald-700',
@@ -241,18 +243,25 @@ const FeaturedCard: React.FC<{
         )}
 
         {!medicine.clinicalData && (
-          <div className="px-4 pb-4">
-            <div className="bg-white/10 rounded-2xl px-3 py-2.5 flex items-center gap-2">
+          <div className="px-4 pb-4 space-y-2">
+            {/* رسالة التحميل */}
+            <div className="bg-white/10 rounded-2xl px-3 py-2 flex items-center gap-2">
               <div className="w-3 h-3 border-2 border-white/40 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-              <div>
-                <p className="text-white/70 text-[10px] font-black">
-                  {ar ? '🤖 جاري توليد المعلومات السريرية...' : '🤖 Generating clinical info...'}
-                </p>
-                <p className="text-white/40 text-[8px] mt-0.5">
-                  {ar ? 'بكرة هيظهر فوراً بدون انتظار' : 'Will load instantly next time'}
-                </p>
-              </div>
+              <p className="text-white/60 text-[9px]">
+                {ar ? 'جاري توليد المعلومات...' : 'Generating info...'}
+              </p>
             </div>
+            {/* زرار الإضافة اليدوية */}
+            {onEditClinical && (
+              <button
+                onClick={e => { e.stopPropagation(); onEditClinical(); }}
+                className="w-full bg-white/15 hover:bg-white/25 rounded-2xl px-3 py-2 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              >
+                <span className="text-white/80 text-[10px] font-black">
+                  ✏️ {ar ? 'أضف المعلومات يدوياً' : 'Add info manually'}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -263,6 +272,7 @@ const FeaturedCard: React.FC<{
 const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey }) => {
   const [featured, setFeatured] = useState<FeaturedMedicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
   const ar = language === 'ar';
 
   const loadOrGenerate = useCallback(async () => {
@@ -392,6 +402,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
               index={i}
               ar={ar}
               onSelect={() => fullMed && onSelect(fullMed)}
+              onEditClinical={() => setEditingMed(med)}
             />
           );
         })}
@@ -403,6 +414,24 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
           <div key={i} className={`h-1 rounded-full transition-all ${i === 0 ? 'w-4 bg-primary' : 'w-1.5 bg-slate-200 dark:bg-slate-700'}`} />
         ))}
       </div>
+
+      {/* Modal إدخال يدوي للمعلومات السريرية */}
+      {editingMed && (
+        <ClinicalDataEditorModal
+          registerNumber={editingMed.registerNumber}
+          tradeName={editingMed.tradeName}
+          language={language}
+          onClose={() => setEditingMed(null)}
+          onSaved={(data) => {
+            setFeatured(prev => prev.map(m =>
+              m.registerNumber === editingMed.registerNumber
+                ? { ...m, clinicalData: data }
+                : m
+            ));
+            setEditingMed(null);
+          }}
+        />
+      )}
     </div>
   );
 };

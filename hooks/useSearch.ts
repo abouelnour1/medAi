@@ -18,6 +18,14 @@ export function useSearch(
   const raw = debouncedSearchTerm.toLowerCase().trim();
   const term = raw.replace(/\*/g, '');
 
+  // نتائج البحث النصي بدون فلاتر - تُستخدم كـ options source للـ FilterModal
+  const searchTextResults = useMemo(() => {
+    if (!medicines.length || raw.length < 3) return medicines;
+    const field = debouncedSearchTerm ? (textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name') : 'Trade Name';
+    return medicines.filter(m => fuzzyMatch(String(m[field]).toLowerCase(), raw));
+  }, [medicines, raw, textSearchMode, debouncedSearchTerm]);
+
+  // نتائج مع تطبيق الفلاتر - تُستخدم كـ context للعرض
   const searchContextMedicines = useMemo(() => {
     if (!medicines.length) return [];
     let results = medicines;
@@ -70,5 +78,5 @@ export function useSearch(
     return [...exactStart, ...exactContain, ...fuzzyOnly];
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy]);
 
-  return { finalFilteredMedicines, searchContextMedicines };
+  return { finalFilteredMedicines, searchContextMedicines, searchTextResults };
 }

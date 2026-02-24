@@ -208,6 +208,14 @@ const App: React.FC = () => {
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  // Gemini API Key - يجرب المتغيرين
+  const geminiApiKey = React.useMemo(() => {
+    const k1 = (import.meta.env as any)['VITE_GEMINI_API_KEY'];
+    const k2 = (import.meta.env as any)['VITE_API_KEY'];
+    const key = k1 || k2 || '';
+    if (!key || key === 'PLACEHOLDER_API_KEY') return undefined;
+    return key;
+  }, []);
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   
@@ -403,7 +411,7 @@ const App: React.FC = () => {
     return 1;
   };
 
-  const { finalFilteredMedicines, searchContextMedicines } = useSearch(
+  const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
     medicines, debouncedSearchTerm, textSearchMode, filters, sortBy
   );
 
@@ -634,7 +642,7 @@ const App: React.FC = () => {
                       language={language}
                       t={t}
                       onSelect={handleMedicineSelect}
-                      geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY'] || (import.meta.env as any)['VITE_API_KEY']}
+                      geminiApiKey={geminiApiKey}
                     />
                   )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
@@ -809,11 +817,11 @@ const App: React.FC = () => {
           language={language}
           t={t}
           onClose={() => setDrugToolsModal({ open: false, mode: 'interaction' })}
-          geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY'] || (import.meta.env as any)['VITE_API_KEY']}
+          geminiApiKey={geminiApiKey}
           initialMedicine={drugToolsModal.medicine}
         />
       )}
-      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchContextMedicines} t={t} />
+      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchTextResults.length > 0 ? searchTextResults : medicines} t={t} />
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={handleSaveMedicine} t={t} />}
     </div>
   );

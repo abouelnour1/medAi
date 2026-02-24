@@ -116,7 +116,6 @@ const MedicineCard: React.FC<MedicineCardProps> = ({ medicine, onShortPress, onL
                 <div className="bg-primary/5 dark:bg-primary/10 text-primary dark:text-primary-light px-3 py-1.5 rounded-2xl border border-primary/10 dark:border-primary/20 shadow-sm">
                     <span className="text-base font-black">{price.toFixed(2)}</span>
                     <span className="text-[9px] font-black">{language === 'ar' ? 'ر.س' : 'SAR'}</span>
-                    <span className="text-[9px] font-black">{language === 'ar' ? 'ر.س' : 'SAR'}</span>
                 </div>
             ) : <div className="text-[10px] font-black text-slate-300 dark:text-slate-700">N/A</div>}
             
