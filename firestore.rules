@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper - هل المستخدم أدمن؟
+    function isAdmin() {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ─── الأدوية ───────────────────────────────────────────────
+    match /medicines/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── التجميل ───────────────────────────────────────────────
+    match /cosmetics/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company'
+      );
+    }
+
+    // ─── المستخدمين ────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ─── الطلبات المعلقة ───────────────────────────────────────
+    match /pending_updates/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ─── الإعدادات ─────────────────────────────────────────────
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── الإشعارات ─────────────────────────────────────────────
+    match /notifications/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ─── المعلومات السريرية لأدوية اليوم ──────────────────────
+    // قراءة للكل، كتابة للأدمن فقط
+    match /clinicalData/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── أدوية اليوم المميزة ───────────────────────────────────
+    // قراءة للكل، كتابة للأدمن فقط
+    match /dailyFeatured/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── جدول أدوية اليوم ──────────────────────────────────────
+    // قراءة للكل، كتابة للأدمن فقط
+    match /featuredSchedule/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -31,8 +31,12 @@ export async function saveScheduleDay(day: ScheduledDay): Promise<boolean> {
   try {
     const ref = doc(db, 'featuredSchedule', day.date);
     await setDoc(ref, day);
+    console.log('✅ Schedule saved for:', day.date);
     return true;
-  } catch { return false; }
+  } catch (e: any) {
+    console.error('❌ Save schedule error:', e?.code, e?.message);
+    return false;
+  }
 }
 
 // احذف يوم من الجدول

@@ -65,6 +65,9 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
     if (ok) {
       setSchedule(prev => ({ ...prev, [selectedDay]: day }));
       setSelectedDay(null);
+      alert(ar ? '✅ تم حفظ الجدول بنجاح' : '✅ Schedule saved successfully');
+    } else {
+      alert(ar ? '❌ فشل الحفظ - افتح الـ Console لمعرفة السبب' : '❌ Save failed - check Console for details');
     }
     setSaving(false);
   };

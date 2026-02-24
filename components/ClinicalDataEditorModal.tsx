@@ -14,6 +14,7 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
   const ar = language === 'ar';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<ClinicalData, 'generatedAt' | 'language'>>({
     indication: '',
     dosage: '',
@@ -40,20 +41,25 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
   const handleSave = async () => {
     if (!form.indication.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       const data: ClinicalData = {
         ...form,
         generatedAt: new Date().toISOString(),
         language,
       };
-      // 1. حفظ في clinicalData collection (دائم للأبد)
       await saveClinicalData(registerNumber, data);
-      // 2. إخطار الـ parent عشان يحدث الـ UI
       onSaved(data);
       onClose();
-    } catch (e) {
+    } catch (e: any) {
+      const code = e?.code || '';
+      const msg = code === 'permission-denied' 
+        ? (ar ? '❌ مش مسموح - تأكد إنك مسجل دخول كأدمن' : '❌ Permission denied - login as admin')
+        : code === 'unavailable'
+        ? (ar ? '❌ مفيش اتصال بالإنترنت' : '❌ No internet connection')
+        : (ar ? `❌ فشل الحفظ: ${e?.message || 'خطأ غير معروف'}` : `❌ Save failed: ${e?.message || 'Unknown error'}`);
+      setError(msg);
       console.error('Save failed:', e);
-      alert('فشل الحفظ - تأكد من اتصال الإنترنت');
     } finally {
       setSaving(false);
     }
@@ -118,6 +124,11 @@ const ClinicalDataEditorModal: React.FC<Props> = ({ registerNumber, tradeName, l
           </div>
         )}
 
+        {error && (
+          <div className="mx-5 mb-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl">
+            <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
         <div className="px-5 py-4 flex gap-2 flex-shrink-0 border-t border-slate-100 dark:border-slate-700">
           <button onClick={onClose} className="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-500 font-black rounded-2xl text-sm">
             {ar ? 'إلغاء' : 'Cancel'}

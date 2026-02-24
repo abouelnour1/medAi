@@ -51,22 +51,32 @@ export async function getDailyFeatured(): Promise<DailyFeatured | null> {
 }
 
 // احفظ البيانات اليومية في Firestore
-export async function saveDailyFeatured(data: DailyFeatured): Promise<void> {
+export async function saveDailyFeatured(data: DailyFeatured): Promise<boolean> {
   try {
     const ref = doc(db, 'dailyFeatured', data.date);
     await setDoc(ref, data);
-  } catch (e) { console.error('Save daily featured error:', e); }
+    console.log('✅ Daily featured saved for:', data.date);
+    return true;
+  } catch (e: any) { 
+    console.error('❌ Save daily featured error:', e?.code, e?.message);
+    throw e;
+  }
 }
 
 // احفظ الـ Clinical Data لدواء معين
 export async function saveClinicalData(
   registerNumber: string, 
   data: ClinicalData
-): Promise<void> {
+): Promise<boolean> {
   try {
     const ref = doc(db, 'clinicalData', registerNumber);
     await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
-  } catch (e) { console.error('Save clinical data error:', e); }
+    console.log('✅ Clinical data saved for:', registerNumber);
+    return true;
+  } catch (e: any) { 
+    console.error('❌ Save clinical data error:', e?.code, e?.message);
+    throw e; // نرفع الـ error للـ caller
+  }
 }
 
 // جيب الـ Clinical Data المحفوظة لدواء
