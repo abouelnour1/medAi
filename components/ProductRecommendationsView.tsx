@@ -52,7 +52,7 @@ const ProductRecommendationsView: React.FC<ProductRecommendationsViewProps> = ({
                     </div>
                     {hasPrice && (
                         <span className="flex-shrink-0 text-sm font-bold text-white bg-secondary px-2 py-0.5 rounded-full shadow-sm">
-                            {product.price} ﷼
+                            {product.price} {t('sar')}
                         </span>
                     )}
                 </div>

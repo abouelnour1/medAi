@@ -451,14 +451,14 @@ const App: React.FC = () => {
     const text = ar
       ? `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'غير متاح'}
+💰 ${price > 0 ? price.toFixed(2) + ' ريال' : 'غير متاح'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
 🔗 افتح في PharmaSource: ${deepLink}`
       : `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'N/A'}
+💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
@@ -645,7 +645,7 @@ const App: React.FC = () => {
                                   <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
                                 </div>
                                 <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ﷼' : ''}
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ر.س' : ''}
                                 </span>
                               </button>
                             ))}

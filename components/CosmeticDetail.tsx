@@ -87,8 +87,8 @@ const CosmeticDetail: React.FC<CosmeticDetailProps> = ({ cosmetic, t, language, 
                <div className="flex flex-wrap items-center gap-4">
                     {!isNaN(price) && (
                         <div className="bg-pink-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-pink-500/20">
-                            <span className="text-xl font-black">{price.toFixed(2)} ﷼</span>
-                            <span className="text-sm font-black">﷼</span>
+                            <span className="text-xl font-black">{price.toFixed(2)}</span>
+                            <span className="text-xs font-bold ml-1">{t('sar')}</span>
                         </div>
                     )}
                     <div className="flex items-center gap-2 text-slate-500 bg-white/50 dark:bg-slate-800/50 px-3 py-2 rounded-lg border border-white/20">

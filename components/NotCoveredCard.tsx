@@ -14,7 +14,7 @@ const NotCoveredCard: React.FC<{ medicine: Medicine, t: TFunction }> = ({ medici
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                     <div className="text-light-text dark:text-dark-text text-lg font-bold whitespace-nowrap">
-                        {!isNaN(price) ? `${price.toFixed(2)} ﷼` : ''}
+                        {!isNaN(price) ? `${price.toFixed(2)} ${t('sar')}` : ''}
                     </div>
                     <span className="text-xs font-semibold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-2 py-1 rounded-full">{t('notCovered')}</span>
                 </div>

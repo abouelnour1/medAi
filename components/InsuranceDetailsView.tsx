@@ -97,7 +97,7 @@ const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction
                               <p className="text-xs text-light-text-secondary dark:text-dark-muted">{`${med.Strength} ${med.StrengthUnit} | ${med.PharmaceuticalForm}`}</p>
                             </div>
                             <p className="font-bold text-accent whitespace-nowrap">
-                              {isNaN(parseFloat(med['Public price'])) ? 'N/A' : `${parseFloat(med['Public price']).toFixed(2)} ﷼`}
+                              {isNaN(parseFloat(med['Public price'])) ? 'N/A' : `${parseFloat(med['Public price']).toFixed(2)} ${t('sar')}`}
                             </p>
                           </div>
                         ))}
