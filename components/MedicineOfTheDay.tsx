@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Medicine, Language, TFunction } from '../types';
+import { getTopSearched } from '../utils/analytics';
 
 interface Props {
   medicines: Medicine[];
@@ -25,7 +26,21 @@ const MedicineOfTheDay: React.FC<Props> = ({ medicines, language, t, onSelect })
 
   const medicine = useMemo(() => {
     if (!medicines.length) return null;
-    // نفس الدواء طول اليوم
+
+    // نجيب أكثر الأدوية بحثاً من Analytics
+    const topSearched = getTopSearched(10);
+
+    if (topSearched.length > 0) {
+      // نختار من أعلى 10 مبحوثاً - يتغير كل يوم عشان ما يتكررش
+      const dayIndex = Math.floor(Date.now() / 86400000) % Math.min(topSearched.length, 10);
+      const topName = topSearched[dayIndex].name;
+      const found = medicines.find(m =>
+        m['Trade Name'].toLowerCase() === topName.toLowerCase()
+      );
+      if (found) return found;
+    }
+
+    // fallback: لو مفيش analytics بعد، نختار عشوائي ثابت لليوم
     const dayIndex = Math.floor(Date.now() / 86400000) % medicines.length;
     return medicines[dayIndex];
   }, [medicines]);
@@ -51,11 +66,19 @@ const MedicineOfTheDay: React.FC<Props> = ({ medicines, language, t, onSelect })
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
 
       {/* Badge */}
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="text-lg">💊</span>
-        <span className="text-white/80 text-[10px] font-black uppercase tracking-widest">
-          {ar ? 'دواء اليوم' : 'Medicine of the Day'}
-        </span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg">💊</span>
+          <span className="text-white/80 text-[10px] font-black uppercase tracking-widest">
+            {ar ? 'دواء اليوم' : 'Medicine of the Day'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 bg-white/15 rounded-full px-2 py-0.5">
+          <span className="text-[9px]">🔥</span>
+          <span className="text-white/70 text-[9px] font-black">
+            {ar ? 'الأكثر بحثاً' : 'Trending'}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-start gap-3">
@@ -91,7 +114,7 @@ const MedicineOfTheDay: React.FC<Props> = ({ medicines, language, t, onSelect })
             </span>
             {price > 0 && (
               <span className="bg-white/20 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
-                {price.toFixed(2)} {ar ? 'ريال' : 'SAR'}
+                {price.toFixed(2)} ﷼
               </span>
             )}
           </div>

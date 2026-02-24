@@ -56,15 +56,48 @@ const CompareModal: React.FC<CompareModalProps> = ({ medicines, onClose, languag
           <div className={`grid grid-cols-2 gap-3`}>
             <div className={`rounded-2xl p-3 text-center ${cheaper === 'a' ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
               <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'السعر' : 'Price'}</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceA > 0 ? priceA.toFixed(2) : '—'}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceA > 0 ? `${priceA.toFixed(2)} ﷼` : '—'}</p>
               {cheaper === 'a' && <p className="text-[9px] font-black text-green-600 mt-1">✅ {language === 'ar' ? 'الأرخص' : 'Cheaper'}</p>}
             </div>
             <div className={`rounded-2xl p-3 text-center ${cheaper === 'b' ? 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-400' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
               <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'السعر' : 'Price'}</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceB > 0 ? priceB.toFixed(2) : '—'}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{priceB > 0 ? `${priceB.toFixed(2)} ﷼` : '—'}</p>
               {cheaper === 'b' && <p className="text-[9px] font-black text-green-600 mt-1">✅ {language === 'ar' ? 'الأرخص' : 'Cheaper'}</p>}
             </div>
           </div>
+
+          {/* Price Difference Visual */}
+          {priceA > 0 && priceB > 0 && (
+            <div className="bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4">
+              <p className="text-[9px] font-black text-slate-400 uppercase mb-3 text-center">
+                {language === 'ar' ? 'مقارنة السعر' : 'Price Comparison'}
+              </p>
+              <div className="space-y-2">
+                {[{name: a['Trade Name'], price: priceA, color: 'bg-primary'}, {name: b['Trade Name'], price: priceB, color: 'bg-violet-500'}].map((item, i) => {
+                  const maxP = Math.max(priceA, priceB);
+                  const pct = Math.round((item.price / maxP) * 100);
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <p className="text-[9px] font-black text-slate-500 w-20 truncate text-right flex-shrink-0">{item.name}</p>
+                      <div className="flex-grow bg-slate-100 dark:bg-slate-700 rounded-full h-5 overflow-hidden">
+                        <div className={`${item.color} h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700`} style={{width: `${pct}%`}}>
+                          <span className="text-white text-[8px] font-black">{item.price.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {cheaper !== 'same' && (
+                <p className="text-center text-[10px] font-black text-emerald-600 mt-2">
+                  {language === 'ar' 
+                    ? `توفير ${Math.abs(priceA - priceB).toFixed(2)} ﷼ (${Math.round(Math.abs(priceA - priceB) / Math.max(priceA, priceB) * 100)}%)`
+                    : `Save ${Math.abs(priceA - priceB).toFixed(2)} SAR (${Math.round(Math.abs(priceA - priceB) / Math.max(priceA, priceB) * 100)}%)`
+                  }
+                </p>
+              )}
+            </div>
+          )}
 
           {/* التفاصيل */}
           <div className="bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 space-y-1">

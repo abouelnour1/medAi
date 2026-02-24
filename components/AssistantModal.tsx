@@ -208,14 +208,38 @@ ${contextInfo}`;
              const isPrescription = textContent?.includes('---PRESCRIPTION_START---');
              const isProductRecommendation = textContent?.includes('---PRODUCTS_START---');
             return (
-                <div key={index} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {msg.role === 'model' && <div className="flex-shrink-0 h-6 w-6 rounded-md bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-primary"><div className="w-3 h-3"><AssistantIcon /></div></div>}
-                  <div className={`max-w-[90%] rounded-xl shadow-sm ${msg.role === 'user' ? 'bg-primary text-white p-2 px-3 font-bold text-[11px]' : `bg-white dark:bg-slate-800 p-2.5 text-[11px] leading-snug text-slate-700 dark:text-slate-200 border border-slate-50 dark:border-slate-700 ${isPrescription || isProductRecommendation ? 'p-0 bg-transparent border-none shadow-none' : ''}`}`}>
-                     { isPrescription ? <PrescriptionView content={textContent!} t={t} /> : isProductRecommendation ? <ProductRecommendationsView content={textContent!} t={t} /> : msg.parts?.map((part, pIndex) => {
-                        if ('text' in part && part.text) return <div key={pIndex} className="ai-response-content prose prose-slate dark:prose-invert max-w-none"><MarkdownRenderer content={part.text} /></div>;
-                        if ('inlineData' in part && part.inlineData) return <img key={pIndex} src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-w-full rounded-lg mt-1 shadow-sm border border-white" />;
-                        return null;
-                     })}
+                <div key={index} className={`flex items-end gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {msg.role === 'model' && (
+                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-br from-primary to-teal-600 shadow-sm flex items-center justify-center text-white text-[9px] font-black mb-1">
+                      AI
+                    </div>
+                  )}
+                  <div
+                    dir="auto"
+                    className={`max-w-[88%] rounded-2xl shadow-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-white px-4 py-2.5 font-bold text-[12px] rounded-br-sm text-right'
+                        : isPrescription || isProductRecommendation
+                          ? 'p-0 bg-transparent shadow-none'
+                          : 'bg-white dark:bg-slate-800 px-4 py-3 text-[12px] leading-relaxed text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-bl-sm'
+                    }`}
+                  >
+                    {isPrescription
+                      ? <PrescriptionView content={textContent!} t={t} />
+                      : isProductRecommendation
+                        ? <ProductRecommendationsView content={textContent!} t={t} />
+                        : msg.parts?.map((part, pIndex) => {
+                            if ('text' in part && part.text) return (
+                              <div key={pIndex} dir="auto" className="ai-response-content prose prose-slate dark:prose-invert max-w-none text-right-if-ar">
+                                <MarkdownRenderer content={part.text} />
+                              </div>
+                            );
+                            if ('inlineData' in part && part.inlineData) return (
+                              <img key={pIndex} src={`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`} className="max-w-full rounded-lg mt-1 shadow-sm" />
+                            );
+                            return null;
+                          })
+                    }
                   </div>
                 </div>
             )

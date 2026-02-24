@@ -44,6 +44,8 @@ interface MedicineDetailProps {
     onEdit?: (medicine: Medicine) => void;
     onDelete?: (medicine: Medicine) => void;
     onOpenAssistant?: () => void;
+    onOpenInteractions?: () => void;
+    onOpenDoseCalc?: () => void;
     onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
     onFindAlternative: (medicine: Medicine) => void;
     onShare?: (medicine: Medicine) => void;
@@ -51,7 +53,7 @@ interface MedicineDetailProps {
     isInCompare?: boolean;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
   const [isPhysicalOpen, setIsPhysicalOpen] = useState(false);
   const price = parseFloat(medicine['Public price']);
   const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
@@ -118,7 +120,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
                   <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
-                  {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-sm font-bold text-slate-500">{t('sar')}</span></div>}
+                  {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">﷼</span></div>}
               </div>
               {medicine.imgBox && (
                   <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
@@ -167,6 +169,26 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
                     <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                     <DetailRow label={t('scored')} value={medicine.pillScored} />
                     <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                    {medicine.liquidTaste && (
+                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
+                        <span className="text-[11px] font-black text-slate-400 uppercase">
+                          {language === 'ar' ? '👅 الطعم' : '👅 Taste'}
+                        </span>
+                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                          {medicine.liquidTaste}
+                        </span>
+                      </div>
+                    )}
+                    {medicine.liquidColor && (
+                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
+                        <span className="text-[11px] font-black text-slate-400 uppercase">
+                          {language === 'ar' ? '🎨 اللون' : '🎨 Color'}
+                        </span>
+                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                          {medicine.liquidColor}
+                        </span>
+                      </div>
+                    )}
                     <DetailRow label={t('notes')} value={medicine.physicalNotes} />
                 </div>
           </div>

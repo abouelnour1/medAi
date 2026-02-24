@@ -20,10 +20,13 @@ import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
 import { useDebounce } from './hooks/useDebounce';
+import { useSearch } from './hooks/useSearch';
+import { useAlternatives } from './hooks/useMedicineUtils';
+import DrugToolsModal from './components/DrugToolsModal';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
-import MedicineOfTheDay from './components/MedicineOfTheDay';
+import DailyFeaturedSection from './components/DailyFeaturedSection';
 import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
@@ -117,8 +120,66 @@ const normalizeMedicine = (item: any): Medicine => {
   };
 };
 
+// ============================================
+// Push Notification Toggle - يبعت طلب للمستخدم
+// ============================================
+const PushNotificationToggle: React.FC<{ userId: string; language: string }> = ({ userId, language }) => {
+  const ar = language === 'ar';
+  const [status, setStatus] = React.useState<'idle' | 'loading' | 'enabled' | 'denied'>(() => {
+    if (!('Notification' in window)) return 'denied';
+    if (Notification.permission === 'granted') return 'enabled';
+    if (Notification.permission === 'denied') return 'denied';
+    return 'idle';
+  });
+
+  const handleToggle = async () => {
+    if (status === 'enabled') return; // مفيش إلغاء تفعيل - OS بيتحكم فيه
+    if (status === 'denied') {
+      alert(ar
+        ? '⚙️ الإشعارات محجوبة. افتح إعدادات الجهاز وفعّل الإشعارات للتطبيق يدوياً.'
+        : '⚙️ Notifications are blocked. Open device settings to enable them manually.');
+      return;
+    }
+    setStatus('loading');
+    try {
+      const token = await requestPushPermission(userId);
+      setStatus(token ? 'enabled' : 'denied');
+    } catch {
+      setStatus('denied');
+    }
+  };
+
+  const config = {
+    idle:    { icon: '🔔', label: ar ? 'تفعيل الإشعارات' : 'Enable Notifications',  bg: 'bg-slate-50 dark:bg-slate-800/50', color: 'text-slate-700 dark:text-slate-300' },
+    loading: { icon: '⏳', label: ar ? 'جاري الطلب...' : 'Requesting...',            bg: 'bg-primary/5',                     color: 'text-primary' },
+    enabled: { icon: '✅', label: ar ? 'الإشعارات مفعّلة' : 'Notifications ON',      bg: 'bg-emerald-50 dark:bg-emerald-900/20', color: 'text-emerald-600' },
+    denied:  { icon: '🚫', label: ar ? 'الإشعارات محجوبة' : 'Notifications Blocked', bg: 'bg-rose-50 dark:bg-rose-900/20',   color: 'text-rose-500' },
+  }[status];
+
+  return (
+    <button
+      onClick={handleToggle}
+      disabled={status === 'loading'}
+      className={`w-full flex items-center justify-between p-4 ${config.bg} rounded-2xl transition-all active:scale-[0.98]`}
+    >
+      <span className={`font-bold ${config.color} flex items-center gap-2`}>
+        <span>{config.icon}</span>
+        {config.label}
+      </span>
+      {status === 'loading' && (
+        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      )}
+      {status === 'idle' && (
+        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </button>
+  );
+};
+
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
-const RECENT_SEARCHES_KEY = 'pharma_recent_searches';
+const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
 const App: React.FC = () => {
@@ -140,12 +201,14 @@ const App: React.FC = () => {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
-  const [recentSearches, setRecentSearches] = useState<Medicine[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -269,10 +332,10 @@ const App: React.FC = () => {
     if (scrollContainerRef.current) {
         scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
     }
-    // حفظ في سجل البحث الأخير
-    setRecentSearches(prev => {
-        const filtered = prev.filter(r => r.RegisterNumber !== m.RegisterNumber);
-        const updated = [m, ...filtered].slice(0, MAX_RECENT);
+    // حفظ في سجل البحث الأخير - نحفظ ID بس مش Object كامل
+    setRecentSearchIds(prev => {
+        const filtered = prev.filter(id => id !== m.RegisterNumber);
+        const updated = [m.RegisterNumber, ...filtered].slice(0, MAX_RECENT);
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
         return updated;
     });
@@ -340,72 +403,9 @@ const App: React.FC = () => {
     return 1;
   };
 
-  const searchContextMedicines = useMemo(() => {
-    const raw = debouncedSearchTerm.toLowerCase().trim();
-    const term = raw;
-    const cleanTerm = raw.replace(/\*/g, '');
-    // ما يظهرش إلا مع 3 حروف على الأقل (بدون الـ *)
-    if (cleanTerm.length < 3) return medicines;
-    
-    return medicines.filter(m => {
-        const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-        const text = String(m[field]).toLowerCase();
-        // Wildcard mode
-        if (raw.includes('*')) return matchesWildcard(text, term);
-        // Fuzzy mode - يتسامح مع الأخطاء
-        return fuzzyMatch(text, term);
-    });
-  }, [medicines, debouncedSearchTerm, textSearchMode]);
-
-  const finalFilteredMedicines = useMemo(() => {
-    let results = [...searchContextMedicines];
-    const hasFilters = Object.values(filters).some(v => Array.isArray(v) ? v.length > 0 : (v !== 'all' && v !== ''));
-    if (debouncedSearchTerm.replace(/\*/g, '').length < 3 && !hasFilters) return [];
-
-    if (filters.productType !== 'all') {
-        const type = filters.productType === 'medicine' ? 'Human' : filters.productType === 'supplement' ? 'Supplement' : 'Food';
-        results = results.filter(m => m['Product type'] === type);
-    }
-    if (filters.priceMin) results = results.filter(m => (parseFloat(m['Public price']) || 0) >= parseFloat(filters.priceMin));
-    if (filters.priceMax) results = results.filter(m => (parseFloat(m['Public price']) || 0) <= parseFloat(filters.priceMax));
-    if (filters.pharmaceuticalForm) results = results.filter(m => m.PharmaceuticalForm === filters.pharmaceuticalForm);
-    if (filters.legalStatus) results = results.filter(m => m['Legal Status'] === filters.legalStatus);
-    if (filters.manufactureName.length > 0) results = results.filter(m => filters.manufactureName.includes(m['Manufacture Name']));
-    if (filters.marketingCompany.length > 0) results = results.filter(m => filters.marketingCompany.includes(m['Marketing Company']));
-    if (filters.mainAgent.length > 0) results = results.filter(m => filters.mainAgent.includes(m['Main Agent']));
-
-    const term = debouncedSearchTerm.toLowerCase().trim().replace(/\*/g, '');
-    const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-
-    const sortFn = (a: Medicine, b: Medicine): number => {
-      const aName = String(a[field]).toLowerCase();
-      const bName = String(b[field]).toLowerCase();
-      if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
-      if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
-      if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
-      if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
-      if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-      return aName.localeCompare(bName);
-    };
-
-    // فصل صارم: يبدأ بالكلمة أولاً ثم يحتوي عليها ثم Fuzzy
-    const exactStart  = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
-    const exactContain = results.filter(m => {
-      const n = String(m[field]).toLowerCase();
-      return !n.startsWith(term) && n.includes(term);
-    });
-    const fuzzyOnly = results.filter(m => {
-      const n = String(m[field]).toLowerCase();
-      return !n.includes(term);
-    }).sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
-
-    exactStart.sort(sortFn);
-    exactContain.sort(sortFn);
-
-    results = [...exactStart, ...exactContain, ...fuzzyOnly];
-
-    return results;
-  }, [searchContextMedicines, filters, sortBy, debouncedSearchTerm, textSearchMode]);
+  const { finalFilteredMedicines, searchContextMedicines } = useSearch(
+    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy
+  );
 
   const alternatives = useMemo(() => {
     if (!selectedMedicine) return { direct: [], therapeutic: [] };
@@ -446,17 +446,34 @@ const App: React.FC = () => {
   // مشاركة الدواء
   const handleShareMedicine = (medicine: Medicine) => {
     const price = parseFloat(medicine['Public price']);
-    const text = `💊 *${medicine['Trade Name']}*
+    const deepLink = `https://pharmasource.app/medicine/${medicine.RegisterNumber}`;
+    const ar = language === 'ar';
+    const text = ar
+      ? `💊 *${medicine['Trade Name']}*
 🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ريال' : 'غير متاح'}
+💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'غير متاح'}
 🏭 ${medicine['Manufacture Name']}
 📋 ${medicine['Legal Status']}
 
-🔗 عبر تطبيق PharmaSource KSA`;
+🔗 افتح في PharmaSource: ${deepLink}`
+      : `💊 *${medicine['Trade Name']}*
+🧪 ${medicine['Scientific Name']}
+💰 ${price > 0 ? price.toFixed(2) + ' ﷼' : 'N/A'}
+🏭 ${medicine['Manufacture Name']}
+📋 ${medicine['Legal Status']}
+
+🔗 Open in PharmaSource: ${deepLink}`;
+
     if (navigator.share) {
-        navigator.share({ title: medicine['Trade Name'], text });
+        navigator.share({ 
+          title: medicine['Trade Name'], 
+          text,
+          url: deepLink
+        });
     } else {
-        navigator.clipboard?.writeText(text).then(() => alert('تم نسخ بيانات الدواء!'));
+        navigator.clipboard?.writeText(text).then(() => 
+          alert(ar ? '✅ تم نسخ بيانات الدواء مع الرابط!' : '✅ Copied with link!')
+        );
     }
   };
 
@@ -484,7 +501,7 @@ const App: React.FC = () => {
             await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
             setSelectedMedicine(updatedMed);
             alert(t('saveSuccess'));
-        } catch (e) { alert("Error saving: " + e); }
+        } catch (e) { alert(language === 'ar' ? '❌ فشل الحفظ. حاول مرة أخرى.' : '❌ Save failed. Please try again.'); console.error(e); }
     } else if (user.role === 'company') {
         try {
             await addDoc(collection(db, 'pending_updates'), {
@@ -498,7 +515,7 @@ const App: React.FC = () => {
                 type: 'edit'
             });
             alert(t('requestSubmittedTitle'));
-        } catch (e) { alert("Error submitting request: " + e); }
+        } catch (e) { alert(language === 'ar' ? '❌ فشل إرسال الطلب. حاول مرة أخرى.' : '❌ Request failed. Please try again.'); console.error(e); }
     }
   };
 
@@ -580,18 +597,19 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
-                  {/* Medicine of the Day - يظهر لما مفيش بحث */}
+                  {/* أدوية اليوم - تظهر لما مفيش بحث */}
                   {searchTerm.length === 0 && medicines.length > 0 && (
-                    <MedicineOfTheDay
-                      medicines={medicines.filter(m => m.imgBox)}
+                    <DailyFeaturedSection
+                      medicines={medicines}
                       language={language}
                       t={t}
                       onSelect={handleMedicineSelect}
+                      geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY']}
                     />
                   )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} t={t} />
@@ -612,7 +630,7 @@ const App: React.FC = () => {
                             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                               {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
                             </h3>
-                            <button onClick={() => { setRecentSearches([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
+                            <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
                               className="text-[10px] font-black text-rose-400 hover:text-rose-600">
                               {language === 'ar' ? 'مسح الكل' : 'Clear All'}
                             </button>
@@ -627,7 +645,7 @@ const App: React.FC = () => {
                                   <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
                                 </div>
                                 <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ر.س' : ''}
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + ' ﷼' : ''}
                                 </span>
                               </button>
                             ))}
@@ -686,25 +704,7 @@ const App: React.FC = () => {
                             </button>
                           </div>
                           {/* إشعارات Push */}
-                          {user && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const token = await requestPushPermission(user.id);
-                                  if (token) alert(language === 'ar' ? '✅ تم تفعيل الإشعارات!' : '✅ Notifications enabled!');
-                                  else alert(language === 'ar' ? '⚠️ لم يتم الحصول على token' : '⚠️ Could not get token');
-                                } catch(e: any) {
-                                  alert((language === 'ar' ? '❌ ' : '❌ ') + (e?.message || 'فشل تفعيل الإشعارات'));
-                                }
-                              }}
-                              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl"
-                            >
-                              <span className="font-bold text-slate-700 dark:text-slate-300">
-                                🔔 {language === 'ar' ? 'تفعيل إشعارات Push' : 'Enable Push Notifications'}
-                              </span>
-                              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </button>
-                          )}
+                          {user && <PushNotificationToggle userId={user.id} language={language} />}
                           {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
@@ -776,7 +776,18 @@ const App: React.FC = () => {
       )}
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
-      {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={selectedMedicine} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
+      {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
+      {drugToolsModal.open && (
+        <DrugToolsModal
+          mode={drugToolsModal.mode}
+          allMedicines={medicines}
+          language={language}
+          t={t}
+          onClose={() => setDrugToolsModal({ open: false, mode: 'interaction' })}
+          geminiApiKey={(import.meta.env as any)['VITE_GEMINI_API_KEY']}
+          initialMedicine={drugToolsModal.medicine}
+        />
+      )}
       <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchContextMedicines} t={t} />
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>setIsEditModalOpen(false)} medicine={selectedMedicine} onSave={handleSaveMedicine} t={t} />}
     </div>

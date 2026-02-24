@@ -13,13 +13,14 @@ import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
 import DownloadIcon from '../icons/DownloadIcon';
 import { getTopSearched, getTotalSearches, clearAnalytics } from '../../utils/analytics';
+import FeaturedSchedulePanel from './FeaturedSchedulePanel';
 import PillIcon from '../icons/PillIcon';
 import FactoryIcon from '../icons/FactoryIcon';
 import GlobeIcon from '../icons/GlobeIcon';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
 
-type Panel = 'menu' | 'overview' | 'users' | 'approvals' | 'add_manual' | 'notifications' | 'export' | 'settings';
+type Panel = 'menu' | 'overview' | 'users' | 'approvals' | 'add_manual' | 'notifications' | 'export' | 'settings' | 'featured_schedule';
 type ItemCategory = 'Human' | 'Supplement' | 'Food';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
@@ -484,10 +485,19 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                         <MenuCard title={t('notificationsPanel')} icon={<BellIcon />} onClick={() => setActivePanel('notifications')} colorClass="bg-white dark:bg-dark-card text-red-600 border-red-100 dark:border-dark-border" />
                         <MenuCard title={t('exportPanel')} icon={<DownloadIcon />} onClick={() => setActivePanel('export')} colorClass="bg-white dark:bg-dark-card text-primary border-primary/10 dark:border-dark-border" />
                         <MenuCard title={t('settingsPanel')} icon={<SettingsIcon />} onClick={() => setActivePanel('settings')} colorClass="bg-white dark:bg-dark-card text-slate-600 border-slate-100 dark:border-dark-border" />
+                        <MenuCard title="📅 أدوية اليوم" icon={<span className="text-2xl">✨</span>} onClick={() => setActivePanel('featured_schedule')} colorClass="bg-white dark:bg-dark-card text-emerald-600 border-emerald-100 dark:border-dark-border" />
                     </div>
                 </div>
             )}
             {activePanel === 'add_manual' && renderAddManual()}
+            {activePanel === 'featured_schedule' && (
+              <FeaturedSchedulePanel
+                allMedicines={allMedicines}
+                t={t}
+                language={language}
+                userId={user?.id || ''}
+              />
+            )}
             {activePanel === 'approvals' && renderApprovals()}
             {activePanel === 'export' && renderExportPanel()}
             {activePanel === 'notifications' && renderNotifications()}

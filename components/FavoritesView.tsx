@@ -24,10 +24,23 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   t,
   language,
 }) => {
+  const [sortBy, setSortBy] = React.useState<'added' | 'name' | 'price'>('added');
+  const ar = language === 'ar';
+
   const favoriteMedicines = React.useMemo(() => {
     const favoriteSet = new Set(favoriteIds);
-    return allMedicines.filter(med => favoriteSet.has(med.RegisterNumber));
-  }, [favoriteIds, allMedicines]);
+    const meds = allMedicines.filter(med => favoriteSet.has(med.RegisterNumber));
+    if (sortBy === 'name') return [...meds].sort((a, b) => a['Trade Name'].localeCompare(b['Trade Name']));
+    if (sortBy === 'price') return [...meds].sort((a, b) => parseFloat(a['Public price'] || '0') - parseFloat(b['Public price'] || '0'));
+    // added = ترتيب الإضافة (favoriteIds order)
+    return favoriteIds.map(id => meds.find(m => m.RegisterNumber === id)).filter(Boolean) as typeof meds;
+  }, [favoriteIds, allMedicines, sortBy]);
+
+  const sortOptions = [
+    { id: 'added', label: ar ? 'ترتيب الإضافة' : 'Date Added' },
+    { id: 'name',  label: ar ? 'الاسم' : 'Name' },
+    { id: 'price', label: ar ? 'السعر' : 'Price' },
+  ];
 
   if (favoriteMedicines.length === 0) {
     return (

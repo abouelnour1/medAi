@@ -114,18 +114,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, title, 
           <div className="w-6 h-6 transform rtl:rotate-180"><BackIcon /></div>
         </button>
         <div className="flex-grow min-w-0 text-center">
-          <h2 className="text-white font-bold text-xs truncate drop-shadow-md">{title}</h2>
+          <h2 className="text-white font-bold text-[10px] truncate drop-shadow-md">{title}</h2>
           <p className="text-white/60 text-[9px] font-black uppercase tracking-widest">{currentIndex + 1} / {images.length}</p>
         </div>
         <div className="flex gap-1.5">
           {indexFlags[currentIndex] && (
             <button 
               onClick={(e) => { e.stopPropagation(); window.open(images[currentIndex], '_blank'); }} 
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary/90 backdrop-blur-xl rounded-full active:scale-90 shadow-lg text-white"
+              className="flex items-center gap-1 px-2.5 py-2 bg-primary backdrop-blur-xl rounded-full active:scale-90 shadow-lg text-white flex-shrink-0"
               title="فتح الصورة في المتصفح"
             >
-              <div className="w-4 h-4"><GlobeIcon /></div>
-              <span className="text-[10px] font-black uppercase tracking-wide">عرض</span>
+              <div className="w-3.5 h-3.5 flex-shrink-0"><GlobeIcon /></div>
+              <span className="text-[9px] font-black whitespace-nowrap">عرض الكامل</span>
             </button>
           )}
           <button onClick={onBack} className="p-2.5 text-white/90 bg-white/10 backdrop-blur-xl rounded-full active:scale-90 shadow-lg">

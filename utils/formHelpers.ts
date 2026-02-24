@@ -59,3 +59,20 @@ export const groupPharmaceuticalForms = (forms: string[], t: TFunction) => {
   
   return result;
 };
+
+
+/**
+ * تنسيق السعر برمز الريال ﷼
+ * مثال: 25.50 → "25.50 ﷼"
+ */
+export function formatPrice(price: string | number | undefined | null, language?: string): string {
+  const p = parseFloat(String(price || '0'));
+  if (!p || isNaN(p)) return '';
+  return `${p.toFixed(2)} ﷼`;
+}
+
+export function formatPriceOrDash(price: string | number | undefined | null): string {
+  const p = parseFloat(String(price || '0'));
+  if (!p || isNaN(p)) return '—';
+  return `${p.toFixed(2)} ﷼`;
+}
