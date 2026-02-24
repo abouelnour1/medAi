@@ -618,9 +618,9 @@ const App: React.FC = () => {
                       <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
                   </div>
                   <div className="mt-6">
-                      {finalFilteredMedicines.length > 0 ? (
+                      {searchTerm.length >= 3 && finalFilteredMedicines.length > 0 ? (
                         <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
-                      ) : searchTerm.length >= 3 ? (
+                      ) : searchTerm.length >= 3 && finalFilteredMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
                         </div>

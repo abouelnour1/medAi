@@ -39,7 +39,8 @@ export function useSearch(
   }, [medicines, filters]);
 
   const finalFilteredMedicines = useMemo(() => {
-    if (raw.length < 3) return searchContextMedicines;
+    // لا تُرجع نتائج إلا لما في بحث فعلي
+    if (raw.length < 3) return [];
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     let results = searchContextMedicines.filter(m => {
