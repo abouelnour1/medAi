@@ -125,6 +125,38 @@ export async function setupCapacitorPush(
 }
 
 // ============================================
+// إشعار محلي - أدوية اليوم الجديدة
+// ============================================
+export async function notifyDailyFeaturedChanged(medicines: { tradeName: string; indication?: string }[]): Promise<void> {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const names = medicines.slice(0, 3).map(m => m.tradeName).join(' · ');
+    const firstIndication = medicines[0]?.indication;
+    const body = firstIndication
+      ? `${firstIndication.slice(0, 80)}...`
+      : `Today's featured: ${names}`;
+
+    const reg = await navigator.serviceWorker?.ready;
+    if (reg?.showNotification) {
+      await reg.showNotification('💊 أدوية اليوم - PharmaSource', {
+        body,
+        icon: '/icon-192.png',
+        badge: '/icon-72.png',
+        tag: 'daily-featured',
+        renotify: true,
+        data: { url: '/' }
+      } as NotificationOptions);
+    } else {
+      new Notification('💊 أدوية اليوم - PharmaSource', { body, icon: '/icon-192.png', tag: 'daily-featured' });
+    }
+  } catch (e) {
+    console.log('Local notification skipped:', e);
+  }
+}
+
+// ============================================
 // تعطيل الإشعارات
 // ============================================
 export async function disablePushNotifications(userId: string) {

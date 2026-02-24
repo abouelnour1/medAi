@@ -752,23 +752,22 @@ const App: React.FC = () => {
 
   if (!isDataLoaded && !isOnline && !hasLoadedBefore) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-light-bg dark:bg-dark-bg p-6 text-center">
-        <div className="w-24 h-24 mb-8 bg-primary/10 rounded-full flex items-center justify-center animate-bounce-subtle">
-          <svg className="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-3.536 4.978 4.978 0 011.414-3.536m0 0L5.636 5.636m4.243 9.9l-2.829 2.829" />
+      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900 p-6 text-center">
+        <div className="w-20 h-20 mb-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M6.343 17.657a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072" />
+            <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"/>
           </svg>
         </div>
-        <h1 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">PharmaSource KSA</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-xs leading-relaxed">
-          {language === 'ar' 
-            ? 'ملاحظة: لا يوجد اتصال بالإنترنت. يرجى الاتصال بالإنترنت للمرة الأولى لتحميل البيانات والواجهة.' 
-            : 'Note: No internet connection. Please connect to the internet for the first time to load data and interface.'}
+        <h1 className="text-xl font-black mb-2 text-slate-800 dark:text-white">No Internet Connection</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs leading-relaxed">
+          PharmaSource requires an internet connection on first launch to load the medicine database.
         </p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
-          className="px-8 py-3 bg-primary hover:bg-primary-dark text-white rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+          className="px-8 py-3 bg-slate-800 dark:bg-white text-white dark:text-slate-800 rounded-2xl font-black text-sm active:scale-95 transition-transform"
         >
-          {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+          Try Again
         </button>
       </div>
     );

@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Medicine, Language, TFunction } from '../types';
 import { 
   getDailyFeatured, saveDailyFeatured, saveClinicalData, getClinicalData,
+  getDailyMedicineCount, clearLocalCache,
   FeaturedMedicine, DailyFeatured, ClinicalData 
 } from '../utils/dailyMedicines';
 import { getScheduledMedicines } from '../utils/featuredSchedule';
+import { notifyDailyFeaturedChanged } from '../utils/pushNotifications';
 import ClinicalDataEditorModal from './ClinicalDataEditorModal';
 import { getTopSearched } from '../utils/analytics';
 
@@ -15,6 +17,7 @@ interface Props {
   onSelect: (medicine: Medicine) => void;
   geminiApiKey?: string;
   isAdmin?: boolean;
+  onNewDailyReady?: (medicines: FeaturedMedicine[]) => void; // callback لما تتغير الأدوية
 }
 
 // توليد Clinical Data بالـ Gemini
@@ -262,14 +265,18 @@ const FeaturedCard: React.FC<{
   );
 };
 
-const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey, isAdmin }) => {
+const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey, isAdmin, onNewDailyReady }) => {
   const [featured, setFeatured] = useState<FeaturedMedicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
+  const hasLoadedRef = useRef(false); // نمنع التحميل أكثر من مرة
   const ar = language === 'ar';
 
   const loadOrGenerate = useCallback(async () => {
     if (!medicines.length) return;
+    // لو محملنا قبل كده ومش أول مرة، منحملش تاني
+    if (hasLoadedRef.current && featured.length > 0) return;
+    hasLoadedRef.current = true;
     setIsLoading(true);
 
     const today = new Date().toISOString().split('T')[0];
@@ -316,24 +323,24 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     // اقرأ الجدول اليدوي من الأدمن
     const scheduledRegNums = await getScheduledMedicines(today);
     let selected: Medicine[];
+    // جيب العدد المطلوب من الإعدادات
+    const targetCount = await getDailyMedicineCount();
+
     if (scheduledRegNums && scheduledRegNums.length > 0) {
-      // الأدمن جدول بعض الأدوية - نكمل الباقي عشوائياً
       const scheduledList = scheduledRegNums
         .map(r => medicines.find(m => m.RegisterNumber === r))
         .filter(Boolean) as Medicine[];
       
-      if (scheduledList.length >= 3) {
-        selected = scheduledList.slice(0, 3);
+      if (scheduledList.length >= targetCount) {
+        selected = scheduledList.slice(0, targetCount);
       } else {
-        // نكمل للـ 3 من الاختيار العشوائي
         const scheduled_ids = new Set(scheduledList.map(m => m.RegisterNumber));
         const autoSelected = selectDailyMedicines(medicines)
           .filter(m => !scheduled_ids.has(m.RegisterNumber));
-        selected = [...scheduledList, ...autoSelected].slice(0, 3);
+        selected = [...scheduledList, ...autoSelected].slice(0, targetCount);
       }
     } else {
-      // مفيش جدول - اختيار تلقائي كامل
-      selected = selectDailyMedicines(medicines);
+      selected = selectDailyMedicines(medicines).slice(0, targetCount);
     }
     const featuredMeds: FeaturedMedicine[] = selected.map((m, i) => ({
       tradeName: m['Trade Name'],
@@ -382,6 +389,12 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
         generatedAt: new Date().toISOString(),
       };
       await saveDailyFeatured(daily);
+      // إشعار بالأدوية الجديدة
+      const notifData = enriched.map(m => ({
+        tradeName: m.tradeName,
+        indication: m.clinicalData?.indication
+      }));
+      notifyDailyFeaturedChanged(notifData);
     } else {
       setIsLoading(false);
     }

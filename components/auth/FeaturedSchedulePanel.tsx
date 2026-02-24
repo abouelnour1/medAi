@@ -4,6 +4,7 @@ import {
   subscribeSchedule, saveScheduleDay, deleteScheduleDay,
   getWeekDays, formatDateAr, ScheduledDay
 } from '../../utils/featuredSchedule';
+import { getDailyMedicineCount, saveDailyMedicineCount, clearLocalCache } from '../../utils/dailyMedicines';
 
 interface Props {
   allMedicines: Medicine[];
@@ -16,6 +17,8 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
   const ar = language === 'ar';
   const [schedule, setSchedule] = useState<Record<string, ScheduledDay>>({});
   const [loading, setLoading] = useState(true);
+  const [medicineCount, setMedicineCount] = useState(3);
+  const [savingCount, setSavingCount] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
@@ -27,6 +30,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
 
   useEffect(() => {
     const unsub = subscribeSchedule(s => { setSchedule(s); setLoading(false); });
+    getDailyMedicineCount().then(setMedicineCount);
     return () => unsub();
   }, []);
 
@@ -63,6 +67,7 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
     };
     const ok = await saveScheduleDay(day);
     if (ok) {
+      clearLocalCache(); // مسح الـ cache عشان يحمل الجديد
       setSchedule(prev => ({ ...prev, [selectedDay]: day }));
       setSelectedDay(null);
       alert(ar ? '✅ تم حفظ الجدول بنجاح' : '✅ Schedule saved successfully');
@@ -70,6 +75,19 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
       alert(ar ? '❌ فشل الحفظ - افتح الـ Console لمعرفة السبب' : '❌ Save failed - check Console for details');
     }
     setSaving(false);
+  };
+
+  const handleSaveCount = async (newCount: number) => {
+    setSavingCount(true);
+    try {
+      await saveDailyMedicineCount(newCount);
+      setMedicineCount(newCount);
+      clearLocalCache();
+      alert(ar ? `✅ تم تغيير عدد الأدوية إلى ${newCount}` : `✅ Medicine count updated to ${newCount}`);
+    } catch {
+      alert(ar ? '❌ فشل الحفظ' : '❌ Save failed');
+    }
+    setSavingCount(false);
   };
 
   const handleDelete = async (date: string) => {
@@ -94,10 +112,38 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
 
   return (
     <div className="space-y-4">
+      {/* إعداد عدد الأدوية */}
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+            {ar ? '🔢 عدد أدوية اليوم' : '🔢 Daily Medicine Count'}
+          </p>
+          <p className="text-[9px] text-slate-400 mt-0.5">
+            {ar ? 'الافتراضي 3 - الباقي يُختار عشوائياً' : 'Default 3 - rest auto-selected'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {[1,2,3,4,5].map(n => (
+            <button
+              key={n}
+              onClick={() => handleSaveCount(n)}
+              disabled={savingCount}
+              className={`w-8 h-8 rounded-xl text-xs font-black transition-all active:scale-90 ${
+                medicineCount === n
+                  ? 'bg-primary text-white shadow-md shadow-primary/30'
+                  : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <p className="text-[11px] text-slate-400 font-bold">
         {ar 
-          ? 'جدول أدوية اليوم - اختر 1 أو 2 أو 3 أدوية. الباقي يُختار عشوائياً تلقائياً'
-          : 'Featured schedule - pick 3 medicines per day. Unscheduled days auto-select.'}
+          ? 'اختر 1 أو أكثر من الأدوية. الباقي يُختار عشوائياً تلقائياً'
+          : 'Pick 1+ medicines per day. Rest auto-selected.'}
       </p>
 
       {/* جدول الأيام */}
