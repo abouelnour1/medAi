@@ -167,15 +167,15 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           </button>
       </div>
 
-      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
-          <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between p-5">
-              <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5"><PillIcon /></div>
-                  <h3 className="text-[11px] font-black uppercase text-slate-400 dark:text-dark-muted">{t('physicalDetails')}</h3>
+      <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+          <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0"><PillIcon /></div>
+                  <h3 className="text-[11px] font-black uppercase text-slate-500 dark:text-dark-muted tracking-wide">{t('physicalDetails')}</h3>
               </div>
-              <svg className={`w-4 h-4 text-slate-300 transition-transform ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
+              <svg className={`w-4 h-4 text-slate-300 transition-transform flex-shrink-0 ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
-          <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 p-5 pt-0' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
+          <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 px-4 pb-4' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
                 <div className="space-y-3 border-t border-slate-100 dark:border-dark-border pt-3 mt-2">
                     <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
                     <DetailRow label={t('pillShape')} value={medicine.pillShape} />
@@ -272,25 +272,46 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
 
       {/* ── Clinical Data Section ── */}
       {clinicalData && (
-        <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/10 rounded-[1.5rem] p-4 border border-teal-100 dark:border-teal-800/30">
-          <div className="flex items-center justify-between mb-3">
+        <div
+          onClick={() => setShowClinicalPage(true)}
+          className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/25 dark:to-cyan-900/15 rounded-[1.5rem] border border-teal-100 dark:border-teal-800/40 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <div className="flex items-center gap-2">
-              <span className="text-lg">📋</span>
+              <div className="w-7 h-7 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm">📋</span>
+              </div>
               <span className="text-xs font-black text-teal-700 dark:text-teal-400 uppercase tracking-wide">
                 {language === 'ar' ? 'معلومات سريرية' : 'Clinical Info'}
               </span>
             </div>
-            <button
-              onClick={() => setShowClinicalPage(true)}
-              className="flex items-center gap-1 bg-teal-600 text-white px-3 py-1.5 rounded-full text-[9px] font-black active:scale-95 transition-transform"
-            >
-              {language === 'ar' ? 'عرض كامل' : 'View Full'}
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M9 18l6-6-6-6"/></svg>
-            </button>
+            <span className="text-[9px] font-black text-teal-500 bg-teal-100 dark:bg-teal-900/40 px-2 py-1 rounded-full">
+              {language === 'ar' ? 'عرض كامل ←' : 'Full View →'}
+            </span>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3">
-            {clinicalData.indication}
-          </p>
+
+          {/* Indication preview */}
+          <div className="px-4 pb-3">
+            <p className="text-[11px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1">
+              🩺 {language === 'ar' ? 'يستخدم لـ' : 'Indication'}
+            </p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
+              {clinicalData.indication}
+            </p>
+          </div>
+
+          {/* Key Points لو موجودة */}
+          {clinicalData.keyPoints && (
+            <div className="px-4 pb-4 border-t border-teal-100 dark:border-teal-800/40 pt-3">
+              <p className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1.5">
+                ⭐ {language === 'ar' ? 'نقاط البيع المميزة' : 'Key Selling Points'}
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+                {clinicalData.keyPoints}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

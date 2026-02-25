@@ -12,12 +12,9 @@ function getApiKey(): string {
   return ''; // production: مفيش key في الـ client
 }
 
-// الـ AI متاح لو في user (بيستخدم الـ proxy) أو في API key محلي
-export const isAIAvailable = (user?: { id: string } | null): boolean => {
-  if (user) return true; // الـ proxy شغال
-  const apiKey = getApiKey();
-  if (!apiKey || apiKey === '' || apiKey === 'undefined' || apiKey === 'null') return false;
-  return true;
+// الـ AI دايماً متاح - الـ proxy على Vercel شغال بدون key في الـ client
+export const isAIAvailable = (_user?: { id: string } | null): boolean => {
+  return true; // /api/gemini على Vercel دايماً متاح
 };
 
 /**

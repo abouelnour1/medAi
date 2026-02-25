@@ -48,6 +48,7 @@ export interface ClinicalData {
   sideEffects: string;          // الآثار الجانبية
   pharmacistNote: string;       // تنبيه الصيدلاني
   mechanism?: string;           // آلية العمل (اختياري)
+  keyPoints?: string;           // نقاط البيع المميزة (اختياري)
   generatedAt: string;          // وقت التوليد
   language: 'ar' | 'en';
 }

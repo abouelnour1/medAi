@@ -18,11 +18,11 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ indication: '', dosage: '', sideEffects: '', pharmacistNote: '', mechanism: '' });
+  const [form, setForm] = useState({ indication: '', dosage: '', sideEffects: '', pharmacistNote: '', mechanism: '', keyPoints: '' });
 
   useEffect(() => {
     getClinicalData(registerNumber).then(d => {
-      if (d) { setData(d); setForm({ indication: d.indication||'', dosage: d.dosage||'', sideEffects: d.sideEffects||'', pharmacistNote: d.pharmacistNote||'', mechanism: d.mechanism||'' }); }
+      if (d) { setData(d); setForm({ indication: d.indication||'', dosage: d.dosage||'', sideEffects: d.sideEffects||'', pharmacistNote: d.pharmacistNote||'', mechanism: d.mechanism||'', keyPoints: d.keyPoints||'' }); }
       setLoading(false);
     });
   }, [registerNumber]);
@@ -45,6 +45,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
     { key: 'sideEffects' as const,    emoji: '⚠️', labelAr: 'الآثار الجانبية',   labelEn: 'Side Effects',     rows: 2 },
     { key: 'pharmacistNote' as const, emoji: '👨‍⚕️', labelAr: 'تنبيه الصيدلاني', labelEn: 'Pharmacist Note',  rows: 2 },
     { key: 'mechanism' as const,      emoji: '🔬', labelAr: 'آلية العمل',        labelEn: 'Mechanism',        rows: 2 },
+    { key: 'keyPoints' as const,      emoji: '⭐', labelAr: 'نقاط البيع المميزة', labelEn: 'Key Selling Points', rows: 3 },
   ];
 
   return (
@@ -119,8 +120,15 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
         ) : data && (
           <div className="space-y-3">
             {fields.filter(f => data[f.key]).map(f => (
-              <div key={f.key} className={`rounded-2xl p-4 ${f.key === 'pharmacistNote' ? 'bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800' : f.key === 'sideEffects' ? 'bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30' : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}>
-                <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${f.key === 'pharmacistNote' ? 'text-amber-500' : f.key === 'sideEffects' ? 'text-red-400' : 'text-slate-400'}`}>
+              <div key={f.key} className={`rounded-2xl p-4 ${
+              f.key === 'keyPoints' ? 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 border border-amber-200 dark:border-amber-700/50' :
+              f.key === 'pharmacistNote' ? 'bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800' :
+              f.key === 'sideEffects' ? 'bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30' :
+              'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}>
+                <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${
+                  f.key === 'keyPoints' ? 'text-amber-600' :
+                  f.key === 'pharmacistNote' ? 'text-amber-500' :
+                  f.key === 'sideEffects' ? 'text-red-400' : 'text-slate-400'}`}>
                   {f.emoji} {ar ? f.labelAr : f.labelEn}
                 </p>
                 <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{data[f.key]}</p>

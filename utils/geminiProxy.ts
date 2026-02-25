@@ -61,16 +61,17 @@ export async function callGenerateClinical(params: {
   sideEffects: string;
   pharmacistNote: string;
   mechanism?: string;
+  keyPoints?: string;
 } | null> {
   try {
     const ar = params.language === 'ar';
     const prompt = ar
       ? `أنت صيدلاني سريري خبير. اكتب معلومات سريرية للدواء: ${params.tradeName} (${params.scientificName}) ${params.strength} - ${params.form}.
 أجب بـ JSON فقط بهذا الشكل بدون أي نص إضافي:
-{"indication":"...","dosage":"...","sideEffects":"...","pharmacistNote":"...","mechanism":"..."}`
+{"indication":"...","dosage":"...","sideEffects":"...","pharmacistNote":"...","mechanism":"...","keyPoints":"3-4 نقاط مميزة للدواء ومزاياه مقارنة بالبدائل"}`
       : `You are a clinical pharmacist. Write clinical info for: ${params.tradeName} (${params.scientificName}) ${params.strength} - ${params.form}.
 Reply with JSON only:
-{"indication":"...","dosage":"...","sideEffects":"...","pharmacistNote":"...","mechanism":"..."}`;
+{"indication":"...","dosage":"...","sideEffects":"...","pharmacistNote":"...","mechanism":"...","keyPoints":"3-4 bullet points of key advantages or unique selling points of this medicine vs alternatives"}`;
 
     const data = await callGeminiProxy(
       [{ role: 'user', parts: [{ text: prompt }] }],
