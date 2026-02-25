@@ -307,6 +307,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
               </button>
           </div>
       )}
+
+      {/* Clinical Data Full Page */}
+      {showClinicalPage && (
+        <ClinicalDataPage
+          registerNumber={medicine.RegisterNumber}
+          tradeName={medicine['Trade Name']}
+          scientificName={medicine['Scientific Name']}
+          language={language}
+          isAdmin={user?.role === 'admin'}
+          onClose={() => setShowClinicalPage(false)}
+        />
+      )}
     </div>
   );
 };
