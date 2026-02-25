@@ -1,9 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Medicine, TFunction, Language } from '../types';
-import PillIcon from './icons/PillIcon';
 import AlternativeIcon from './icons/AlternativeIcon';
-import FactoryIcon from './icons/FactoryIcon';
 import StarIcon from './icons/StarIcon';
 
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
@@ -71,6 +69,16 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
+  // ── ألوان متناسقة وهادئة ──
+  // Rx = أزرق خفيف | OTC = أخضر خفيف جداً | Generic = بيج | Brand = سماوي | Controlled = بنفسجي
+  const rxStyle = isRx
+    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+    : 'bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400';
+
+  const typeStyle = isGeneric
+    ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+    : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400';
+
   return (
     <div
       onClick={handleClick}
@@ -78,93 +86,100 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border active:scale-[0.98] transition-all duration-150 cursor-pointer overflow-hidden"
+      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all duration-150 cursor-pointer overflow-hidden"
     >
-      {/* ══ Main row ══ */}
-      <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-2.5">
+      {/* ══ Body ══ */}
+      <div className="flex items-stretch gap-0 p-4 pb-3">
 
         {/* صورة */}
         {medicine.imgBox && (
-          <div className="flex-shrink-0 w-11 h-11 bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 mt-0.5">
+          <div className="flex-shrink-0 w-14 h-14 bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 mr-3 self-start">
             <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
           </div>
         )}
 
         {/* Info */}
         <div className="flex-grow min-w-0">
+
           {/* Manufacturer */}
-          <p className="text-[8px] font-medium text-slate-300 dark:text-slate-600 uppercase tracking-widest truncate mb-0.5 leading-none">
+          <p className="text-[9px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-widest truncate mb-1 leading-none">
             {medicine['Manufacture Name']}
           </p>
 
-          {/* Trade name */}
-          <h2 className="text-[13px] font-black text-slate-800 dark:text-white leading-snug break-words">
+          {/* Trade name - أكبر وأوضح */}
+          <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight break-words mb-1">
             {medicine['Trade Name']}
           </h2>
 
           {/* Scientific name */}
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 mb-2 leading-relaxed line-clamp-1" dir="ltr">
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 leading-snug line-clamp-2" dir="ltr">
             {ingredientsString}
           </p>
 
-          {/* Badges - محايدة وهادئة */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {/* Rx / OTC */}
-            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md border ${
-              isRx
-                ? 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-            }`}>
+          {/* Badges row */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+
+            {/* Rx / OTC — لون مميز */}
+            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${rxStyle}`}>
               {isRx ? 'Rx' : 'OTC'}
             </span>
 
-            {/* Generic / Brand */}
+            {/* Generic / Brand — لون مختلف */}
             {isHumanMed && medicine.DrugType && (
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${typeStyle}`}>
                 {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'أصيل' : 'Brand')}
               </span>
             )}
 
             {/* Controlled */}
             {isControlled && (
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                Ctrl
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
+                {ar ? 'مضبوط' : 'Ctrl'}
               </span>
             )}
 
             {/* Form */}
             {medicine.PharmaceuticalForm && (
-              <span className="text-[8px] text-slate-400 dark:text-slate-600 truncate max-w-[70px]">
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg truncate max-w-[90px]">
                 {medicine.PharmaceuticalForm}
               </span>
             )}
           </div>
         </div>
 
-        {/* Right column */}
-        <div className="flex flex-col items-end gap-2 flex-shrink-0 self-stretch justify-between">
-          {/* Price */}
-          {hasPrice ? (
-            <div className="text-right">
-              <span className="text-sm font-black text-slate-700 dark:text-slate-200 leading-none">{price.toFixed(2)}</span>
-              <span className="text-[7px] text-slate-400 block leading-none mt-0.5">{ar ? 'ر.س' : 'SAR'}</span>
-            </div>
-          ) : <div />}
+        {/* Right column - سعر + أزرار */}
+        <div className="flex flex-col items-end justify-between flex-shrink-0 ml-3 self-stretch">
 
-          {/* Actions */}
-          <div className="flex items-center gap-0.5">
+          {/* السعر - أكبر وأوضح */}
+          {hasPrice ? (
+            <div className="bg-primary/8 dark:bg-primary/15 px-3 py-2 rounded-xl text-center min-w-[58px]">
+              <span className="text-base font-black text-primary dark:text-primary-light block leading-none">
+                {price.toFixed(2)}
+              </span>
+              <span className="text-[8px] font-semibold text-primary/60 dark:text-primary-light/60 block mt-0.5">
+                {ar ? 'ر.س' : 'SAR'}
+              </span>
+            </div>
+          ) : (
+            <div className="px-3 py-2 rounded-xl min-w-[58px] text-center">
+              <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+            </div>
+          )}
+
+          {/* أزرار */}
+          <div className="flex items-center gap-1">
             <button
               onClick={e => { e.stopPropagation(); onFindAlternative(medicine); }}
-              className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary dark:hover:text-primary rounded-lg transition-colors active:scale-90"
+              className="p-2 text-slate-300 dark:text-slate-600 hover:text-primary dark:hover:text-primary rounded-xl transition-colors active:scale-90"
             >
-              <div className="w-3.5 h-3.5"><AlternativeIcon /></div>
+              <div className="w-4 h-4"><AlternativeIcon /></div>
             </button>
             <button
               onClick={handleFavorite}
-              className={`p-1.5 rounded-lg transition-colors ${isFavorite ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
+              className={`p-2 rounded-xl transition-colors ${isFavorite ? 'text-amber-400 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 dark:text-slate-600'}`}
               style={{ transform: starPop ? 'scale(1.4)' : 'scale(1)', transition: 'transform 150ms ease' }}
             >
-              <div className="w-3.5 h-3.5"><StarIcon isFilled={isFavorite} /></div>
+              <div className="w-4 h-4"><StarIcon isFilled={isFavorite} /></div>
             </button>
           </div>
         </div>
