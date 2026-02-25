@@ -131,17 +131,30 @@ export async function saveDailyFeatured(data: DailyFeatured): Promise<boolean> {
 
 // احفظ الـ Clinical Data لدواء معين
 export async function saveClinicalData(
-  registerNumber: string, 
-  data: ClinicalData
+  registerNumber: string,
+  data: ClinicalData,
+  siblingRegisterNumbers?: string[]  // أرقام تسجيل الأدوية بنفس المادة الفعالة
 ): Promise<boolean> {
   try {
     const ref = doc(db, 'clinicalData', registerNumber);
     await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
-    console.log('✅ Clinical data saved for:', registerNumber);
+
+    // حفظ على الأدوية بنفس المادة الفعالة (ماعدا keyPoints)
+    if (siblingRegisterNumbers && siblingRegisterNumbers.length > 0) {
+      const sharedData = { ...data, keyPoints: '', updatedAt: new Date().toISOString() };
+      await Promise.allSettled(
+        siblingRegisterNumbers.map(rn => {
+          const sibRef = doc(db, 'clinicalData', rn);
+          return setDoc(sibRef, sharedData, { merge: true });
+        })
+      );
+      console.log(`✅ Shared clinical data applied to ${siblingRegisterNumbers.length} siblings`);
+    }
+
     return true;
-  } catch (e: any) { 
+  } catch (e: any) {
     console.error('❌ Save clinical data error:', e?.code, e?.message);
-    throw e; // نرفع الـ error للـ caller
+    throw e;
   }
 }
 

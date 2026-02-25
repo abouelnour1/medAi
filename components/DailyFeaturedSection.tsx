@@ -405,6 +405,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
           scientificName={clinicalPageMed.scientificName}
           language={language}
           isAdmin={isAdmin}
+          allMedicines={medicines}
           onClose={() => setClinicalPageMed(null)}
         />
       )}

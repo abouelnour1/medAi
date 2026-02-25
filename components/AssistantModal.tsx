@@ -28,7 +28,6 @@ import MarkdownRenderer from './MarkdownRenderer';
 import PrescriptionView from './PrescriptionView';
 import ProductRecommendationsView from './ProductRecommendationsView';
 import { runAIChat, isAIAvailable, sanitizeParts } from '../geminiService';
-import { callGeminiProxy, isProxyAvailable } from '../utils/geminiProxy';
 import { useAuth } from './auth/AuthContext';
 import { saveConversation } from './ChatHistoryView';
 
@@ -182,41 +181,30 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 ${contextInfo}`;
 
     try {
-        let responseParts: any[] | null = null;
-
-        // أولاً: الـ proxy (الـ key على Vercel - أكثر أماناً)
-        if (isProxyAvailable()) {
-          try {
-            const serializedHistory = newHistory.map(m => ({
-              role: m.role,
-              parts: sanitizeParts(m.parts).map((p: any) => 
-                typeof p.text === 'string' ? { text: p.text } : p
-              )
-            }));
-            const proxyResult = await callGeminiProxy(
-              serializedHistory,
-              systemInstruction,
-              [{functionDeclarations: [searchDatabaseTool]}]
-            );
-            responseParts = proxyResult?.candidates?.[0]?.content?.parts || null;
-          } catch (proxyErr) {
-            console.warn('Proxy failed, falling back to direct:', proxyErr);
-          }
-        }
-
-        // ثانياً: fallback للاستدعاء المباشر
-        if (!responseParts) {
-          const response = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: [searchDatabaseTool]}], { searchDatabase });
-          responseParts = response?.candidates?.[0]?.content?.parts || null;
-        }
+        // runAIChat بتستخدم الـ proxy تلقائياً + بتتعامل مع function calling
+        const response = await runAIChat(
+          newHistory,
+          systemInstruction,
+          [{functionDeclarations: [searchDatabaseTool]}],
+          { searchDatabase }
+        );
+        const responseParts = response?.candidates?.[0]?.content?.parts || null;
 
         if (responseParts) {
             const cleanParts = sanitizeParts(responseParts);
             setChatHistory(prev => [...prev, { role: 'model', parts: cleanParts }]);
+        } else {
+            setChatHistory(prev => [...prev, { role: 'model', parts: [{text: 'لم يتم الحصول على رد. حاول مرة أخرى.'}] }]);
         }
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Chat Error:", err);
-      setChatHistory(prev => [...prev, { role: 'model', parts: [{text: t('geminiError')}] }]);
+      // رسالة خطأ واضحة
+      const errMsg = err?.message?.includes('Proxy error 500') 
+        ? (language === 'ar' ? '⚠️ مشكلة في الاتصال بالخادم. تأكد من إعداد API key على Vercel.' : '⚠️ Server error. Check API key in Vercel settings.')
+        : err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')
+        ? (language === 'ar' ? '⚠️ لا يوجد اتصال بالإنترنت.' : '⚠️ No internet connection.')
+        : t('geminiError');
+      setChatHistory(prev => [...prev, { role: 'model', parts: [{text: errMsg}] }]);
     } finally {
       setIsLoading(false);
     }

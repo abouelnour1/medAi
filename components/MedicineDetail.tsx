@@ -38,6 +38,7 @@ const DetailRow: React.FC<{ label: string; value?: string | number | null }> = (
 interface MedicineDetailProps {
     medicine: Medicine;
     insuranceData: InsuranceDrug[];
+    allMedicines?: Medicine[];
     t: TFunction;
     language: Language;
     isFavorite: boolean;
@@ -55,7 +56,7 @@ interface MedicineDetailProps {
     isInCompare?: boolean;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
@@ -348,6 +349,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           scientificName={medicine['Scientific Name']}
           language={language}
           isAdmin={user?.role === 'admin'}
+          allMedicines={allMedicines}
           onClose={() => setShowClinicalPage(false)}
         />
       )}
