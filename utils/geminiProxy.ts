@@ -3,7 +3,17 @@
  * بيكلم /api/gemini على Vercel - الـ API key على السيرفر
  */
 
-const PROXY_URL = '/api/gemini';
+// على الويب: /api/gemini (Vercel)
+// على Android/iOS: URL الـ Vercel المطلق
+function getProxyUrl(): string {
+  // Capacitor native - بنستخدم الـ absolute URL
+  if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
+    // نجيب الـ URL من env variable اللي بنحطه في vite.config
+    return (import.meta as any).env?.VITE_PROXY_URL || 'https://your-app.vercel.app/api/gemini';
+  }
+  // ويب: relative URL يشتغل على أي domain
+  return '/api/gemini';
+}
 
 // ──────────────────────────────────────────
 // استدعاء Gemini عبر الـ Vercel Proxy
@@ -14,7 +24,7 @@ export async function callGeminiProxy(
   tools?: any[],
   model = 'gemini-2.0-flash-lite'
 ): Promise<any> {
-  const res = await fetch(PROXY_URL, {
+  const res = await fetch(getProxyUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

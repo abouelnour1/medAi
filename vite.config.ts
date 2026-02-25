@@ -24,5 +24,7 @@ export default defineConfig({
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    // URL الـ Vercel للـ Android - بتحطه في .env.local
+    // VITE_PROXY_URL=https://your-app.vercel.app/api/gemini
   }
 });

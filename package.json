@@ -10,7 +10,10 @@
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "setup:fonts": "node scripts/download-fonts.js",
-    "setup": "npm install && node scripts/download-fonts.js"
+    "setup": "npm install && node scripts/download-fonts.js",
+    "ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "ios:build": "npm run build && npx cap sync ios",
+    "android:build": "npm run build && npx cap sync android"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -20,7 +23,11 @@
     "@capacitor/core": "^6.2.0",
     "@capacitor/app": "^6.0.2",
     "@capacitor-firebase/messaging": "8.1.0",
-    "@tanstack/react-virtual": "^3.10.0"
+    "@tanstack/react-virtual": "^3.10.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

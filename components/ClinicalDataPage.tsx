@@ -49,10 +49,13 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
 
   return (
     <div className="fixed inset-0 z-[80] bg-light-bg dark:bg-dark-bg flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pb-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-dark-card flex-shrink-0" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)" }}>
-        <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full active:scale-90 transition-transform">
-          <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      {/* Safe area spacer - يعوض ارتفاع status bar + الـ app header */}
+      <div className="flex-shrink-0 bg-white dark:bg-dark-card" style={{ height: 'calc(env(safe-area-inset-top, 0px) + 60px)' }} />
+      
+      {/* Header - تحت الـ safe area */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-dark-card flex-shrink-0 shadow-sm">
+        <button onClick={onClose} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl active:scale-90 transition-transform flex-shrink-0">
+          <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path d="M19 12H5M12 5l-7 7 7 7"/>
           </svg>
         </button>
@@ -60,12 +63,14 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
           <h1 className="font-black text-slate-800 dark:text-white text-sm truncate">{tradeName}</h1>
           {scientificName && <p className="text-[10px] text-slate-400 truncate">{scientificName}</p>}
         </div>
-        <span className="text-[9px] font-black px-2 py-1 bg-primary/10 text-primary rounded-full">📋 Clinical</span>
-        {isAdmin && !editing && data && (
-          <button onClick={() => setEditing(true)} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-full active:scale-90 transition-transform">
-            <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[9px] font-black px-2 py-1 bg-primary/10 text-primary rounded-full">📋</span>
+          {isAdmin && !editing && data && (
+            <button onClick={() => setEditing(true)} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-xl active:scale-90 transition-transform">
+              <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}

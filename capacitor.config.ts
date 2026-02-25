@@ -8,17 +8,38 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    allowNavigation: ['*']
+    allowNavigation: ['*'],
+    cleartext: false,
+  },
+  ios: {
+    contentInset: 'automatic',   // يحسب safe area تلقائياً
+    scrollEnabled: true,
+    backgroundColor: '#ffffff',
+    preferredContentMode: 'mobile',
+  },
+  android: {
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false, // false في production
   },
   plugins: {
     Keyboard: {
-      resize: 'none',
+      resize: 'ionic',
       style: 'dark',
-      resizeOnFullScreen: false,
+      resizeOnFullScreen: true,
     },
     StatusBar: {
       style: 'light',
-      backgroundColor: '#0f766e'
+      backgroundColor: '#0f766e',
+      overlaysWebView: false,
+    },
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      backgroundColor: '#0f766e',
+      androidSplashResourceName: 'splash',
+      iosSplashResourceName: 'Default',
+      showSpinner: false,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']
