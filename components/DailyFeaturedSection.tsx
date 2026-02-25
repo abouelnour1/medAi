@@ -182,6 +182,14 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
   const [isLoading, setIsLoading] = useState(true);
   const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
   const [clinicalPageMed, setClinicalPageMed] = useState<FeaturedMedicine | null>(null);
+
+  // Lock scroll when clinical page open
+  useEffect(() => {
+    const scrollEl = document.getElementById('main-scroll-container');
+    if (clinicalPageMed && scrollEl) scrollEl.style.overflow = 'hidden';
+    else if (scrollEl) scrollEl.style.overflow = '';
+    return () => { if (scrollEl) scrollEl.style.overflow = ''; };
+  }, [clinicalPageMed]);
   const hasLoadedRef = useRef(false);
   // نحفظ الـ props في refs عشان نستخدمها في useCallback بدون إعادة إنشاء
   const medicinesRef = useRef(medicines);

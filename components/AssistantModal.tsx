@@ -30,6 +30,7 @@ import ProductRecommendationsView from './ProductRecommendationsView';
 import { runAIChat, isAIAvailable, sanitizeParts } from '../geminiService';
 import { callGeminiProxy, isProxyAvailable } from '../utils/geminiProxy';
 import { useAuth } from './auth/AuthContext';
+import { saveConversation } from './ChatHistoryView';
 
 interface AssistantModalProps {
   isOpen: boolean;
@@ -269,7 +270,8 @@ ${contextInfo}`;
               <button onClick={() => { onSaveAndClose(chatHistory); onShowHistory?.(); }} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><div className="w-4 h-4"><HistoryIcon/></div></button>
               <button onClick={() => { 
                 if (confirm('مسح كل المحادثة؟')) {
-                  setChatHistory([]);
+                  saveConversation(chatHistory);
+              setChatHistory([]);
                   localStorage.removeItem(CHAT_STORAGE_KEY);
                 }
               }} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:text-red-500 transition-colors" title="مسح المحادثة"><div className="w-4 h-4"><ClearIcon/></div></button>

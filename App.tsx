@@ -15,6 +15,7 @@ import FilterButton from './components/FilterButton';
 import AlternativesView from './components/AlternativesView';
 import FloatingAssistantButton from './components/FloatingAssistantButton';
 import AssistantModal from './components/AssistantModal';
+import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
@@ -209,6 +210,8 @@ const App: React.FC = () => {
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [showChatHistory, setShowChatHistory] = useState(false);
+  const [loadedConversation, setLoadedConversation] = useState<any[]>([]);
   const [exactSearchOnly, setExactSearchOnly] = useState(true); // الافتراضي = بحث حرفي دقيق
   // API key انتقل للـ Firebase Cloud Function - الـ proxy بيستخدم Firebase Auth
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
@@ -550,7 +553,7 @@ const App: React.FC = () => {
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
-      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={(type) => {
+      if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
         const filtered = medicines.filter(m => 
           type === 'medicine' ? m['Product type'] === 'Human' :
           type === 'supplement' ? m['Product type'] === 'Supplement' : 
@@ -576,13 +579,41 @@ const App: React.FC = () => {
           'description',
           'imgBox','imgIndex1','imgIndex2','imgPill',
           'pillShape','pillScored','pillMarkings',
-          'liquidTaste','liquidColor','physicalNotes'
+          'liquidTaste','liquidColor','physicalNotes',
+          // Clinical Data fields
+          'clinical_indication','clinical_dosage','clinical_sideEffects',
+          'clinical_pharmacistNote','clinical_mechanism','clinical_keyPoints','clinical_generatedAt'
         ];
         baseHeaders.forEach(h => allKeys.add(h));
-        // نضيف أي keys إضافية من Firebase مش في القائمة الأساسية
         filtered.forEach(m => Object.keys(m).forEach(k => allKeys.add(k)));
         const headers = Array.from(allKeys);
-        const csv = [headers.join(','), ...filtered.map(m => headers.map(h => JSON.stringify(String((m as any)[h] ?? ''))).join(','))].join('\n');
+
+        // نجيب clinical data لكل الأدوية
+        // جيب clinical data بشكل async
+        const { getClinicalData } = await import('./utils/dailyMedicines');
+        const clinicalEntries = await Promise.all(
+          filtered.map(async m => {
+            const cd = await getClinicalData(m.RegisterNumber).catch(() => null);
+            return [m.RegisterNumber, cd] as [string, any];
+          })
+        );
+        const clinicalMap = new Map(clinicalEntries);
+
+        const enriched = filtered.map(m => {
+          const cd = clinicalMap.get(m.RegisterNumber) as any;
+          return {
+            ...m,
+            clinical_indication: cd?.indication || '',
+            clinical_dosage: cd?.dosage || '',
+            clinical_sideEffects: cd?.sideEffects || '',
+            clinical_pharmacistNote: cd?.pharmacistNote || '',
+            clinical_mechanism: cd?.mechanism || '',
+            clinical_keyPoints: cd?.keyPoints || '',
+            clinical_generatedAt: cd?.generatedAt || '',
+          };
+        });
+
+        const csv = [headers.join(','), ...enriched.map(m => headers.map(h => JSON.stringify(String((m as any)[h] ?? ''))).join(','))].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -810,7 +841,25 @@ const App: React.FC = () => {
       )}
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
-      {isAssistantOpen && <AssistantModal isOpen={isAssistantOpen} onSaveAndClose={()=>setIsAssistantOpen(false)} contextMedicine={view === 'details' ? selectedMedicine : null} allMedicines={medicines} initialPrompt="" t={t} language={language} />}
+      {isAssistantOpen && <AssistantModal
+        isOpen={isAssistantOpen}
+        onSaveAndClose={() => { setIsAssistantOpen(false); setLoadedConversation([]); }}
+        contextMedicine={view === 'details' ? selectedMedicine : null}
+        allMedicines={medicines}
+        initialPrompt=""
+        initialHistory={loadedConversation.length ? loadedConversation : undefined}
+        t={t}
+        language={language}
+        onShowHistory={() => { setIsAssistantOpen(false); setShowChatHistory(true); }}
+      />}
+      {showChatHistory && (
+        <ChatHistoryView
+          language={language}
+          t={t}
+          onLoadConversation={(msgs) => { setLoadedConversation(msgs); setShowChatHistory(false); setIsAssistantOpen(true); }}
+          onClose={() => setShowChatHistory(false)}
+        />
+      )}
       {drugToolsModal.open && (
         <DrugToolsModal
           mode={drugToolsModal.mode}

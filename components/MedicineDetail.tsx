@@ -59,6 +59,17 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
+  // Lock background scroll when clinical page is open
+  useEffect(() => {
+    const scrollEl = document.getElementById('main-scroll-container');
+    if (showClinicalPage && scrollEl) {
+      scrollEl.style.overflow = 'hidden';
+    } else if (scrollEl) {
+      scrollEl.style.overflow = '';
+    }
+    return () => { if (scrollEl) scrollEl.style.overflow = ''; };
+  }, [showClinicalPage]);
+
   useEffect(() => {
     if (medicine?.RegisterNumber) {
       getClinicalData(medicine.RegisterNumber).then(setClinicalData);

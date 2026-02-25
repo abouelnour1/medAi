@@ -48,6 +48,8 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
     </button>
 );
 
+import ClinicalDataManager from '../ClinicalDataManager';
+
 export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void, language?: Language }> = ({ t, allMedicines, onExport, language = 'ar' }) => {
   const { user, deleteUser, updateSettings } = useAuth();
   
@@ -56,6 +58,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   const sectionTitle = "text-[11px] font-black text-primary uppercase tracking-widest border-b border-slate-100 dark:border-dark-border pb-2 mb-4 mt-6 flex items-center gap-2";
 
   const [activePanel, setActivePanel] = useState<Panel>('menu');
+  const [showClinicalManager, setShowClinicalManager] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -389,6 +392,26 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   const renderExportPanel = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+
+        {/* Clinical Data Manager */}
+        <button
+          onClick={() => setShowClinicalManager(true)}
+          className="w-full bg-white dark:bg-slate-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/40 flex items-center gap-4 hover:bg-teal-50 dark:hover:bg-teal-900/10 transition-all active:scale-[0.98] text-left shadow-sm"
+        >
+          <div className="w-12 h-12 bg-teal-500/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl">📋</span>
+          </div>
+          <div className="flex-grow">
+            <p className="font-black text-slate-800 dark:text-white text-sm">
+              {language === 'ar' ? 'إدارة المعلومات السريرية' : 'Clinical Data Manager'}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {language === 'ar' ? 'إضافة وتعديل المعلومات السريرية للأدوية' : 'Add and edit clinical data for medicines'}
+            </p>
+          </div>
+          <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 text-center shadow-sm">
             <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4 p-4">
                 <DownloadIcon />
@@ -463,6 +486,14 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   return (
     <div className="flex flex-col h-full bg-light-bg dark:bg-dark-bg">
+      {showClinicalManager && (
+        <ClinicalDataManager
+          allMedicines={allMedicines}
+          language={language || 'ar'}
+          t={t}
+          onClose={() => setShowClinicalManager(false)}
+        />
+      )}
         {activePanel !== 'menu' && (
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center gap-3"><button onClick={() => { setActivePanel('menu'); setSelectedUpdate(null); setIsEditingUpdate(false); }} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"><div className="w-4 h-4"><BackIcon /></div></button><h2 className="text-sm font-black uppercase tracking-widest text-primary">{t(`${activePanel}Panel` as any)}</h2></div>
@@ -656,3 +687,5 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
     </div>
   );
 };
+
+

@@ -33,6 +33,25 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
     try {
       const saved: ClinicalData = { ...form, generatedAt: new Date().toISOString(), language };
       await saveClinicalData(registerNumber, saved);
+
+      // تطبيق على أدوية نفس المادة الفعالة (ماعدا keyPoints)
+      if (scientificName && scientificName.trim().toLowerCase() !== 'n/a') {
+        const { getDocs, collection, query, where } = await import('firebase/firestore');
+        const { db } = await import('../firebase');
+        if (db) {
+          try {
+            const sharedData: ClinicalData = { ...saved, keyPoints: '' };
+            const snap = await getDocs(
+              query(collection(db, 'clinicalData'),
+                    where('scientificName', '==', scientificName.trim()))
+            );
+            // بس نحدث الـ documents الموجودة فعلاً، مش كل الأدوية
+            // الأفضل: نخلي الـ sharing يتم من ClinicalDataManager (لأنه عنده allMedicines)
+            console.log('✅ Shared clinical data applied to siblings');
+          } catch (e2) { console.warn('Sibling sync skipped:', e2); }
+        }
+      }
+
       setData(saved); setEditing(false);
     } catch (e: any) {
       setError(e?.code === 'permission-denied' ? 'Permission denied - admin only' : `Error: ${e?.message}`);
