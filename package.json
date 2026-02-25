@@ -19,7 +19,8 @@
     "@google/genai": "^1.41.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/app": "^6.0.2",
-    "@capacitor-firebase/messaging": "8.1.0"
+    "@capacitor-firebase/messaging": "8.1.0",
+    "@tanstack/react-virtual": "^3.10.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

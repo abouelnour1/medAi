@@ -1,5 +1,23 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { FunctionDeclaration, Type, Tool } from '@google/genai';
+// Local type definitions - no @google/genai import needed
+type FunctionDeclaration = {
+  name: string;
+  description: string;
+  parameters?: {
+    type: string;
+    description?: string;
+    properties: Record<string, { type: string; description: string; enum?: string[] }>;
+    required?: string[];
+  };
+};
+type Tool = { functionDeclarations: FunctionDeclaration[] };
+const Type = {
+  STRING: 'STRING' as const,
+  NUMBER: 'NUMBER' as const,
+  BOOLEAN: 'BOOLEAN' as const,
+  ARRAY: 'ARRAY' as const,
+  OBJECT: 'OBJECT' as const,
+};
 import { Medicine, TFunction, Language, ChatMessage, SerializablePart } from '../types';
 import AssistantIcon from './icons/AssistantIcon';
 import MarkdownRenderer from './MarkdownRenderer';

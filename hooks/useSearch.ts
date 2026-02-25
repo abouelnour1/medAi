@@ -1,6 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Medicine, TextSearchMode, SortByOption, Filters } from '../types';
 import { fuzzyMatch, fuzzyScore } from '../utils/fuzzySearch';
+
+// Search Index - يتبنى مرة واحدة ويتخزن
+interface MedicineIndex {
+  id: string;
+  tradeLower: string;
+  sciLower: string;
+  regNum: string;
+}
+
+function buildIndex(medicines: Medicine[]): MedicineIndex[] {
+  return medicines.map(m => ({
+    id: m.RegisterNumber,
+    tradeLower: String(m['Trade Name'] || '').toLowerCase(),
+    sciLower: String(m['Scientific Name'] || '').toLowerCase(),
+    regNum: m.RegisterNumber,
+  }));
+}
 
 function matchesWildcard(text: string, pattern: string): boolean {
   if (!pattern.includes('*')) return text.includes(pattern);

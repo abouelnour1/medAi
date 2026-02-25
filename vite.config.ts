@@ -23,7 +23,6 @@ export default defineConfig({
     }
   },
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.VITE_API_KEY || ''),
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   }
 });

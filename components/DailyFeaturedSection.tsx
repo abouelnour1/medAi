@@ -6,8 +6,10 @@ import {
   FeaturedMedicine, DailyFeatured, ClinicalData 
 } from '../utils/dailyMedicines';
 import { getScheduledMedicines } from '../utils/featuredSchedule';
+import { callGenerateClinical } from '../utils/geminiProxy';
 import { notifyDailyFeaturedChanged } from '../utils/pushNotifications';
 import ClinicalDataEditorModal from './ClinicalDataEditorModal';
+import ClinicalDataPage from './ClinicalDataPage';
 import { getTopSearched } from '../utils/analytics';
 
 interface Props {
@@ -24,101 +26,34 @@ interface Props {
 async function generateClinicalData(
   medicine: Medicine,
   language: Language,
-  apiKey: string
+  _apiKey: string,
+  _useProxy: boolean = true
 ): Promise<ClinicalData | null> {
+  // كل التوليد بيمشي عبر الـ Vercel proxy - مفيش SDK مباشر
   try {
-    const ar = language === 'ar';
-    const prompt = ar
-      ? `أنت صيدلاني سريري خبير. أعطني معلومات سريرية مختصرة ومهمة عن دواء:
-الاسم التجاري: ${medicine['Trade Name']}
-المادة الفعالة: ${medicine['Scientific Name']}
-الشكل الصيدلاني: ${medicine.PharmaceuticalForm}
-نوع المنتج: ${medicine['Product type']}
-
-أجب بـ JSON فقط بهذا الشكل بالضبط:
-{
-  "indication": "يستخدم لعلاج... (2-3 استخدامات رئيسية)",
-  "dosage": "الجرعة المعتادة للبالغين: ... | للأطفال: ... | تعديل في الكلى: ...",
-  "sideEffects": "الأكثر شيوعاً: ... | تحذير: ...",
-  "pharmacistNote": "تنبيه مهم للصيدلاني في جملة أو جملتين",
-  "mechanism": "آلية العمل باختصار"
-}`
-      : `You are an expert clinical pharmacist. Give concise clinical info about:
-Trade Name: ${medicine['Trade Name']}
-Active Ingredient: ${medicine['Scientific Name']}
-Form: ${medicine.PharmaceuticalForm}
-Product Type: ${medicine['Product type']}
-
-Reply with ONLY this JSON:
-{
-  "indication": "Used for... (2-3 main uses)",
-  "dosage": "Adults: ... | Pediatric: ... | Renal adjustment: ...",
-  "sideEffects": "Common: ... | Warning: ...",
-  "pharmacistNote": "Key pharmacist alert in 1-2 sentences",
-  "mechanism": "Brief mechanism of action"
-}`;
-
-    const { GoogleGenAI } = await import('@google/genai');
-    const genai = new GoogleGenAI({ apiKey });
-    const result = await genai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
+    const result = await callGenerateClinical({
+      tradeName: medicine['Trade Name'],
+      scientificName: medicine['Scientific Name'] || '',
+      strength: medicine.Strength || '',
+      form: medicine.PharmaceuticalForm || '',
+      language
     });
-    const raw = result.text || '';
-    // تنظيف الـ response من markdown
-    const text = raw.replace(/```json[\s\S]*?```/g, m => m.replace(/```json|```/g, '')).replace(/```/g, '').trim();
-    // استخراج أول JSON object
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON in response: ' + text.slice(0, 200));
-    const parsed = JSON.parse(jsonMatch[0]);
-    return { ...parsed, generatedAt: new Date().toISOString(), language };
+    if (!result) return null;
+    return {
+      indication: result.indication || '',
+      dosage: result.dosage || '',
+      sideEffects: result.sideEffects || '',
+      pharmacistNote: result.pharmacistNote || '',
+      mechanism: result.mechanism,
+      generatedAt: new Date().toISOString(),
+      language
+    };
   } catch (e) {
-    console.error('Clinical data generation error:', e);
+    console.error('generateClinicalData via proxy failed:', e);
     return null;
   }
 }
 
-// اختيار 3 أدوية للعرض اليومي
-function selectDailyMedicines(medicines: Medicine[]): Medicine[] {
-  const today = new Date().toISOString().split('T')[0];
-  const seed = today.split('-').reduce((a, b) => a + parseInt(b), 0);
-
-  const topSearched = getTopSearched(20);
-
-  let pool: Medicine[] = [];
-
-  if (topSearched.length >= 3) {
-    // من أكثر المبحوثين - نفضل المكملات
-    const supplements = medicines.filter(m => m['Product type'] === 'Supplement');
-    const others = medicines.filter(m => m['Product type'] !== 'Supplement');
-
-    topSearched.forEach(ts => {
-      const found = medicines.find(m =>
-        m['Trade Name'].toLowerCase() === ts.name.toLowerCase()
-      );
-      if (found && pool.length < 6) pool.push(found);
-    });
-
-    // لو المكملات مش ممثلة - نضيف واحد
-    const hasSupp = pool.some(m => m['Product type'] === 'Supplement');
-    if (!hasSupp && supplements.length > 0) {
-      pool.unshift(supplements[(seed * 7) % supplements.length]);
-    }
-  }
-
-  // لو مفيش analytics كافية - نختار عشوائي ثابت لليوم
-  if (pool.length < 3) {
-    const withImage = medicines.filter(m => m.imgBox);
-    const base = withImage.length > 0 ? withImage : medicines;
-    for (let i = 0; i < 3 && pool.length < 3; i++) {
-      const idx = (seed * (i + 3) * 17) % base.length;
-      const m = base[idx];
-      if (m && !pool.find(p => p.RegisterNumber === m.RegisterNumber)) pool.push(m);
-    }
-  }
-
-  return pool.slice(0, 3);
-}
 
 // كارت الدواء المميز
 const FeaturedCard: React.FC<{
@@ -127,9 +62,9 @@ const FeaturedCard: React.FC<{
   ar: boolean;
   onSelect: () => void;
   onEditClinical?: () => void;
+  onOpenClinical?: () => void;
   isAdminMode?: boolean;
-}> = ({ medicine, index, ar, onSelect, onEditClinical, isAdminMode }) => {
-  const [expanded, setExpanded] = useState(false);
+}> = ({ medicine, index, ar, onSelect, onEditClinical, onOpenClinical, isAdminMode }) => {
   const colors = [
     'from-primary via-teal-600 to-emerald-700',
     'from-violet-600 via-purple-600 to-indigo-700',
@@ -186,64 +121,28 @@ const FeaturedCard: React.FC<{
           </div>
         </div>
 
-        {/* Clinical Data */}
+        {/* Clinical Data - زرار يفتح صفحة منفصلة */}
         {medicine.clinicalData && (
           <div className="px-4 pb-4">
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="w-full flex items-center justify-between bg-white/10 rounded-2xl px-3 py-2 mb-2"
+              onClick={e => { e.stopPropagation(); onOpenClinical?.(); }}
+              className="w-full flex items-center justify-between bg-white/15 hover:bg-white/25 rounded-2xl px-3 py-2.5 transition-all active:scale-95"
             >
-              <span className="text-white/80 text-[10px] font-black">
-                {ar ? '📋 معلومات سريرية' : '📋 Clinical Info'}
-              </span>
-              <svg
-                className={`w-3 h-3 text-white/60 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}
-              >
-                <path d="M19 9l-7 7-7-7" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📋</span>
+                <div className="text-left">
+                  <p className="text-white/90 text-[10px] font-black">
+                    {ar ? 'المعلومات السريرية' : 'Clinical Info'}
+                  </p>
+                  <p className="text-white/50 text-[8px] truncate max-w-[150px]">
+                    {medicine.clinicalData.indication?.slice(0, 40)}...
+                  </p>
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-white/60 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path d="M9 18l6-6-6-6"/>
               </svg>
             </button>
-
-            {expanded && (
-              <div className="space-y-2 animate-fade-in">
-                {/* indication */}
-                <div className="bg-white/10 rounded-2xl p-3">
-                  <p className="text-white/50 text-[9px] font-black uppercase mb-1">
-                    {ar ? 'يستخدم لـ' : 'Indication'}
-                  </p>
-                  <p className="text-white/90 text-[11px] leading-relaxed">
-                    {medicine.clinicalData.indication}
-                  </p>
-                </div>
-                {/* dosage */}
-                <div className="bg-white/10 rounded-2xl p-3">
-                  <p className="text-white/50 text-[9px] font-black uppercase mb-1">
-                    💊 {ar ? 'الجرعة' : 'Dosage'}
-                  </p>
-                  <p className="text-white/90 text-[11px] leading-relaxed">
-                    {medicine.clinicalData.dosage}
-                  </p>
-                </div>
-                {/* pharmacist note */}
-                <div className="bg-amber-500/30 rounded-2xl p-3 border border-amber-400/30">
-                  <p className="text-amber-200 text-[9px] font-black uppercase mb-1">
-                    ⚠️ {ar ? 'تنبيه الصيدلاني' : 'Pharmacist Note'}
-                  </p>
-                  <p className="text-white/90 text-[11px] leading-relaxed">
-                    {medicine.clinicalData.pharmacistNote}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Side effects preview */}
-            {!expanded && medicine.clinicalData.sideEffects && (
-              <div className="bg-white/10 rounded-2xl px-3 py-2">
-                <p className="text-white/60 text-[9px] truncate">
-                  {medicine.clinicalData.sideEffects.split('|')[0]}
-                </p>
-              </div>
-            )}
           </div>
         )}
 
@@ -265,17 +164,40 @@ const FeaturedCard: React.FC<{
   );
 };
 
+// اختيار أدوية عشوائية مع seed اليوم
+function selectDailyMedicines(medicines: Medicine[]): Medicine[] {
+  if (!medicines.length) return [];
+  const today = new Date().toISOString().split('T')[0];
+  const seed = today.split('-').reduce((a, b) => a + parseInt(b), 0);
+  const shuffled = [...medicines].sort((a, b) => {
+    const ha = (seed * 2654435761 + a.RegisterNumber.charCodeAt(0)) >>> 0;
+    const hb = (seed * 2654435761 + b.RegisterNumber.charCodeAt(0)) >>> 0;
+    return ha - hb;
+  });
+  return shuffled.slice(0, 10); // نرجع 10 عشان نكمل من بعدهم
+}
+
 const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey, isAdmin, onNewDailyReady }) => {
   const [featured, setFeatured] = useState<FeaturedMedicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
-  const hasLoadedRef = useRef(false); // نمنع التحميل أكثر من مرة
+  const [clinicalPageMed, setClinicalPageMed] = useState<FeaturedMedicine | null>(null);
+  const hasLoadedRef = useRef(false);
+  // نحفظ الـ props في refs عشان نستخدمها في useCallback بدون إعادة إنشاء
+  const medicinesRef = useRef(medicines);
+  const geminiKeyRef = useRef(geminiApiKey);
+  const languageRef = useRef(language);
+  useEffect(() => { medicinesRef.current = medicines; }, [medicines]);
+  useEffect(() => { geminiKeyRef.current = geminiApiKey; }, [geminiApiKey]);
+  useEffect(() => { languageRef.current = language; }, [language]);
   const ar = language === 'ar';
 
   const loadOrGenerate = useCallback(async () => {
+    const medicines = medicinesRef.current;
+    const geminiApiKey = geminiKeyRef.current;
+    const language = languageRef.current;
     if (!medicines.length) return;
-    // لو محملنا قبل كده ومش أول مرة، منحملش تاني
-    if (hasLoadedRef.current && featured.length > 0) return;
+    if (hasLoadedRef.current) return; // مرة واحدة بس
     hasLoadedRef.current = true;
     setIsLoading(true);
 
@@ -308,7 +230,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
             const regNum = enrichedCached[i].registerNumber;
             const fullMed = medicines.find(m => m.RegisterNumber === regNum);
             if (!fullMed) continue;
-            const clinical = await generateClinicalData(fullMed, language, geminiApiKey);
+            const clinical = await generateClinicalData(fullMed, language, geminiApiKey, true);
             if (clinical) {
               enrichedCached[i] = { ...enrichedCached[i], clinicalData: clinical };
               setFeatured([...enrichedCached]);
@@ -372,7 +294,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
       for (let i = 0; i < selected.length; i++) {
         if (enriched[i].clinicalData) continue; // موجودة - skip
         try {
-          const clinical = await generateClinicalData(selected[i], language, geminiApiKey);
+          const clinical = await generateClinicalData(selected[i], language, geminiApiKey, true);
           if (clinical) {
             enriched[i] = { ...enriched[i], clinicalData: clinical };
             setFeatured([...enriched]);
@@ -398,11 +320,14 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     } else {
       setIsLoading(false);
     }
-  }, [medicines, language, geminiApiKey]);
+  }, []); // مرة واحدة بس - الـ refs بتتحدث تلقائياً
 
   useEffect(() => {
-    loadOrGenerate();
-  }, [loadOrGenerate]);
+    // ننتظر حتى تكون الأدوية جاهزة
+    if (medicines.length > 0 && !hasLoadedRef.current) {
+      loadOrGenerate();
+    }
+  }, [medicines.length > 0]); // يشتغل مرة لما الأدوية تتحمل
 
   if (isLoading) {
     return (
@@ -450,6 +375,7 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
               ar={ar}
               onSelect={() => fullMed && onSelect(fullMed)}
               onEditClinical={() => setEditingMed(med)}
+              onOpenClinical={() => setClinicalPageMed(med)}
               isAdminMode={isAdmin}
             />
           );
@@ -464,6 +390,17 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
       </div>
 
       {/* Modal إدخال يدوي للمعلومات السريرية */}
+      {clinicalPageMed && (
+        <ClinicalDataPage
+          registerNumber={clinicalPageMed.registerNumber}
+          tradeName={clinicalPageMed.tradeName}
+          scientificName={clinicalPageMed.scientificName}
+          language={language}
+          isAdmin={isAdmin}
+          onClose={() => setClinicalPageMed(null)}
+        />
+      )}
+
       {editingMed && (
         <ClinicalDataEditorModal
           registerNumber={editingMed.registerNumber}

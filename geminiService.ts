@@ -1,9 +1,21 @@
 
-import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
+// SDK loaded dynamically - use proxy instead
 import { ChatMessage, SerializablePart } from './types';
 
-export const isAIAvailable = (): boolean => {
-  const apiKey = process.env.API_KEY;
+// ⚠️ API key انتقل للـ Firebase Cloud Function
+// الـ client مش محتاج الـ key بعد كده - كل الطلبات بتمشي عبر الـ proxy
+function getApiKey(): string {
+  // بس للتطوير المحلي لو في key في environment
+  if (typeof window !== 'undefined' && (window as any).__DEV_GEMINI_KEY__) {
+    return (window as any).__DEV_GEMINI_KEY__;
+  }
+  return ''; // production: مفيش key في الـ client
+}
+
+// الـ AI متاح لو في user (بيستخدم الـ proxy) أو في API key محلي
+export const isAIAvailable = (user?: { id: string } | null): boolean => {
+  if (user) return true; // الـ proxy شغال
+  const apiKey = getApiKey();
   if (!apiKey || apiKey === '' || apiKey === 'undefined' || apiKey === 'null') return false;
   return true;
 };
@@ -76,67 +88,43 @@ export const runAIChat = async (
     systemInstruction: string,
     tools: any[] | null,
     toolImplementations: Record<string, Function>,
-    modelName: string = 'gemini-3-flash-preview'
-): Promise<GenerateContentResponse> => {
-    // CRITICAL: Obtain API Key exclusively from process.env.API_KEY
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("API Key is missing");
+    modelName: string = 'gemini-2.0-flash-lite'
+): Promise<any> => {
+    // كل الطلبات بتمشي عبر الـ Vercel proxy
+    const { callGeminiProxy } = await import('./utils/geminiProxy');
 
-    // CRITICAL: Initialize right before usage
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const contents: any[] = history.map(msg => ({
+    const contents = history.map(msg => ({
         role: msg.role,
-        parts: sanitizeParts(msg.parts)
+        parts: sanitizeParts(msg.parts).map((p: any) =>
+            typeof p.text === 'string' ? { text: p.text } : p
+        )
     }));
 
-    const config: any = {
-        systemInstruction: String(systemInstruction),
-        temperature: 0.7,
-        thinkingConfig: { thinkingBudget: 0 }
-    };
+    const data = await callGeminiProxy(
+        contents,
+        systemInstruction,
+        tools || undefined,
+        modelName
+    );
 
-    if (tools) config.tools = flattenToPOJO(tools);
-
-    let response = await ai.models.generateContent({
-        model: modelName,
-        contents: contents,
-        config: config,
-    });
-
-    let iterations = 0;
-    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 5) {
-        iterations++;
-        const functionResponses: any[] = [];
-        
-        for (const call of response.functionCalls) {
-            const implementation = toolImplementations[call.name];
-            if (implementation) {
-                const rawResult = await implementation(call.args);
-                functionResponses.push({
-                    functionResponse: {
-                        name: call.name,
-                        response: flattenToPOJO(rawResult || {}),
-                        id: call.id
-                    }
-                });
-            }
+    // لو في tool call نعالجه
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const toolCall = parts.find((p: any) => p.functionCall);
+    if (toolCall?.functionCall) {
+        const { name, args } = toolCall.functionCall;
+        const fn = toolImplementations[name];
+        if (fn) {
+            const toolResult = await fn(args);
+            // بنعمل second call مع النتيجة
+            const secondHistory = [
+                ...contents,
+                { role: 'model', parts },
+                { role: 'tool', parts: [{ functionResponse: { name, response: toolResult } }] }
+            ];
+            const secondData = await callGeminiProxy(secondHistory, systemInstruction, undefined, modelName);
+            return secondData;
         }
-
-        if (functionResponses.length > 0) {
-            const modelTurnParts = response.candidates?.[0]?.content?.parts;
-            if (modelTurnParts) {
-                contents.push({ role: 'model', parts: sanitizeParts(modelTurnParts) });
-                contents.push({ role: 'user', parts: functionResponses });
-                
-                response = await ai.models.generateContent({
-                    model: modelName,
-                    contents: contents,
-                    config: config,
-                });
-            } else break;
-        } else break;
     }
 
-    return response;
+    return data;
 };

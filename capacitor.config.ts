@@ -19,6 +19,12 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'light',
       backgroundColor: '#0f766e'
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert']
+    },
+    FirebaseMessaging: {
+      presentationOptions: ['badge', 'sound', 'alert']
     }
   }
 };

@@ -19,6 +19,24 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
   const [loading, setLoading] = useState(true);
   const [medicineCount, setMedicineCount] = useState(3);
   const [savingCount, setSavingCount] = useState(false);
+  const [countdown, setCountdown] = useState('');
+
+  // حساب الوقت المتبقي لنهاية اليوم
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      const diff = end.getTime() - now.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`);
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
@@ -112,6 +130,16 @@ const FeaturedSchedulePanel: React.FC<Props> = ({ allMedicines, language, userId
 
   return (
     <div className="space-y-4">
+      {/* Countdown */}
+      <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-3 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black text-slate-500 dark:text-slate-400">
+            {ar ? '⏱ باقي على انتهاء عرض اليوم' : '⏱ Time until daily refresh'}
+          </p>
+        </div>
+        <span className="text-lg font-black text-primary tabular-nums">{countdown}</span>
+      </div>
+
       {/* إعداد عدد الأدوية */}
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 flex items-center justify-between gap-3">
         <div>

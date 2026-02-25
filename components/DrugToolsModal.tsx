@@ -11,11 +11,16 @@ interface Props {
   initialMedicine?: Medicine | null;
 }
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const { GoogleGenAI } = await import('@google/genai');
-  const ai = new GoogleGenAI({ apiKey });
-  const result = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
-  return result.text || '';
+async function callGemini(prompt: string, _apiKey?: string): Promise<string> {
+  // بيستخدم الـ Vercel proxy - مش محتاج API key في الـ client
+  const { callGeminiProxy } = await import('../utils/geminiProxy');
+  const data = await callGeminiProxy(
+    [{ role: 'user', parts: [{ text: prompt }] }],
+    '',
+    undefined,
+    'gemini-2.0-flash'
+  );
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 // ==============================

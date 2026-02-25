@@ -1,5 +1,5 @@
 
-import React, { useState, memo, useMemo } from 'react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
@@ -12,6 +12,8 @@ import ShieldIcon from './icons/ShieldIcon';
 import CameraIcon from './icons/CameraIcon';
 import PillIcon from './icons/PillIcon';
 import { getIngredientsList } from './MedicineCard';
+import { getClinicalData, ClinicalData } from '../utils/dailyMedicines';
+import ClinicalDataPage from './ClinicalDataPage';
 
 const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
     <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-dark-border mb-4 animate-fade-in">
@@ -54,6 +56,16 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
+  const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
+  const [showClinicalPage, setShowClinicalPage] = useState(false);
+
+  useEffect(() => {
+    if (medicine?.RegisterNumber) {
+      getClinicalData(medicine.RegisterNumber).then(setClinicalData);
+    }
+  }, [medicine?.RegisterNumber]);
+
+
   const [isPhysicalOpen, setIsPhysicalOpen] = useState(false);
   const price = parseFloat(medicine['Public price']);
   const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
@@ -257,6 +269,30 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, t, language, 
           <DetailRow label={t('marketingCompanyLabel')} value={medicine['Marketing Company']} />
           <DetailRow label={t('agentLabel')} value={medicine['Main Agent']} />
       </InfoCard>
+
+      {/* ── Clinical Data Section ── */}
+      {clinicalData && (
+        <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/10 rounded-[1.5rem] p-4 border border-teal-100 dark:border-teal-800/30">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📋</span>
+              <span className="text-xs font-black text-teal-700 dark:text-teal-400 uppercase tracking-wide">
+                {language === 'ar' ? 'معلومات سريرية' : 'Clinical Info'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowClinicalPage(true)}
+              className="flex items-center gap-1 bg-teal-600 text-white px-3 py-1.5 rounded-full text-[9px] font-black active:scale-95 transition-transform"
+            >
+              {language === 'ar' ? 'عرض كامل' : 'View Full'}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3">
+            {clinicalData.indication}
+          </p>
+        </div>
+      )}
 
       <InfoCard title={t('storage')} icon={<GlobeIcon />}>
           <p className="text-sm font-black text-slate-700 dark:text-slate-300 leading-relaxed text-right">{language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']}</p>

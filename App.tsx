@@ -27,6 +27,7 @@ import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
 import DailyFeaturedSection from './components/DailyFeaturedSection';
+import ErrorBoundary from './components/ErrorBoundary';
 import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
@@ -209,14 +210,8 @@ const App: React.FC = () => {
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [exactSearchOnly, setExactSearchOnly] = useState(true); // الافتراضي = بحث حرفي دقيق
-  // Gemini API Key - يجرب المتغيرين
-  const geminiApiKey = React.useMemo(() => {
-    const k1 = (import.meta.env as any)['VITE_GEMINI_API_KEY'];
-    const k2 = (import.meta.env as any)['VITE_API_KEY'];
-    const key = k1 || k2 || '';
-    if (!key || key === 'PLACEHOLDER_API_KEY') return undefined;
-    return key;
-  }, []);
+  // API key انتقل للـ Firebase Cloud Function - الـ proxy بيستخدم Firebase Auth
+  const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   
@@ -363,11 +358,15 @@ const App: React.FC = () => {
             const medMap = new Map<string, Medicine>();
             hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
 
+            // ✅ نعرض الأدوية المحلية فوراً بدون ننتظر Firestore
+            setMedicines(Array.from(medMap.values()));
+
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
             setIsDataLoaded(true);
 
             if (!FIREBASE_DISABLED && db) {
+                // Firestore يحدّث في الخلفية - مش بيبلوك الـ UI
                 onSnapshot(collection(db, 'medicines'), (snapshot) => {
                     snapshot.docs.forEach(doc => {
                         const med = normalizeMedicine(doc.data());
@@ -636,16 +635,20 @@ const App: React.FC = () => {
           
           return (
               <div className="animate-fade-in pt-2">
-                  {/* أدوية اليوم - تظهر لما مفيش بحث */}
-                  {searchTerm.length === 0 && medicines.length > 0 && (
-                    <DailyFeaturedSection
-                      medicines={medicines}
-                      language={language}
-                      t={t}
-                      onSelect={handleMedicineSelect}
-                      geminiApiKey={geminiApiKey}
-                      isAdmin={user?.role === 'admin'}
-                    />
+                  {/* أدوية اليوم - دايماً mounted بس مخفية لما في بحث */}
+                  {medicines.length > 0 && (
+                    <div className={searchTerm.length > 0 ? 'hidden' : ''}>
+                      <ErrorBoundary>
+                      <DailyFeaturedSection
+                        medicines={medicines}
+                        language={language}
+                        t={t}
+                        onSelect={handleMedicineSelect}
+                        geminiApiKey={geminiApiKey}
+                        isAdmin={user?.role === 'admin'}
+                      />
+                      </ErrorBoundary>
+                    </div>
                   )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
@@ -752,22 +755,18 @@ const App: React.FC = () => {
 
   if (!isDataLoaded && !isOnline && !hasLoadedBefore) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900 p-6 text-center">
-        <div className="w-20 h-20 mb-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M6.343 17.657a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072" />
-            <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"/>
-          </svg>
+      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900 p-6 text-center select-none">
+        <div className="w-16 h-16 mb-5 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+          <span className="text-3xl">📵</span>
         </div>
-        <h1 className="text-xl font-black mb-2 text-slate-800 dark:text-white">No Internet Connection</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs leading-relaxed">
-          PharmaSource requires an internet connection on first launch to load the medicine database.
-        </p>
+        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500 mb-2">OFFLINE</span>
+        <h1 className="text-lg font-black text-slate-800 dark:text-white mb-1">PharmaSource KSA</h1>
+        <p className="text-xs text-slate-400 mb-6">Connect to the internet and try again.</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-8 py-3 bg-slate-800 dark:bg-white text-white dark:text-slate-800 rounded-2xl font-black text-sm active:scale-95 transition-transform"
+          className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs tracking-wide active:scale-95 transition-transform"
         >
-          Try Again
+          RETRY
         </button>
       </div>
     );

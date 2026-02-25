@@ -1,6 +1,24 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FunctionDeclaration, Type } from '@google/genai';
+// Local type definitions - no @google/genai import needed
+type FunctionDeclaration = {
+  name: string;
+  description: string;
+  parameters?: {
+    type: string;
+    description?: string;
+    properties: Record<string, { type: string; description: string; enum?: string[] }>;
+    required?: string[];
+  };
+};
+type Tool = { functionDeclarations: FunctionDeclaration[] };
+const Type = {
+  STRING: 'STRING' as const,
+  NUMBER: 'NUMBER' as const,
+  BOOLEAN: 'BOOLEAN' as const,
+  ARRAY: 'ARRAY' as const,
+  OBJECT: 'OBJECT' as const,
+};
 import { Medicine, TFunction, Language, ChatMessage, SerializablePart } from '../types';
 import AssistantIcon from './icons/AssistantIcon';
 import ClearIcon from './icons/ClearIcon';
@@ -10,6 +28,7 @@ import MarkdownRenderer from './MarkdownRenderer';
 import PrescriptionView from './PrescriptionView';
 import ProductRecommendationsView from './ProductRecommendationsView';
 import { runAIChat, isAIAvailable, sanitizeParts } from '../geminiService';
+import { callGeminiProxy, isProxyAvailable } from '../utils/geminiProxy';
 import { useAuth } from './auth/AuthContext';
 
 interface AssistantModalProps {
@@ -51,7 +70,19 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
   if (!isOpen) return null;
 
   const { user } = useAuth();
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const CHAT_STORAGE_KEY = 'pharma_ai_chat_history';
+  
+  // تحميل الـ history من localStorage
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [userInput, setUserInput] = useState('');
   const [uploadedImage, setUploadedImage] = useState<{ blob: Blob, preview: string, mimeType: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +92,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 
   const searchDatabaseTool: FunctionDeclaration = {
     name: 'searchDatabase',
+    description: 'Search the Saudi medicine database',
     parameters: {
       type: Type.OBJECT,
       description: 'Finds drug information in the Saudi database. MANDATORY to use if the user mentions any medication name.',
@@ -149,10 +181,35 @@ const AssistantModal: React.FC<AssistantModalProps> = ({
 ${contextInfo}`;
 
     try {
-        const response = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: [searchDatabaseTool]}], { searchDatabase });
-        const responseParts = response?.candidates?.[0]?.content?.parts;
+        let responseParts: any[] | null = null;
+
+        // أولاً: الـ proxy (الـ key على Vercel - أكثر أماناً)
+        if (isProxyAvailable()) {
+          try {
+            const serializedHistory = newHistory.map(m => ({
+              role: m.role,
+              parts: sanitizeParts(m.parts).map((p: any) => 
+                typeof p.text === 'string' ? { text: p.text } : p
+              )
+            }));
+            const proxyResult = await callGeminiProxy(
+              serializedHistory,
+              systemInstruction,
+              [{functionDeclarations: [searchDatabaseTool]}]
+            );
+            responseParts = proxyResult?.candidates?.[0]?.content?.parts || null;
+          } catch (proxyErr) {
+            console.warn('Proxy failed, falling back to direct:', proxyErr);
+          }
+        }
+
+        // ثانياً: fallback للاستدعاء المباشر
+        if (!responseParts) {
+          const response = await runAIChat(newHistory, systemInstruction, [{functionDeclarations: [searchDatabaseTool]}], { searchDatabase });
+          responseParts = response?.candidates?.[0]?.content?.parts || null;
+        }
+
         if (responseParts) {
-            // تطهير الرد القادم من الـ SDK قبل إضافته للـ state لضمان عدم وجود مراجع دائرية
             const cleanParts = sanitizeParts(responseParts);
             setChatHistory(prev => [...prev, { role: 'model', parts: cleanParts }]);
         }
@@ -183,6 +240,17 @@ ${contextInfo}`;
     }
   }, [isOpen]);
 
+  // حفظ الـ history في localStorage كل ما تتغير
+  useEffect(() => {
+    try {
+      if (chatHistory.length > 0) {
+        // نحفظ آخر 50 رسالة بس عشان مانملاش الـ storage
+        const toSave = chatHistory.slice(-50);
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
+      }
+    } catch {}
+  }, [chatHistory]);
+
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatHistory, isLoading]);
   
   return (
@@ -199,7 +267,12 @@ ${contextInfo}`;
           </div>
           <div className="flex items-center gap-1">
               <button onClick={() => { onSaveAndClose(chatHistory); onShowHistory?.(); }} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><div className="w-4 h-4"><HistoryIcon/></div></button>
-              <button onClick={() => onSaveAndClose(chatHistory)} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:text-red-500 transition-colors"><div className="w-4 h-4"><ClearIcon/></div></button>
+              <button onClick={() => { 
+                if (confirm('مسح كل المحادثة؟')) {
+                  setChatHistory([]);
+                  localStorage.removeItem(CHAT_STORAGE_KEY);
+                }
+              }} className="p-1.5 rounded-lg text-slate-400 dark:text-dark-muted hover:text-red-500 transition-colors" title="مسح المحادثة"><div className="w-4 h-4"><ClearIcon/></div></button>
           </div>
         </header>
 
