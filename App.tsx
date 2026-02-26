@@ -862,11 +862,11 @@ const App: React.FC = () => {
         onSaveAndClose={() => { setIsAssistantOpen(false); setLoadedConversation([]); }}
         contextMedicine={view === 'details' ? selectedMedicine : null}
         allMedicines={medicines}
-        initialPrompt=""
         initialHistory={loadedConversation.length ? loadedConversation : undefined}
         t={t}
         language={language}
-        onShowHistory={() => { setIsAssistantOpen(false); setShowChatHistory(true); }}
+        user={user}
+        onOpenHistory={() => { setIsAssistantOpen(false); setShowChatHistory(true); }}
       />}
       {showChatHistory && (
         <ChatHistoryView
