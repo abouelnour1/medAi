@@ -318,8 +318,10 @@ const App: React.FC = () => {
 
   const handleBack = useCallback(() => {
       if (view === 'imageView') {
-          setView('details');
-          restoreScroll('details');
+          // لو جيت من details نرجع لها، لو من حته تانية كمان
+          const backTarget = previousView === 'alternatives' ? 'details' : (previousView || 'details');
+          setView(backTarget);
+          restoreScroll(backTarget);
       } else if (view === 'alternatives') {
           setView('results');
           restoreScroll('results');
@@ -675,7 +677,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (

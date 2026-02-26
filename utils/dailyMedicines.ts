@@ -142,15 +142,17 @@ export async function saveClinicalData(
   const sharedData = { ...data, keyPoints: '', updatedAt: new Date().toISOString() };
   let siblingsToSave = siblingRegisterNumbers || [];
 
-  // Fallback: لو مش موجودين، نجيبهم من medicines collection في Firestore
+  // Fallback: لو مش موجودين، نجيبهم بـ Scientific Name من Firestore
   if (siblingsToSave.length === 0 && data.indication) {
     try {
-      // نجيب الـ scientific name من الـ medicines collection
       const medRef = doc(db, 'medicines', registerNumber);
       const medSnap = await getDoc(medRef);
       if (medSnap.exists()) {
-        const sciName = medSnap.data()?.['Scientific Name']?.trim();
+        const medData = medSnap.data();
+        const sciName = medData?.['Scientific Name']?.trim();
         if (sciName && sciName.toLowerCase() !== 'n/a' && sciName !== '') {
+          // نجيب كل الأدوية بنفس المادة الفعالة (مش بس نفس القوة)
+          // عشان المريض ممكن يكون عنده نفس الدواء بقوة مختلفة
           const siblingsSnap = await getDocs(
             query(collection(db, 'medicines'), where('Scientific Name', '==', sciName))
           );

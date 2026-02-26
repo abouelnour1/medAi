@@ -92,13 +92,28 @@ export const runAIChat = async (
 
     const contents = history.map(msg => ({
         role: msg.role,
-        parts: sanitizeParts(msg.parts).map((p: any) =>
-            typeof p.text === 'string' ? { text: p.text } : p
-        )
+        parts: sanitizeParts(msg.parts).map((p: any) => {
+            if (typeof p.text === 'string') return { text: p.text };
+            // تنظيف inlineData من الـ history القديمة لتقليل الـ payload
+            if (p.inlineData) return p; // نبعت الصور فقط في الـ message الأخير
+            return p;
+        })
     }));
+    
+    // نشيل الـ inlineData من كل الـ messages ماعدا الأخيرة
+    // عشان نحافظ على حجم الـ request معقول
+    const trimmedContents = contents.map((msg, idx) => {
+        if (idx === contents.length - 1) return msg; // الأخيرة: نفعل فيها كل حاجة
+        return {
+            ...msg,
+            parts: msg.parts.filter((p: any) => !p.inlineData) // نشيل الصور القديمة
+        };
+    }).filter(msg => msg.parts.length > 0);
+
+    const finalContents = trimmedContents.length > 0 ? trimmedContents : contents;
 
     const data = await callGeminiProxy(
-        contents,
+        finalContents,
         systemInstruction,
         tools || undefined,
         modelName
@@ -114,7 +129,7 @@ export const runAIChat = async (
             const toolResult = await fn(args);
             // Gemini بيطلب role: 'function' مش 'tool'
             const secondHistory = [
-                ...contents,
+                ...finalContents,
                 { role: 'model', parts },
                 { role: 'function', parts: [{ functionResponse: { name, response: { output: toolResult } } }] }
             ];

@@ -152,6 +152,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
                   <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
+                  {/* ── المادة الفعالة مباشرة تحت اسم الدواء ── */}
+                  {medicine['Scientific Name'] && medicine['Scientific Name'] !== 'N/A' && (
+                    <p className="text-sm font-semibold text-teal-600/70 dark:text-teal-400/60 mt-1 leading-snug" dir="ltr">
+                      {medicine['Scientific Name']}{medicine.Strength ? ` · ${medicine.Strength}` : ''}
+                    </p>
+                  )}
                   {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
               </div>
               {medicine.imgBox && (
@@ -185,45 +191,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <div className="w-5 h-5 text-primary"><AssistantIcon /></div>
               AI Assistant
           </button>
-      </div>
-
-      <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
-          <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between px-4 py-3.5">
-              <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0"><PillIcon /></div>
-                  <h3 className="text-[11px] font-black uppercase text-slate-500 dark:text-dark-muted tracking-wide">{t('physicalDetails')}</h3>
-              </div>
-              <svg className={`w-4 h-4 text-slate-300 transition-transform flex-shrink-0 ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 px-4 pb-4' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
-                <div className="space-y-3 border-t border-slate-100 dark:border-dark-border pt-3 mt-2">
-                    <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
-                    <DetailRow label={t('pillShape')} value={medicine.pillShape} />
-                    <DetailRow label={t('scored')} value={medicine.pillScored} />
-                    <DetailRow label={t('markings')} value={medicine.pillMarkings} />
-                    {medicine.liquidTaste && (
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
-                        <span className="text-[11px] font-black text-slate-400 uppercase">
-                          {language === 'ar' ? '👅 الطعم' : '👅 Taste'}
-                        </span>
-                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                          {medicine.liquidTaste}
-                        </span>
-                      </div>
-                    )}
-                    {medicine.liquidColor && (
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
-                        <span className="text-[11px] font-black text-slate-400 uppercase">
-                          {language === 'ar' ? '🎨 اللون' : '🎨 Color'}
-                        </span>
-                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                          {medicine.liquidColor}
-                        </span>
-                      </div>
-                    )}
-                    <DetailRow label={t('notes')} value={medicine.physicalNotes} />
-                </div>
-          </div>
       </div>
 
       {/* ── Clinical Data Section ── */}
@@ -349,6 +316,47 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               </button>
           </div>
       )}
+
+      <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+          <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0"><PillIcon /></div>
+                  <h3 className="text-[11px] font-black uppercase text-slate-500 dark:text-dark-muted tracking-wide">{t('physicalDetails')}</h3>
+              </div>
+              <svg className={`w-4 h-4 text-slate-300 transition-transform flex-shrink-0 ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 px-4 pb-4' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
+                <div className="space-y-3 border-t border-slate-100 dark:border-dark-border pt-3 mt-2">
+                    <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
+                    <DetailRow label={t('pillShape')} value={medicine.pillShape} />
+                    <DetailRow label={t('scored')} value={medicine.pillScored} />
+                    <DetailRow label={t('markings')} value={medicine.pillMarkings} />
+                    {medicine.liquidTaste && (
+                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
+                        <span className="text-[11px] font-black text-slate-400 uppercase">
+                          {language === 'ar' ? '👅 الطعم' : '👅 Taste'}
+                        </span>
+                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                          {medicine.liquidTaste}
+                        </span>
+                      </div>
+                    )}
+                    {medicine.liquidColor && (
+                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
+                        <span className="text-[11px] font-black text-slate-400 uppercase">
+                          {language === 'ar' ? '🎨 اللون' : '🎨 Color'}
+                        </span>
+                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                          {medicine.liquidColor}
+                        </span>
+                      </div>
+                    )}
+                    <DetailRow label={t('notes')} value={medicine.physicalNotes} />
+                </div>
+          </div>
+      </div>
+
+
 
       {/* Clinical Data Full Page */}
       {showClinicalPage && (
