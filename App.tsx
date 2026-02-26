@@ -201,7 +201,7 @@ const App: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
-  const [previousView, setPreviousView] = useState<string>('results'); // للرجوع الصح
+  const [previousView, setPreviousView] = useState<View>('results'); // للرجوع الصح
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -319,7 +319,7 @@ const App: React.FC = () => {
   const handleBack = useCallback(() => {
       if (view === 'imageView') {
           // لو جيت من details نرجع لها، لو من حته تانية كمان
-          const backTarget = previousView === 'alternatives' ? 'details' : (previousView || 'details');
+          const backTarget: View = (previousView === 'alternatives' ? 'details' : (previousView || 'details')) as View;
           setView(backTarget);
           restoreScroll(backTarget);
       } else if (view === 'alternatives') {
