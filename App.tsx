@@ -213,6 +213,10 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [loadedConversation, setLoadedConversation] = useState<any[]>([]);
+  const [appShareUrl, setAppShareUrl] = useState<string>(() => 
+    localStorage.getItem('pharma_share_url') || ''
+  );
+
   const [exactSearchOnly, setExactSearchOnly] = useState<boolean>(() => {
     const saved = localStorage.getItem('pharma_exact_search');
     return saved !== null ? saved === 'true' : true; // default = true
@@ -473,33 +477,23 @@ const App: React.FC = () => {
   // مشاركة الدواء
   const handleShareMedicine = (medicine: Medicine) => {
     const price = parseFloat(medicine['Public price']);
-    const deepLink = `https://pharmasource.app/medicine/${medicine.RegisterNumber}`;
     const ar = language === 'ar';
+    const baseUrl = appShareUrl.trim();
+    const deepLink = baseUrl
+      ? `${baseUrl.replace(/\/$/, '')}/${medicine.RegisterNumber}`
+      : null;
+    const linkLine = deepLink
+      ? (ar ? `\n🔗 افتح في PharmaSource: ${deepLink}` : `\n🔗 Open in PharmaSource: ${deepLink}`)
+      : '';
     const text = ar
-      ? `💊 *${medicine['Trade Name']}*
-🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}
-🏭 ${medicine['Manufacture Name']}
-📋 ${medicine['Legal Status']}
-
-🔗 افتح في PharmaSource: ${deepLink}`
-      : `💊 *${medicine['Trade Name']}*
-🧪 ${medicine['Scientific Name']}
-💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}
-🏭 ${medicine['Manufacture Name']}
-📋 ${medicine['Legal Status']}
-
-🔗 Open in PharmaSource: ${deepLink}`;
+      ? `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`
+      : `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`;
 
     if (navigator.share) {
-        navigator.share({ 
-          title: medicine['Trade Name'], 
-          text,
-          url: deepLink
-        });
+        navigator.share({ title: 'PharmaSource', text, ...(deepLink ? { url: deepLink } : {}) });
     } else {
         navigator.clipboard?.writeText(text).then(() => 
-          alert(ar ? '✅ تم نسخ بيانات الدواء مع الرابط!' : '✅ Copied with link!')
+          alert(ar ? '✅ تم نسخ بيانات الدواء!' : '✅ Copied!')
         );
     }
   };
@@ -791,6 +785,30 @@ const App: React.FC = () => {
                           </div>
                           {/* إشعارات Push */}
                           {user && <PushNotificationToggle userId={user.id} language={language} />}
+                          {/* رابط الشير */}
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
+                            <div>
+                              <span className="font-bold text-slate-700 dark:text-slate-300 block text-sm">
+                                🔗 {language === 'ar' ? 'رابط مشاركة التطبيق' : 'App Share Link'}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {language === 'ar' ? 'يُضاف مع كل مشاركة دواء — اتركه فارغاً لو مش مظبوط بعد' : 'Added with every medicine share — leave empty if not ready'}
+                              </span>
+                            </div>
+                            <input
+                              type="url"
+                              value={appShareUrl}
+                              onChange={e => {
+                                setAppShareUrl(e.target.value);
+                                localStorage.setItem('pharma_share_url', e.target.value);
+                              }}
+                              placeholder="https://pharmasource.app/medicine"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-primary transition-colors"
+                            />
+                          </div>
                           {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>

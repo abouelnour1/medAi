@@ -11,13 +11,31 @@ export const getIngredientsList = (medicine: Medicine): { name: string; strength
     return sciNames.map((name, index) => ({ name, strength: strengths[index] || strengths[0] || '' }));
 };
 
+// الوحدات المعروفة — لو التركيز ينتهي بواحدة منهم ماتظهرش مرة تانية
+const KNOWN_UNITS = /\b(mg|ml|g|mcg|ug|iu|unit|units|mmol|mol|meq|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|mg\/tab|mg\/cap|iu\/ml|iu\/dose)\b/i;
+
+// يتحقق إن التركيز فيه وحدة مكتوبة صريحة
+function strengthHasUnit(s: string): boolean {
+    return KNOWN_UNITS.test(s);
+}
+
 export const zipIngredients = (medicine: Medicine): string => {
-    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
+    // الكارت: أسماء المواد فقط بدون تركيزات للاسترشاد
+    return sciNames.join(' · ');
+};
+
+// للاستخدام في أماكن تانية (MedicineDetail مثلاً) لو محتاجين التركيزات
+export const zipIngredientsWithStrength = (medicine: Medicine): string => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
-    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0] === 'N/A')) return 'N/A';
-    return sciNames.map((name, index) => {
-        const s = strengths[index] || strengths[0] || '';
-        return s.trim() ? `${name} ${s.trim()}` : name;
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
+    return sciNames.map((name, i) => {
+        const s = (strengths[i] || strengths[0] || '').trim();
+        if (!s) return name;
+        // لو التركيز نفسه فيه وحدة مكتوبة (مثلاً "500mg") ماتضيفش وحدة تانية من StrengthUnit
+        return `${name} ${s}`;
     }).join(' · ');
 };
 

@@ -152,12 +152,26 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
                   <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
-                  {/* ── المادة الفعالة مباشرة تحت اسم الدواء ── */}
-                  {medicine['Scientific Name'] && medicine['Scientific Name'] !== 'N/A' && (
-                    <p className="text-sm font-semibold text-teal-600/70 dark:text-teal-400/60 mt-1 leading-snug" dir="ltr">
-                      {medicine['Scientific Name']}{medicine.Strength ? ` · ${medicine.Strength}` : ''}
-                    </p>
-                  )}
+                  {/* ── المادة الفعالة + التركيز بدون تكرار الوحدة ── */}
+                  {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
+                    const sciNames = String(medicine['Scientific Name']).split(',').map(s => s.trim()).filter(Boolean);
+                    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+                    const strengthUnit = String(medicine.StrengthUnit || '').trim();
+                    const KNOWN_UNITS = /\b(mg|ml|g|mcg|ug|iu|unit|units|mmol|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)\b/i;
+                    const parts = sciNames.map((name, i) => {
+                      const s = (strengths[i] || strengths[0] || '').trim();
+                      if (!s) return name;
+                      // لو التركيز ينتهي بوحدة مكتوبة ماتضيفش وحدة تانية
+                      const hasUnit = KNOWN_UNITS.test(s);
+                      const display = (!hasUnit && strengthUnit) ? `${s} ${strengthUnit}` : s;
+                      return `${name} ${display}`;
+                    });
+                    return (
+                      <p className="text-sm font-semibold text-teal-600/70 dark:text-teal-400/60 mt-1 leading-snug" dir="ltr">
+                        {parts.join(' · ')}
+                      </p>
+                    );
+                  })()}
                   {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
               </div>
               {medicine.imgBox && (

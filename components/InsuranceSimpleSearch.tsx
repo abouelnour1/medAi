@@ -61,6 +61,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     };
 
     let matchingMeds: Medicine[] = [];
+    let foodMeds: Medicine[] = [];
     const isNameSearch = searchMode === 'tradeName' || searchMode === 'scientificName';
 
     if (isNameSearch) {
@@ -75,6 +76,13 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         } else {
             matchingMeds = allMedicines.filter(m => String(m[field]).toLowerCase().includes(term));
         }
+        // Food = Product type 'Food' — غير مغطى تأمينياً
+        foodMeds = matchingMeds.filter(m => 
+            String(m['Product type'] || '').toLowerCase() === 'food'
+        );
+        matchingMeds = matchingMeds.filter(m => 
+            String(m['Product type'] || '').toLowerCase() !== 'food'
+        );
     }
 
     const results: SearchResult[] = [];
@@ -85,6 +93,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             if (!sciGroups.has(m['Scientific Name'])) sciGroups.set(m['Scientific Name'], new Set());
             sciGroups.get(m['Scientific Name'])!.add(m);
         });
+
+        // Food: غير مغطاة
+        foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
 
         sciGroups.forEach((medsSet, fullSciName) => {
             const medsArray = Array.from(medsSet);
