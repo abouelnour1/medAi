@@ -204,9 +204,17 @@ ${ctxInfo}`;
           <div>
             <h2 className="font-black text-slate-800 dark:text-white text-sm">PharmaSource AI</h2>
             <p className="text-[9px] text-slate-400 font-medium">
-              {aiAvailable
-                ? (ar ? 'مساعد صيدلاني ذكي' : 'Clinical Pharmacy Assistant')
-                : (ar ? 'غير متاح' : 'Unavailable')}
+              {user?.role === 'admin'
+                ? (ar ? '👑 أدمن — غير محدود' : '👑 Admin — Unlimited')
+                : user
+                  ? (() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const limit = user.customAiLimit ?? 3;
+                      const used = user.lastRequestDate === today ? (user.aiRequestCount || 0) : 0;
+                      const remaining = Math.max(0, limit - used);
+                      return ar ? `${remaining}/${limit} طلب متبقي اليوم` : `${remaining}/${limit} requests left today`;
+                    })()
+                  : (ar ? 'سجل دخول للاستخدام' : 'Login to use')}
             </p>
           </div>
         </div>

@@ -51,7 +51,7 @@ const MenuCard: React.FC<{ title: string; icon: React.ReactNode; onClick: () => 
 import ClinicalDataManager from '../ClinicalDataManager';
 
 export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], setMedicines: any, onExport: (type: 'medicine' | 'supplement' | 'food') => void, language?: Language }> = ({ t, allMedicines, onExport, language = 'ar' }) => {
-  const { user, deleteUser, updateSettings } = useAuth();
+  const { user, deleteUser, updateSettings, updateUser } = useAuth();
   
   const inputClass = "w-full p-3 bg-slate-50 dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold dark:text-white";
   const labelClass = "block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1";
@@ -541,7 +541,11 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                 <div><p className="text-sm font-bold">{t('aiToggleLabel')}</p></div>
                                 <input type="checkbox" checked={appSettings.isAiEnabled} onChange={e => setAppSettings({...appSettings, isAiEnabled: e.target.checked})} className="w-6 h-6 accent-primary" />
                             </div>
-                            <div><label className={labelClass}>{t('aiLimitLabel')}</label><input type="number" value={appSettings.aiRequestLimit} onChange={e => setAppSettings({...appSettings, aiRequestLimit: parseInt(e.target.value)})} className={inputClass} /></div>
+                            <div>
+                              <label className={labelClass}>{t('aiLimitLabel')} <span className="text-[10px] text-slate-400 font-normal">(Default للمستخدمين الجدد)</span></label>
+                              <input type="number" min="1" max="100" value={appSettings.aiRequestLimit} onChange={e => setAppSettings({...appSettings, aiRequestLimit: parseInt(e.target.value) || 3})} className={inputClass} />
+                              <p className="text-[10px] text-slate-400 mt-1">⚠️ الأدمن دايماً غير محدود — هذا الحد للمستخدمين العاديين فقط</p>
+                            </div>
                             <button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">{isLoading ? '...' : t('save')}</button>
                         </form>
                     </div>
@@ -558,6 +562,23 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                     <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black">{u.username?.charAt(0).toUpperCase()}</div><div className="text-right rtl:text-right"><p className="font-black text-sm">{u.username}</p><p className="text-[10px] text-slate-400">{u.email}</p></div></div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-100">{(['admin', 'premium', 'company'] as const).map(role => (<button key={role} onClick={() => setUserRoleChanges(prev => ({...prev, [u.id]: role}))} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentRole === role ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{t(`${role}Role` as any)}</button>))}</div>
+                                        {/* حد الـ AI اليومي للمستخدم */}
+                                        {currentRole !== 'admin' && (
+                                          <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-xl border border-amber-100 dark:border-amber-800/30">
+                                            <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 whitespace-nowrap">AI/يوم</span>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              defaultValue={u.customAiLimit ?? appSettings.aiRequestLimit ?? 3}
+                                              className="w-12 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 rounded-lg text-center text-[10px] font-black outline-none px-1 py-0.5"
+                                              onBlur={async e => {
+                                                const val = parseInt(e.target.value) || 3;
+                                                await updateUser({ ...u, customAiLimit: val });
+                                              }}
+                                            />
+                                          </div>
+                                        )}
                                         {!!userRoleChanges[u.id] && <button onClick={() => handleSaveUserRole(u.id)} className="px-4 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase shadow-md">{t('save')}</button>}
                                         <button onClick={() => { if(window.confirm(t('confirmDeleteUser'))) deleteUser(u.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><TrashIcon /></button>
                                     </div>

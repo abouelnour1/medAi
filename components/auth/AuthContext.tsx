@@ -171,19 +171,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateSettings = async (settings: AppSettings) => { await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings); };
 
   const requestAIAccess = useCallback((callback: () => void, t: TFunction) => {
-    if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    const limit = user.customAiLimit || 5;
-    if (user.lastRequestDate !== today) {
-        updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
-        callback();
-    } else if (user.aiRequestCount < limit) {
-        updateUser({ ...user, aiRequestCount: user.aiRequestCount + 1 });
-        callback();
-    } else {
-        alert(t('usageLimitReached', { limit }));
+    if (!user) {
+      alert(t('loginRequired') || 'يجب تسجيل الدخول أولاً');
+      return;
     }
-  }, [user]);
+    // الأدمن: غير محدود
+    if (user.role === 'admin') {
+      callback();
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    // customAiLimit للمستخدم، وإلا global limit من settings، وإلا default 3
+    const globalLimit = getSettings().aiRequestLimit || 3;
+    const limit = user.customAiLimit !== undefined ? user.customAiLimit : globalLimit;
+    
+    if (user.lastRequestDate !== today) {
+      // يوم جديد — نصفر العداد
+      updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
+      callback();
+    } else if (user.aiRequestCount < limit) {
+      updateUser({ ...user, aiRequestCount: user.aiRequestCount + 1 });
+      callback();
+    } else {
+      alert(
+        (t('usageLimitReached') || 'وصلت للحد اليومي')
+          .replace('{limit}', String(limit))
+          .replace('%d', String(limit))
+        + ` (${limit} يومياً / per day)`
+      );
+    }
+  }, [user, getSettings]);
 
   const value = { 
       user, login, register, logout, requestAIAccess, resendVerificationEmail, 

@@ -185,7 +185,7 @@ const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
 const App: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, requestAIAccess } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -671,7 +671,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -874,7 +874,8 @@ const App: React.FC = () => {
         <CompareModal medicines={compareList} onClose={() => setShowCompare(false)} language={language} />
       )}
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
-      <FloatingAssistantButton onClick={()=>setIsAssistantOpen(true)} onLongPress={()=>{}} t={t} language={language} />
+      {/* الزرار يظهر بس لو مسجل دخول */}
+      {user && <FloatingAssistantButton onClick={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onLongPress={()=>{}} t={t} language={language} />}
       {isAssistantOpen && <AssistantModal
         isOpen={isAssistantOpen}
         onSaveAndClose={() => { setIsAssistantOpen(false); setLoadedConversation([]); }}
