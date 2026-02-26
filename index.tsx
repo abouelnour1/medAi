@@ -1,5 +1,14 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+
+// Silent console in production
+if ((import.meta as any).env?.PROD) {
+  const noop = () => {};
+  console.log = noop;
+  console.warn = noop;
+  console.info = noop;
+  // نحتفظ بـ console.error فقط لأي أخطاء مهمة
+}
 import App from './App';
 import { AuthProvider } from './components/auth/AuthContext';
 import './tailwind.css';

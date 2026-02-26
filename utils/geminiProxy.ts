@@ -6,11 +6,22 @@
 // على الويب: /api/gemini (Vercel)
 // على Android/iOS: URL الـ Vercel المطلق
 function getProxyUrl(): string {
-  // Capacitor native - بنستخدم الـ absolute URL
-  if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
-    // نجيب الـ URL من env variable اللي بنحطه في vite.config
-    return (import.meta as any).env?.VITE_PROXY_URL || 'https://your-app.vercel.app/api/gemini';
+  const isNative = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
+
+  if (isNative) {
+    const configuredUrl = (import.meta as any).env?.VITE_PROXY_URL;
+    if (!configuredUrl || configuredUrl.includes('your-app')) {
+      // نحاول نجيب الـ URL من origin الـ window (لو فيه web view)
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (origin && origin.startsWith('http') && !origin.startsWith('file://')) {
+        return `${origin}/api/gemini`;
+      }
+      // إشارة واضحة للمطور
+      console.warn('[PharmaSource] VITE_PROXY_URL not set. Add it to .env.local');
+    }
+    return configuredUrl || '/api/gemini';
   }
+
   // ويب: relative URL يشتغل على أي domain
   return '/api/gemini';
 }
@@ -39,8 +50,16 @@ export async function callGeminiProxy(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Proxy error ${res.status}: ${err}`);
+    let errText = '';
+    try { errText = await res.text(); } catch {}
+    let parsed: any = {};
+    try { parsed = JSON.parse(errText); } catch {}
+    const msg = parsed?.message || parsed?.error || errText || `HTTP ${res.status}`;
+    throw new Error(
+      res.status === 500 && msg.includes('API_KEY')
+        ? 'API key غير مضبوط على Vercel. أضف VITE_API_KEY في Environment Variables.'
+        : `Proxy error ${res.status}: ${msg}`
+    );
   }
 
   return res.json();

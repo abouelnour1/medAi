@@ -69,15 +69,13 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
-  // ── ألوان متناسقة وهادئة ──
-  // Rx = أزرق خفيف | OTC = أخضر خفيف جداً | Generic = بيج | Brand = سماوي | Controlled = بنفسجي
+  // Rx=أحمر | OTC=أخضر | Brand=سماوي | Generic=رمادي
   const rxStyle = isRx
-    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-    : 'bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400';
-
+    ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
+    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400';
   const typeStyle = isGeneric
-    ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-    : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400';
+    ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+    : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400';
 
   return (
     <div
@@ -124,10 +122,10 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
               {isRx ? 'Rx' : 'OTC'}
             </span>
 
-            {/* Generic / Brand — لون مختلف */}
+            {/* Brand / Generic — Brand قبل Generic */}
             {isHumanMed && medicine.DrugType && (
               <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${typeStyle}`}>
-                {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'أصيل' : 'Brand')}
+                {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'براند' : 'Brand')}
               </span>
             )}
 

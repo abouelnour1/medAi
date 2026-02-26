@@ -112,15 +112,20 @@ export const runAIChat = async (
         const fn = toolImplementations[name];
         if (fn) {
             const toolResult = await fn(args);
-            // بنعمل second call مع النتيجة
+            // Gemini بيطلب role: 'function' مش 'tool'
             const secondHistory = [
                 ...contents,
                 { role: 'model', parts },
-                { role: 'tool', parts: [{ functionResponse: { name, response: toolResult } }] }
+                { role: 'function', parts: [{ functionResponse: { name, response: { output: toolResult } } }] }
             ];
             const secondData = await callGeminiProxy(secondHistory, systemInstruction, undefined, modelName);
             return secondData;
         }
+    }
+
+    // لو error في الـ response نوضحه
+    if (data?.error) {
+        throw new Error(`Gemini API Error ${data.error.code}: ${data.error.message}`);
     }
 
     return data;

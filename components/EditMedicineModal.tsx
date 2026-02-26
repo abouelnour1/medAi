@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Medicine, TFunction } from '../types';
 import ClearIcon from './icons/ClearIcon';
 import { useAuth } from './auth/AuthContext';
+import { getClinicalData, saveClinicalData, ClinicalData } from '../utils/dailyMedicines';
 
 interface EditMedicineModalProps {
   isOpen: boolean;
@@ -16,11 +17,21 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
   const { user } = useAuth();
   const [formData, setFormData] = useState<Medicine | null>(null);
   const [isRegNumLocked, setIsRegNumLocked] = useState(true);
+  const [clinicalForm, setClinicalForm] = useState({ indication: '', dosage: '', sideEffects: '', pharmacistNote: '', mechanism: '', keyPoints: '' });
+  const [clinicalExpanded, setClinicalExpanded] = useState(false);
+  const [clinicalLoading, setClinicalLoading] = useState(false);
+  const [clinicalSaved, setClinicalSaved] = useState(false);
 
   useEffect(() => {
     if (medicine) {
       setFormData({ ...medicine });
       setIsRegNumLocked(true);
+      setClinicalSaved(false);
+      // نحمل الـ clinical data
+      getClinicalData(medicine.RegisterNumber).then(cd => {
+        if (cd) setClinicalForm({ indication: cd.indication||'', dosage: cd.dosage||'', sideEffects: cd.sideEffects||'', pharmacistNote: cd.pharmacistNote||'', mechanism: cd.mechanism||'', keyPoints: cd.keyPoints||'' });
+        else setClinicalForm({ indication: '', dosage: '', sideEffects: '', pharmacistNote: '', mechanism: '', keyPoints: '' });
+      });
     }
   }, [medicine]);
 
@@ -81,6 +92,65 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                   ⚠️ ملاحظة: تعديلاتك لن تظهر فوراً، سيتم إرسالها للمسؤول للمراجعة أولاً. روابط الصور الحالية مخفية لكن يمكنك كتابة روابط جديدة.
               </div>
           )}
+
+          {/* ── Clinical Section مطوية ── */}
+          <div className="border border-teal-100 dark:border-teal-900/40 rounded-2xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setClinicalExpanded(v => !v)}
+              className="w-full flex items-center justify-between p-4 bg-teal-50/50 dark:bg-teal-900/10 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📋</span>
+                <div className="text-right">
+                  <p className="font-black text-teal-700 dark:text-teal-400 text-sm">المعلومات السريرية</p>
+                  <p className="text-[10px] text-slate-400">{clinicalForm.indication ? '✓ موجودة' : 'لم تُضَف بعد'}</p>
+                </div>
+              </div>
+              <svg className={`w-5 h-5 text-teal-500 transition-transform ${clinicalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            {clinicalExpanded && (
+              <div className="p-4 space-y-3 border-t border-teal-100 dark:border-teal-900/40">
+                {[
+                  { key: 'indication' as const, label: '🩺 يستخدم لـ (Indication)', rows: 2 },
+                  { key: 'dosage' as const, label: '💊 الجرعة (Dosage)', rows: 2 },
+                  { key: 'sideEffects' as const, label: '⚠️ الآثار الجانبية', rows: 2 },
+                  { key: 'pharmacistNote' as const, label: '👨‍⚕️ تنبيه الصيدلاني', rows: 2 },
+                  { key: 'mechanism' as const, label: '🔬 آلية العمل', rows: 2 },
+                  { key: 'keyPoints' as const, label: '⭐ نقاط البيع (لهذا الدواء فقط)', rows: 2 },
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">{f.label}</label>
+                    <textarea
+                      value={clinicalForm[f.key]}
+                      onChange={e => setClinicalForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      rows={f.rows}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  disabled={clinicalLoading || !clinicalForm.indication.trim()}
+                  onClick={async () => {
+                    if (!formData || !clinicalForm.indication.trim()) return;
+                    setClinicalLoading(true);
+                    try {
+                      await saveClinicalData(formData.RegisterNumber, { ...clinicalForm, generatedAt: new Date().toISOString(), language: 'ar' });
+                      setClinicalSaved(true);
+                      setTimeout(() => setClinicalSaved(false), 2000);
+                    } catch {}
+                    setClinicalLoading(false);
+                  }}
+                  className={`w-full py-2.5 rounded-xl font-black text-sm transition-all ${clinicalSaved ? 'bg-emerald-500 text-white' : 'bg-teal-600 text-white hover:bg-teal-700'} disabled:opacity-50`}
+                >
+                  {clinicalLoading ? 'جاري الحفظ...' : clinicalSaved ? '✓ تم حفظ المعلومات السريرية' : 'حفظ المعلومات السريرية'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div>
             <h4 className={sectionTitle}>البيانات الأساسية (Identity)</h4>

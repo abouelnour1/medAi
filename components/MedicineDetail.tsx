@@ -60,16 +60,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
-  // Lock background scroll when clinical page is open
-  useEffect(() => {
-    const scrollEl = document.getElementById('main-scroll-container');
-    if (showClinicalPage && scrollEl) {
-      scrollEl.style.overflow = 'hidden';
-    } else if (scrollEl) {
-      scrollEl.style.overflow = '';
-    }
-    return () => { if (scrollEl) scrollEl.style.overflow = ''; };
-  }, [showClinicalPage]);
+  // Scroll lock handled inside ClinicalDataPage
 
   useEffect(() => {
     if (medicine?.RegisterNumber) {
@@ -114,9 +105,26 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
       <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-900/50 border border-teal-100 dark:border-dark-border rounded-[2.5rem] p-6 shadow-xl relative">
           <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
-                <span className="bg-white dark:bg-dark-card px-3 py-1 rounded-full text-[9px] font-black uppercase border border-slate-100 dark:border-dark-border">{medicine['Legal Status']}</span>
-                {isControlled && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase">Controlled</span>}
-                {isRestricted && <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase">Restricted</span>}
+                {/* Legal Status - ملون حسب النوع */}
+                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                  medicine['Legal Status'] === 'Prescription'
+                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                }`}>
+                  {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+                </span>
+                {/* Drug Type */}
+                {medicine.DrugType && (
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                    medicine.DrugType.toLowerCase().includes('generic')
+                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'
+                  }`}>
+                    {medicine.DrugType.toLowerCase().includes('generic') ? 'Generic' : 'Brand'}
+                  </span>
+                )}
+                {isControlled && <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-3 py-1 rounded-full text-[9px] font-black uppercase">Controlled</span>}
+                {isRestricted && <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-full text-[9px] font-black uppercase">Restricted</span>}
               </div>
               <div className="flex gap-2">
                   <button onClick={handleGoogleImageSearch} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted hover:text-primary rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all">
@@ -218,6 +226,52 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
       </div>
 
+      {/* ── Clinical Data Section ── */}
+      {clinicalData && (
+        <div
+          onClick={() => setShowClinicalPage(true)}
+          className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/25 dark:to-cyan-900/15 rounded-[1.5rem] border border-teal-100 dark:border-teal-800/40 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm">📋</span>
+              </div>
+              <span className="text-xs font-black text-teal-700 dark:text-teal-400 uppercase tracking-wide">
+                {language === 'ar' ? 'معلومات سريرية' : 'Clinical Info'}
+              </span>
+            </div>
+            <span className="text-[9px] font-black text-teal-500 bg-teal-100 dark:bg-teal-900/40 px-2 py-1 rounded-full">
+              {language === 'ar' ? 'عرض كامل ←' : 'Full View →'}
+            </span>
+          </div>
+
+          {/* Indication preview */}
+          <div className="px-4 pb-3">
+            <p className="text-[11px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1">
+              🩺 {language === 'ar' ? 'يستخدم لـ' : 'Indication'}
+            </p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
+              {clinicalData.indication}
+            </p>
+          </div>
+
+          {/* Key Points لو موجودة */}
+          {clinicalData.keyPoints && (
+            <div className="px-4 pb-4 border-t border-teal-100 dark:border-teal-800/40 pt-3">
+              <p className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1.5">
+                ⭐ {language === 'ar' ? 'نقاط البيع المميزة' : 'Key Selling Points'}
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+                {clinicalData.keyPoints}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+
       <InfoCard title={`${t('quickActionIngredient')}${medicine.StrengthUnit ? ` (${medicine.StrengthUnit})` : ''}`} icon={<PillBottleIcon />}>
           <div className="grid grid-cols-1 gap-1.5">
               {ingredients.map((ing, idx) => {
@@ -281,51 +335,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           <DetailRow label={t('marketingCompanyLabel')} value={medicine['Marketing Company']} />
           <DetailRow label={t('agentLabel')} value={medicine['Main Agent']} />
       </InfoCard>
-
-      {/* ── Clinical Data Section ── */}
-      {clinicalData && (
-        <div
-          onClick={() => setShowClinicalPage(true)}
-          className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/25 dark:to-cyan-900/15 rounded-[1.5rem] border border-teal-100 dark:border-teal-800/40 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-sm">📋</span>
-              </div>
-              <span className="text-xs font-black text-teal-700 dark:text-teal-400 uppercase tracking-wide">
-                {language === 'ar' ? 'معلومات سريرية' : 'Clinical Info'}
-              </span>
-            </div>
-            <span className="text-[9px] font-black text-teal-500 bg-teal-100 dark:bg-teal-900/40 px-2 py-1 rounded-full">
-              {language === 'ar' ? 'عرض كامل ←' : 'Full View →'}
-            </span>
-          </div>
-
-          {/* Indication preview */}
-          <div className="px-4 pb-3">
-            <p className="text-[11px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1">
-              🩺 {language === 'ar' ? 'يستخدم لـ' : 'Indication'}
-            </p>
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-              {clinicalData.indication}
-            </p>
-          </div>
-
-          {/* Key Points لو موجودة */}
-          {clinicalData.keyPoints && (
-            <div className="px-4 pb-4 border-t border-teal-100 dark:border-teal-800/40 pt-3">
-              <p className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1.5">
-                ⭐ {language === 'ar' ? 'نقاط البيع المميزة' : 'Key Selling Points'}
-              </p>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
-                {clinicalData.keyPoints}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
       <InfoCard title={t('storage')} icon={<GlobeIcon />}>
           <p className="text-sm font-black text-slate-700 dark:text-slate-300 leading-relaxed text-right">{language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']}</p>

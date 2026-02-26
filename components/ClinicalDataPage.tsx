@@ -14,6 +14,18 @@ interface Props {
 
 const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientificName, language, isAdmin, allMedicines, onClose }) => {
   const ar = language === 'ar';
+
+  // Lock background scroll + scroll the page itself to top
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const mainScroll = document.getElementById('main-scroll-container');
+    if (mainScroll) mainScroll.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      const mainScroll2 = document.getElementById('main-scroll-container');
+      if (mainScroll2) mainScroll2.style.overflow = '';
+    };
+  }, []);
   const [data, setData] = useState<ClinicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -28,9 +40,11 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
     });
   }, [registerNumber]);
 
+  const [sharedMsg, setSharedMsg] = useState('');
+
   const handleSave = async () => {
     if (!form.indication.trim()) return;
-    setSaving(true); setError(null);
+    setSaving(true); setError(null); setSharedMsg('');
     try {
       const saved: ClinicalData = { ...form, generatedAt: new Date().toISOString(), language };
 
@@ -44,11 +58,17 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
           .map(m => m.RegisterNumber);
       }
 
-      await saveClinicalData(registerNumber, saved, siblingNums);
+      const result = await saveClinicalData(registerNumber, saved, siblingNums);
       setData(saved); setEditing(false);
 
-      if (siblingNums.length > 0) {
-        console.log(`✅ Shared to ${siblingNums.length} medicines with same active ingredient`);
+      // Feedback للمستخدم
+      if (result.sharedCount > 0) {
+        setSharedMsg(
+          language === 'ar'
+            ? `✅ تم الحفظ وتطبيق البيانات على ${result.sharedCount} دواء آخر بنفس المادة الفعالة`
+            : `✅ Saved and applied to ${result.sharedCount} other medicines with the same active ingredient`
+        );
+        setTimeout(() => setSharedMsg(''), 5000);
       }
     } catch (e: any) {
       setError(e?.code === 'permission-denied' ? 'Permission denied - admin only' : `Error: ${e?.message}`);

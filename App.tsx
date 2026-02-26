@@ -201,6 +201,7 @@ const App: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [previousView, setPreviousView] = useState<string>('results'); // للرجوع الصح
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -212,7 +213,15 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [loadedConversation, setLoadedConversation] = useState<any[]>([]);
-  const [exactSearchOnly, setExactSearchOnly] = useState(true); // الافتراضي = بحث حرفي دقيق
+  const [exactSearchOnly, setExactSearchOnly] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pharma_exact_search');
+    return saved !== null ? saved === 'true' : true; // default = true
+  });
+
+  // حفظ في localStorage لما يتغير
+  useEffect(() => {
+    localStorage.setItem('pharma_exact_search', String(exactSearchOnly));
+  }, [exactSearchOnly]);
   // API key انتقل للـ Firebase Cloud Function - الـ proxy بيستخدم Firebase Auth
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
@@ -311,9 +320,13 @@ const App: React.FC = () => {
       if (view === 'imageView') {
           setView('details');
           restoreScroll('details');
-      } else if (view === 'details' || view === 'alternatives') {
+      } else if (view === 'alternatives') {
           setView('results');
           restoreScroll('results');
+      } else if (view === 'details') {
+          const target = previousView === 'alternatives' ? 'alternatives' : 'results';
+          setView(target);
+          restoreScroll(target);
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
           restoreScroll('insuranceSearch');
@@ -339,13 +352,14 @@ const App: React.FC = () => {
     if (scrollContainerRef.current) {
         scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
     }
-    // حفظ في سجل البحث الأخير - نحفظ ID بس مش Object كامل
+    // حفظ في سجل البحث الأخير
     setRecentSearchIds(prev => {
         const filtered = prev.filter(id => id !== m.RegisterNumber);
         const updated = [m.RegisterNumber, ...filtered].slice(0, MAX_RECENT);
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
         return updated;
     });
+    setPreviousView(view); // نحفظ الـ view الحالي قبل ما نروح details
     setSelectedMedicine(m);
     setView('details');
     if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -661,7 +675,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => setIsAssistantOpen(true)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -689,7 +703,7 @@ const App: React.FC = () => {
                   <div className="mt-6">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
-                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                       ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>

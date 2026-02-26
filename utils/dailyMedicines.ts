@@ -4,7 +4,7 @@
  */
 
 import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const LOCAL_CACHE_KEY = 'pharma_daily_featured_v2';
 
@@ -134,28 +134,43 @@ export async function saveClinicalData(
   registerNumber: string,
   data: ClinicalData,
   siblingRegisterNumbers?: string[]  // أرقام تسجيل الأدوية بنفس المادة الفعالة
-): Promise<boolean> {
-  try {
-    const ref = doc(db, 'clinicalData', registerNumber);
-    await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+): Promise<{ success: boolean; sharedCount: number }> {
+  const ref = doc(db, 'clinicalData', registerNumber);
+  await setDoc(ref, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
 
-    // حفظ على الأدوية بنفس المادة الفعالة (ماعدا keyPoints)
-    if (siblingRegisterNumbers && siblingRegisterNumbers.length > 0) {
-      const sharedData = { ...data, keyPoints: '', updatedAt: new Date().toISOString() };
-      await Promise.allSettled(
-        siblingRegisterNumbers.map(rn => {
-          const sibRef = doc(db, 'clinicalData', rn);
-          return setDoc(sibRef, sharedData, { merge: true });
-        })
-      );
-      console.log(`✅ Shared clinical data applied to ${siblingRegisterNumbers.length} siblings`);
-    }
+  // حفظ على الأدوية بنفس المادة الفعالة (ماعدا keyPoints)
+  const sharedData = { ...data, keyPoints: '', updatedAt: new Date().toISOString() };
+  let siblingsToSave = siblingRegisterNumbers || [];
 
-    return true;
-  } catch (e: any) {
-    console.error('❌ Save clinical data error:', e?.code, e?.message);
-    throw e;
+  // Fallback: لو مش موجودين، نجيبهم من medicines collection في Firestore
+  if (siblingsToSave.length === 0 && data.indication) {
+    try {
+      // نجيب الـ scientific name من الـ medicines collection
+      const medRef = doc(db, 'medicines', registerNumber);
+      const medSnap = await getDoc(medRef);
+      if (medSnap.exists()) {
+        const sciName = medSnap.data()?.['Scientific Name']?.trim();
+        if (sciName && sciName.toLowerCase() !== 'n/a' && sciName !== '') {
+          const siblingsSnap = await getDocs(
+            query(collection(db, 'medicines'), where('Scientific Name', '==', sciName))
+          );
+          siblingsToSave = siblingsSnap.docs
+            .map(d => d.id)
+            .filter(id => id !== registerNumber);
+        }
+      }
+    } catch { /* Firestore fallback failed silently */ }
   }
+
+  let sharedCount = 0;
+  if (siblingsToSave.length > 0) {
+    const results = await Promise.allSettled(
+      siblingsToSave.map(rn => setDoc(doc(db, 'clinicalData', rn), sharedData, { merge: true }))
+    );
+    sharedCount = results.filter(r => r.status === 'fulfilled').length;
+  }
+
+  return { success: true, sharedCount };
 }
 
 // جيب الـ Clinical Data المحفوظة لدواء
