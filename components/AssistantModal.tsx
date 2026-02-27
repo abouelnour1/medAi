@@ -27,7 +27,14 @@ interface Props {
   t: TFunction;
   language: Language;
   allMedicines: Medicine[];
-  user: { id: string; role?: string; displayName?: string } | null;
+  user: { 
+    id: string; 
+    role?: string; 
+    displayName?: string;
+    customAiLimit?: number;
+    aiRequestCount?: number;
+    lastRequestDate?: string;
+  } | null;
   contextMedicine?: Medicine | null;
   initialHistory?: ChatMessage[];
   onOpenHistory?: () => void;
@@ -42,8 +49,10 @@ const AssistantModal: React.FC<Props> = ({
   const [userInput, setUserInput]       = useState('');
   const [isLoading, setIsLoading]       = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ blob: Blob; preview: string; mimeType: string } | null>(null);
-  const chatEndRef  = useRef<HTMLDivElement>(null);
+  const chatEndRef   = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mountedRef   = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const aiAvailable = isAIAvailable();
 
   // restore conversation
@@ -157,6 +166,7 @@ ${ctxInfo}`;
         throw new Error('empty_response');
       }
     } catch (err: any) {
+      if (!mountedRef.current) return;
       const msg = err?.message || '';
       let errText: string;
 
@@ -178,7 +188,7 @@ ${ctxInfo}`;
 
       setChatHistory(prev => [...prev, { role: 'model', parts: [{ text: errText }] }]);
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   }, [userInput, isLoading, chatHistory, searchDatabase, uploadedImage, contextMedicine, language, ar]);
 

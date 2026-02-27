@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Language } from '../types';
 import { getClinicalData, saveClinicalData, ClinicalData } from '../utils/dailyMedicines';
+import { hapticSuccess, hapticError } from '../utils/haptics';
 
 interface Props {
   registerNumber: string;
@@ -60,6 +61,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
 
       const result = await saveClinicalData(registerNumber, saved, siblingNums);
       setData(saved); setEditing(false);
+      hapticSuccess();
 
       // Feedback للمستخدم
       if (result.sharedCount > 0) {
@@ -71,6 +73,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
         setTimeout(() => setSharedMsg(''), 5000);
       }
     } catch (e: any) {
+      hapticError();
       setError(e?.code === 'permission-denied' ? 'Permission denied - admin only' : `Error: ${e?.message}`);
     } finally { setSaving(false); }
   };

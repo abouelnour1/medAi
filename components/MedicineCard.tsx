@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { hapticLight } from '../utils/haptics';
 import { Medicine, TFunction, Language } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StarIcon from './icons/StarIcon';
@@ -22,7 +23,21 @@ function strengthHasUnit(s: string): boolean {
 export const zipIngredients = (medicine: Medicine): string => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
     if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
-    // الكارت: أسماء المواد فقط بدون تركيزات للاسترشاد
+    // لو أكتر من ٣ مواد: ماتظهرش برا (هتظهر جوه بس مع العدد)
+    if (sciNames.length > 3) return '';
+    return sciNames.join(' · ');
+};
+
+// للاستخدام جوه الكارت لما المواد أكتر من ٣
+export const getIngredientsCount = (medicine: Medicine): number => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A') return 0;
+    return sciNames.length;
+};
+
+export const getAllIngredients = (medicine: Medicine): string => {
+    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
     return sciNames.join(' · ');
 };
 
@@ -79,7 +94,9 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
     onToggleFavorite(medicine.RegisterNumber);
   };
 
-  const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
+  const ingredientsString  = useMemo(() => zipIngredients(medicine), [medicine]);
+  const ingredientCount    = useMemo(() => getIngredientsCount(medicine), [medicine]);
+  const allIngredientsStr  = useMemo(() => getAllIngredients(medicine), [medicine]);
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
   const isHumanMed = medicine['Product type'] === 'Human';
   const isGeneric = medicine.DrugType?.toLowerCase().includes('generic');
@@ -128,9 +145,23 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           </h2>
 
           {/* Scientific name */}
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 leading-snug line-clamp-2" dir="ltr">
-            {ingredientsString}
-          </p>
+          {ingredientsString ? (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 leading-snug line-clamp-2" dir="ltr">
+              {ingredientsString}
+            </p>
+          ) : ingredientCount > 3 ? (
+            <details className="mb-3 group">
+              <summary className="text-[10px] font-bold text-primary/70 dark:text-primary/60 cursor-pointer list-none flex items-center gap-1 select-none">
+                <svg className="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M9 5l7 7-7 7"/></svg>
+                {ingredientCount} {ar ? 'مواد فعالة' : 'active ingredients'}
+              </summary>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed" dir="ltr">
+                {allIngredientsStr}
+              </p>
+            </details>
+          ) : (
+            <div className="mb-3" />
+          )}
 
           {/* Badges row */}
           <div className="flex items-center gap-1.5 flex-wrap">

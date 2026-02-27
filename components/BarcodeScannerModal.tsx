@@ -32,7 +32,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClo
 
     const startScan = async () => {
       setError(null);
-      // @ts-ignore - BarcodeDetector might not be in the default TS window type
+      // @ts-ignore
       if (!('BarcodeDetector' in window) || !window.BarcodeDetector) {
         setError("Barcode Detector is not supported by this browser.");
         return;
@@ -78,6 +78,10 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClo
     return () => {
       clearInterval(intervalId);
       stopStream();
+      // نمسح الـ video src عشان نطلق الـ memory
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     };
   }, [isOpen, onBarcodeDetected]);
 

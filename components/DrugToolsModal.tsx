@@ -18,7 +18,7 @@ async function callGemini(prompt: string, _apiKey?: string): Promise<string> {
     [{ role: 'user', parts: [{ text: prompt }] }],
     '',
     undefined,
-    'gemini-2.0-flash'
+    'gemini-2.0-flash-lite'
   );
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }

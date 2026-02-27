@@ -65,7 +65,11 @@ const normalizeMedicine = (item: any): Medicine => {
   
   let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
   if (!regNum || regNum === '0' || regNum.trim() === '') {
-      regNum = `temp-${tradeName}-${scientificName}-${strength}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      // نعمل ID يونيك من الاسم + الشركة + السعر عشان نتجنب التكرار
+      const mfr = findValue(item, ["Manufacture Name", "manufacturer", "main agent", "Manufacturer"]);
+      const price = findPrice(item);
+      const uniqueStr = `${tradeName}-${scientificName}-${mfr}-${price}`.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 60);
+      regNum = `local-${uniqueStr}`;
   }
   
   const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
@@ -321,6 +325,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleBack = useCallback(() => {
+      // احفظ position الـ view الحالي
+      if (scrollContainerRef.current) {
+          scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
+      }
       if (view === 'imageView') {
           // لو جيت من details نرجع لها، لو من حته تانية كمان
           const backTarget: View = (previousView === 'alternatives' ? 'details' : (previousView || 'details')) as View;
@@ -517,6 +525,14 @@ const App: React.FC = () => {
 
   const handleSaveMedicine = async (updatedMed: Medicine) => {
     if (!user) return;
+    // حماية: لو مفيش RegisterNumber يونيك — منع الحفظ
+    if (!updatedMed.RegisterNumber?.trim()) {
+      alert(language === 'ar' 
+        ? '❌ هذا المنتج ليس له رقم تسجيل — لا يمكن حفظه. أضف رقم تسجيل أولاً.'
+        : '❌ This product has no Register Number — cannot save. Please add one first.'
+      );
+      return;
+    }
     if (user.role === 'admin') {
         try {
             await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
@@ -546,10 +562,14 @@ const App: React.FC = () => {
           scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
       }
       if (activeTab === tab) {
-          // لو ضغط على نفس الـ tab، يرجع للأول وإيزال الـ scroll
+          // لو ضغط على نفس الـ tab، يرجع للأول ويعمل scroll to top
           if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
           if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
           if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
+          // scroll to top دايماً لما يضغط على نفس الـ tab
+          requestAnimationFrame(() => {
+              if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+          });
       } else {
           setActiveTab(tab);
           // استعادة position الـ tab الجديد لو موجود
@@ -671,7 +691,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine })} onOpenDoseCalc={() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine })} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine }), t)} onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine }), t)} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -785,30 +805,32 @@ const App: React.FC = () => {
                           </div>
                           {/* إشعارات Push */}
                           {user && <PushNotificationToggle userId={user.id} language={language} />}
-                          {/* رابط الشير */}
-                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
-                            <div>
-                              <span className="font-bold text-slate-700 dark:text-slate-300 block text-sm">
-                                🔗 {language === 'ar' ? 'رابط مشاركة التطبيق' : 'App Share Link'}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {language === 'ar' ? 'يُضاف مع كل مشاركة دواء — اتركه فارغاً لو مش مظبوط بعد' : 'Added with every medicine share — leave empty if not ready'}
-                              </span>
+                          {/* رابط الشير — للأدمن بس */}
+                          {user?.role === 'admin' && (
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
+                              <div>
+                                <span className="font-bold text-slate-700 dark:text-slate-300 block text-sm">
+                                  🔗 {language === 'ar' ? 'رابط مشاركة التطبيق' : 'App Share Link'}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {language === 'ar' ? 'يُضاف مع كل مشاركة دواء — اتركه فارغاً لو مش مظبوط بعد' : 'Added with every medicine share — leave empty if not ready'}
+                                </span>
+                              </div>
+                              <input
+                                type="url"
+                                value={appShareUrl}
+                                onChange={e => {
+                                  setAppShareUrl(e.target.value);
+                                  localStorage.setItem('pharma_share_url', e.target.value);
+                                }}
+                                placeholder="https://pharmasource.app/medicine"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-primary transition-colors"
+                              />
                             </div>
-                            <input
-                              type="url"
-                              value={appShareUrl}
-                              onChange={e => {
-                                setAppShareUrl(e.target.value);
-                                localStorage.setItem('pharma_share_url', e.target.value);
-                              }}
-                              placeholder="https://pharmasource.app/medicine"
-                              autoCorrect="off"
-                              autoCapitalize="off"
-                              spellCheck={false}
-                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-primary transition-colors"
-                            />
-                          </div>
+                          )}
                           {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
