@@ -94,24 +94,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     return flags;
   }, [medicine]);
 
-  const handleGoogleImageSearch = async () => {
+  const handleGoogleImageSearch = () => {
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
-    try {
-      // على Capacitor Native: نستخدم Browser plugin عشان ما يروحش من الـ app
-      const { Capacitor } = await import('@capacitor/core');
-      if (Capacitor.isNativePlatform()) {
-        const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url, presentationStyle: 'popover' });
-        return;
-      }
-    } catch {}
-    // ويب: anchor مع target=_blank (مش window.open عشان بعض الـ browsers بتبلوكه)
     const a = document.createElement('a');
     a.href = url;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
   return (
