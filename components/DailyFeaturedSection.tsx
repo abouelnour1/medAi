@@ -19,7 +19,7 @@ interface Props {
   onSelect: (medicine: Medicine) => void;
   geminiApiKey?: string;
   isAdmin?: boolean;
-  onNewDailyReady?: (medicines: FeaturedMedicine[]) => void; // callback لما تتغير الأدوية
+  onNewDailyReady?: (medicines: { tradeName: string; indication?: string }[]) => void; // callback لما تتغير الأدوية
 }
 
 // توليد Clinical Data بالـ Gemini
