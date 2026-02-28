@@ -177,9 +177,39 @@ function selectDailyMedicines(medicines: Medicine[]): Medicine[] {
   return shuffled.slice(0, 10); // نرجع 10 عشان نكمل من بعدهم
 }
 
+// module-level flag — مش بيتصفر حتى لو الـ component اتـremount
+let _globalHasLoaded = false;
+let _globalLoadDate = '';
+
+const SESSION_FEATURED_KEY = 'pharma_session_featured';
+
 const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelect, geminiApiKey, isAdmin, onNewDailyReady }) => {
-  const [featured, setFeatured] = useState<FeaturedMedicine[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [featured, setFeatured] = useState<FeaturedMedicine[]>(() => {
+    // نحمل من session cache فوراً لو موجود — بدون أي network call
+    try {
+      const raw = sessionStorage.getItem(SESSION_FEATURED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const today = new Date().toISOString().split('T')[0];
+        if (parsed.date === today && parsed.medicines?.length > 0) {
+          return parsed.medicines;
+        }
+      }
+    } catch {}
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    // لو عندنا session cache — مش محتاجين loading
+    try {
+      const raw = sessionStorage.getItem(SESSION_FEATURED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const today = new Date().toISOString().split('T')[0];
+        if (parsed.date === today && parsed.medicines?.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
   const [editingMed, setEditingMed] = useState<FeaturedMedicine | null>(null);
   const [clinicalPageMed, setClinicalPageMed] = useState<FeaturedMedicine | null>(null);
 
@@ -190,7 +220,12 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     else if (scrollEl) scrollEl.style.overflow = '';
     return () => { if (scrollEl) scrollEl.style.overflow = ''; };
   }, [clinicalPageMed]);
+  // نستخدم module-level flag بدل useRef عشان ما يتصفرش لو اتـremount
   const hasLoadedRef = useRef(false);
+  // sync مع الـ global flag
+  if (_globalHasLoaded && _globalLoadDate === new Date().toISOString().split('T')[0]) {
+    hasLoadedRef.current = true;
+  }
   // نحفظ الـ props في refs عشان نستخدمها في useCallback بدون إعادة إنشاء
   const medicinesRef = useRef(medicines);
   const geminiKeyRef = useRef(geminiApiKey);
@@ -205,8 +240,23 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
     const geminiApiKey = geminiKeyRef.current;
     const language = languageRef.current;
     if (!medicines.length) return;
+    // لو عندنا session cache صالح — ماتحملش خالص
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      const raw = sessionStorage.getItem(SESSION_FEATURED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === todayStr && parsed.medicines?.length > 0) {
+          setFeatured(parsed.medicines);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch {}
     if (hasLoadedRef.current) return; // مرة واحدة بس
     hasLoadedRef.current = true;
+    _globalHasLoaded = true;
+    _globalLoadDate = new Date().toISOString().split('T')[0];
     setIsLoading(true);
 
     const today = new Date().toISOString().split('T')[0];
@@ -230,6 +280,10 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
       }
       setFeatured(enrichedCached);
       setIsLoading(false);
+      // حفظ في session cache عشان لما يتremount ما يحملش تاني
+      try {
+        sessionStorage.setItem(SESSION_FEATURED_KEY, JSON.stringify({ date: today, medicines: enrichedCached }));
+      } catch {}
       // لو في داتا جديدة نولدها بالـ AI في الخلفية
       if (geminiApiKey) {
         for (let i = 0; i < enrichedCached.length; i++) {
@@ -319,6 +373,10 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
         generatedAt: new Date().toISOString(),
       };
       await saveDailyFeatured(daily);
+      // حفظ في session cache
+      try {
+        sessionStorage.setItem(SESSION_FEATURED_KEY, JSON.stringify({ date: today, medicines: enriched }));
+      } catch {}
       // إشعار بالأدوية الجديدة
       const notifData = enriched.map(m => ({
         tradeName: m.tradeName,
