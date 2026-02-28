@@ -100,9 +100,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     try {
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
-        // App plugin: يفتح رابط خارجي بدون ما يغادر التطبيق أو يعيد تحميله
-        const { App } = await import('@capacitor/app');
-        await App.openUrl({ url });
+        // نستخدم cordova InAppBrowser أو native window.open بـ _system
+        // _system = يفتح في المتصفح الخارجي بدون reload للـ WebView
+        const w = window as any;
+        if (w.cordova?.InAppBrowser) {
+          w.cordova.InAppBrowser.open(url, '_system');
+        } else {
+          w.open(url, '_system');
+        }
         return;
       }
     } catch {}
