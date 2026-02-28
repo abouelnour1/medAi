@@ -98,16 +98,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
     try {
-      // Capacitor: نفتح في In-App Browser بدون ما نغادر التطبيق
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
-        // نستخدم window.open بـ _system عشان يفتح المتصفح الخارجي بدون ما يغادر الـ app state
-        (window as any).open(url, '_system', 'location=yes');
+        // App plugin: يفتح رابط خارجي بدون ما يغادر التطبيق أو يعيد تحميله
+        const { App } = await import('@capacitor/app');
+        await App.openUrl({ url });
         return;
       }
     } catch {}
-    // ويب: فتح تاب جديد
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // ويب: anchor click
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
   return (

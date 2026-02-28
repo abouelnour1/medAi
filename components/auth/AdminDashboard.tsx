@@ -548,6 +548,60 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                             </div>
                             <button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">{isLoading ? '...' : t('save')}</button>
                         </form>
+
+                        {/* ── مسح البيانات ── */}
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-6 space-y-3">
+                          <h4 className="text-sm font-black text-rose-500">🗑️ مسح البيانات من Firestore</h4>
+                          <p className="text-[10px] text-slate-400">تحذير: هذه العمليات لا يمكن التراجع عنها</p>
+
+                          {/* مسح أدوية اليوم المميزة */}
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('مسح بيانات أدوية اليوم من Firestore؟ سيتم توليدها من جديد.')) return;
+                              try {
+                                const { collection: col, getDocs: gd, deleteDoc: dd, doc: d } = await import('firebase/firestore');
+                                const snap = await gd(col(db, 'dailyFeatured'));
+                                await Promise.all(snap.docs.map(dc => dd(d(db, 'dailyFeatured', dc.id))));
+                                alert('✅ تم مسح أدوية اليوم');
+                              } catch(e: any) { alert('❌ ' + e.message); }
+                            }}
+                            className="w-full py-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 font-black text-sm rounded-2xl border border-amber-200 dark:border-amber-700 active:scale-95 transition-all"
+                          >
+                            🔄 مسح أدوية اليوم (إعادة توليد)
+                          </button>
+
+                          {/* مسح المعلومات السريرية */}
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('مسح كل المعلومات السريرية من Firestore؟')) return;
+                              try {
+                                const { collection: col, getDocs: gd, deleteDoc: dd, doc: d } = await import('firebase/firestore');
+                                const snap = await gd(col(db, 'clinicalData'));
+                                await Promise.all(snap.docs.map(dc => dd(d(db, 'clinicalData', dc.id))));
+                                alert('✅ تم مسح المعلومات السريرية');
+                              } catch(e: any) { alert('❌ ' + e.message); }
+                            }}
+                            className="w-full py-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 font-black text-sm rounded-2xl border border-rose-200 dark:border-rose-700 active:scale-95 transition-all"
+                          >
+                            🗑️ مسح المعلومات السريرية
+                          </button>
+
+                          {/* مسح كل الإشعارات */}
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm('مسح كل الإشعارات؟')) return;
+                              try {
+                                const { collection: col, getDocs: gd, deleteDoc: dd, doc: d } = await import('firebase/firestore');
+                                const snap = await gd(col(db, 'notifications'));
+                                await Promise.all(snap.docs.map(dc => dd(d(db, 'notifications', dc.id))));
+                                alert('✅ تم مسح الإشعارات');
+                              } catch(e: any) { alert('❌ ' + e.message); }
+                            }}
+                            className="w-full py-3 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-black text-sm rounded-2xl border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
+                          >
+                            🔕 مسح كل الإشعارات
+                          </button>
+                        </div>
                     </div>
                 </div>
             )}

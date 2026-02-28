@@ -42,6 +42,7 @@ const toPlainObject = (user: any): User | null => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true });
   const [user, setUser] = useState<User | null>(() => {
     try {
       const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
@@ -167,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user?.id === plain.id) setUser(plain);
   };
   const deleteUser = async (userId: string) => { await deleteDoc(doc(db, 'users', userId)); };
-  const getSettings = (): AppSettings => ({ aiRequestLimit: 5, isAiEnabled: true });
+  const getSettings = (): AppSettings => appSettings;
   const updateSettings = async (settings: AppSettings) => { await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings); };
 
   const requestAIAccess = useCallback((callback: () => void, t: TFunction) => {
@@ -182,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const today = new Date().toISOString().split('T')[0];
     // customAiLimit للمستخدم، وإلا global limit من settings، وإلا default 3
-    const globalLimit = getSettings().aiRequestLimit || 3;
+    const globalLimit = appSettings.aiRequestLimit || 3;
     const limit = user.customAiLimit !== undefined ? user.customAiLimit : globalLimit;
     
     if (user.lastRequestDate !== today) {
@@ -200,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         + ` (${limit} يومياً / per day)`
       );
     }
-  }, [user, getSettings]);
+  }, [user, appSettings]);
 
   const value = { 
       user, login, register, logout, requestAIAccess, resendVerificationEmail, 

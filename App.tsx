@@ -523,20 +523,26 @@ const App: React.FC = () => {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
   };
 
-  // لما تنزل أدوية اليوم الجديدة — نضيف notification للكل
+  // لما تنزل أدوية اليوم الجديدة — نضيف notification مرة واحدة في اليوم
   const handleNewDailyFeatured = useCallback(async (meds: { tradeName: string; indication?: string }[]) => {
     if (!db) return;
+    const today = new Date().toISOString().split('T')[0];
+    const notifKey = `featured_notif_${today}`;
+    // تجنب التكرار — لو أرسلنا النهارده قبل كده ماترسلش
+    if (localStorage.getItem(notifKey)) return;
     try {
-      const { addDoc, collection: col, serverTimestamp } = await import('firebase/firestore');
+      const { addDoc, collection: col } = await import('firebase/firestore');
       const names = meds.slice(0,3).map(m => m.tradeName).join('، ');
       await addDoc(col(db, 'notifications'), {
         title: language === 'ar' ? '💊 أدوية اليوم الجديدة' : '💊 New Featured Medicines',
-        body: language === 'ar' ? `أدوية اليوم الجديدة: ${names}` : `Today's featured: ${names}`,
+        body: language === 'ar' ? `أدوية اليوم: ${names}` : `Today's featured: ${names}`,
         timestamp: Date.now(),
         type: 'info',
         isRead: false,
-        isFeaturedDaily: true,   // علامة خاصة للأدوية اليومية
+        isFeaturedDaily: true,
+        date: today,
       });
+      localStorage.setItem(notifKey, '1');
     } catch {}
   }, [language]);
 
@@ -714,8 +720,9 @@ const App: React.FC = () => {
           return (
               <div className="animate-fade-in pt-2">
                   {/* أدوية اليوم - دايماً mounted بس مخفية لما في بحث */}
+                  {/* DailyFeaturedSection دايماً mounted — بس hidden عشان ما يتـreloadش */}
                   {medicines.length > 0 && (
-                    <div className={searchTerm.length > 0 ? 'hidden' : ''}>
+                    <div style={{ display: searchTerm.length > 0 ? 'none' : 'block' }}>
                       <ErrorBoundary>
                       <DailyFeaturedSection
                         medicines={medicines}
