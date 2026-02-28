@@ -719,23 +719,8 @@ const App: React.FC = () => {
           
           return (
               <div className="animate-fade-in pt-2">
-                  {/* أدوية اليوم - دايماً mounted بس مخفية لما في بحث */}
-                  {/* DailyFeaturedSection دايماً mounted — بس hidden عشان ما يتـreloadش */}
-                  {medicines.length > 0 && (
-                    <div style={{ display: searchTerm.length > 0 ? 'none' : 'block' }}>
-                      <ErrorBoundary>
-                      <DailyFeaturedSection
-                        medicines={medicines}
-                        language={language}
-                        t={t}
-                        onSelect={handleMedicineSelect}
-                        geminiApiKey={geminiApiKey}
-                        isAdmin={user?.role === 'admin'}
-                        onNewDailyReady={handleNewDailyFeatured}
-                      />
-                      </ErrorBoundary>
-                    </div>
-                  )}
+                  {/* placeholder لمكان DailyFeaturedSection — الـ section نفسها خارج renderContent */}
+                  {searchTerm.length === 0 && <div style={{ height: '280px' }} aria-hidden="true" />}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
@@ -887,6 +872,34 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
+      {/* DailyFeaturedSection — خارج renderContent تماماً عشان يبقى دايماً mounted ويتحمل مرة واحدة بس */}
+      {isDataLoaded && medicines.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          // يظهر بس لما في search tab وview=search وما في searchTerm
+          visibility: (activeTab === 'search' && view === 'search' && searchTerm.length === 0) ? 'visible' : 'hidden',
+          // لما مخفي يبقى خارج الـ layout بالكامل بس في الـ DOM
+          pointerEvents: (activeTab === 'search' && view === 'search' && searchTerm.length === 0) ? 'auto' : 'none',
+          // نحتفظ بالـ position الصح لما بيظهر
+          top: activeTab === 'search' && view === 'search' && searchTerm.length === 0 ? `${Math.max(headerHeight + 24, 114)}px` : '-9999px',
+          left: 0, right: 0,
+          zIndex: (activeTab === 'search' && view === 'search' && searchTerm.length === 0) ? 1 : -1,
+          paddingLeft: '1rem', paddingRight: '1rem',
+          maxWidth: '1024px', margin: '0 auto',
+        }}>
+          <ErrorBoundary>
+            <DailyFeaturedSection
+              medicines={medicines}
+              language={language}
+              t={t}
+              onSelect={handleMedicineSelect}
+              geminiApiKey={geminiApiKey}
+              isAdmin={user?.role === 'admin'}
+              onNewDailyReady={handleNewDailyFeatured}
+            />
+          </ErrorBoundary>
+        </div>
+      )}
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {!isDataLoaded ? (
             <div className="space-y-4 pt-2">
