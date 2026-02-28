@@ -60,7 +60,14 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
       ) : (
         <div className="space-y-3">
           {sortedNotifications.map(notification => (
-            <div key={notification.id} onClick={() => { setSelectedNotification(notification); if(!notification.isRead) onMarkAsRead(notification.id); }} className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${notification.isRead ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-dark-border' : 'bg-primary/5 dark:bg-primary/10 border-primary/20 shadow-md'}`}>
+            <div key={notification.id} onClick={() => { 
+              setSelectedNotification(notification); 
+              if(!notification.isRead) onMarkAsRead(notification.id);
+              // الإشعارات اليومية تتمسح تلقائياً بعد ثانيتين من الفتح
+              if ((notification as any).isFeaturedDaily) {
+                setTimeout(() => onDeleteNotification(notification.id), 2000);
+              }
+            }} className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${notification.isRead ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-dark-border' : 'bg-primary/5 dark:bg-primary/10 border-primary/20 shadow-md'}`}>
               <div className="flex justify-between items-start mb-1 pr-8 rtl:pl-8"><h3 className={`font-black text-sm ${!notification.isRead ? 'text-primary' : 'text-slate-800 dark:text-slate-200'}`}>{notification.title}</h3>{!notification.isRead && <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />}</div>
               <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{notification.body}</p>
               <div className="flex justify-between items-center mt-2 border-t border-slate-100 dark:border-dark-border pt-2">

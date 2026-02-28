@@ -25,6 +25,8 @@
 }
 
 body {
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
   font-family: 'Cairo', 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;

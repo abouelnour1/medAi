@@ -20,25 +20,33 @@ function strengthHasUnit(s: string): boolean {
     return KNOWN_UNITS.test(s);
 }
 
-export const zipIngredients = (medicine: Medicine): string => {
+const KNOWN_UNITS_RE = /\b(mg|ml|g|mcg|ug|iu|units?|mmol|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)\b/i;
+
+// يبني قائمة { name, strengthDisplay }
+export const parseIngredients = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
-    // لو أكتر من ٣ مواد: ماتظهرش برا (هتظهر جوه بس مع العدد)
-    if (sciNames.length > 3) return '';
-    return sciNames.join(' · ');
+    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
+    const unit = String(medicine.StrengthUnit || '').trim();
+    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return [];
+    return sciNames.map((name, i) => {
+        const s = (strengths[i] || strengths[0] || '').trim();
+        if (!s) return { name, strength: '' };
+        const display = (!KNOWN_UNITS_RE.test(s) && unit) ? `${s} ${unit}` : s;
+        return { name, strength: display };
+    });
 };
 
-// للاستخدام جوه الكارت لما المواد أكتر من ٣
-export const getIngredientsCount = (medicine: Medicine): number => {
-    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A') return 0;
-    return sciNames.length;
+// للكارت: لو <=3 يرجع "Name Strength · Name2 Strength2", لو >3 يرجع ''
+export const zipIngredients = (medicine: Medicine): string => {
+    const items = parseIngredients(medicine);
+    if (items.length === 0 || items.length > 3) return '';
+    return items.map(i => i.strength ? `${i.name} ${i.strength}` : i.name).join(' · ');
 };
+
+export const getIngredientsCount = (medicine: Medicine): number => parseIngredients(medicine).length;
 
 export const getAllIngredients = (medicine: Medicine): string => {
-    const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (sciNames.length === 0 || (sciNames.length === 1 && sciNames[0].toUpperCase() === 'N/A')) return '';
-    return sciNames.join(' · ');
+    return parseIngredients(medicine).map(i => i.strength ? `${i.name} ${i.strength}` : i.name).join(' · ');
 };
 
 // للاستخدام في أماكن تانية (MedicineDetail مثلاً) لو محتاجين التركيزات
@@ -150,15 +158,20 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
               {ingredientsString}
             </p>
           ) : ingredientCount > 3 ? (
-            <details className="mb-3 group">
-              <summary className="text-[10px] font-bold text-primary/70 dark:text-primary/60 cursor-pointer list-none flex items-center gap-1 select-none">
-                <svg className="w-3 h-3 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M9 5l7 7-7 7"/></svg>
-                {ingredientCount} {ar ? 'مواد فعالة' : 'active ingredients'}
-              </summary>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed" dir="ltr">
-                {allIngredientsStr}
-              </p>
-            </details>
+            <div className="mb-3">
+              {/* badge عدد المواد */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400">
+                  {ingredientCount} {ar ? 'مواد' : 'ingredients'}
+                </span>
+                {/* نعرض أول اسمين بس كـ hint */}
+                {parseIngredients(medicine).slice(0,2).map((ing, i) => (
+                  <span key={i} className="text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[80px]" dir="ltr">
+                    {ing.name}{i === 0 ? ' ·' : '...'}
+                  </span>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="mb-3" />
           )}

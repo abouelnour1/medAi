@@ -523,6 +523,23 @@ const App: React.FC = () => {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
   };
 
+  // لما تنزل أدوية اليوم الجديدة — نضيف notification للكل
+  const handleNewDailyFeatured = useCallback(async (meds: { tradeName: string; indication?: string }[]) => {
+    if (!db) return;
+    try {
+      const { addDoc, collection: col, serverTimestamp } = await import('firebase/firestore');
+      const names = meds.slice(0,3).map(m => m.tradeName).join('، ');
+      await addDoc(col(db, 'notifications'), {
+        title: language === 'ar' ? '💊 أدوية اليوم الجديدة' : '💊 New Featured Medicines',
+        body: language === 'ar' ? `أدوية اليوم الجديدة: ${names}` : `Today's featured: ${names}`,
+        timestamp: Date.now(),
+        type: 'info',
+        isRead: false,
+        isFeaturedDaily: true,   // علامة خاصة للأدوية اليومية
+      });
+    } catch {}
+  }, [language]);
+
   const handleSaveMedicine = async (updatedMed: Medicine) => {
     if (!user) return;
     // حماية: لو مفيش RegisterNumber يونيك — منع الحفظ
@@ -707,6 +724,7 @@ const App: React.FC = () => {
                         onSelect={handleMedicineSelect}
                         geminiApiKey={geminiApiKey}
                         isAdmin={user?.role === 'admin'}
+                        onNewDailyReady={handleNewDailyFeatured}
                       />
                       </ErrorBoundary>
                     </div>
@@ -862,7 +880,7 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), WebkitOverflowScrolling: "touch" } as any} onTouchStart={(e) => { if ((e.currentTarget as HTMLElement).scrollTop === 0) e.currentTarget.dataset.pullStart = e.touches[0].clientY.toString(); }}>
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {!isDataLoaded ? (
             <div className="space-y-4 pt-2">
               <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />

@@ -325,6 +325,8 @@ const DailyFeaturedSection: React.FC<Props> = ({ medicines, language, t, onSelec
         indication: m.clinicalData?.indication
       }));
       notifyDailyFeaturedChanged(notifData);
+      // callback لـ App يضيف notification في Firestore
+      if (onNewDailyReady) onNewDailyReady(notifData);
     } else {
       setIsLoading(false);
     }

@@ -94,16 +94,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     return flags;
   }, [medicine]);
 
-  const handleGoogleImageSearch = () => {
+  const handleGoogleImageSearch = async () => {
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      // Capacitor: نفتح في In-App Browser بدون ما نغادر التطبيق
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) {
+        // نستخدم window.open بـ _system عشان يفتح المتصفح الخارجي بدون ما يغادر الـ app state
+        (window as any).open(url, '_system', 'location=yes');
+        return;
+      }
+    } catch {}
+    // ويب: فتح تاب جديد
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
