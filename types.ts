@@ -198,6 +198,7 @@ export interface User {
 export interface AppSettings {
   aiRequestLimit: number;
   isAiEnabled: boolean;
+  isFeaturedEnabled: boolean;
 }
 
 export interface DrugInPrescription {

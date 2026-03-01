@@ -63,7 +63,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [pendingUpdates, setPendingUpdates] = useState<PendingUpdate[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 5, isAiEnabled: true });
+  const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 5, isAiEnabled: true, isFeaturedEnabled: true });
   const [isLoading, setIsLoading] = useState(false);
   const [itemCategory, setItemCategory] = useState<ItemCategory>('Human');
   const [selectedUpdate, setSelectedUpdate] = useState<PendingUpdate | null>(null);
@@ -541,6 +541,13 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                                 <div><p className="text-sm font-bold">{t('aiToggleLabel')}</p></div>
                                 <input type="checkbox" checked={appSettings.isAiEnabled} onChange={e => setAppSettings({...appSettings, isAiEnabled: e.target.checked})} className="w-6 h-6 accent-primary" />
                             </div>
+                            <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl">
+                                <div>
+                                  <p className="text-sm font-bold">✨ أدوية اليوم المميزة</p>
+                                  <p className="text-[10px] text-slate-400">إظهار قسم أدوية اليوم في الصفحة الرئيسية</p>
+                                </div>
+                                <input type="checkbox" checked={appSettings.isFeaturedEnabled !== false} onChange={e => setAppSettings({...appSettings, isFeaturedEnabled: e.target.checked})} className="w-6 h-6 accent-primary" />
+                            </div>
                             <div>
                               <label className={labelClass}>{t('aiLimitLabel')} <span className="text-[10px] text-slate-400 font-normal">(Default للمستخدمين الجدد)</span></label>
                               <input type="number" min="1" max="100" value={appSettings.aiRequestLimit} onChange={e => setAppSettings({...appSettings, aiRequestLimit: parseInt(e.target.value) || 3})} className={inputClass} />
@@ -548,6 +555,37 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                             </div>
                             <button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">{isLoading ? '...' : t('save')}</button>
                         </form>
+
+                        {/* ── إرسال إشعار بأدوية اليوم ── */}
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-6 space-y-3">
+                          <h4 className="text-sm font-black text-primary">📣 إشعار أدوية اليوم</h4>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const { collection: col, getDocs: gd, addDoc, doc: d, getDoc: gdc } = await import('firebase/firestore');
+                                // نجيب أدوية اليوم من Firestore
+                                const today = new Date().toISOString().split('T')[0];
+                                const snap = await gdc(d(db, 'dailyFeatured', today));
+                                if (!snap.exists()) { alert('لا توجد أدوية اليوم بعد — ابدأ التطبيق أولاً لتوليدها'); return; }
+                                const data = snap.data();
+                                const names = (data.medicines || []).slice(0,3).map((m: any) => m.tradeName).join('، ');
+                                await addDoc(col(db, 'notifications'), {
+                                  title: '💊 أدوية اليوم المميزة',
+                                  body: `أدوية اليوم: ${names}`,
+                                  timestamp: Date.now(),
+                                  type: 'info',
+                                  isRead: false,
+                                  isFeaturedDaily: true,
+                                  date: today,
+                                });
+                                alert('✅ تم إرسال الإشعار للكل');
+                              } catch(e: any) { alert('❌ ' + e.message); }
+                            }}
+                            className="w-full py-3 bg-primary/10 text-primary font-black text-sm rounded-2xl border border-primary/20 active:scale-95 transition-all"
+                          >
+                            📣 إرسال إشعار بأدوية اليوم الآن
+                          </button>
+                        </div>
 
                         {/* ── مسح البيانات ── */}
                         <div className="border-t border-slate-100 dark:border-slate-700 pt-6 space-y-3">

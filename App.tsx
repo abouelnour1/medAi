@@ -189,7 +189,8 @@ const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
 const App: React.FC = () => {
-  const { user, logout, requestAIAccess } = useAuth();
+  const { user, logout, requestAIAccess, getSettings } = useAuth();
+  const appSettings = getSettings();
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -720,6 +721,20 @@ const App: React.FC = () => {
           return (
               <div className="animate-fade-in pt-2">
 
+                  {/* أدوية اليوم — تظهر لما isFeaturedEnabled=true */}
+                  {medicines.length > 0 && searchTerm.length === 0 && appSettings.isFeaturedEnabled !== false && (
+                    <ErrorBoundary>
+                      <DailyFeaturedSection
+                        medicines={medicines}
+                        language={language}
+                        t={t}
+                        onSelect={handleMedicineSelect}
+                        geminiApiKey={geminiApiKey}
+                        isAdmin={user?.role === 'admin'}
+                        onNewDailyReady={handleNewDailyFeatured}
+                      />
+                    </ErrorBoundary>
+                  )}
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
