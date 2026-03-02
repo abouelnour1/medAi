@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getRedirectResult(auth).then(result => {
       if (result?.user) syncUserData(result.user as FirebaseUser);
     }).catch(() => {});
-  }, []);
+  }, [syncUserData]);
 
   useEffect(() => {
     // تقليل وقت الانتظار بشكل كبير لجعل التطبيق يفتح فوراً
@@ -140,33 +140,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await syncUserData(result.user as FirebaseUser);
-    } catch (err: any) {
-      // على الموبايل لو popup اتمنع نستخدم redirect
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw err;
-      }
-    }
+    const result = await signInWithPopup(auth, provider);
+    await syncUserData(result.user as FirebaseUser);
   };
 
   const loginWithApple = async () => {
     const provider = new OAuthProvider('apple.com');
     provider.addScope('email');
     provider.addScope('name');
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await syncUserData(result.user as FirebaseUser);
-    } catch (err: any) {
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw err;
-      }
-    }
+    const result = await signInWithPopup(auth, provider);
+    await syncUserData(result.user as FirebaseUser);
   };
 
   const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
