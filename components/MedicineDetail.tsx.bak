@@ -62,18 +62,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
 
   // Scroll lock handled inside ClinicalDataPage
 
-  // Lazy load clinical data - بس لما الـ RegisterNumber يتغير فعلاً
-  const prevRegNumRef = React.useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (medicine?.RegisterNumber && medicine.RegisterNumber !== prevRegNumRef.current) {
-      prevRegNumRef.current = medicine.RegisterNumber;
+    if (medicine?.RegisterNumber) {
       getClinicalData(medicine.RegisterNumber).then(setClinicalData);
     }
   }, [medicine?.RegisterNumber]);
 
 
-  const hasImportantPhysical = !!(medicine.liquidTaste || medicine.liquidColor);
-  const [isPhysicalOpen, setIsPhysicalOpen] = useState(hasImportantPhysical);
+  const [isPhysicalOpen, setIsPhysicalOpen] = useState(false);
   const price = parseFloat(medicine['Public price']);
   const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
@@ -357,21 +353,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0"><PillIcon /></div>
                   <h3 className="text-[11px] font-black uppercase text-slate-500 dark:text-dark-muted tracking-wide">{t('physicalDetails')}</h3>
-                  {/* Preview badges - تظهر لما الـ accordion مقفول وفي معلومات مهمة */}
-                  {!isPhysicalOpen && hasImportantPhysical && (
-                    <div className="flex gap-1.5 flex-wrap">
-                      {medicine.liquidTaste && (
-                        <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full whitespace-nowrap">
-                          👅 {medicine.liquidTaste}
-                        </span>
-                      )}
-                      {medicine.liquidColor && (
-                        <span className="text-[9px] font-black bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 px-2 py-0.5 rounded-full whitespace-nowrap">
-                          🎨 {medicine.liquidColor}
-                        </span>
-                      )}
-                    </div>
-                  )}
               </div>
               <svg className={`w-4 h-4 text-slate-300 transition-transform flex-shrink-0 ${isPhysicalOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M19 9l-7 7-7-7" /></svg>
           </button>
@@ -423,12 +404,4 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     </div>
   );
 };
-export default memo(MedicineDetail, (prev, next) => {
-  // بس نعمل re-render لو الدواء نفسه اتغير أو state مهمة اتغيرت
-  return (
-    prev.medicine?.RegisterNumber === next.medicine?.RegisterNumber &&
-    prev.isFavorite === next.isFavorite &&
-    prev.language === next.language &&
-    prev.isInCompare === next.isInCompare
-  );
-});
+export default memo(MedicineDetail);
