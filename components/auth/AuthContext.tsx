@@ -10,6 +10,11 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   reload,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -94,6 +99,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   }, []);
 
+  // Handle redirect result (Google/Apple on mobile)
+  useEffect(() => {
+    getRedirectResult(auth).then(result => {
+      if (result?.user) syncUserData(result.user as FirebaseUser);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     // تقليل وقت الانتظار بشكل كبير لجعل التطبيق يفتح فوراً
     loadingTimeoutRef.current = window.setTimeout(() => {
@@ -123,6 +135,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
     await syncUserData(result.user as FirebaseUser);
+  };
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      const result = await signInWithPopup(auth, provider);
+      await syncUserData(result.user as FirebaseUser);
+    } catch (err: any) {
+      // على الموبايل لو popup اتمنع نستخدم redirect
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider);
+      } else {
+        throw err;
+      }
+    }
+  };
+
+  const loginWithApple = async () => {
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    try {
+      const result = await signInWithPopup(auth, provider);
+      await syncUserData(result.user as FirebaseUser);
+    } catch (err: any) {
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider);
+      } else {
+        throw err;
+      }
+    }
   };
 
   const register = async (email: string, password: string, role: 'premium' | 'company' = 'premium') => {
@@ -204,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, appSettings]);
 
   const value = { 
-      user, login, register, logout, requestAIAccess, resendVerificationEmail, 
+      user, login, loginWithGoogle, loginWithApple, register, logout, requestAIAccess, resendVerificationEmail, 
       reloadUser, resetPassword, isLoading, getAllUsers, updateUser, deleteUser, getSettings, updateSettings 
   };
 

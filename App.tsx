@@ -27,7 +27,6 @@ import DrugToolsModal from './components/DrugToolsModal';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
-import DailyFeaturedSection from './components/DailyFeaturedSection';
 import ErrorBoundary from './components/ErrorBoundary';
 import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
@@ -524,29 +523,6 @@ const App: React.FC = () => {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
   };
 
-  // لما تنزل أدوية اليوم الجديدة — نضيف notification مرة واحدة في اليوم
-  const handleNewDailyFeatured = useCallback(async (meds: { tradeName: string; indication?: string }[]) => {
-    if (!db) return;
-    const today = new Date().toISOString().split('T')[0];
-    const notifKey = `featured_notif_${today}`;
-    // تجنب التكرار — لو أرسلنا النهارده قبل كده ماترسلش
-    if (localStorage.getItem(notifKey)) return;
-    try {
-      const { addDoc, collection: col } = await import('firebase/firestore');
-      const names = meds.slice(0,3).map(m => m.tradeName).join('، ');
-      await addDoc(col(db, 'notifications'), {
-        title: language === 'ar' ? '💊 أدوية اليوم الجديدة' : '💊 New Featured Medicines',
-        body: language === 'ar' ? `أدوية اليوم: ${names}` : `Today's featured: ${names}`,
-        timestamp: Date.now(),
-        type: 'info',
-        isRead: false,
-        isFeaturedDaily: true,
-        date: today,
-      });
-      localStorage.setItem(notifKey, '1');
-    } catch {}
-  }, [language]);
-
   const handleSaveMedicine = async (updatedMed: Medicine) => {
     if (!user) return;
     // حماية: لو مفيش RegisterNumber يونيك — منع الحفظ
@@ -721,20 +697,7 @@ const App: React.FC = () => {
           return (
               <div className="animate-fade-in pt-2">
 
-                  {/* أدوية اليوم — تظهر لما isFeaturedEnabled=true */}
-                  {medicines.length > 0 && searchTerm.length === 0 && appSettings.isFeaturedEnabled !== false && (
-                    <ErrorBoundary>
-                      <DailyFeaturedSection
-                        medicines={medicines}
-                        language={language}
-                        t={t}
-                        onSelect={handleMedicineSelect}
-                        geminiApiKey={geminiApiKey}
-                        isAdmin={user?.role === 'admin'}
-                        onNewDailyReady={handleNewDailyFeatured}
-                      />
-                    </ErrorBoundary>
-                  )}
+
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
                       <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />

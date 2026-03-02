@@ -254,6 +254,8 @@ export interface Recommendation {
 export type AuthContextType = {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   register: (email: string, password: string, role?: 'premium' | 'company') => Promise<void>;
   logout: () => void;
   requestAIAccess: (callback: () => void, t: TFunction) => void;
