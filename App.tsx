@@ -58,17 +58,20 @@ const normalizeMedicine = (item: any): Medicine => {
       const priceStr = findValue(obj, ["Public price", "Price", "public price", "price", "PriceSAR", "CIFPrice"]);
       return priceStr ? priceStr.replace(/[^0-9.]/g, '') : '0';
   };
-  const tradeName = findValue(item, ["Trade Name", "TradeName", "tradeName"]);
-  const scientificName = findValue(item, ["Scientific Name", "ScientificName", "scientificName"]);
+  // اسم المنتج: إنجليزي أو عربي
+  const tradeName = findValue(item, ["Trade Name", "TradeName", "tradeName", "BrandNameEn", "BrandNameAr"]);
+  
+  // التركيبة: concentration أولاً، ثم IngredientNameEn، ثم IngredientNameAr، ثم ScientificName
+  const scientificName = findValue(item, ["concentration", "IngredientNameEn", "IngredientNameAr", "Scientific Name", "ScientificName", "scientificName"]);
   const strength = findValue(item, ["Strength", "strength"]);
   
   let regNum = findValue(item, ["RegisterNumber", "Id", "id"]);
   if (!regNum || regNum === '0' || regNum.trim() === '') {
-      // نعمل ID يونيك من الاسم + الشركة + السعر عشان نتجنب التكرار
-      const mfr = findValue(item, ["Manufacture Name", "manufacturer", "main agent", "Manufacturer"]);
+      // نعمل ID يونيك من اسم المنتج + الوكيل عشان نتجنب التكرار
+      const mfr = findValue(item, ["Manufacture Name", "ManufacturerNameEn", "ManufacturerNameAr", "manufacturer", "main agent", "CompanyName", "Manufacturer"]);
       const price = findPrice(item);
-      const uniqueStr = `${tradeName}-${scientificName}-${mfr}-${price}`.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 60);
-      regNum = `local-${uniqueStr}`;
+      const uniqueStr = `${tradeName}-${mfr}-${price}`.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 60);
+      regNum = `food-${uniqueStr}`;
   }
   
   const drugTypeRaw = String(findValue(item, ["DrugType", "drugType", "Product type", "ProductType"])).toLowerCase();
@@ -102,10 +105,10 @@ const normalizeMedicine = (item: any): Medicine => {
     "Storage Condition Arabic": findValue(item, ["Storage Condition Arabic", "storageConditionArabic"]),
     "Marketing Company": findValue(item, ["Marketing Company", "MarketingCompany", "CompanyName", "companyName"]),
     "Marketing Country": findValue(item, ["Marketing Country", "MarketingCountry"]),
-    "Manufacture Name": findValue(item, ["Manufacture Name", "ManufacturerNameEN", "manufacturer", "manufacturerName"]),
-    "Manufacture Country": findValue(item, ["Manufacture Country", "ManufacturerCountry", "manufacturerCountry"]),
+    "Manufacture Name": findValue(item, ["Manufacture Name", "ManufacturerNameEn", "ManufacturerNameAr", "manufacturer", "manufacturerName"]),
+    "Manufacture Country": findValue(item, ["Manufacture Country", "ManufacturerCountry", "manufacturerCountry", "Country"]),
     "Secondry package  manufacture": findValue(item, ["Secondry package  manufacture"]),
-    "Main Agent": findValue(item, ["Main Agent", "MainAgent", "Agent", "main agent", "agent"]),
+    "Main Agent": findValue(item, ["Main Agent", "MainAgent", "Agent", "main agent", "agent", "CompanyName"]),
     "Secosnd Agent": findValue(item, ["Secosnd Agent", "AddtionalAgentName"]),
     "Third agent": findValue(item, ["Third agent"]),
     "Description Code": findValue(item, ["Description Code", "descriptionCode"]),
