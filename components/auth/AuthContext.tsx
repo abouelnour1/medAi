@@ -13,15 +13,12 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { 
   doc, 
   getDoc, 
   setDoc, 
-  updateDoc, 
   deleteDoc,
 } from 'firebase/firestore';
 
@@ -57,9 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
 
   const syncUserData = useCallback(async (firebaseUser: FirebaseUser) => {
+      // ✅ منع double sync
+      if (isSyncing.current) return;
+      isSyncing.current = true;
+
       try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           let userData: User | null = null;
@@ -74,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   emailVerified: firebaseUser.emailVerified
               });
           } else {
+              // مستخدم جديد - ننشئ له doc
               userData = toPlainObject({
                   id: firebaseUser.uid,
                   username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -84,7 +87,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   aiRequestCount: 0,
                   lastRequestDate: new Date().toISOString().split('T')[0]
               });
-              if (userData) await setDoc(userDocRef, userData).catch(() => {});
+              if (userData) {
+                  await setDoc(userDocRef, userData);
+              }
           }
           
           if (userData) {
@@ -93,24 +98,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
       } catch (err) {
           console.error("Critical Auth Sync Error:", err);
+          // ✅ لو فشل Firestore، نبني من Firebase user مباشرة
+          const fallback = toPlainObject({
+              id: firebaseUser.uid,
+              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              role: 'premium',
+              email: firebaseUser.email || '',
+              emailVerified: firebaseUser.emailVerified,
+              status: 'active',
+              aiRequestCount: 0,
+              lastRequestDate: new Date().toISOString().split('T')[0]
+          });
+          if (fallback) {
+              setUser(fallback);
+              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(fallback));
+          }
       } finally {
+          isSyncing.current = false;
           setIsLoading(false);
           if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       }
   }, []);
 
-  // Handle redirect result (Google/Apple on mobile)
   useEffect(() => {
-    getRedirectResult(auth).then(result => {
-      if (result?.user) syncUserData(result.user as FirebaseUser);
-    }).catch(() => {});
-  }, [syncUserData]);
-
-  useEffect(() => {
-    // تقليل وقت الانتظار بشكل كبير لجعل التطبيق يفتح فوراً
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-    }, 500);
+    }, 3000);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
@@ -140,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    // ✅ popup فقط - بدون redirect عشان مايعملش صفحة بيضاء
     const result = await signInWithPopup(auth, provider);
     await syncUserData(result.user as FirebaseUser);
   };
@@ -203,18 +217,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       alert(t('loginRequired') || 'يجب تسجيل الدخول أولاً');
       return;
     }
-    // الأدمن: غير محدود
     if (user.role === 'admin') {
       callback();
       return;
     }
     const today = new Date().toISOString().split('T')[0];
-    // customAiLimit للمستخدم، وإلا global limit من settings، وإلا default 3
     const globalLimit = appSettings.aiRequestLimit || 3;
     const limit = user.customAiLimit !== undefined ? user.customAiLimit : globalLimit;
     
     if (user.lastRequestDate !== today) {
-      // يوم جديد — نصفر العداد
       updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
       callback();
     } else if (user.aiRequestCount < limit) {

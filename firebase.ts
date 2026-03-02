@@ -6,11 +6,12 @@ import {
   Firestore,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
 export const FIREBASE_DISABLED = false;
 
+// authDomain لازم يبقى firebaseapp.com دايماً عشان Google OAuth يشتغل صح
 const firebaseConfig = {
   apiKey: "AIzaSyAazQzvW1KUFqj1wQYaUXXlogfp8lkU50s",
   authDomain: "medainew-fa6a2.firebaseapp.com",
@@ -32,10 +33,9 @@ try {
         app = getApps()[0];
     }
 
-    // إعدادات محسنة لضمان استقرار الاتصال ومنع الـ Timeout في المتصفحات
     db = initializeFirestore(app, {
         localCache: persistentLocalCache({
-            tabManager: persistentSingleTabManager({ forceOwnership: false }), // تغيير لضمان عدم القفل
+            tabManager: persistentSingleTabManager({ forceOwnership: false }),
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
         }),
         experimentalForceLongPolling: true,
@@ -43,7 +43,10 @@ try {
     });
 
     auth = getAuth(app);
-    
+
+    // ✅ نضمن إن الـ session يتحفظ حتى لو أغلق المتصفح
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+
     if (typeof window !== 'undefined') {
         getAnalytics(app);
     }
