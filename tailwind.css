@@ -1,72 +1,620 @@
-/* PharmaSource Global Styles */
+/* ============================================================
+   PharmaSource — Premium UI System
+   Design Language: Soft Medical Luxury
+   Fonts: IBM Plex Sans Arabic + IBM Plex Sans
+   ============================================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Offline Font Fallback - يشتغل حتى لو fonts.css مش موجود */
+/* ── Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
 @layer base {
+  /* Offline fallback */
   @font-face {
     font-family: 'Cairo';
-    src: local('Cairo'), local('Cairo Regular'),
-         local('Arial Unicode MS'), local('Tahoma');
+    src: local('Cairo'), local('Arial Unicode MS'), local('Tahoma');
     font-weight: 400;
-    font-style: normal;
     font-display: swap;
   }
 }
 
+/* ── Design Tokens ── */
 :root {
-  --primary: #0d9488;
-  --primary-dark: #0f766e;
-  --secondary: #0ea5e9;
-  --accent: #f59e0b;
-  --light-bg: #f1f5f9;
-  --dark-bg: #020617;
+  /* Brand */
+  --primary:        #0d9488;
+  --primary-dark:   #0f766e;
+  --primary-light:  #2dd4bf;
+  --primary-ultra:  #f0fdfa;
+
+  /* Neutrals */
+  --bg:             #f8fafc;
+  --surface:        #ffffff;
+  --surface-2:      #f1f5f9;
+  --border:         rgba(15, 118, 110, 0.08);
+  --text:           #0f172a;
+  --text-muted:     #64748b;
+  --text-subtle:    #94a3b8;
+
+  /* Dark */
+  --dark-bg:        #020617;
+  --dark-surface:   #0f172a;
+  --dark-surface-2: #1e293b;
+  --dark-border:    rgba(255,255,255,0.06);
+  --dark-text:      #f8fafc;
+  --dark-muted:     #94a3b8;
+
+  /* Shadows — soft layered, never harsh */
+  --shadow-xs:  0 1px 2px rgba(15,118,110,0.04);
+  --shadow-sm:  0 2px 8px rgba(15,118,110,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 16px rgba(15,118,110,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:  0 8px 32px rgba(15,118,110,0.10), 0 4px 8px rgba(0,0,0,0.06);
+  --shadow-xl:  0 16px 48px rgba(15,118,110,0.12), 0 8px 16px rgba(0,0,0,0.08);
+
+  /* Motion */
+  --ease-spring:  cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:     150ms;
+  --dur-med:      280ms;
+  --dur-slow:     420ms;
+
+  /* Radius */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-2xl:  24px;
+  --r-full: 999px;
+}
+
+/* ── Base Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
-  font-family: 'Cairo', 'Poppins', sans-serif;
+  font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', 'Cairo', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.3s var(--ease-smooth), color 0.3s var(--ease-smooth);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
+.dark body {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+#root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ============================================================
+   CARDS & CONTAINERS
+   ============================================================ */
+
+/* Base card — floating, soft, premium */
+.ps-card {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-smooth);
+  will-change: transform;
+}
+
+.dark .ps-card {
+  background: var(--dark-surface);
+  border-color: var(--dark-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Press state — subtle push */
+.ps-card:active,
+.ps-pressable:active {
+  transform: scale(0.975);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Medicine card upgrade */
 .animate-card {
-  animation: fadeIn 0.25s ease-out forwards;
+  background: var(--surface);
+  border-radius: var(--r-xl) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-smooth) !important;
+  will-change: transform;
+  overflow: hidden;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+.animate-card:active {
+  transform: scale(0.975) !important;
+  box-shadow: var(--shadow-xs) !important;
 }
+
+.dark .animate-card {
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* ============================================================
+   SHIMMER SKELETON
+   ============================================================ */
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-md);
+}
+
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    #1e293b 25%,
+    #334155 50%,
+    #1e293b 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ============================================================
+   STAGGERED LIST ANIMATION
+   ============================================================ */
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply to list items — JS sets --i for stagger */
+.stagger-item {
+  opacity: 0;
+  animation: cardEntrance var(--dur-med) var(--ease-spring) forwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Cap stagger at 8 items to avoid long waits */
+.stagger-item:nth-child(1)  { --i: 0; }
+.stagger-item:nth-child(2)  { --i: 1; }
+.stagger-item:nth-child(3)  { --i: 2; }
+.stagger-item:nth-child(4)  { --i: 3; }
+.stagger-item:nth-child(5)  { --i: 4; }
+.stagger-item:nth-child(6)  { --i: 5; }
+.stagger-item:nth-child(7)  { --i: 6; }
+.stagger-item:nth-child(8)  { --i: 7; }
+.stagger-item:nth-child(n+9){ --i: 7; } /* rest animate together */
+
+/* ============================================================
+   SCREEN TRANSITIONS
+   ============================================================ */
+
+/* Sheet Modal — slides up from bottom (iOS style) */
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sheetDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* Side navigation — slide in from right (RTL: from left) */
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideOutToLeft {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-30%);  opacity: 0; }
+}
+
+@keyframes slideInFromLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* RTL-aware: detail views come from left (because Arabic) */
+[dir="rtl"] .screen-enter  { animation: slideInFromLeft var(--dur-slow) var(--ease-spring) forwards; }
+[dir="ltr"] .screen-enter  { animation: slideInFromRight var(--dur-slow) var(--ease-spring) forwards; }
+.screen-exit                { animation: slideOutToLeft var(--dur-med) var(--ease-smooth) forwards; }
+
+/* Sheet / modal */
+.sheet-enter  { animation: sheetUp   var(--dur-slow) var(--ease-spring) forwards; }
+.sheet-exit   { animation: sheetDown var(--dur-med)  var(--ease-smooth) forwards; }
+
+/* Simple fade */
+.fade-enter { animation: fadeIn var(--dur-med) var(--ease-smooth) forwards; }
+
+/* ============================================================
+   BASE KEYFRAMES
+   ============================================================ */
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(15px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 @keyframes bounceSubtle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  50%       { transform: translateY(-4px); }
 }
 
-@keyframes zoomIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+@keyframes pulse-ring {
+  0%   { transform: scale(1);    opacity: 0.6; }
+  100% { transform: scale(1.8);  opacity: 0; }
 }
 
-/* Dark mode cards */
+/* Legacy class aliases */
+.animate-fade-in   { animation: fadeIn   var(--dur-med) var(--ease-smooth) forwards; }
+.animate-slide-up  { animation: slideUp  var(--dur-slow) var(--ease-spring) forwards; }
+.animate-zoom-in   { animation: zoomIn   var(--dur-fast) var(--ease-smooth) forwards; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+/* Primary button */
+.ps-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: var(--r-full);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(13,148,136,0.3);
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-smooth),
+    background var(--dur-fast) var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ps-btn-primary:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 6px 20px rgba(13,148,136,0.35);
+}
+
+.ps-btn-primary:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 6px rgba(13,148,136,0.2);
+}
+
+/* Ghost button */
+.ps-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: var(--r-full);
+  border: 1.5px solid rgba(13,148,136,0.25);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    background var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth);
+}
+
+.ps-btn-ghost:hover  { background: var(--primary-ultra); border-color: var(--primary); }
+.ps-btn-ghost:active { transform: scale(0.94); }
+
+/* Icon button */
+.ps-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    color var(--dur-fast) var(--ease-smooth),
+    background var(--dur-fast) var(--ease-smooth);
+}
+
+.ps-btn-icon:hover  { color: var(--primary); background: var(--primary-ultra); }
+.ps-btn-icon:active { transform: scale(0.88); }
+
+/* ============================================================
+   SEARCH BAR
+   ============================================================ */
+
+.ps-search {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-full) !important;
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    box-shadow var(--dur-fast) var(--ease-smooth);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.ps-search:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.1), var(--shadow-sm);
+}
+
+.dark .ps-search {
+  background: var(--dark-surface);
+  border-color: var(--dark-border);
+  color: var(--dark-text);
+}
+
+.dark .ps-search:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
+}
+
+/* ============================================================
+   BADGES & TAGS
+   ============================================================ */
+
+.ps-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+
+.ps-badge-teal  { background: #f0fdfa; color: #0f766e; }
+.ps-badge-blue  { background: #eff6ff; color: #1d4ed8; }
+.ps-badge-amber { background: #fffbeb; color: #b45309; }
+.ps-badge-rose  { background: #fff1f2; color: #be123c; }
+.ps-badge-purple{ background: #faf5ff; color: #7e22ce; }
+.ps-badge-slate { background: #f8fafc; color: #475569; }
+
+.dark .ps-badge-teal   { background: rgba(13,148,136,0.15); color: #2dd4bf; }
+.dark .ps-badge-blue   { background: rgba(59,130,246,0.15);  color: #60a5fa; }
+.dark .ps-badge-amber  { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+.dark .ps-badge-rose   { background: rgba(244,63,94,0.15);   color: #fb7185; }
+.dark .ps-badge-purple { background: rgba(168,85,247,0.15);  color: #c084fc; }
+.dark .ps-badge-slate  { background: rgba(100,116,139,0.15); color: #94a3b8; }
+
+/* ============================================================
+   GLASS SURFACE
+   ============================================================ */
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.dark .bg-glass {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================
+   MODAL OVERLAY
+   ============================================================ */
+
+.ps-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 40;
+  animation: fadeIn var(--dur-med) var(--ease-smooth) forwards;
+}
+
+/* ============================================================
+   BOTTOM NAV INDICATOR
+   ============================================================ */
+
+@keyframes navIndicator {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.nav-indicator {
+  animation: navIndicator var(--dur-med) var(--ease-bounce) forwards;
+  transform-origin: center;
+}
+
+/* ============================================================
+   PRICE PILL
+   ============================================================ */
+
+.ps-price {
+  background: linear-gradient(135deg, rgba(13,148,136,0.08), rgba(45,212,191,0.06));
+  border: 1px solid rgba(13,148,136,0.12);
+  border-radius: var(--r-lg);
+  padding: 6px 10px;
+  text-align: center;
+  transition: background var(--dur-fast) var(--ease-smooth);
+}
+
+.dark .ps-price {
+  background: linear-gradient(135deg, rgba(13,148,136,0.18), rgba(45,212,191,0.08));
+  border-color: rgba(45,212,191,0.15);
+}
+
+/* ============================================================
+   FLOATING ACTION BUTTON
+   ============================================================ */
+
+.ps-fab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 4px 20px rgba(13,148,136,0.4);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-fast) var(--ease-smooth);
+}
+
+.ps-fab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(13,148,136,0.3);
+  animation: pulse-ring 2s var(--ease-smooth) infinite;
+}
+
+.ps-fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 10px rgba(13,148,136,0.3);
+}
+
+/* ============================================================
+   LOADING SPINNER
+   ============================================================ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ps-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(13,148,136,0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ============================================================
+   DARK MODE CARDS
+   ============================================================ */
+
 .dark .animate-card {
-  background-color: #0f172a;
-  border-color: #1e293b;
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-border) !important;
 }
 
-/* Scrollbar */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* ============================================================
+   UTILITY OVERRIDES
+   ============================================================ */
+
+/* Make tailwind rounded-2xl / rounded-3xl consistent */
+.rounded-2xl { border-radius: var(--r-xl) !important; }
+.rounded-3xl { border-radius: var(--r-2xl) !important; }
+
+/* Smooth scroll containers */
+.scroll-smooth { scroll-behavior: smooth; }
+
+/* Tap feedback for interactive elements */
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (min-width: 640px) {
+  :root { font-size: 16px; }
+}
