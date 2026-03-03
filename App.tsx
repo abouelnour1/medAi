@@ -42,6 +42,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { syncData } from './utils/dataSync';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -385,42 +386,54 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
         try {
-            const { MEDICINE_DATA, SUPPLEMENT_DATA_RAW } = await import('./data/data');
-            const { FOOD_DATA_RAW } = await import('./data/food-data');
-            const hardcodedMedicines = ([...MEDICINE_DATA, ...SUPPLEMENT_DATA_RAW, ...FOOD_DATA_RAW]).map(normalizeMedicine);
-            
-            const medMap = new Map<string, Medicine>();
-            hardcodedMedicines.forEach(m => medMap.set(m.RegisterNumber, m));
+            // ======================================================
+            // نظام Firebase-First + Offline Cache
+            // ======================================================
+            // 1. نجرب نجيب من Firebase / Cache
+            const syncResult = await syncData();
 
-            // ✅ نعرض الأدوية المحلية فوراً بدون ننتظر Firestore
+            const medMap = new Map<string, Medicine>();
+
+            // Firebase / Cache — المصدر الوحيد للداتا
+            const allRaw = [
+                ...syncResult.medicines,
+                ...syncResult.supplements,
+                ...syncResult.food,
+            ];
+            allRaw.map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
+
+            // عرض البيانات فوراً
             setMedicines(Array.from(medMap.values()));
 
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
             setIsDataLoaded(true);
 
+            // 2. استمع للإشعارات من Firebase في الخلفية
             if (!FIREBASE_DISABLED && db) {
-                // Firestore يحدّث في الخلفية - مش بيبلوك الـ UI
-                onSnapshot(collection(db, 'medicines'), (snapshot) => {
-                    snapshot.docs.forEach(doc => {
-                        const med = normalizeMedicine(doc.data());
-                        medMap.set(med.RegisterNumber, med);
-                    });
-                    setMedicines(Array.from(medMap.values()));
-                });
                 onSnapshot(collection(db, 'notifications'), (snapshot) => {
                     const allNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
-                    // فلترة الإشعارات - كل إشعار بدون targetUserId يظهر للكل
                     setNotifications(allNotifs.filter(n => {
-                      if (!n.targetUserId && !n.targetRole) return true; // عام للكل
-                      if (n.targetUserId && user && n.targetUserId === user.id) return true; // خاص بالمستخدم
-                      if (n.targetRole && user && n.targetRole === user.role) return true; // خاص برول معين
+                      if (!n.targetUserId && !n.targetRole) return true;
+                      if (n.targetUserId && user && n.targetUserId === user.id) return true;
+                      if (n.targetRole && user && n.targetRole === user.role) return true;
                       return false;
                     }));
                 });
-            } else {
-                setMedicines(Array.from(medMap.values()));
             }
+
+            // 3. استمع لـ background sync updates
+            const handleDataUpdate = (e: Event) => {
+                const { medicines, supplements, food } = (e as CustomEvent).detail;
+                const updatedMap = new Map<string, Medicine>(medMap);
+                [...medicines, ...supplements, ...food]
+                    .map(normalizeMedicine)
+                    .forEach(m => updatedMap.set(m.RegisterNumber, m));
+                setMedicines(Array.from(updatedMap.values()));
+            };
+            window.addEventListener('pharma:data-updated', handleDataUpdate);
+            return () => window.removeEventListener('pharma:data-updated', handleDataUpdate);
+
         } catch (e) { 
             console.error(e); 
             setIsDataLoaded(true); 

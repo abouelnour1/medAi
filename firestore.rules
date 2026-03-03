@@ -2,68 +2,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper - هل المستخدم أدمن؟
     function isAdmin() {
       return request.auth != null &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // ─── الأدوية ───────────────────────────────────────────────
+    // ─── الأدوية ──────────────────────────────────────────────
     match /medicines/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ─── التجميل ───────────────────────────────────────────────
-    match /cosmetics/{document=**} {
+    // ─── المكملات الغذائية ────────────────────────────────────
+    match /supplements/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company'
-      );
+      allow write: if isAdmin();
     }
 
-    // ─── المستخدمين ────────────────────────────────────────────
+    // ─── الفود ───────────────────────────────────────────────
+    match /food/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── metadata إصدار الداتا ────────────────────────────────
+    match /app_meta/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── المستخدمين ───────────────────────────────────────────
     match /users/{userId} {
-      // قراءة: أي مستخدم مسجل يقدر يقرأ (للبحث في المستخدمين)
       allow read:  if request.auth != null;
-      // كتابة: كل مستخدم يكتب بياناته بس، أو الأدمن
       allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
 
-    // ─── الطلبات المعلقة ───────────────────────────────────────
+    // ─── الطلبات المعلقة ──────────────────────────────────────
     match /pending_updates/{document=**} {
       allow read, write: if request.auth != null;
     }
 
-    // ─── الإعدادات ─────────────────────────────────────────────
+    // ─── الإعدادات ────────────────────────────────────────────
     match /settings/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ─── الإشعارات ─────────────────────────────────────────────
+    // ─── الإشعارات ────────────────────────────────────────────
     match /notifications/{document=**} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // ─── المعلومات السريرية لأدوية اليوم ──────────────────────
-    // قراءة للكل، كتابة للأدمن فقط
+    // ─── المعلومات السريرية ───────────────────────────────────
     match /clinicalData/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ─── أدوية اليوم المميزة ───────────────────────────────────
-    // قراءة للكل، كتابة للأدمن فقط
+    // ─── أدوية اليوم المميزة ──────────────────────────────────
     match /dailyFeatured/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ─── جدول أدوية اليوم ──────────────────────────────────────
-    // قراءة للكل، كتابة للأدمن فقط
+    // ─── جدول أدوية اليوم ────────────────────────────────────
     match /featuredSchedule/{document=**} {
       allow read: if true;
       allow write: if isAdmin();
