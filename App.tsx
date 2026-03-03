@@ -853,7 +853,7 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto pb-[calc(160px+env(safe-area-inset-bottom))] w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(260px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {!isDataLoaded ? (
             <div className="space-y-4 pt-2">
               <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />
