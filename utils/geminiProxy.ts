@@ -33,7 +33,9 @@ export async function callGeminiProxy(
   history: { role: string; parts: { text: string }[] }[],
   systemInstruction: string,
   tools?: any[],
-  model = 'gemini-2.0-flash-lite'
+  model = 'gemini-2.0-flash-lite',
+  userId?: string,
+  userRole?: string,
 ): Promise<any> {
   const res = await fetch(getProxyUrl(), {
     method: 'POST',
@@ -45,7 +47,9 @@ export async function callGeminiProxy(
         ? { parts: [{ text: systemInstruction }] }
         : undefined,
       tools: tools || undefined,
-      generationConfig: { temperature: 0.7 }
+      generationConfig: { temperature: 0.7 },
+      userId: userId || 'anonymous',
+      userRole: userRole || 'user',
     })
   });
 
@@ -54,6 +58,13 @@ export async function callGeminiProxy(
     try { errText = await res.text(); } catch {}
     let parsed: any = {};
     try { parsed = JSON.parse(errText); } catch {}
+
+    // quota error من الـ server
+    if (res.status === 429) {
+      const msg = parsed?.message || parsed?.message_en || 'Daily limit reached';
+      throw new Error(`QUOTA_EXCEEDED: ${msg}`);
+    }
+
     const msg = parsed?.message || parsed?.error || errText || `HTTP ${res.status}`;
     throw new Error(
       res.status === 500 && msg.includes('API_KEY')

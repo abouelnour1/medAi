@@ -1,22 +1,57 @@
 /**
  * Vercel Serverless Function - Gemini Proxy
- * يحل مشكلة communication error بـ:
- * 1. Better error messages
- * 2. Retry logic
- * 3. Proper CORS للـ Capacitor
+ * مع Rate Limiting حقيقي على السيرفر لكل مستخدم
  */
 
 export const config = { runtime: 'edge' };
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-export default async function handler(req: Request) {
-  const origin = req.headers.get('origin') || '*';
+// ── Rate Limit Settings ──────────────────────────────────────────────
+// كل مستخدم عنده DAILY_LIMIT طلب في اليوم
+// الأدمن عنده ADMIN_LIMIT
+const DAILY_LIMIT = 10;
+const ADMIN_LIMIT = 200;
 
+// In-memory store للـ Edge runtime (بيتمسح كل deploy لكن كافي كـ first layer)
+// للـ production الصح محتاج KV Store زي Vercel KV أو Upstash
+const rateLimitStore = new Map<string, { count: number; date: string }>();
+
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function checkRateLimit(userId: string, isAdmin: boolean): {
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+} {
+  const limit = isAdmin ? ADMIN_LIMIT : DAILY_LIMIT;
+  const today = getTodayDate();
+  const key = `${userId}:${today}`;
+
+  const current = rateLimitStore.get(key) || { count: 0, date: today };
+
+  // يوم جديد — reset
+  if (current.date !== today) {
+    rateLimitStore.set(key, { count: 0, date: today });
+    return { allowed: true, remaining: limit - 1, limit };
+  }
+
+  if (current.count >= limit) {
+    return { allowed: false, remaining: 0, limit };
+  }
+
+  // زوّد العداد
+  rateLimitStore.set(key, { count: current.count + 1, date: today });
+  return { allowed: true, remaining: limit - current.count - 1, limit };
+}
+
+export default async function handler(req: Request) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-User-Id, X-User-Role',
     'Access-Control-Max-Age': '86400',
   };
 
@@ -30,7 +65,7 @@ export default async function handler(req: Request) {
     });
   }
 
-  // ── API Key ──────────────────────────────
+  // ── API Key ──────────────────────────────────────────────────────
   const apiKey = process.env.VITE_API_KEY
     || process.env.GEMINI_API_KEY
     || process.env.API_KEY;
@@ -42,17 +77,22 @@ export default async function handler(req: Request) {
     }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // ── Parse body ───────────────────────────
+  // ── Parse body ───────────────────────────────────────────────────
   let body: any;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'INVALID_JSON', message: 'Request body must be valid JSON' }), {
+    return new Response(JSON.stringify({ error: 'INVALID_JSON' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
-  const { contents, systemInstruction, tools, generationConfig, model = 'gemini-2.0-flash-lite' } = body;
+  const {
+    contents, systemInstruction, tools, generationConfig,
+    model = 'gemini-2.0-flash-lite',
+    userId,
+    userRole,
+  } = body;
 
   if (!contents || !Array.isArray(contents)) {
     return new Response(JSON.stringify({ error: 'INVALID_BODY', message: 'contents array is required' }), {
@@ -60,7 +100,31 @@ export default async function handler(req: Request) {
     });
   }
 
-  // ── Call Gemini (مع retry مرة) ───────────
+  // ── Rate Limiting ────────────────────────────────────────────────
+  const isAdmin = userRole === 'admin';
+  const userKey = userId || req.headers.get('cf-connecting-ip') || 'anonymous';
+  const rateCheck = checkRateLimit(userKey, isAdmin);
+
+  if (!rateCheck.allowed) {
+    return new Response(JSON.stringify({
+      error: 'QUOTA_EXCEEDED',
+      message: `لقد استنفدت حد الطلبات اليومي (${rateCheck.limit} طلب). يتجدد غداً.`,
+      message_en: `Daily limit reached (${rateCheck.limit} requests). Resets tomorrow.`,
+      limit: rateCheck.limit,
+      remaining: 0,
+    }), {
+      status: 429,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': String(rateCheck.limit),
+        'X-RateLimit-Remaining': '0',
+        'Retry-After': '86400',
+      }
+    });
+  }
+
+  // ── Call Gemini ──────────────────────────────────────────────────
   const callGemini = async () => {
     const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
     const payload: any = { contents };
@@ -78,15 +142,26 @@ export default async function handler(req: Request) {
   try {
     let geminiRes = await callGemini();
 
-    // retry مرة واحدة على 503 أو 429
-    if (geminiRes.status === 503 || geminiRes.status === 429) {
+    // retry مرة واحدة على 503
+    if (geminiRes.status === 503) {
       await new Promise(r => setTimeout(r, 1000));
       geminiRes = await callGemini();
     }
 
+    // لو Gemini نفسه قال 429 (quota على مستوى الـ API key كلها)
+    if (geminiRes.status === 429) {
+      return new Response(JSON.stringify({
+        error: 'SERVICE_QUOTA_EXCEEDED',
+        message: 'الخدمة مشغولة حالياً، حاول بعد قليل.',
+        message_en: 'Service temporarily busy, please try again in a few minutes.',
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' }
+      });
+    }
+
     const data = await geminiRes.json();
 
-    // لو Gemini رجع error نوضحه
     if (data.error) {
       return new Response(JSON.stringify({
         error: 'GEMINI_ERROR',
@@ -96,9 +171,17 @@ export default async function handler(req: Request) {
       }), { status: geminiRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({
+      ...data,
+      _rateLimit: { remaining: rateCheck.remaining, limit: rateCheck.limit },
+    }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': String(rateCheck.limit),
+        'X-RateLimit-Remaining': String(rateCheck.remaining),
+      },
     });
 
   } catch (e: any) {

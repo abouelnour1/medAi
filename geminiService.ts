@@ -48,7 +48,9 @@ export const runAIChat = async (
     systemInstruction: string,
     tools: any[] | null,
     toolImplementations: Record<string, Function>,
-    modelName = 'gemini-2.0-flash-lite'
+    modelName = 'gemini-2.0-flash-lite',
+    userId?: string,
+    userRole?: string,
 ): Promise<any> => {
     const { callGeminiProxy } = await import('./utils/geminiProxy');
 
@@ -57,13 +59,13 @@ export const runAIChat = async (
         const isLast = idx === history.length - 1;
         const rawParts = sanitizeParts(msg.parts);
         const parts = isLast
-            ? rawParts  // الرسالة الأخيرة: نبعت كل حاجة (صور + نص)
-            : rawParts.filter((p: any) => !p.inlineData);  // القديمة: نشيل الصور
+            ? rawParts
+            : rawParts.filter((p: any) => !p.inlineData);
         return { role: msg.role, parts };
     }).filter(m => m.parts.length > 0);
 
     // الـ first call
-    const data = await callGeminiProxy(contents, systemInstruction, tools || undefined, modelName);
+    const data = await callGeminiProxy(contents, systemInstruction, tools || undefined, modelName, userId, userRole);
 
     // لو في error من Gemini
     if (data?.error) {
@@ -81,7 +83,6 @@ export const runAIChat = async (
             let toolResult: any;
             try { toolResult = await fn(args); } catch (e) { toolResult = { error: String(e) }; }
 
-            // Gemini function calling: role='function'
             const secondContents = [
                 ...contents,
                 { role: 'model', parts: respParts },
@@ -91,7 +92,7 @@ export const runAIChat = async (
                 }
             ];
 
-            const secondData = await callGeminiProxy(secondContents, systemInstruction, undefined, modelName);
+            const secondData = await callGeminiProxy(secondContents, systemInstruction, undefined, modelName, userId, userRole);
             if (secondData?.error) throw new Error(`Gemini: ${secondData.error.message}`);
             return secondData;
         }

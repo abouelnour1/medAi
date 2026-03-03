@@ -155,13 +155,21 @@ ${ctxInfo}`;
         newHistory,
         systemInstruction,
         [{ functionDeclarations: [searchDatabaseTool] }],
-        { searchDatabase }
+        { searchDatabase },
+        'gemini-2.0-flash-lite',
+        user?.id || 'anonymous',
+        user?.role || 'user',
       );
 
       const parts = response?.candidates?.[0]?.content?.parts;
       if (parts && parts.length > 0) {
         const clean = sanitizeParts(parts);
         setChatHistory(prev => [...prev, { role: 'model', parts: clean }]);
+
+        // حدّث الـ remaining من الـ response
+        if (response?._rateLimit) {
+          // يمكن نعرضها في الـ UI لو حبينا
+        }
       } else {
         throw new Error('empty_response');
       }
@@ -170,16 +178,20 @@ ${ctxInfo}`;
       const msg = err?.message || '';
       let errText: string;
 
-      if (msg.includes('API_KEY') || msg.includes('API key')) {
+      if (msg.includes('QUOTA_EXCEEDED') || msg.includes('quota') || msg.includes('429')) {
+        // نجيب الرسالة العربية من السيرفر لو موجودة
+        const serverMsg = msg.replace('QUOTA_EXCEEDED: ', '');
         errText = ar
-          ? '⚠️ مفتاح الـ API غير مضبوط على Vercel. أضف VITE_API_KEY في Environment Variables.'
-          : '⚠️ API key not configured on Vercel. Add VITE_API_KEY in Environment Variables.';
+          ? `⏳ ${serverMsg || 'وصلت للحد اليومي للطلبات. يتجدد غداً.'}`
+          : `⏳ ${serverMsg || 'Daily limit reached. Resets tomorrow.'}`;
+      } else if (msg.includes('API_KEY') || msg.includes('API key')) {
+        errText = ar
+          ? '⚠️ مفتاح الـ API غير مضبوط على Vercel.'
+          : '⚠️ API key not configured on Vercel.';
       } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
         errText = ar ? '⚠️ لا يوجد اتصال بالإنترنت.' : '⚠️ No internet connection.';
       } else if (msg.includes('empty_response')) {
         errText = ar ? '⚠️ لم يرد الذكاء الاصطناعي. حاول مرة أخرى.' : '⚠️ No response from AI. Try again.';
-      } else if (msg.includes('429') || msg.includes('quota')) {
-        errText = ar ? '⚠️ تم تجاوز الحد اليومي للطلبات. حاول لاحقاً.' : '⚠️ Daily quota exceeded. Try later.';
       } else {
         errText = ar
           ? `⚠️ خطأ: ${msg.slice(0, 120) || 'غير معروف'}. حاول مرة أخرى.`
