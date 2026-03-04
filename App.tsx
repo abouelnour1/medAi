@@ -393,14 +393,11 @@ const App: React.FC = () => {
             setIsDataLoaded(true); // ← الـ UI يظهر فوراً مع skeleton
 
             // ── جيب الداتا حسب الـ role ──────────────────────────
-            // الأدمن: Cache أول مرة ثم Firestore live
-            // الباقي: Cache أو Storage
+            // الأدمن  → Storage (cache) أول مرة ثم Firestore live
+            // الباقي → Cache أو Storage + تحقق في الخلفية
             const isAdminUser = user?.role === 'admin';
-            const hasCachedData = !!(await (async () => {
-              try { const { getItem: gi } = await import('./utils/storage'); return await gi('pharma_medicines'); } catch { return null; }
-            })());
             const syncResult = isAdminUser
-              ? await syncDataForAdmin(hasCachedData)
+              ? await syncDataForAdmin()
               : await syncData();
 
             const medMap = new Map<string, Medicine>();
