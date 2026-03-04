@@ -5,34 +5,26 @@ service cloud.firestore {
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
+
     function isAdmin() {
       return request.auth != null &&
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              getUserData().role == 'admin';
     }
-    function isCompany() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().role == 'company';
-    }
 
     // ── الداتا الرئيسية — أدمن بس ────────────────────────────────
-    // المستخدمين العاديين بياخدوا من Storage مش من هنا
+    // المستخدمين العاديين بياخدوا من Firebase Storage مش من هنا
     match /medicines/{document=**} {
-      allow read:  if isAdmin();
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
     match /supplements/{document=**} {
-      allow read:  if isAdmin();
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
     match /food/{document=**} {
-      allow read:  if isAdmin();
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // ── app_meta — الكل يقرأ الـ timestamp (1 read عند كل فتح) ──
-    // مهم عشان المستخدمين يعرفوا لو في تحديث جديد
     match /app_meta/{document=**} {
       allow read:  if true;
       allow write: if isAdmin();

@@ -192,7 +192,7 @@ const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
 const App: React.FC = () => {
-  const { user, logout, requestAIAccess, getSettings } = useAuth();
+  const { user, logout, requestAIAccess, getSettings, isLoading: authLoading } = useAuth();
   const appSettings = getSettings();
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [view, setView] = useState<View>('search');
@@ -200,6 +200,7 @@ const App: React.FC = () => {
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
+  const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
@@ -385,17 +386,21 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // ننتظر الـ auth يخلص أول — عشان نعرف الـ role
+    if (authLoading) return;
+
+    // لو الداتا اتحملت قبل كده وملوش دور أدمن — ما نحملش تاني
+    const isAdminUser = user?.role === 'admin';
+    if (dataLoadedRef.current && !isAdminUser) return;
+
     const loadData = async () => {
         try {
             // ── افتح الـ UI فوراً ──────────────────────────────────
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
-            setIsDataLoaded(true); // ← الـ UI يظهر فوراً مع skeleton
+            setIsDataLoaded(true);
 
             // ── جيب الداتا حسب الـ role ──────────────────────────
-            // الأدمن  → Storage (cache) أول مرة ثم Firestore live
-            // الباقي → Cache أو Storage + تحقق في الخلفية
-            const isAdminUser = user?.role === 'admin';
             const syncResult = isAdminUser
               ? await syncDataForAdmin()
               : await syncData();
@@ -412,6 +417,7 @@ const App: React.FC = () => {
                 setMedicines(Array.from(medMap.values()));
             }
             setIsMedicinesLoading(false);
+            dataLoadedRef.current = true;
 
             // 2. استمع للإشعارات من Firebase في الخلفية
             if (!FIREBASE_DISABLED && db) {
@@ -445,7 +451,7 @@ const App: React.FC = () => {
         }
     };
     loadData();
-  }, []);
+  }, [authLoading, user?.role]);
 
   // مطابقة Wildcard - * تعني أي حروف في أي مكان
   const matchesWildcard = (text: string, pattern: string): boolean => {
