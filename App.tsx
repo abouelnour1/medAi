@@ -386,21 +386,20 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // ننتظر الـ auth يخلص أول — عشان نعرف الـ role
+    // ننتظر الـ auth يخلص أول
     if (authLoading) return;
+    // مرة واحدة بس — مش بنحمل تاني
+    if (dataLoadedRef.current) return;
+    dataLoadedRef.current = true;
 
-    // لو الداتا اتحملت قبل كده وملوش دور أدمن — ما نحملش تاني
     const isAdminUser = user?.role === 'admin';
-    if (dataLoadedRef.current && !isAdminUser) return;
 
     const loadData = async () => {
         try {
-            // ── افتح الـ UI فوراً ──────────────────────────────────
             const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
             setIsDataLoaded(true);
 
-            // ── جيب الداتا حسب الـ role ──────────────────────────
             const syncResult = isAdminUser
               ? await syncDataForAdmin()
               : await syncData();
@@ -417,7 +416,6 @@ const App: React.FC = () => {
                 setMedicines(Array.from(medMap.values()));
             }
             setIsMedicinesLoading(false);
-            dataLoadedRef.current = true;
 
             // 2. استمع للإشعارات من Firebase في الخلفية
             if (!FIREBASE_DISABLED && db) {
@@ -451,7 +449,7 @@ const App: React.FC = () => {
         }
     };
     loadData();
-  }, [authLoading, user?.role]);
+  }, [authLoading]);
 
   // مطابقة Wildcard - * تعني أي حروف في أي مكان
   const matchesWildcard = (text: string, pattern: string): boolean => {

@@ -151,6 +151,8 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
 
   const hasCachedData = cachedMeds && cachedMeds.length > 0;
 
+  console.log('[dataSync] Cache check:', hasCachedData ? `✅ ${cachedMeds!.length} items` : '❌ empty');
+
   // خطوة 2: لو عندنا Cache → اعرضه فوراً
   if (hasCachedData) {
     report('cache');
@@ -176,6 +178,8 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
     fetchFromStorage(STORAGE_URLS.supplements),
     fetchFromStorage(STORAGE_URLS.food),
   ]);
+
+  console.log('[dataSync] Storage fetch:', meds.length, 'medicines,', sups.length, 'supplements');
 
   if (meds.length > 0) {
     const now = Date.now();
