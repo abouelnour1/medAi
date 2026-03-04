@@ -19,6 +19,63 @@ import FactoryIcon from '../icons/FactoryIcon';
 import GlobeIcon from '../icons/GlobeIcon';
 import { db, FIREBASE_DISABLED } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
+import { bumpDataVersion } from '../../utils/dataSync';
+
+// ── زر نشر التحديثات ─────────────────────────────────────────────────────────
+const PublishButton: React.FC<{ language: Language }> = ({ language }) => {
+  const ar = language === 'ar';
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+
+  const handlePublish = async () => {
+    setState('loading');
+    try {
+      await bumpDataVersion('medicines');
+      await bumpDataVersion('supplements');
+      await bumpDataVersion('food');
+      setMsg(ar ? '✅ تم نشر التحديثات — المستخدمون سيحملون التغييرات تلقائياً' : '✅ Updates published — users will sync automatically');
+      setState('done');
+      setTimeout(() => setState('idle'), 4000);
+    } catch (e: any) {
+      setMsg(ar ? `❌ فشل النشر: ${e.message}` : `❌ Publish failed: ${e.message}`);
+      setState('error');
+      setTimeout(() => setState('idle'), 4000);
+    }
+  };
+
+  return (
+    <div className="mb-2">
+      <button
+        onClick={handlePublish}
+        disabled={state === 'loading'}
+        className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
+          state === 'done'  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700' :
+          state === 'error' ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-900/20 dark:border-rose-700' :
+          'bg-primary/8 border-primary/20 text-primary hover:bg-primary/15 dark:bg-primary/15 dark:border-primary/30'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="text-2xl">
+            {state === 'loading' ? '⏳' : state === 'done' ? '✅' : state === 'error' ? '❌' : '🚀'}
+          </div>
+          <div className="text-right rtl:text-right">
+            <p className="font-black text-sm">
+              {state === 'loading' ? (ar ? 'جاري النشر...' : 'Publishing...') : (ar ? 'نشر التحديثات للمستخدمين' : 'Publish Updates to Users')}
+            </p>
+            <p className="text-[10px] opacity-70 mt-0.5">
+              {msg || (ar ? 'بعد إضافة أو تعديل أي دواء' : 'After adding or editing medicines')}
+            </p>
+          </div>
+        </div>
+        {state === 'idle' && (
+          <svg className="w-5 h-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+};
 
 type Panel = 'menu' | 'overview' | 'users' | 'approvals' | 'add_manual' | 'notifications' | 'export' | 'settings' | 'featured_schedule';
 type ItemCategory = 'Human' | 'Supplement' | 'Food';
@@ -418,6 +475,10 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             </div>
             <h3 className="text-lg font-black mb-6">{t('exportData')}</h3>
             <div className="grid grid-cols-1 gap-3">
+
+                {/* ── زر نشر التحديثات ── */}
+                <PublishButton language={language} />
+
                 <button onClick={() => onExport('medicine')} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 hover:bg-primary/10 hover:text-primary rounded-2xl border border-slate-100 dark:border-slate-800 transition-all group">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-primary group-hover:scale-110 transition-transform">

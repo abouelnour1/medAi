@@ -42,7 +42,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
-import { syncData, clearDataCache, bumpDataVersion } from './utils/dataSync';
+import { syncData, syncDataForAdmin, clearDataCache, bumpDataVersion } from './utils/dataSync';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -392,8 +392,16 @@ const App: React.FC = () => {
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
             setIsDataLoaded(true); // ← الـ UI يظهر فوراً مع skeleton
 
-            // ── جيب الداتا (Cache أو Storage) ────────────────────
-            const syncResult = await syncData();
+            // ── جيب الداتا حسب الـ role ──────────────────────────
+            // الأدمن: Cache أول مرة ثم Firestore live
+            // الباقي: Cache أو Storage
+            const isAdminUser = user?.role === 'admin';
+            const hasCachedData = !!(await (async () => {
+              try { const { getItem: gi } = await import('./utils/storage'); return await gi('pharma_medicines'); } catch { return null; }
+            })());
+            const syncResult = isAdminUser
+              ? await syncDataForAdmin(hasCachedData)
+              : await syncData();
 
             const medMap = new Map<string, Medicine>();
             const allRaw = [

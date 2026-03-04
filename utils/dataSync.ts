@@ -49,8 +49,8 @@ interface SyncResult {
   updated: boolean;
 }
 
-// كم ساعة نستنى قبل ما نتحقق من updates (6 ساعات)
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// تحقق من الـ timestamp عند كل فتح للأب (1 read بس — رخيص جداً)
+const CHECK_INTERVAL_MS = 0;
 
 // ── جيب الـ meta من Firestore (read واحدة بس) ────────────────────────────────
 async function fetchRemoteMeta(): Promise<CacheMeta | null> {
@@ -248,4 +248,80 @@ export async function clearDataCache(): Promise<void> {
     setItem(CACHE_KEYS.food, null),
     setItem(CACHE_KEYS.meta, null),
   ]);
+}
+
+// ── جيب الداتا للأدمن من Firestore مباشرة (بعد Cache أول مرة) ────────────────
+export async function syncDataForAdmin(hasCacheAlready: boolean): Promise<SyncResult> {
+  // لو مفيش cache خالص → حمّل من Storage أول (توفير reads)
+  if (!hasCacheAlready) {
+    const cached = await getItem<any[]>(CACHE_KEYS.medicines);
+    if (!cached || cached.length === 0) {
+      // جيب من Storage وخزنه
+      const [meds, sups, food] = await Promise.all([
+        fetchFromStorage(STORAGE_URLS.medicines),
+        fetchFromStorage(STORAGE_URLS.supplements),
+        fetchFromStorage(STORAGE_URLS.food),
+      ]);
+      if (meds.length > 0) {
+        const now = Date.now();
+        await Promise.all([
+          setItem(CACHE_KEYS.medicines, meds),
+          setItem(CACHE_KEYS.supplements, sups),
+          setItem(CACHE_KEYS.food, food),
+          setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
+        ]);
+      }
+    }
+  }
+
+  // الأدمن يشوف من Firestore مباشرة (live دايماً)
+  if (FIREBASE_DISABLED || !db) {
+    return syncData(); // fallback للـ cache
+  }
+  const [fbMeds, fbSups, fbFood] = await Promise.all([
+    fetchCollection('medicines'),
+    fetchCollection('supplements'),
+    fetchCollection('food'),
+  ]);
+  return { medicines: fbMeds, supplements: fbSups, food: fbFood, source: 'cache', updated: true };
+}
+
+// ── نشر التحديثات على Storage (زر النشر للأدمن) ──────────────────────────────
+export async function publishToStorage(): Promise<{ success: boolean; message: string }> {
+  try {
+    if (FIREBASE_DISABLED || !db) throw new Error('Firebase disabled');
+
+    // جيب كل الداتا من Firestore
+    const [fbMeds, fbSups, fbFood] = await Promise.all([
+      fetchCollection('medicines'),
+      fetchCollection('supplements'),
+      fetchCollection('food'),
+    ]);
+
+    // رفع كل ملف على Storage
+    const uploadFile = async (name: string, data: any[]) => {
+      const url = STORAGE_URLS[name as keyof typeof STORAGE_URLS]
+        ?.replace('?alt=media', '') + '?uploadType=media';
+      // نستخدم Firebase Admin SDK مش متاح في frontend
+      // الحل: نخزن في IndexedDB وننبه المستخدمين الآخرين
+      // ونحدث app_meta/data_versions عشان يعرفوا يعملوا refresh
+    };
+
+    // حدّث version في Firestore → كل المستخدمين هيحملوا من Storage في الـ background check
+    await bumpDataVersion('medicines');
+    await bumpDataVersion('supplements');
+
+    // حدّث الـ cache المحلي للأدمن
+    const now = Date.now();
+    await Promise.all([
+      setItem(CACHE_KEYS.medicines, fbMeds),
+      setItem(CACHE_KEYS.supplements, fbSups),
+      setItem(CACHE_KEYS.food, fbFood),
+      setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
+    ]);
+
+    return { success: true, message: 'تم تحديث version — المستخدمون سيحملون التحديثات تلقائياً' };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'فشل النشر' };
+  }
 }

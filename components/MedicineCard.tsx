@@ -180,10 +180,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
               </span>
             )}
 
-            {/* الشكل الصيدلاني */}
+            {/* الشكل الصيدلاني + حجم العبوة */}
             {medicine.PharmaceuticalForm && (
               <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-lg truncate max-w-[100px]">
-                {medicine.PharmaceuticalForm}
+                {medicine.PackageSize
+                  ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${medicine.PharmaceuticalForm}`
+                  : medicine.PharmaceuticalForm}
               </span>
             )}
           </div>
