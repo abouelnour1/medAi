@@ -134,6 +134,9 @@ async function checkForUpdatesInBackground(
   }
 }
 
+// ── تحقق كل أسبوع بس ────────────────────────────────────────────────────────
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 // ── الـ function الرئيسية للمستخدم العادي ────────────────────────────────────
 export async function syncData(onProgress?: (msg: string) => void): Promise<SyncResult> {
   const report = (msg: string) => onProgress?.(msg);
@@ -148,11 +151,15 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
 
   const hasCachedData = cachedMeds && cachedMeds.length > 0;
 
-  // خطوة 2: لو عندنا Cache → اعرضه فوراً + تحقق في الخلفية
+  // خطوة 2: لو عندنا Cache → اعرضه فوراً
   if (hasCachedData) {
     report('cache');
-    // تحقق من timestamp في الخلفية (1 read — مش blocking)
-    checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood!);
+    // تحقق من timestamp في الخلفية — بس لو فات أسبوع من آخر check
+    const now = Date.now();
+    const lastChecked = cachedMeta?.last_checked ?? 0;
+    if ((now - lastChecked) > ONE_WEEK_MS) {
+      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood!);
+    }
     return {
       medicines:   cachedMeds!,
       supplements: cachedSups || [],

@@ -1,26 +1,19 @@
-
-const DB_NAME = 'PharmaSourceDB';
+const DB_NAME    = 'PharmaSourceDB';
 const STORE_NAME = 'keyval';
 const DB_VERSION = 1;
 
+let _db: IDBDatabase | null = null;
+
 function openDB(): Promise<IDBDatabase> {
+  if (_db) return Promise.resolve(_db);
   return new Promise((resolve, reject) => {
-    // If indexedDB is not supported (e.g. some private modes or very old browsers), reject.
-    if (!('indexedDB' in window)) {
-        reject(new Error("IndexedDB not supported"));
-        return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
+    if (!('indexedDB' in window)) { reject(new Error('IndexedDB not supported')); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => { _db = req.result; resolve(req.result); };
+    req.onupgradeneeded = e => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
     };
   });
 }
@@ -28,50 +21,46 @@ function openDB(): Promise<IDBDatabase> {
 export async function setItem(key: string, value: any): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.put(value, key);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
+    await new Promise<void>((resolve, reject) => {
+      const tx    = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.put(value, key);
+      tx.oncomplete = () => resolve();          // ← نستنى الـ transaction كامل
+      tx.onerror    = () => reject(tx.error);
+      tx.onabort    = () => reject(tx.error);
     });
-  } catch (error) {
-      console.error("IndexedDB setItem error:", error);
-      // Fallback or ignore? For a cache, we might just log it.
-      // If quota exceeded here (rare for IndexedDB), we really can't store it client side.
+  } catch (e) {
+    console.error('[storage] setItem failed:', key, e);
   }
 }
 
 export async function getItem<T>(key: string): Promise<T | null> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.get(key);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result || null);
+    return await new Promise<T | null>((resolve, reject) => {
+      const tx    = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req   = store.get(key);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror   = () => reject(req.error);
     });
-  } catch (error) {
-      console.error("IndexedDB getItem error:", error);
-      return null;
+  } catch (e) {
+    console.error('[storage] getItem failed:', key, e);
+    return null;
   }
 }
 
 export async function removeItem(key: string): Promise<void> {
-   try {
+  try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(key);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
+    await new Promise<void>((resolve, reject) => {
+      const tx    = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror    = () => reject(tx.error);
     });
-   } catch (error) {
-       console.error("IndexedDB removeItem error:", error);
-   }
+  } catch (e) {
+    console.error('[storage] removeItem failed:', key, e);
+  }
 }
