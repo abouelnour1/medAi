@@ -18,11 +18,12 @@ import { setItem, getItem } from './storage';
 // ── URLs ملفات الداتا على Firebase Storage ──────────────────────────────────
 // بعد ما ترفع الملفات على Firebase Storage، حط الـ URLs هنا
 const FIREBASE_PROJECT_ID = 'medainew-fa6a2';
+const BUCKET = `${FIREBASE_PROJECT_ID}.firebasestorage.app`;
 
 const STORAGE_URLS = {
-  medicines:   `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Fmedicines.json?alt=media`,
-  supplements: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Fsupplements.json?alt=media`,
-  food:        `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Ffood.json?alt=media`,
+  medicines:   `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Fmedicines.json?alt=media`,
+  supplements: `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Fsupplements.json?alt=media`,
+  food:        `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Ffood.json?alt=media`,
 };
 
 const CACHE_KEYS = {
@@ -118,24 +119,45 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
       fetchFromStorage(STORAGE_URLS.food),
     ]);
 
-    const now = Date.now();
-    const meta: CacheMeta = {
-      medicines_ts: now,
-      supplements_ts: now,
-      food_ts: now,
-      last_checked: now,
-    };
+    // لو Storage رجع فاضي — fallback للـ Firestore مباشرة
+    if (meds.length === 0 && !FIREBASE_DISABLED && db) {
+      console.warn('[dataSync] Storage empty, falling back to Firestore...');
+      const [fbMeds, fbSups, fbFood] = await Promise.all([
+        fetchCollection('medicines'),
+        fetchCollection('supplements'),
+        fetchCollection('food'),
+      ]);
+      const now = Date.now();
+      await Promise.all([
+        setItem(CACHE_KEYS.medicines, fbMeds),
+        setItem(CACHE_KEYS.supplements, fbSups),
+        setItem(CACHE_KEYS.food, fbFood),
+        setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
+      ]);
+      return { medicines: fbMeds, supplements: fbSups, food: fbFood, source: 'cache', updated: true };
+    }
 
+    const now = Date.now();
     await Promise.all([
       setItem(CACHE_KEYS.medicines, meds),
       setItem(CACHE_KEYS.supplements, sups),
       setItem(CACHE_KEYS.food, food),
-      setItem(CACHE_KEYS.meta, meta),
+      setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
     ]);
 
     return { medicines: meds, supplements: sups, food, source: 'storage', updated: true };
   } catch (e) {
-    console.error('[dataSync] Storage fetch failed:', e);
+    console.error('[dataSync] Storage failed, trying Firestore...', e);
+    try {
+      if (!FIREBASE_DISABLED && db) {
+        const [fbMeds, fbSups, fbFood] = await Promise.all([
+          fetchCollection('medicines'),
+          fetchCollection('supplements'),
+          fetchCollection('food'),
+        ]);
+        return { medicines: fbMeds, supplements: fbSups, food: fbFood, source: 'cache', updated: true };
+      }
+    } catch {}
     return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
   }
 }

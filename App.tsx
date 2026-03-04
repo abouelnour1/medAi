@@ -386,15 +386,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
         try {
-            // ======================================================
-            // نظام Firebase-First + Offline Cache
-            // ======================================================
-            // 1. نجرب نجيب من Firebase / Cache
+            // ── افتح الـ UI فوراً ──────────────────────────────────
+            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
+            setInsuranceData(INITIAL_INSURANCE_DATA as any);
+            setIsDataLoaded(true); // ← الـ UI يظهر فوراً مع skeleton
+
+            // ── جيب الداتا (Cache أو Storage) ────────────────────
             const syncResult = await syncData();
 
             const medMap = new Map<string, Medicine>();
-
-            // Firebase / Cache — المصدر الوحيد للداتا
             const allRaw = [
                 ...syncResult.medicines,
                 ...syncResult.supplements,
@@ -402,12 +402,9 @@ const App: React.FC = () => {
             ];
             allRaw.map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
 
-            // عرض البيانات فوراً
-            setMedicines(Array.from(medMap.values()));
-
-            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
-            setInsuranceData(INITIAL_INSURANCE_DATA as any);
-            setIsDataLoaded(true);
+            if (medMap.size > 0) {
+                setMedicines(Array.from(medMap.values()));
+            }
 
             // 2. استمع للإشعارات من Firebase في الخلفية
             if (!FIREBASE_DISABLED && db) {
