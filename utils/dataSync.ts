@@ -11,7 +11,7 @@
  * النتيجة: بدل N_users × N_docs reads يومياً → N_users × 1 read كل تحديث
  */
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db, FIREBASE_DISABLED } from '../firebase';
 import { setItem, getItem } from './storage';
 
@@ -60,6 +60,18 @@ async function fetchRemoteMeta(): Promise<CacheMeta | null> {
     if (!snap.exists()) return null;
     return snap.data() as CacheMeta;
   } catch { return null; }
+}
+
+// ── جيب collection كاملة من Firestore (fallback) ─────────────────────────────
+async function fetchCollection(name: string): Promise<any[]> {
+  if (FIREBASE_DISABLED || !db) return [];
+  try {
+    const snap = await getDocs(collection(db, name));
+    return snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+  } catch (e) {
+    console.warn(`[dataSync] Firestore fetch failed for ${name}:`, e);
+    return [];
+  }
 }
 
 // ── حمّل JSON من Firebase Storage ────────────────────────────────────────────
