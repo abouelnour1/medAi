@@ -150,7 +150,7 @@ const FORM_TO_GROUP: Record<string, PharmGroup> = {
   'cell suspension for infusion': 'injection',
   'sterile, lyophilized, white powder': 'injection',
   'solution for infusion and oral solution': 'injection',
-  'inhalation solution': 'injection',
+
   'powder for nebuliser solution/solution for injection/infusion': 'injection',
   'solvent for parenteral use': 'injection',
   'solution for haemodialysis': 'injection',
