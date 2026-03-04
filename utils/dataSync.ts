@@ -1,19 +1,14 @@
 /**
- * dataSync.ts — Storage-First + Smart Cache
+ * dataSync.ts
  *
- * Flow للمستخدم العادي:
- * 1. عنده Cache → يعرضه فوراً + يتحقق من timestamp في الخلفية (1 read)
- * 2. مفيش Cache → يحمّل من Storage (مرة واحدة فقط)
- *
- * Flow للأدمن:
- * 1. مفيش Cache → يحمّل من Storage أول (يوفر reads)
- * 2. بعدها → Firestore مباشرة (live دايماً)
- *
- * publish = يشغّل exportToStorage.mjs يدوياً → يرفع JSON جديد + يحدث timestamp
- * المستخدمين: عند كل فتح = 1 read من app_meta → لو timestamp اتغير → يحمل Storage
+ * Flow:
+ * 1. أول فتح   → يحمل JSON من Storage (9147 دواء) → يحفظ في Cache
+ * 2. كل فتح    → من Cache فوراً + يسمع لـ medicine_overrides (live)
+ * 3. كل 24 ساعة → 1 read من app_meta يتحقق لو في نسخة جديدة من Storage
+ * 4. لما الأدمن يعدل → يحفظ في medicine_overrides فقط → المستخدمين يشوفوا فوراً
  */
 
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db, FIREBASE_DISABLED } from '../firebase';
 import { setItem, getItem } from './storage';
 
@@ -32,11 +27,11 @@ interface CacheMeta {
   last_checked:   number;
 }
 
-interface SyncResult {
+export interface SyncResult {
   medicines:   any[];
   supplements: any[];
   food:        any[];
-  source:      'cache' | 'storage' | 'firebase' | 'empty';
+  source:      'cache' | 'storage' | 'empty';
   updated:     boolean;
 }
 
@@ -48,7 +43,7 @@ const STORAGE_URLS = {
   food:        `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Ffood.json?alt=media`,
 };
 
-// ── جيب الـ timestamp من Firestore (1 read فقط) ───────────────────────────────
+// ── تحقق من الـ timestamp (1 read فقط) ───────────────────────────────────────
 async function fetchRemoteMeta(): Promise<CacheMeta | null> {
   try {
     if (FIREBASE_DISABLED || !db) return null;
@@ -57,31 +52,19 @@ async function fetchRemoteMeta(): Promise<CacheMeta | null> {
   } catch { return null; }
 }
 
-// ── جيب collection من Firestore (للأدمن فقط) ─────────────────────────────────
-async function fetchCollection(name: string): Promise<any[]> {
-  if (FIREBASE_DISABLED || !db) return [];
-  try {
-    const snap = await getDocs(collection(db, name));
-    return snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
-  } catch (e) {
-    console.warn(`[dataSync] Firestore fetch failed for ${name}:`, e);
-    return [];
-  }
-}
-
-// ── حمّل JSON من Firebase Storage ────────────────────────────────────────────
+// ── حمّل JSON من Storage ──────────────────────────────────────────────────────
 async function fetchFromStorage(url: string): Promise<any[]> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.warn(`[dataSync] Storage fetch failed: ${url}`, e);
+    console.warn('[dataSync] Storage fetch failed:', url, e);
     return [];
   }
 }
 
-// ── تحقق من updates في الخلفية (1 read فقط) ─────────────────────────────────
+// ── تحقق من updates في الخلفية ───────────────────────────────────────────────
 async function checkForUpdatesInBackground(
   localMeta: CacheMeta | null,
   cachedMeds: any[], cachedSups: any[], cachedFood: any[]
@@ -90,19 +73,14 @@ async function checkForUpdatesInBackground(
     const remoteMeta = await fetchRemoteMeta();
     const now = Date.now();
     const local = localMeta || { medicines_ts: 0, supplements_ts: 0, food_ts: 0, last_checked: 0 };
-
-    // حدّث وقت آخر تحقق
     await setItem(CACHE_KEYS.meta, { ...local, last_checked: now });
-
     if (!remoteMeta) return;
 
     const needsMeds = remoteMeta.medicines_ts > local.medicines_ts;
     const needsSups = remoteMeta.supplements_ts > local.supplements_ts;
     const needsFood = remoteMeta.food_ts > local.food_ts;
-
     if (!needsMeds && !needsSups && !needsFood) return;
 
-    // في تحديث — حمّل من Storage
     const [newMeds, newSups, newFood] = await Promise.all([
       needsMeds ? fetchFromStorage(STORAGE_URLS.medicines) : Promise.resolve(cachedMeds),
       needsSups ? fetchFromStorage(STORAGE_URLS.supplements) : Promise.resolve(cachedSups),
@@ -121,8 +99,7 @@ async function checkForUpdatesInBackground(
       }),
     ]);
 
-    // أبلغ الـ App إن في داتا جديدة
-    window.dispatchEvent(new CustomEvent('pharma:data-updated', {
+    window.dispatchEvent(new CustomEvent('pharma:storage-updated', {
       detail: {
         medicines:   needsMeds ? newMeds : cachedMeds,
         supplements: needsSups ? newSups : cachedSups,
@@ -134,15 +111,9 @@ async function checkForUpdatesInBackground(
   }
 }
 
-// ── تحقق كل أسبوع بس ────────────────────────────────────────────────────────
-// تحقق من الـ timestamp كل 24 ساعة بس (1 read فقط — مش بيحمل الداتا)
-const ONE_WEEK_MS = 24 * 60 * 60 * 1000;
-
-// ── الـ function الرئيسية للمستخدم العادي ────────────────────────────────────
-export async function syncData(onProgress?: (msg: string) => void): Promise<SyncResult> {
-  const report = (msg: string) => onProgress?.(msg);
-
-  // خطوة 1: جيب الـ Cache
+// ── الـ function الرئيسية ─────────────────────────────────────────────────────
+export async function syncData(): Promise<SyncResult> {
+  // جيب الـ Cache
   const [cachedMeds, cachedSups, cachedFood, cachedMeta] = await Promise.all([
     getItem<any[]>(CACHE_KEYS.medicines),
     getItem<any[]>(CACHE_KEYS.supplements),
@@ -151,16 +122,13 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
   ]);
 
   const hasCachedData = cachedMeds && cachedMeds.length > 0;
+  console.log('[dataSync] Cache:', hasCachedData ? `✅ ${cachedMeds!.length} items` : '❌ empty');
 
-  console.log('[dataSync] Cache check:', hasCachedData ? `✅ ${cachedMeds!.length} items` : '❌ empty');
-
-  // خطوة 2: لو عندنا Cache → اعرضه فوراً
   if (hasCachedData) {
-    report('cache');
-    // تحقق من timestamp في الخلفية — بس لو فات أسبوع من آخر check
+    // تحقق كل 24 ساعة بس في الخلفية
     const now = Date.now();
     const lastChecked = cachedMeta?.last_checked ?? 0;
-    if ((now - lastChecked) > ONE_WEEK_MS) {
+    if ((now - lastChecked) > 24 * 60 * 60 * 1000) {
       checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood!);
     }
     return {
@@ -172,15 +140,15 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
     };
   }
 
-  // خطوة 3: مفيش Cache — حمّل من Storage
-  report('storage');
+  // مفيش Cache — حمّل من Storage
+  console.log('[dataSync] Loading from Storage...');
   const [meds, sups, food] = await Promise.all([
     fetchFromStorage(STORAGE_URLS.medicines),
     fetchFromStorage(STORAGE_URLS.supplements),
     fetchFromStorage(STORAGE_URLS.food),
   ]);
 
-  console.log('[dataSync] Storage fetch:', meds.length, 'medicines,', sups.length, 'supplements');
+  console.log('[dataSync] Storage:', meds.length, 'medicines,', sups.length, 'supplements');
 
   if (meds.length > 0) {
     const now = Date.now();
@@ -193,79 +161,56 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
     return { medicines: meds, supplements: sups, food, source: 'storage', updated: true };
   }
 
-  // Storage فاضي — مشكلة في الـ rules أو الـ upload
-  console.error('[dataSync] Storage is empty! Check Firebase Storage rules and make sure exportToStorage.mjs ran successfully.');
   return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
 }
 
-// ── الأدمن: من Cache + يسمع للتغييرات live بـ onSnapshot ────────────────────
-// callback بيتنادى لما يحصل أي تعديل في Firestore
-export async function syncDataForAdmin(
-  onLiveUpdate: (result: SyncResult) => void
-): Promise<{ result: SyncResult; unsubscribe: () => void }> {
-  const { onSnapshot, collection: col } = await import('firebase/firestore');
+// ── اسمع لـ medicine_overrides live ──────────────────────────────────────────
+// بيتنادى عند أول تحميل وكل ما يحصل تعديل
+export function listenToOverrides(
+  onUpdate: (overrides: Map<string, any>) => void
+): () => void {
+  if (FIREBASE_DISABLED || !db) return () => {};
 
-  // خطوة 1: جيب من Cache أو Storage أول (فوري — مش بيكلف reads)
-  const [cachedMeds, cachedSups, cachedFood] = await Promise.all([
-    getItem<any[]>(CACHE_KEYS.medicines),
-    getItem<any[]>(CACHE_KEYS.supplements),
-    getItem<any[]>(CACHE_KEYS.food),
-  ]);
+  const unsub = onSnapshot(
+    collection(db, 'medicine_overrides'),
+    (snap) => {
+      const overrides = new Map<string, any>();
+      snap.docs.forEach(d => overrides.set(d.id, { ...d.data(), RegisterNumber: d.id }));
+      console.log('[dataSync] Overrides:', overrides.size, 'items');
+      onUpdate(overrides);
+    },
+    (err) => console.warn('[dataSync] Overrides listen failed:', err)
+  );
 
-  let initialMeds = cachedMeds || [];
-  let initialSups = cachedSups || [];
-  let initialFood = cachedFood || [];
-
-  if (initialMeds.length === 0) {
-    const [m, s, f] = await Promise.all([
-      fetchFromStorage(STORAGE_URLS.medicines),
-      fetchFromStorage(STORAGE_URLS.supplements),
-      fetchFromStorage(STORAGE_URLS.food),
-    ]);
-    initialMeds = m; initialSups = s; initialFood = f;
-  }
-
-  // خطوة 2: اسمع للتغييرات live (بس لما يحصل تعديل فعلي)
-  const liveData = {
-    medicines:   [...initialMeds],
-    supplements: [...initialSups],
-    food:        [...initialFood],
-  };
-
-  const unsubs: (() => void)[] = [];
-
-  if (!FIREBASE_DISABLED && db) {
-    const listen = (name: 'medicines' | 'supplements' | 'food') => {
-      const unsub = onSnapshot(col(db!, name), (snap) => {
-        const docs = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
-        liveData[name] = docs;
-        onLiveUpdate({ medicines: liveData.medicines, supplements: liveData.supplements, food: liveData.food, source: 'firebase', updated: true });
-      });
-      unsubs.push(unsub);
-    };
-    listen('medicines');
-    listen('supplements');
-    listen('food');
-  }
-
-  return {
-    result: { medicines: initialMeds, supplements: initialSups, food: initialFood, source: initialMeds.length > 0 ? 'cache' : 'empty', updated: false },
-    unsubscribe: () => unsubs.forEach(u => u()),
-  };
+  return unsub;
 }
 
-// ── تحديث timestamp بعد رفع الـ Storage ──────────────────────────────────────
+// ── حفظ تعديل دواء (أدمن فقط) ───────────────────────────────────────────────
+export async function saveOverride(medicine: any): Promise<void> {
+  if (FIREBASE_DISABLED || !db) throw new Error('Firebase disabled');
+  if (!medicine.RegisterNumber) throw new Error('No RegisterNumber');
+  await setDoc(
+    doc(db, 'medicine_overrides', medicine.RegisterNumber),
+    { ...medicine, _updatedAt: Date.now() },
+    { merge: true }
+  );
+}
+
+// ── تحديث timestamp بعد رفع Storage ──────────────────────────────────────────
 export async function bumpDataVersion(collectionName: string): Promise<void> {
   if (FIREBASE_DISABLED || !db) return;
   try {
-    const ref = doc(db, 'app_meta', 'data_versions');
-    await setDoc(ref, { [`${collectionName}_ts`]: Date.now() }, { merge: true });
+    await setDoc(
+      doc(db, 'app_meta', 'data_versions'),
+      { [`${collectionName}_ts`]: Date.now() },
+      { merge: true }
+    );
   } catch (e) {
     console.error('[dataSync] bumpDataVersion failed:', e);
   }
 }
 
-// ── مسح الـ Cache (للتطوير) ───────────────────────────────────────────────────
+// ── مسح الـ Cache ─────────────────────────────────────────────────────────────
 export async function clearDataCache(): Promise<void> {
   await Promise.all(Object.values(CACHE_KEYS).map(k => setItem(k, null)));
 }

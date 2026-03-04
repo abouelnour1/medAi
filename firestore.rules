@@ -11,15 +11,10 @@ service cloud.firestore {
              request.auth.token.email == 'aboelnour1212@gmail.com';
     }
 
-    // ── الداتا الرئيسية — أدمن بس ────────────────────────────────
-    match /medicines/{document=**} {
-      allow read, write: if isAdmin();
-    }
-    match /supplements/{document=**} {
-      allow read, write: if isAdmin();
-    }
-    match /food/{document=**} {
-      allow read, write: if isAdmin();
+    // ── التعديلات — الكل يقرأ، أدمن بس يكتب ─────────────────────
+    match /medicine_overrides/{document=**} {
+      allow read:  if true;
+      allow write: if isAdmin();
     }
 
     // ── app_meta — الكل يقرأ الـ timestamp ───────────────────────
@@ -34,7 +29,7 @@ service cloud.firestore {
       allow write: if (isLoggedIn() && request.auth.uid == userId) || isAdmin();
     }
 
-    // ── طلبات التحديث ────────────────────────────────────────────
+    // ── طلبات التحديث (Company) ───────────────────────────────────
     match /pending_updates/{document=**} {
       allow read:   if isLoggedIn();
       allow create: if isLoggedIn();

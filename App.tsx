@@ -42,7 +42,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
-import { syncData, syncDataForAdmin, clearDataCache, bumpDataVersion } from './utils/dataSync';
+import { syncData, listenToOverrides, saveOverride, clearDataCache, bumpDataVersion } from './utils/dataSync';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -295,7 +295,7 @@ const App: React.FC = () => {
     if (!headerRef.current) return;
     const observer = new ResizeObserver(entries => {
       for (const entry of entries) {
-        setHeaderHeight(entry.contentRect.height + 8);
+        setHeaderHeight(entry.contentRect.height + 16);
       }
     });
     observer.observe(headerRef.current);
@@ -386,79 +386,82 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // ننتظر الـ auth يخلص أول
     if (authLoading) return;
-    // مرة واحدة بس — مش بنحمل تاني
     if (dataLoadedRef.current) return;
     dataLoadedRef.current = true;
 
-    const isAdminUser = user?.role === 'admin';
-
     const loadData = async () => {
-        try {
-            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
-            setInsuranceData(INITIAL_INSURANCE_DATA as any);
-            setIsDataLoaded(true);
+      try {
+        const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
+        setInsuranceData(INITIAL_INSURANCE_DATA as any);
+        setIsDataLoaded(true);
 
-            let unsubscribeAdmin: (() => void) | null = null;
+        // ── خطوة 1: حمّل الداتا الكاملة من Cache أو Storage ──────
+        const syncResult = await syncData();
+        const baseMap = new Map<string, Medicine>();
+        [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
+          .map(normalizeMedicine)
+          .forEach(m => baseMap.set(m.RegisterNumber, m));
 
-            if (isAdminUser) {
-                const { result, unsubscribe } = await syncDataForAdmin((liveResult) => {
-                    // بيتنادى لما يحصل تعديل في Firestore
-                    const liveMap = new Map<string, Medicine>();
-                    [...liveResult.medicines, ...liveResult.supplements, ...liveResult.food]
-                        .map(normalizeMedicine).forEach(m => liveMap.set(m.RegisterNumber, m));
-                    if (liveMap.size > 0) setMedicines(Array.from(liveMap.values()));
-                });
-                unsubscribeAdmin = unsubscribe;
-                const medMap = new Map<string, Medicine>();
-                [...result.medicines, ...result.supplements, ...result.food]
-                    .map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
-                if (medMap.size > 0) setMedicines(Array.from(medMap.values()));
-            } else {
-                const syncResult = await syncData();
-                const medMap = new Map<string, Medicine>();
-                [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
-                    .map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
-                if (medMap.size > 0) setMedicines(Array.from(medMap.values()));
-            }
-            setIsMedicinesLoading(false);
+        if (baseMap.size > 0) setMedicines(Array.from(baseMap.values()));
+        setIsMedicinesLoading(false);
 
-            // 2. استمع للإشعارات من Firebase في الخلفية
-            if (!FIREBASE_DISABLED && db) {
-                onSnapshot(collection(db, 'notifications'), (snapshot) => {
-                    const allNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
-                    setNotifications(allNotifs.filter(n => {
-                      if (!n.targetUserId && !n.targetRole) return true;
-                      if (n.targetUserId && user && n.targetUserId === user.id) return true;
-                      if (n.targetRole && user && n.targetRole === user.role) return true;
-                      return false;
-                    }));
-                });
-            }
+        // ── خطوة 2: اسمع لـ overrides live (للكل — أدمن ومستخدمين) ──
+        const unsubOverrides = listenToOverrides((overrides) => {
+          setMedicines(prev => {
+            const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+            overrides.forEach((override, id) => {
+              const existing = merged.get(id);
+              if (existing) {
+                // دواء موجود — حدّثه بالـ override
+                merged.set(id, normalizeMedicine({ ...existing, ...override }));
+              } else {
+                // دواء جديد أضافه الأدمن
+                merged.set(id, normalizeMedicine(override));
+              }
+            });
+            return Array.from(merged.values());
+          });
+        });
 
-            // 3. استمع لـ background sync updates
-            const handleDataUpdate = (e: Event) => {
-                const { medicines, supplements, food } = (e as CustomEvent).detail;
-                setMedicines(prev => {
-                    const updatedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-                    [...medicines, ...supplements, ...food]
-                        .map(normalizeMedicine)
-                        .forEach(m => updatedMap.set(m.RegisterNumber, m));
-                    return Array.from(updatedMap.values());
-                });
-            };
-            window.addEventListener('pharma:data-updated', handleDataUpdate);
-            return () => {
-                window.removeEventListener('pharma:data-updated', handleDataUpdate);
-                unsubscribeAdmin?.();
-            };
-
-        } catch (e) { 
-            console.error(e); 
-            setIsDataLoaded(true);
-            setIsMedicinesLoading(false);
+        // ── خطوة 3: اسمع للإشعارات ────────────────────────────────
+        let unsubNotifs = () => {};
+        if (!FIREBASE_DISABLED && db) {
+          unsubNotifs = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+            const allNotifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
+            setNotifications(allNotifs.filter(n => {
+              if (!n.targetUserId && !n.targetRole) return true;
+              if (n.targetUserId && user && n.targetUserId === user.id) return true;
+              if (n.targetRole && user && n.targetRole === user.role) return true;
+              return false;
+            }));
+          });
         }
+
+        // ── خطوة 4: اسمع لتحديثات Storage في الخلفية ─────────────
+        const handleStorageUpdate = (e: Event) => {
+          const { medicines, supplements, food } = (e as CustomEvent).detail;
+          setMedicines(prev => {
+            const updatedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+            [...medicines, ...supplements, ...food]
+              .map(normalizeMedicine)
+              .forEach(m => updatedMap.set(m.RegisterNumber, m));
+            return Array.from(updatedMap.values());
+          });
+        };
+        window.addEventListener('pharma:storage-updated', handleStorageUpdate);
+
+        return () => {
+          unsubOverrides();
+          unsubNotifs();
+          window.removeEventListener('pharma:storage-updated', handleStorageUpdate);
+        };
+
+      } catch (e) {
+        console.error(e);
+        setIsDataLoaded(true);
+        setIsMedicinesLoading(false);
+      }
     };
     loadData();
   }, [authLoading]);
@@ -572,12 +575,8 @@ const App: React.FC = () => {
     }
     if (user.role === 'admin') {
         try {
-            await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
-            // ✅ حدّث الـ timestamp عشان كل المستخدمين يحملوا النسخة الجديدة
-            const collection = updatedMed['Product type'] === 'Supplement' ? 'supplements'
-                             : updatedMed['Product type'] === 'Food' ? 'food'
-                             : 'medicines';
-            await bumpDataVersion(collection);
+            // حفظ في medicine_overrides فقط — المستخدمين يشوفوا فوراً بـ onSnapshot
+            await saveOverride(updatedMed);
             setSelectedMedicine(updatedMed);
             alert(t('saveSuccess'));
         } catch (e) { alert(language === 'ar' ? '❌ فشل الحفظ. حاول مرة أخرى.' : '❌ Save failed. Please try again.'); console.error(e); }
@@ -906,7 +905,7 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 32, 124), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.15s ease, padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {!isDataLoaded ? (
             <div className="space-y-4 pt-2">
               <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />
