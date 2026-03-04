@@ -1,6 +1,4 @@
-
 import React, { useMemo, useState } from 'react';
-import { hapticLight } from '../utils/haptics';
 import { Medicine, TFunction, Language } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StarIcon from './icons/StarIcon';
@@ -12,17 +10,8 @@ export const getIngredientsList = (medicine: Medicine): { name: string; strength
     return sciNames.map((name, index) => ({ name, strength: strengths[index] || strengths[0] || '' }));
 };
 
-// الوحدات المعروفة — لو التركيز ينتهي بواحدة منهم ماتظهرش مرة تانية
-const KNOWN_UNITS = /\b(mg|ml|g|mcg|ug|iu|unit|units|mmol|mol|meq|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|mg\/tab|mg\/cap|iu\/ml|iu\/dose)\b/i;
-
-// يتحقق إن التركيز فيه وحدة مكتوبة صريحة
-function strengthHasUnit(s: string): boolean {
-    return KNOWN_UNITS.test(s);
-}
-
 const KNOWN_UNITS_RE = /\b(mg|ml|g|mcg|ug|iu|units?|mmol|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)\b/i;
 
-// يبني قائمة { name, strengthDisplay }
 export const parseIngredients = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
@@ -36,7 +25,6 @@ export const parseIngredients = (medicine: Medicine): { name: string; strength: 
     });
 };
 
-// للكارت: لو <=3 يرجع "Name Strength · Name2 Strength2", لو >3 يرجع ''
 export const zipIngredients = (medicine: Medicine): string => {
     const items = parseIngredients(medicine);
     if (items.length === 0 || items.length > 3) return '';
@@ -49,7 +37,6 @@ export const getAllIngredients = (medicine: Medicine): string => {
     return parseIngredients(medicine).map(i => i.strength ? `${i.name} ${i.strength}` : i.name).join(' · ');
 };
 
-// للاستخدام في أماكن تانية (MedicineDetail مثلاً) لو محتاجين التركيزات
 export const zipIngredientsWithStrength = (medicine: Medicine): string => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim()).filter(Boolean);
     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
@@ -57,7 +44,6 @@ export const zipIngredientsWithStrength = (medicine: Medicine): string => {
     return sciNames.map((name, i) => {
         const s = (strengths[i] || strengths[0] || '').trim();
         if (!s) return name;
-        // لو التركيز نفسه فيه وحدة مكتوبة (مثلاً "500mg") ماتضيفش وحدة تانية من StrengthUnit
         return `${name} ${s}`;
     }).join(' · ');
 };
@@ -102,23 +88,14 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
     onToggleFavorite(medicine.RegisterNumber);
   };
 
-  const ingredientsString  = useMemo(() => zipIngredients(medicine), [medicine]);
-  const ingredientCount    = useMemo(() => getIngredientsCount(medicine), [medicine]);
-  const allIngredientsStr  = useMemo(() => getAllIngredients(medicine), [medicine]);
+  const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
+  const ingredientCount   = useMemo(() => getIngredientsCount(medicine), [medicine]);
   const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
-  const isHumanMed = medicine['Product type'] === 'Human';
-  const isGeneric = medicine.DrugType?.toLowerCase().includes('generic');
-  const isRx = medicine['Legal Status'] === 'Prescription';
-  const ar = language === 'ar';
-  const hasPrice = price > 0 && !isNaN(price);
-
-  // Rx=أحمر | OTC=أخضر | Brand=سماوي | Generic=رمادي
-  const rxStyle = isRx
-    ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
-    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400';
-  const typeStyle = isGeneric
-    ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-    : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400';
+  const isHumanMed   = medicine['Product type'] === 'Human';
+  const isGeneric    = medicine.DrugType?.toLowerCase().includes('generic');
+  const isRx         = medicine['Legal Status'] === 'Prescription';
+  const ar           = language === 'ar';
+  const hasPrice     = price > 0 && !isNaN(price);
 
   return (
     <div
@@ -129,120 +106,130 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchCancel={handleTouchEnd}
       className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all duration-150 cursor-pointer overflow-hidden"
     >
-      {/* ══ Body ══ */}
-      <div className="flex items-stretch gap-0 p-4 pb-3">
+      <div className="flex gap-3 p-4">
 
-        {/* صورة */}
-        {medicine.imgBox && (
-          <div className="flex-shrink-0 w-14 h-14 bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 mr-3 self-start">
+        {/* ── صورة العلبة ── */}
+        {medicine.imgBox ? (
+          <div className="flex-shrink-0 w-[72px] h-[72px] bg-slate-50 dark:bg-slate-800/60 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1.5 self-start">
             <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
+          </div>
+        ) : (
+          /* placeholder لو مفيش صورة — يحافظ على المحاذاة */
+          <div className="flex-shrink-0 w-[72px] h-[72px] bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10 rounded-2xl border border-teal-100/60 dark:border-teal-800/30 flex items-center justify-center self-start">
+            <svg className="w-7 h-7 text-teal-300 dark:text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
+            </svg>
           </div>
         )}
 
-        {/* Info */}
-        <div className="flex-grow min-w-0">
+        {/* ── المعلومات الرئيسية ── */}
+        <div className="flex-grow min-w-0 flex flex-col justify-between">
 
-          {/* Manufacturer */}
-          <p className="text-[9px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-widest truncate mb-1 leading-none">
-            {medicine['Manufacture Name']}
+          {/* الصف الأول: اسم الشركة */}
+          <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none mb-1.5">
+            {medicine['Manufacture Name'] || '—'}
           </p>
 
-          {/* Trade name - أكبر وأوضح */}
-          <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight break-words mb-1">
+          {/* الاسم التجاري — أكبر وأوضح */}
+          <h2 className="text-[17px] font-black text-slate-800 dark:text-white leading-snug break-words mb-1">
             {medicine['Trade Name']}
           </h2>
 
-          {/* Scientific name */}
+          {/* المادة الفعالة */}
           {ingredientsString ? (
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 leading-snug line-clamp-2" dir="ltr">
+            <p className="text-[12px] text-slate-500 dark:text-slate-400 mb-2.5 leading-snug line-clamp-2" dir="ltr">
               {ingredientsString}
             </p>
           ) : ingredientCount > 3 ? (
-            <div className="mb-3">
-              {/* badge عدد المواد */}
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-lg bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400">
-                  {ingredientCount} {ar ? 'مواد' : 'ingredients'}
-                </span>
-                {/* نعرض أول اسمين بس كـ hint */}
-                {parseIngredients(medicine).slice(0,2).map((ing, i) => (
-                  <span key={i} className="text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[80px]" dir="ltr">
-                    {ing.name}{i === 0 ? ' ·' : '...'}
-                  </span>
-                ))}
-              </div>
+            <div className="mb-2.5">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400">
+                {ingredientCount} {ar ? 'مواد فعالة' : 'ingredients'}
+              </span>
             </div>
           ) : (
-            <div className="mb-3" />
+            <div className="mb-2.5" />
           )}
 
-          {/* Badges row */}
+          {/* Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
 
-            {/* Rx / OTC — لون مميز */}
-            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${rxStyle}`}>
+            {/* Rx / OTC */}
+            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
+              isRx
+                ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
+                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400'
+            }`}>
               {isRx ? 'Rx' : 'OTC'}
             </span>
 
-            {/* Brand / Generic — Brand قبل Generic */}
+            {/* Brand / Generic */}
             {isHumanMed && medicine.DrugType && (
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${typeStyle}`}>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
+                isGeneric
+                  ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400'
+              }`}>
                 {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'براند' : 'Brand')}
               </span>
             )}
 
             {/* Controlled */}
             {isControlled && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
-                {ar ? 'مضبوط' : 'Ctrl'}
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
+                {ar ? 'مضبوط' : 'Controlled'}
               </span>
             )}
 
-            {/* Form */}
+            {/* الشكل الصيدلاني */}
             {medicine.PharmaceuticalForm && (
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg truncate max-w-[90px]">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-lg truncate max-w-[100px]">
                 {medicine.PharmaceuticalForm}
               </span>
             )}
           </div>
         </div>
 
-        {/* Right column - سعر + أزرار */}
-        <div className="flex flex-col items-end justify-between flex-shrink-0 ml-3 self-stretch">
+        {/* ── العمود اليمين: السعر + الأزرار ── */}
+        <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1">
 
-          {/* السعر - أكبر وأوضح */}
+          {/* السعر */}
           {hasPrice ? (
-            <div className="bg-primary/8 dark:bg-primary/15 px-3 py-2 rounded-xl text-center min-w-[58px]">
-              <span className="text-base font-black text-primary dark:text-primary-light block leading-none">
+            <div className="bg-primary/8 dark:bg-primary/15 px-3 py-2.5 rounded-xl text-center min-w-[64px]">
+              <span className="text-[17px] font-black text-primary dark:text-primary-light block leading-none">
                 {price.toFixed(2)}
               </span>
-              <span className="text-[8px] font-semibold text-primary/60 dark:text-primary-light/60 block mt-0.5">
+              <span className="text-[9px] font-semibold text-primary/60 dark:text-primary-light/60 block mt-0.5">
                 {ar ? 'ر.س' : 'SAR'}
               </span>
             </div>
           ) : (
-            <div className="px-3 py-2 rounded-xl min-w-[58px] text-center">
-              <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+            <div className="px-3 py-2.5 rounded-xl min-w-[64px] text-center">
+              <span className="text-[11px] text-slate-300 dark:text-slate-600">—</span>
             </div>
           )}
 
-          {/* أزرار */}
-          <div className="flex items-center gap-1">
+          {/* أزرار البديل والمفضلة */}
+          <div className="flex items-center gap-0.5">
             <button
               onClick={e => { e.stopPropagation(); onFindAlternative(medicine); }}
-              className="p-2 text-slate-300 dark:text-slate-600 hover:text-primary dark:hover:text-primary rounded-xl transition-colors active:scale-90"
+              className="p-2.5 text-slate-300 dark:text-slate-600 hover:text-primary dark:hover:text-primary rounded-xl transition-colors active:scale-90"
             >
-              <div className="w-4 h-4"><AlternativeIcon /></div>
+              <div className="w-5 h-5"><AlternativeIcon /></div>
             </button>
             <button
               onClick={handleFavorite}
-              className={`p-2 rounded-xl transition-colors ${isFavorite ? 'text-amber-400 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 dark:text-slate-600'}`}
-              style={{ transform: starPop ? 'scale(1.4)' : 'scale(1)', transition: 'transform 150ms ease' }}
+              className={`p-2.5 rounded-xl transition-colors ${
+                isFavorite
+                  ? 'text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                  : 'text-slate-300 dark:text-slate-600'
+              }`}
+              style={{ transform: starPop ? 'scale(1.45)' : 'scale(1)', transition: 'transform 150ms ease' }}
             >
-              <div className="w-4 h-4"><StarIcon isFilled={isFavorite} /></div>
+              <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );

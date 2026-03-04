@@ -161,15 +161,18 @@ ${ctxInfo}`;
         user?.role || 'user',
       );
 
-      const parts = response?.candidates?.[0]?.content?.parts;
+      // الـ proxy بيرجع candidates format مباشرة
+      const respParts = response?.candidates?.[0]?.content?.parts;
+      let parts: any[] | undefined;
+      if (respParts) {
+        parts = respParts;
+      } else if (typeof response?.text === 'string') {
+        parts = [{ text: response.text }];
+      }
+
       if (parts && parts.length > 0) {
         const clean = sanitizeParts(parts);
         setChatHistory(prev => [...prev, { role: 'model', parts: clean }]);
-
-        // حدّث الـ remaining من الـ response
-        if (response?._rateLimit) {
-          // يمكن نعرضها في الـ UI لو حبينا
-        }
       } else {
         throw new Error('empty_response');
       }
@@ -184,10 +187,10 @@ ${ctxInfo}`;
         errText = ar
           ? `⏳ ${serverMsg || 'وصلت للحد اليومي للطلبات. يتجدد غداً.'}`
           : `⏳ ${serverMsg || 'Daily limit reached. Resets tomorrow.'}`;
-      } else if (msg.includes('API_KEY') || msg.includes('API key')) {
+      } else if (msg.includes('API_KEY') || msg.includes('API key') || msg.includes('api key')) {
         errText = ar
-          ? '⚠️ مفتاح الـ API غير مضبوط على Vercel.'
-          : '⚠️ API key not configured on Vercel.';
+          ? '⚠️ مفتاح الـ API غير مضبوط. أضف GEMINI_API_KEY في ملف .env.local'
+          : '⚠️ API key not configured. Add GEMINI_API_KEY to .env.local';
       } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
         errText = ar ? '⚠️ لا يوجد اتصال بالإنترنت.' : '⚠️ No internet connection.';
       } else if (msg.includes('empty_response')) {

@@ -2,9 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return request.auth != null &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'admin';
+    }
+
+    function isCompany() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'company';
     }
 
     // ─── الأدوية ──────────────────────────────────────────────
@@ -34,12 +45,16 @@ service cloud.firestore {
     // ─── المستخدمين ───────────────────────────────────────────
     match /users/{userId} {
       allow read:  if request.auth != null;
+      // المستخدم يعدل بياناته، والأدمن يعدل أي حساب
       allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
 
     // ─── الطلبات المعلقة ──────────────────────────────────────
     match /pending_updates/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read:  if request.auth != null;
+      allow create: if request.auth != null;
+      // بس الأدمن يقدر يعدل أو يحذف
+      allow update, delete: if isAdmin();
     }
 
     // ─── الإعدادات ────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TFunction, TextSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import ClearIcon from './icons/ClearIcon';
@@ -31,9 +31,17 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onToggleExactOnly,
   t,
 }) => {
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+  const handleFocus = () => {
+    // نستنى الكيبورد يطلع (200ms) وبعدين نعمل scroll عشان الـ SearchBar ميتخبيش
+    setTimeout(() => {
+      wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+  };
 
   return (
-    <div className="space-y-4 animate-card">
+    <div ref={wrapperRef} className="space-y-4 animate-card">
       <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
            <div className="w-6 h-6"><SearchIcon /></div>
@@ -44,6 +52,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onForceSearch()}
+          onFocus={handleFocus}
           placeholder={t('searchPlaceholder')}
           autoComplete="off"
           autoCorrect="off"

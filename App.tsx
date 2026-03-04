@@ -42,7 +42,7 @@ import { useAuth } from './components/auth/AuthContext';
 import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
-import { syncData } from './utils/dataSync';
+import { syncData, clearDataCache, bumpDataVersion } from './utils/dataSync';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -552,6 +552,11 @@ const App: React.FC = () => {
     if (user.role === 'admin') {
         try {
             await setDoc(doc(db, 'medicines', updatedMed.RegisterNumber), updatedMed, { merge: true });
+            // ✅ حدّث الـ timestamp عشان كل المستخدمين يحملوا النسخة الجديدة
+            const collection = updatedMed['Product type'] === 'Supplement' ? 'supplements'
+                             : updatedMed['Product type'] === 'Food' ? 'food'
+                             : 'medicines';
+            await bumpDataVersion(collection);
             setSelectedMedicine(updatedMed);
             alert(t('saveSuccess'));
         } catch (e) { alert(language === 'ar' ? '❌ فشل الحفظ. حاول مرة أخرى.' : '❌ Save failed. Please try again.'); console.error(e); }
@@ -866,13 +871,22 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(260px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 24, 114), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {!isDataLoaded ? (
             <div className="space-y-4 pt-2">
               <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />
               <SkeletonList count={4} />
             </div>
-          ) : renderContent()}
+          ) : (
+            <div
+              key={view}
+              style={{
+                animation: 'viewSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both',
+              }}
+            >
+              {renderContent()}
+            </div>
+          )}
       </main>
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (

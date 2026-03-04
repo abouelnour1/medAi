@@ -618,3 +618,18 @@ button, [role="button"] {
 @media (min-width: 640px) {
   :root { font-size: 16px; }
 }
+
+/* ============================================================
+   VIEW TRANSITIONS
+   ============================================================ */
+
+@keyframes viewSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

@@ -173,16 +173,23 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
                   <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
-                  {/* ── المادة الفعالة + التركيز بدون تكرار الوحدة ── */}
+                  {/* ── المادة الفعالة + التركيز — لو أكتر من 3 نكتفي بـ badge ── */}
                   {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
                     const sciNames = String(medicine['Scientific Name']).split(',').map(s => s.trim()).filter(Boolean);
+                    // لو أكتر من 3 مواد → badge بس، التفاصيل تحت في الـ InfoCard
+                    if (sciNames.length > 3) {
+                      return (
+                        <span className="inline-block mt-1.5 text-[9px] font-black px-2.5 py-1 rounded-full bg-teal-200/60 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400">
+                          {sciNames.length} {language === 'ar' ? 'مواد فعالة' : 'ingredients'}
+                        </span>
+                      );
+                    }
                     const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
                     const strengthUnit = String(medicine.StrengthUnit || '').trim();
                     const KNOWN_UNITS = /\b(mg|ml|g|mcg|ug|iu|unit|units|mmol|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)\b/i;
                     const parts = sciNames.map((name, i) => {
                       const s = (strengths[i] || strengths[0] || '').trim();
                       if (!s) return name;
-                      // لو التركيز ينتهي بوحدة مكتوبة ماتضيفش وحدة تانية
                       const hasUnit = KNOWN_UNITS.test(s);
                       const display = (!hasUnit && strengthUnit) ? `${s} ${strengthUnit}` : s;
                       return `${name} ${display}`;
