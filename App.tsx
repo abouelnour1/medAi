@@ -400,20 +400,27 @@ const App: React.FC = () => {
             setInsuranceData(INITIAL_INSURANCE_DATA as any);
             setIsDataLoaded(true);
 
-            const syncResult = isAdminUser
-              ? await syncDataForAdmin()
-              : await syncData();
+            let unsubscribeAdmin: (() => void) | null = null;
 
-            const medMap = new Map<string, Medicine>();
-            const allRaw = [
-                ...syncResult.medicines,
-                ...syncResult.supplements,
-                ...syncResult.food,
-            ];
-            allRaw.map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
-
-            if (medMap.size > 0) {
-                setMedicines(Array.from(medMap.values()));
+            if (isAdminUser) {
+                const { result, unsubscribe } = await syncDataForAdmin((liveResult) => {
+                    // بيتنادى لما يحصل تعديل في Firestore
+                    const liveMap = new Map<string, Medicine>();
+                    [...liveResult.medicines, ...liveResult.supplements, ...liveResult.food]
+                        .map(normalizeMedicine).forEach(m => liveMap.set(m.RegisterNumber, m));
+                    if (liveMap.size > 0) setMedicines(Array.from(liveMap.values()));
+                });
+                unsubscribeAdmin = unsubscribe;
+                const medMap = new Map<string, Medicine>();
+                [...result.medicines, ...result.supplements, ...result.food]
+                    .map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
+                if (medMap.size > 0) setMedicines(Array.from(medMap.values()));
+            } else {
+                const syncResult = await syncData();
+                const medMap = new Map<string, Medicine>();
+                [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
+                    .map(normalizeMedicine).forEach(m => medMap.set(m.RegisterNumber, m));
+                if (medMap.size > 0) setMedicines(Array.from(medMap.values()));
             }
             setIsMedicinesLoading(false);
 
@@ -440,7 +447,10 @@ const App: React.FC = () => {
                 setMedicines(Array.from(updatedMap.values()));
             };
             window.addEventListener('pharma:data-updated', handleDataUpdate);
-            return () => window.removeEventListener('pharma:data-updated', handleDataUpdate);
+            return () => {
+                window.removeEventListener('pharma:data-updated', handleDataUpdate);
+                unsubscribeAdmin?.();
+            };
 
         } catch (e) { 
             console.error(e); 

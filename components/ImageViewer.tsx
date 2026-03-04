@@ -166,8 +166,35 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, title, 
               loading="eager"
               draggable={false}
               onLoad={() => markLoaded(idx)}
-              onError={() => markLoaded(idx)}
+              onError={(e) => {
+                // لو الصورة فشلت — نفتحها في تاب جديد كـ fallback
+                markLoaded(idx);
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
             />
+            {/* لو الصورة فشلت تتحمل */}
+            {imgLoaded[idx] && !img.startsWith('data:') && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/40"
+                style={{ display: 'none' }}
+                ref={el => {
+                  // نشيل الـ display:none لو الصورة فشلت
+                  const imgEl = el?.previousElementSibling as HTMLImageElement;
+                  if (imgEl && imgEl.style.display === 'none' && el) {
+                    el.style.display = 'flex';
+                  }
+                }}
+              >
+                <span className="text-4xl">🖼️</span>
+                <p className="text-[11px] font-bold">الصورة غير متاحة</p>
+                <button
+                  onClick={() => window.open(img, '_blank')}
+                  className="px-4 py-2 bg-white/10 rounded-xl text-[11px] font-black"
+                >
+                  فتح في المتصفح
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

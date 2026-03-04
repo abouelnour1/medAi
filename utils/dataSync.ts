@@ -135,7 +135,8 @@ async function checkForUpdatesInBackground(
 }
 
 // ── تحقق كل أسبوع بس ────────────────────────────────────────────────────────
-const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+// تحقق من الـ timestamp كل 24 ساعة بس (1 read فقط — مش بيحمل الداتا)
+const ONE_WEEK_MS = 24 * 60 * 60 * 1000;
 
 // ── الـ function الرئيسية للمستخدم العادي ────────────────────────────────────
 export async function syncData(onProgress?: (msg: string) => void): Promise<SyncResult> {
@@ -197,40 +198,59 @@ export async function syncData(onProgress?: (msg: string) => void): Promise<Sync
   return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
 }
 
-// ── الأدمن: Cache أول مرة ثم Firestore live ──────────────────────────────────
-export async function syncDataForAdmin(): Promise<SyncResult> {
-  // لو مفيش Cache → حمّل من Storage أول (توفير reads)
-  const cached = await getItem<any[]>(CACHE_KEYS.medicines);
-  if (!cached || cached.length === 0) {
-    const [meds, sups, food] = await Promise.all([
+// ── الأدمن: من Cache + يسمع للتغييرات live بـ onSnapshot ────────────────────
+// callback بيتنادى لما يحصل أي تعديل في Firestore
+export async function syncDataForAdmin(
+  onLiveUpdate: (result: SyncResult) => void
+): Promise<{ result: SyncResult; unsubscribe: () => void }> {
+  const { onSnapshot, collection: col } = await import('firebase/firestore');
+
+  // خطوة 1: جيب من Cache أو Storage أول (فوري — مش بيكلف reads)
+  const [cachedMeds, cachedSups, cachedFood] = await Promise.all([
+    getItem<any[]>(CACHE_KEYS.medicines),
+    getItem<any[]>(CACHE_KEYS.supplements),
+    getItem<any[]>(CACHE_KEYS.food),
+  ]);
+
+  let initialMeds = cachedMeds || [];
+  let initialSups = cachedSups || [];
+  let initialFood = cachedFood || [];
+
+  if (initialMeds.length === 0) {
+    const [m, s, f] = await Promise.all([
       fetchFromStorage(STORAGE_URLS.medicines),
       fetchFromStorage(STORAGE_URLS.supplements),
       fetchFromStorage(STORAGE_URLS.food),
     ]);
-    if (meds.length > 0) {
-      const now = Date.now();
-      await Promise.all([
-        setItem(CACHE_KEYS.medicines, meds),
-        setItem(CACHE_KEYS.supplements, sups),
-        setItem(CACHE_KEYS.food, food),
-        setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
-      ]);
-    }
+    initialMeds = m; initialSups = s; initialFood = f;
   }
 
-  // الأدمن يشوف من Firestore مباشرة (live)
-  const [fbMeds, fbSups, fbFood] = await Promise.all([
-    fetchCollection('medicines'),
-    fetchCollection('supplements'),
-    fetchCollection('food'),
-  ]);
+  // خطوة 2: اسمع للتغييرات live (بس لما يحصل تعديل فعلي)
+  const liveData = {
+    medicines:   [...initialMeds],
+    supplements: [...initialSups],
+    food:        [...initialFood],
+  };
+
+  const unsubs: (() => void)[] = [];
+
+  if (!FIREBASE_DISABLED && db) {
+    const listen = (name: 'medicines' | 'supplements' | 'food') => {
+      const unsub = onSnapshot(col(db!, name), (snap) => {
+        const docs = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+        liveData[name] = docs;
+        onLiveUpdate({ medicines: liveData.medicines, supplements: liveData.supplements, food: liveData.food, source: 'firebase', updated: true });
+      });
+      unsubs.push(unsub);
+    };
+    listen('medicines');
+    listen('supplements');
+    listen('food');
+  }
 
   return {
-    medicines:   fbMeds,
-    supplements: fbSups,
-    food:        fbFood,
-    source:      'firebase',
-    updated:     true,
+    result: { medicines: initialMeds, supplements: initialSups, food: initialFood, source: initialMeds.length > 0 ? 'cache' : 'empty', updated: false },
+    unsubscribe: () => unsubs.forEach(u => u()),
   };
 }
 
