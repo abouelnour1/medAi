@@ -188,6 +188,13 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
                   : medicine.PharmaceuticalForm}
               </span>
             )}
+
+            {/* الطعم */}
+            {medicine.liquidTaste && (
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 flex items-center gap-1">
+                👅 {medicine.liquidTaste}
+              </span>
+            )}
           </div>
         </div>
 

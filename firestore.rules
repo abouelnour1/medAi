@@ -2,18 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function isLoggedIn() {
+      return request.auth != null;
     }
 
     function isAdmin() {
-      return request.auth != null &&
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().role == 'admin';
+      return isLoggedIn() &&
+             request.auth.token.email == 'aboelnour1212@gmail.com';
     }
 
     // ── الداتا الرئيسية — أدمن بس ────────────────────────────────
-    // المستخدمين العاديين بياخدوا من Firebase Storage مش من هنا
     match /medicines/{document=**} {
       allow read, write: if isAdmin();
     }
@@ -24,7 +22,7 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // ── app_meta — الكل يقرأ الـ timestamp (1 read عند كل فتح) ──
+    // ── app_meta — الكل يقرأ الـ timestamp ───────────────────────
     match /app_meta/{document=**} {
       allow read:  if true;
       allow write: if isAdmin();
@@ -32,14 +30,14 @@ service cloud.firestore {
 
     // ── المستخدمين ───────────────────────────────────────────────
     match /users/{userId} {
-      allow read:  if request.auth != null;
-      allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      allow read:  if isLoggedIn();
+      allow write: if (isLoggedIn() && request.auth.uid == userId) || isAdmin();
     }
 
     // ── طلبات التحديث ────────────────────────────────────────────
     match /pending_updates/{document=**} {
-      allow read:   if request.auth != null;
-      allow create: if request.auth != null;
+      allow read:   if isLoggedIn();
+      allow create: if isLoggedIn();
       allow update, delete: if isAdmin();
     }
 
@@ -52,7 +50,7 @@ service cloud.firestore {
     // ── الإشعارات ─────────────────────────────────────────────────
     match /notifications/{document=**} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isLoggedIn();
     }
 
     // ── البيانات السريرية ─────────────────────────────────────────

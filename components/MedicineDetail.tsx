@@ -333,32 +333,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
         </InfoCard>
       )}
 
-      <InfoCard title={t('regulatory')} icon={<ShieldIcon />}>
-          <DetailRow label={t('regNumLabel')} value={medicine.RegisterNumber} />
-          <DetailRow label={t('productControlLabel')} value={medicine['Product Control']} />
-          <DetailRow label={t('atcCodeLabel')} value={medicine.AtcCode1} />
-      </InfoCard>
-
-      <InfoCard title={t('manufacturing')} icon={<FactoryIcon />}>
-          <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
-          <DetailRow label={t('marketingCompanyLabel')} value={medicine['Marketing Company']} />
-          <DetailRow label={t('agentLabel')} value={medicine['Main Agent']} />
-      </InfoCard>
-
-      <InfoCard title={t('storage')} icon={<GlobeIcon />}>
-          <p className="text-sm font-black text-slate-700 dark:text-slate-300 leading-relaxed text-right">{language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']}</p>
-          <DetailRow label={t('shelfLifeLabel')} value={medicine.shelfLife} />
-      </InfoCard>
-
-      {user && (user.role === 'admin' || user.role === 'company') && (
-          <div className="pt-6">
-              <button onClick={() => onEdit?.(medicine)} className="w-full py-4 bg-slate-800 dark:bg-primary text-white rounded-[2rem] font-black flex items-center justify-center gap-2 active:scale-95 shadow-xl transition-all">
-                  <div className="w-5 h-5"><EditIcon /></div>
-                  {language === 'ar' ? 'تعديل بيانات الدواء' : 'Edit Medicine Data'}
-              </button>
-          </div>
-      )}
-
       <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
           <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-2.5">
@@ -412,6 +386,34 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                 </div>
           </div>
       </div>
+
+
+      <InfoCard title={t('regulatory')} icon={<ShieldIcon />}>
+          <DetailRow label={t('regNumLabel')} value={medicine.RegisterNumber} />
+          <DetailRow label={t('productControlLabel')} value={medicine['Product Control']} />
+          <DetailRow label={t('atcCodeLabel')} value={medicine.AtcCode1} />
+      </InfoCard>
+
+      <InfoCard title={t('manufacturing')} icon={<FactoryIcon />}>
+          <DetailRow label={t('manufacturer')} value={medicine['Manufacture Name']} />
+          <DetailRow label={t('marketingCompanyLabel')} value={medicine['Marketing Company']} />
+          <DetailRow label={t('agentLabel')} value={medicine['Main Agent']} />
+      </InfoCard>
+
+      <InfoCard title={t('storage')} icon={<GlobeIcon />}>
+          <p className="text-sm font-black text-slate-700 dark:text-slate-300 leading-relaxed text-right">{language === 'ar' ? medicine['Storage Condition Arabic'] : medicine['Storage conditions']}</p>
+          <DetailRow label={t('shelfLifeLabel')} value={medicine.shelfLife} />
+      </InfoCard>
+
+      {user && (user.role === 'admin' || user.role === 'company') && (
+          <div className="pt-6">
+              <button onClick={() => onEdit?.(medicine)} className="w-full py-4 bg-slate-800 dark:bg-primary text-white rounded-[2rem] font-black flex items-center justify-center gap-2 active:scale-95 shadow-xl transition-all">
+                  <div className="w-5 h-5"><EditIcon /></div>
+                  {language === 'ar' ? 'تعديل بيانات الدواء' : 'Edit Medicine Data'}
+              </button>
+          </div>
+      )}
+
 
 
 
