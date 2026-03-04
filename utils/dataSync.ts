@@ -17,10 +17,12 @@ import { setItem, getItem } from './storage';
 
 // ── URLs ملفات الداتا على Firebase Storage ──────────────────────────────────
 // بعد ما ترفع الملفات على Firebase Storage، حط الـ URLs هنا
+const FIREBASE_PROJECT_ID = 'medainew-fa6a2';
+
 const STORAGE_URLS = {
-  medicines:   `https://firebasestorage.googleapis.com/v0/b/${import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'medainew-fa6a2'}.firebasestorage.app/o/data%2Fmedicines.json?alt=media`,
-  supplements: `https://firebasestorage.googleapis.com/v0/b/${import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'medainew-fa6a2'}.firebasestorage.app/o/data%2Fsupplements.json?alt=media`,
-  food:        `https://firebasestorage.googleapis.com/v0/b/${import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'medainew-fa6a2'}.firebasestorage.app/o/data%2Ffood.json?alt=media`,
+  medicines:   `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Fmedicines.json?alt=media`,
+  supplements: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Fsupplements.json?alt=media`,
+  food:        `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.firebasestorage.app/o/data%2Ffood.json?alt=media`,
 };
 
 const CACHE_KEYS = {

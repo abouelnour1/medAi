@@ -87,7 +87,7 @@ export const runAIChat = async (
     return { role: msg.role, parts };
   }).filter(m => m.parts.length > 0);
 
-  const data = await callGeminiProxy(contents, systemInstruction, tools || undefined, modelName, userId, userRole);
+  const data = await callGeminiProxy(contents as any, systemInstruction, tools || undefined, modelName, userId, userRole);
 
   if (data?.error) {
     throw new Error(`Gemini: ${data.error.message || JSON.stringify(data.error)}`);
@@ -109,7 +109,7 @@ export const runAIChat = async (
           ...contents,
           { role: 'model', parts: respParts },
           { role: 'function', parts: [{ functionResponse: { name, response: { output: toolResult } } }] },
-        ],
+        ] as any,
         systemInstruction,
         undefined,
         modelName,
