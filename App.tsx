@@ -199,6 +199,7 @@ const App: React.FC = () => {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
@@ -405,6 +406,7 @@ const App: React.FC = () => {
             if (medMap.size > 0) {
                 setMedicines(Array.from(medMap.values()));
             }
+            setIsMedicinesLoading(false);
 
             // 2. استمع للإشعارات من Firebase في الخلفية
             if (!FIREBASE_DISABLED && db) {
@@ -433,7 +435,8 @@ const App: React.FC = () => {
 
         } catch (e) { 
             console.error(e); 
-            setIsDataLoaded(true); 
+            setIsDataLoaded(true);
+            setIsMedicinesLoading(false);
         }
     };
     loadData();
@@ -715,6 +718,20 @@ const App: React.FC = () => {
           return (
               <div className="animate-fade-in pt-2">
 
+                  {/* ── علامة تحميل الداتا ── */}
+                  {isMedicinesLoading && (
+                    <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-primary/8 dark:bg-primary/15 rounded-2xl border border-primary/15">
+                      <div className="ps-spinner flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] font-black text-primary dark:text-primary-light">
+                          {language === 'ar' ? 'جاري تحميل قاعدة البيانات...' : 'Loading database...'}
+                        </p>
+                        <p className="text-[9px] text-primary/60 mt-0.5">
+                          {language === 'ar' ? 'أول مرة قد تستغرق ثوانٍ' : 'First load may take a few seconds'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
                   <div className="flex gap-2 mt-2">
