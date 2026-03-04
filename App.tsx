@@ -43,6 +43,7 @@ import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { syncData, listenToOverrides, saveOverride, clearDataCache, bumpDataVersion } from './utils/dataSync';
+import { areSameRouteGroup } from './utils/pharmaceuticalGroups';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -490,19 +491,22 @@ const App: React.FC = () => {
     if (!selectedMedicine) return { direct: [], therapeutic: [] };
     const sciName = String(selectedMedicine['Scientific Name']).toLowerCase();
     const strength = String(selectedMedicine.Strength).toLowerCase();
-    const form = String(selectedMedicine.PharmaceuticalForm).toLowerCase();
+    const form = selectedMedicine.PharmaceuticalForm;
     const atc = String(selectedMedicine.AtcCode1 || '').substring(0, 4);
 
-    const direct = medicines.filter(m => 
+    // البدائل المباشرة: نفس المادة + نفس التركيز + نفس مجموعة الشكل
+    const direct = medicines.filter(m =>
         m.RegisterNumber !== selectedMedicine.RegisterNumber &&
         String(m['Scientific Name']).toLowerCase() === sciName &&
         String(m.Strength).toLowerCase() === strength &&
-        String(m.PharmaceuticalForm).toLowerCase() === form
+        areSameRouteGroup(m.PharmaceuticalForm, form)
     );
 
-    const therapeutic = (atc && atc.length >= 4) ? medicines.filter(m => 
+    // البدائل العلاجية: نفس الـ ATC + نفس مجموعة الشكل
+    const therapeutic = (atc && atc.length >= 4) ? medicines.filter(m =>
         m.RegisterNumber !== selectedMedicine.RegisterNumber &&
         String(m.AtcCode1 || '').startsWith(atc) &&
+        areSameRouteGroup(m.PharmaceuticalForm, form) &&
         !direct.some(d => d.RegisterNumber === m.RegisterNumber)
     ) : [];
 
@@ -685,7 +689,9 @@ const App: React.FC = () => {
         });
 
         const csv = [headers.join(','), ...enriched.map(m => headers.map(h => JSON.stringify(String((m as any)[h] ?? ''))).join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        // BOM مهم عشان Excel يقرأ العربي صح
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = `pharmasource_${type}_${new Date().toISOString().slice(0,10)}.csv`;

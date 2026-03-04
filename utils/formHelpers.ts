@@ -1,63 +1,31 @@
 
 import { TFunction } from '../types';
+import { getPharmGroup, PHARM_GROUP_LABELS } from './pharmaceuticalGroups';
 
 interface FormGroup {
   label: string;
   keywords: string[];
 }
 
-export const groupPharmaceuticalForms = (forms: string[], t: TFunction) => {
-  /**
-   * Fix: Ensure categories use keys that exist in the translations file.
-   */
-  const formGroups: FormGroup[] = [
-    { label: t('solidDosageForms'), keywords: ['tablet', 'capsule', 'powder', 'lozenge', 'granules', 'sachet', 'f.c. tablet', 'film-coated', 'أقراص', 'كبسولات'] },
-    { label: t('liquidDosageForms'), keywords: ['syrup', 'suspension', 'solution', 'emulsion', 'drops', 'oral', 'شراب', 'معلق', 'محلول', 'نقط'] },
-    { label: t('parenteralDosageForms'), keywords: ['injection', 'infusion', 'vial', 'ampoule', 'pre-filled syringe', 'i-a injection', 'حقن', 'وريد'] },
-    { label: t('semiSolidDosageForms'), keywords: ['cream', 'ointment', 'gel', 'paste', 'suppository', 'كريم', 'مرهم', 'جل', 'لبوس'] },
-    { label: t('inhalationalDosageForms'), keywords: ['inhaler', 'spray', 'nebuliser', 'inhalation', 'nasal', 'بخاخ', 'استنشاق', 'رذاذ'] },
-    { label: t('specialDosageForms'), keywords: ['patch', 'implant', 'film', 'eye', 'otic', 'ear', 'ophthalmic', 'لصقات', 'عين', 'أنف'] },
-  ];
-  
-  const categorized: { [key: string]: Set<string> } = {};
-  const uncategorized: string[] = [];
-  
+export const groupPharmaceuticalForms = (forms: string[], _t: TFunction) => {
+  const grouped: Record<string, Set<string>> = {};
+
   forms.forEach(form => {
-    const lowerForm = form.toLowerCase();
-    let assigned = false;
-    for (const group of formGroups) {
-      if (group.keywords.some(keyword => lowerForm.includes(keyword))) {
-        if (!categorized[group.label]) {
-          categorized[group.label] = new Set();
-        }
-        categorized[group.label].add(form);
-        assigned = true;
-        break;
-      }
-    }
-    if (!assigned) {
-      uncategorized.push(form);
-    }
+    const group = getPharmGroup(form);
+    const meta  = PHARM_GROUP_LABELS[group];
+    const label = `${meta.icon} ${meta.ar}`;
+    if (!grouped[label]) grouped[label] = new Set();
+    grouped[label].add(form);
   });
 
-  const result: { label: string; options: string[] }[] = formGroups
-    .filter(group => categorized[group.label])
-    .map(group => ({
-      label: group.label,
-      options: Array.from(categorized[group.label]).sort(),
-    }));
-
-  if (uncategorized.length > 0) {
-    /**
-     * Fix: Ensure "otherForms" key exists in translations.
-     */
-    result.push({
-      label: t('otherForms'),
-      options: uncategorized.sort(),
-    });
-  }
-  
-  return result;
+  const ORDER = ['💊','🧪','💉','🧴','🫁','🔵','👁️','👃','🔴','📦'];
+  return Object.entries(grouped)
+    .sort(([a],[b]) => {
+      const ai = ORDER.findIndex(o => a.startsWith(o));
+      const bi = ORDER.findIndex(o => b.startsWith(o));
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    })
+    .map(([label, opts]) => ({ label, options: Array.from(opts).sort() }));
 };
 
 
