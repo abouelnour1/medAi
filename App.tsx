@@ -440,11 +440,13 @@ const App: React.FC = () => {
             // 3. استمع لـ background sync updates
             const handleDataUpdate = (e: Event) => {
                 const { medicines, supplements, food } = (e as CustomEvent).detail;
-                const updatedMap = new Map<string, Medicine>(medMap);
-                [...medicines, ...supplements, ...food]
-                    .map(normalizeMedicine)
-                    .forEach(m => updatedMap.set(m.RegisterNumber, m));
-                setMedicines(Array.from(updatedMap.values()));
+                setMedicines(prev => {
+                    const updatedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+                    [...medicines, ...supplements, ...food]
+                        .map(normalizeMedicine)
+                        .forEach(m => updatedMap.set(m.RegisterNumber, m));
+                    return Array.from(updatedMap.values());
+                });
             };
             window.addEventListener('pharma:data-updated', handleDataUpdate);
             return () => {
