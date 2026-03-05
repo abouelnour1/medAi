@@ -198,7 +198,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           </div>
         </div>
 
-        {/* ── العمود اليمين: السعر + الأزرار ── */
+        {/* ── العمود اليمين: السعر + الأزرار ── */}
         <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1">
 
           {/* السعر */}
