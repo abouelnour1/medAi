@@ -69,9 +69,9 @@ const ResultsList: React.FC<ResultsListProps> = ({
         )}
       </div>
 
-      <div className="space-y-3">
-        {visibleMeds.map((med, index) => (
-          <div key={med.RegisterNumber} className="stagger-item" style={{ "--i": Math.min(index, 7) } as React.CSSProperties}>
+      <div className="space-y-2.5" style={{ contain: 'content' }}>
+        {visibleMeds.map((med) => (
+          <div key={med.RegisterNumber} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 88px' }}>
             <MedicineCard
               medicine={med}
               onShortPress={() => onMedicineSelect(med)}

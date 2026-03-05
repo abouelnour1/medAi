@@ -104,7 +104,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all duration-150 cursor-pointer overflow-hidden"
+      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.99] transition-transform duration-100 cursor-pointer overflow-hidden"
     >
       <div className="flex gap-2.5 p-3">
 
@@ -231,7 +231,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
                   ? 'text-amber-400 bg-amber-50 dark:bg-amber-900/20'
                   : 'text-slate-300 dark:text-slate-600'
               }`}
-              style={{ transform: starPop ? 'scale(1.45)' : 'scale(1)', transition: 'transform 150ms ease' }}
+              style={{ transform: starPop ? 'scale(1.3)' : 'scale(1)', transition: 'transform 100ms ease' }}
             >
               <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
             </button>

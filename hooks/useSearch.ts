@@ -58,7 +58,7 @@ export function useSearch(
     }
     if (filters.priceMin) results = results.filter(m => parseFloat(m['Public price'] || '0') >= parseFloat(filters.priceMin));
     if (filters.priceMax) results = results.filter(m => parseFloat(m['Public price'] || '0') <= parseFloat(filters.priceMax));
-    if (filters.pharmaceuticalForm) results = results.filter(m => m.PharmaceuticalForm?.toLowerCase().includes(filters.pharmaceuticalForm.toLowerCase()));
+    if (filters.pharmaceuticalForm && filters.pharmaceuticalForm.length > 0) results = results.filter(m => Array.isArray(filters.pharmaceuticalForm) ? filters.pharmaceuticalForm.includes(m.PharmaceuticalForm || '') : m.PharmaceuticalForm?.toLowerCase().includes((filters.pharmaceuticalForm as string).toLowerCase()));
     if (filters.legalStatus) results = results.filter(m => m['Legal Status']?.toLowerCase() === filters.legalStatus.toLowerCase());
     if (filters.manufactureName?.length) results = results.filter(m => filters.manufactureName.some(n => m['Manufacture Name']?.toLowerCase().includes(n.toLowerCase())));
     if (filters.marketingCompany?.length) results = results.filter(m => filters.marketingCompany.some(n => m['Marketing Company']?.toLowerCase().includes(n.toLowerCase())));
