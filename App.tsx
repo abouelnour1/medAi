@@ -954,7 +954,20 @@ const App: React.FC = () => {
                               />
                             </div>
                           )}
-                          {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
+                          {/* زرار مسح الـ Cache */}
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(language === 'ar' ? 'هيتم مسح الـ Cache وإعادة تحميل البيانات. هل أنت متأكد؟' : 'Cache will be cleared and data reloaded. Are you sure?')) {
+                                await clearDataCache();
+                                window.location.reload();
+                              }
+                            }}
+                            className="w-full mt-2 py-3.5 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-sm flex items-center justify-center gap-2"
+                          >
+                            <span>🔄</span>
+                            <span>{language === 'ar' ? 'تحديث قاعدة البيانات' : 'Refresh Database'}</span>
+                          </button>
+                          {user && <button onClick={logout} className="w-full mt-2 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
               </div>

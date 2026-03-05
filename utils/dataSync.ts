@@ -125,13 +125,36 @@ export async function syncData(): Promise<SyncResult> {
   console.log('[dataSync] Cache:', hasCachedData ? `✅ ${cachedMeds!.length} items` : '❌ empty');
 
   if (hasCachedData) {
-    // تحقق كل 24 ساعة بس في الخلفية
-    // أو لو الـ food cache فاضي — تحقق فوراً
     const now = Date.now();
     const lastChecked = cachedMeta?.last_checked ?? 0;
     const foodEmpty = !cachedFood || cachedFood.length === 0;
-    if ((now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty) {
-      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
+    // تحقق دايماً لو الـ food فاضي — مش بس كل 24 ساعة
+    const shouldCheck = (now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty;
+    if (shouldCheck) {
+      // لو food فاضي — انتظر النتيجة بدل ما تحطها في الخلفية
+      if (foodEmpty) {
+        const remoteMeta = await fetchRemoteMeta();
+        if (remoteMeta && remoteMeta.food_ts > (cachedMeta?.food_ts ?? 0)) {
+          const newFood = await fetchFromStorage(STORAGE_URLS.food);
+          if (newFood.length > 0) {
+            await setItem(CACHE_KEYS.food, newFood);
+            await setItem(CACHE_KEYS.meta, {
+              ...(cachedMeta || { medicines_ts: 0, supplements_ts: 0 }),
+              food_ts: remoteMeta.food_ts,
+              last_checked: now,
+            });
+            return {
+              medicines:   cachedMeds!,
+              supplements: cachedSups || [],
+              food:        newFood,
+              source: 'cache',
+              updated: true,
+            };
+          }
+        }
+      } else {
+        checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
+      }
     }
     return {
       medicines:   cachedMeds!,
