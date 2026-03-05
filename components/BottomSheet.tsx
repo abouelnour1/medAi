@@ -32,7 +32,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     if (isOpen) {
       setHeight(minH);
       setVisible(true);
-      requestAnimationFrame(() => setAnimate(true));
+      setTimeout(() => setAnimate(true), 10);
     } else {
       setAnimate(false);
       const t = setTimeout(() => setVisible(false), 220);
@@ -96,7 +96,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        style={{ opacity: animate ? 1 : 0, transition: 'opacity 0.2s ease' }}
+        style={{ opacity: animate ? 0.45 : 0, transition: 'opacity 0.25s ease' }}
         onClick={onClose}
       />
 
@@ -108,7 +108,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           height,
           borderRadius: isExpanded ? '1.5rem 1.5rem 0 0' : '2rem 2rem 0 0',
           transform: animate ? 'translateY(0)' : 'translateY(100%)',
-          transition: isDragging.current ? 'none' : 'transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.2s ease, height 0.22s cubic-bezier(0.32, 0.72, 0, 1)',
+          transition: isDragging.current ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.25s ease, height 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
         }}
@@ -121,21 +121,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           onTouchEnd={onTouchEnd}
           onMouseDown={onMouseDown}
         >
-          <div className="w-10 h-1 bg-slate-200 dark:bg-slate-600 rounded-full" />
-          <div className="w-full flex justify-between items-center px-4 pt-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" style={{background: "linear-gradient(90deg, #14b8a6, #0ea5e9)"}} />
+          <div className="w-full flex justify-between items-center px-4 pt-1.5">
+            <button onClick={onClose} className="flex items-center gap-1.5 text-slate-400 active:scale-90 transition-transform py-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
+              <span className="text-[10px] font-black uppercase tracking-widest">إغلاق</span>
             </button>
-            <button
-              onClick={() => setHeight(isExpanded ? minH : maxH)}
-              className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="flex items-center gap-1 text-slate-400 active:scale-90 transition-transform py-1">
+              <span className="text-[10px] font-black uppercase tracking-widest">{isExpanded ? 'تصغير' : 'توسيع'}</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? "M19 15l-7-7-7 7" : "M5 15l7-7 7 7"} />
               </svg>
             </button>
