@@ -111,6 +111,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           transition: isDragging.current ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.25s ease, height 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
+        contain: 'layout style',
         }}
       >
         {/* Handle */}
@@ -138,11 +139,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </div>
         </div>
 
-        {/* Content — سحب للتحت من أي مكان لو الـ scroll في الأعلى */}
+        {/* Content */}
         <div
           ref={contentRef}
           className="flex-grow overflow-y-auto no-scrollbar overscroll-contain px-4 pb-8"
-          style={{ direction: 'ltr' }}
+          style={{ direction: 'ltr', willChange: 'transform' }}
           onTouchStart={(e) => {
             const el = contentRef.current;
             if (el && el.scrollTop === 0) onDragStart(e.touches[0].clientY);
