@@ -10,7 +10,7 @@
 
 import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db, FIREBASE_DISABLED } from '../firebase';
-import { setItem, getItem } from './storage';
+import { setItem, getItem, removeItem } from './storage';
 
 // ── Cache Keys ────────────────────────────────────────────────────────────────
 const CACHE_KEYS = {
