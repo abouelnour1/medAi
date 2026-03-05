@@ -57,11 +57,12 @@ interface MedicineCardProps {
   onToggleFavorite: (medicineId: string) => void;
   t: TFunction;
   language: Language;
+  imageRight?: boolean;
 }
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, t, language
+  isFavorite, onToggleFavorite, t, language, imageRight = false
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,9 +107,22 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchCancel={handleTouchEnd}
       className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.99] transition-transform duration-100 cursor-pointer overflow-hidden"
     >
-      <div className="flex gap-2.5 p-3">
+      <div className={`flex gap-2.5 p-3 ${imageRight ? 'flex-row-reverse' : ''}`}>
 
-        {/* ── المعلومات الرئيسية — يسار ── */}
+        {/* ── صورة العلبة ── */}
+        {medicine.imgBox ? (
+          <div className="flex-shrink-0 w-[58px] h-[58px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start">
+            <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
+          </div>
+        ) : (
+          <div className="flex-shrink-0 w-[58px] h-[58px] bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10 rounded-xl border border-teal-100/60 dark:border-teal-800/30 flex items-center justify-center self-start">
+            <svg className="w-6 h-6 text-teal-300 dark:text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
+            </svg>
+          </div>
+        )}
+
+        {/* ── المعلومات الرئيسية ── */}
         <div className="flex-grow min-w-0 flex flex-col justify-between">
 
           {/* اسم الشركة */}
@@ -184,20 +198,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           </div>
         </div>
 
-        {/* ── صورة العلبة — يمين ── */}
-        {medicine.imgBox ? (
-          <div className="flex-shrink-0 w-[58px] h-[58px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start">
-            <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
-          </div>
-        ) : (
-          <div className="flex-shrink-0 w-[58px] h-[58px] bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10 rounded-xl border border-teal-100/60 dark:border-teal-800/30 flex items-center justify-center self-start">
-            <svg className="w-6 h-6 text-teal-300 dark:text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
-            </svg>
-          </div>
-        )}
-
-        {/* ── العمود اليمين: السعر + الأزرار ── */}
+        {/* ── العمود اليمين: السعر + الأزرار ── */
         <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1">
 
           {/* السعر */}

@@ -42,6 +42,7 @@ const Section: React.FC<{
                             onToggleFavorite={onToggleFavorite}
                             t={t}
                             language={language}
+                            imageRight={true}
                         />
                     ))}
                 </div>

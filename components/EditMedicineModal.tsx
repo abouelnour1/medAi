@@ -299,10 +299,45 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
                  <label className={labelClass}>{t('markings')}</label>
                  <input type="text" name="pillMarkings" value={formData.pillMarkings || ''} onChange={handleChange} className={inputClass} />
                </div>
+               <div>
+                 <label className={labelClass}>👅 {t('taste') || 'Taste / الطعم'}</label>
+                 <input type="text" name="liquidTaste" value={formData.liquidTaste || ''} onChange={handleChange} className={inputClass} placeholder="e.g. Orange, Strawberry" />
+               </div>
+               <div>
+                 <label className={labelClass}>🎨 {t('color') || 'Color / اللون'}</label>
+                 <input type="text" name="liquidColor" value={formData.liquidColor || ''} onChange={handleChange} className={inputClass} placeholder="e.g. Clear, Yellow" />
+               </div>
                <div className="col-span-full">
                  <label className={labelClass}>{t('notes')}</label>
                  <textarea name="physicalNotes" value={formData.physicalNotes || ''} onChange={handleChange} rows={3} className={inputClass} />
                </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className={sectionTitle}>📦 العبوة (Packaging)</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>{t('packageSize') || 'Package Size / حجم العبوة'}</label>
+                <input type="text" name="PackageSize" value={(formData as any).PackageSize || ''} onChange={handleChange} className={inputClass} placeholder="e.g. 30, 100" />
+              </div>
+              <div>
+                <label className={labelClass}>وحدة الحجم (Size Unit)</label>
+                <input type="text" name="SizeUnit" value={(formData as any).SizeUnit || ''} onChange={handleChange} className={inputClass} placeholder="e.g. ml, mg, Tablet" />
+              </div>
+              <div>
+                <label className={labelClass}>{t('packageType') || 'Package Type / نوع العبوة'}</label>
+                <input type="text" name="PackageTypes" value={(formData as any).PackageTypes || ''} onChange={handleChange} className={inputClass} placeholder="e.g. Bottle, Blister, Vial" />
+              </div>
+              <div>
+                <label className={labelClass}>{t('distributeArea') || 'Distribution / التوزيع'}</label>
+                <select name="Distribute area" value={(formData as any)['Distribute area'] || ''} onChange={handleChange} className={inputClass}>
+                  <option value="">— اختر —</option>
+                  <option value="Pharmacy">💊 Pharmacy</option>
+                  <option value="Hospital">🏥 Hospital</option>
+                  <option value="Pharmacy and Hospital">💊🏥 Pharmacy & Hospital</option>
+                </select>
+              </div>
             </div>
           </div>
 
