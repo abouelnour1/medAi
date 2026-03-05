@@ -349,7 +349,7 @@ const App: React.FC = () => {
           restoreScroll(backTarget);
       } else if (sheetMedicine) {
           setSheetMedicine(null);
-          return;
+          return;  // فوري بدون delay
       } else if (view === 'alternatives') {
           setView('results');
           restoreScroll('results');
@@ -575,7 +575,7 @@ const App: React.FC = () => {
     if (filters.productType !== 'all') count++;
     if (filters.priceMin !== '') count++;
     if (filters.priceMax !== '') count++;
-    if (filters.pharmaceuticalForm !== '') count++;
+    if (Array.isArray(filters.pharmaceuticalForm) ? filters.pharmaceuticalForm.length > 0 : filters.pharmaceuticalForm !== '') count++;
     if (filters.legalStatus !== '') count++;
     if (filters.manufactureName.length > 0) count++;
     if (filters.marketingCompany.length > 0) count++;
@@ -1054,7 +1054,7 @@ const App: React.FC = () => {
             isFavorite={favorites.includes(sheetMedicine.RegisterNumber)}
             onToggleFavorite={toggleFavorite}
             user={user}
-            onEdit={(m) => { setSelectedMedicine(m); setIsEditModalOpen(true); }}
+            onEdit={(m) => { setSelectedMedicine(m); setSheetMedicine(null); setIsEditModalOpen(true); }}
             onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)}
             onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: sheetMedicine }), t)}
             onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: sheetMedicine }), t)}

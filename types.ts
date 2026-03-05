@@ -135,7 +135,7 @@ export interface Filters {
   productType: ProductTypeFilter;
   priceMin: string;
   priceMax: string;
-  pharmaceuticalForm: string;
+  pharmaceuticalForm: string | string[];
   manufactureName: string[];
   marketingCompany: string[];
   mainAgent: string[];

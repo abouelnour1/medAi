@@ -108,29 +108,15 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
     >
       <div className="flex gap-2.5 p-3">
 
-        {/* ── صورة العلبة ── */}
-        {medicine.imgBox ? (
-          <div className="flex-shrink-0 w-[60px] h-[60px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start">
-            <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
-          </div>
-        ) : (
-          /* placeholder لو مفيش صورة — يحافظ على المحاذاة */
-          <div className="flex-shrink-0 w-[72px] h-[72px] bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10 rounded-2xl border border-teal-100/60 dark:border-teal-800/30 flex items-center justify-center self-start">
-            <svg className="w-7 h-7 text-teal-300 dark:text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
-            </svg>
-          </div>
-        )}
-
-        {/* ── المعلومات الرئيسية ── */}
+        {/* ── المعلومات الرئيسية — يسار ── */}
         <div className="flex-grow min-w-0 flex flex-col justify-between">
 
-          {/* الصف الأول: اسم الشركة */}
+          {/* اسم الشركة */}
           <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none mb-1">
             {medicine['Manufacture Name'] || '—'}
           </p>
 
-          {/* الاسم التجاري — أكبر وأوضح */}
+          {/* الاسم التجاري */}
           <h2 className="text-[14px] font-black text-slate-800 dark:text-white leading-snug break-words mb-0.5">
             {medicine['Trade Name']}
           </h2>
@@ -197,6 +183,19 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* ── صورة العلبة — يمين ── */}
+        {medicine.imgBox ? (
+          <div className="flex-shrink-0 w-[58px] h-[58px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start">
+            <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
+          </div>
+        ) : (
+          <div className="flex-shrink-0 w-[58px] h-[58px] bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10 rounded-xl border border-teal-100/60 dark:border-teal-800/30 flex items-center justify-center self-start">
+            <svg className="w-6 h-6 text-teal-300 dark:text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
+            </svg>
+          </div>
+        )}
 
         {/* ── العمود اليمين: السعر + الأزرار ── */}
         <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1">

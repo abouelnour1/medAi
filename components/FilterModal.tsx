@@ -66,7 +66,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
             if (currentFilters.priceMax && price > parseFloat(currentFilters.priceMax)) return false;
             
             // الشكل الصيدلاني
-            if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm) return false;
+            if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && (Array.isArray(currentFilters.pharmaceuticalForm) ? currentFilters.pharmaceuticalForm.length > 0 && !currentFilters.pharmaceuticalForm.includes(m.PharmaceuticalForm) : m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm)) return false;
             
             // الحالة القانونية
             if (excludeKey !== 'legalStatus' && currentFilters.legalStatus && m['Legal Status'] !== currentFilters.legalStatus) return false;
@@ -123,7 +123,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
             productType: 'all', 
             priceMin: '', 
             priceMax: '', 
-            pharmaceuticalForm: '', 
+            pharmaceuticalForm: [], 
             manufactureName: [], 
             marketingCompany: [], 
             mainAgent: [], 
@@ -205,10 +205,11 @@ const FilterModal: React.FC<FilterModalProps> = ({
                     <FilterItem icon={<FormIcon />} label={t('pharmaceuticalForm')}>
                        <SearchableDropdown
                         ariaLabel={t('pharmaceuticalForm')}
-                        value={localFilters.pharmaceuticalForm}
-                        onChange={(value) => handleFilterChange('pharmaceuticalForm', Array.isArray(value) ? '' : value)}
+                        value={localFilters.pharmaceuticalForm || []}
+                        onChange={(value) => handleFilterChange('pharmaceuticalForm', value)}
                         options={dynamicOptions.forms}
                         placeholder={t('all')}
+                        mode="multi"
                         t={t}
                       />
                     </FilterItem>

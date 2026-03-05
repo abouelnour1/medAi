@@ -35,7 +35,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       requestAnimationFrame(() => setAnimate(true));
     } else {
       setAnimate(false);
-      const t = setTimeout(() => setVisible(false), 320);
+      const t = setTimeout(() => setVisible(false), 220);
       return () => clearTimeout(t);
     }
   }, [isOpen, minH]);
@@ -96,7 +96,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        style={{ opacity: animate ? 1 : 0, transition: 'opacity 0.3s ease' }}
+        style={{ opacity: animate ? 1 : 0, transition: 'opacity 0.2s ease' }}
         onClick={onClose}
       />
 
@@ -108,7 +108,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           height,
           borderRadius: isExpanded ? '1.5rem 1.5rem 0 0' : '2rem 2rem 0 0',
           transform: animate ? 'translateY(0)' : 'translateY(100%)',
-          transition: isDragging.current ? 'none' : 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.3s ease, height 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+          transition: isDragging.current ? 'none' : 'transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.2s ease, height 0.22s cubic-bezier(0.32, 0.72, 0, 1)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
         }}

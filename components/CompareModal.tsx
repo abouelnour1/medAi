@@ -27,7 +27,7 @@ const CompareModal: React.FC<CompareModalProps> = ({ medicines, onClose, languag
   const cheaper = priceA < priceB ? 'a' : priceB < priceA ? 'b' : 'same';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end justify-center" style={{padding: "1rem 1rem calc(6rem + env(safe-area-inset-bottom))"}} onClick={onClose}>
       <div className="bg-white dark:bg-dark-card rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-dark-border">

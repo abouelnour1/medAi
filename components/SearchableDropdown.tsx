@@ -188,9 +188,36 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
             )}
 
             {isGrouped(displayedOptions) ? (
-              displayedOptions.map(group => (
+              displayedOptions.map(group => {
+                // هل كل الـ options في الـ group محددة؟
+                const groupSelected = mode === 'multi'
+                  ? group.options.every(o => (value as string[]).includes(o))
+                  : false;
+                const handleSelectAll = () => {
+                  if (mode !== 'multi') return;
+                  const current = value as string[];
+                  if (groupSelected) {
+                    // إلغاء تحديد الكل
+                    onChange(current.filter(v => !group.options.includes(v)));
+                  } else {
+                    // تحديد الكل
+                    const merged = Array.from(new Set([...current, ...group.options]));
+                    onChange(merged);
+                  }
+                };
+                return (
                 <React.Fragment key={group.label}>
-                  <li className="px-4 pt-3 pb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest sticky top-0 bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm z-10">{group.label}</li>
+                  <li className="px-3 pt-2.5 pb-1 sticky top-0 bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm z-10 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.label}</span>
+                    {mode === 'multi' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSelectAll(); }}
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-full transition-all ${groupSelected ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                      >
+                        {groupSelected ? '✓ الكل' : 'اختار الكل'}
+                      </button>
+                    )}
+                  </li>
                   {group.options.map(option => {
                     const isSelected = mode === 'multi' ? (value as string[]).includes(option) : value === option;
                     return (
@@ -201,7 +228,8 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     )
                   })}
                 </React.Fragment>
-              ))
+                );
+              })
             ) : (displayedOptions as string[]).length > 0 ? (
               <>
                 {(displayedOptions as string[]).map(option => {
