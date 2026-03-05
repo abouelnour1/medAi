@@ -237,5 +237,5 @@ export async function bumpDataVersion(collectionName: string): Promise<void> {
 
 // ── مسح الـ Cache ─────────────────────────────────────────────────────────────
 export async function clearDataCache(): Promise<void> {
-  await Promise.all(Object.values(CACHE_KEYS).map(k => setItem(k, null)));
+  await Promise.all(Object.values(CACHE_KEYS).map(k => removeItem(k)));
 }

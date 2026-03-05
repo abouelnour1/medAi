@@ -41,7 +41,7 @@ export async function getItem<T>(key: string): Promise<T | null> {
       const tx    = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req   = store.get(key);
-      req.onsuccess = () => resolve(req.result ?? null);
+      req.onsuccess = () => resolve((req.result === null || req.result === undefined) ? null : req.result);
       req.onerror   = () => reject(req.error);
     });
   } catch (e) {
