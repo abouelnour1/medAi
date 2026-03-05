@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { fuzzyMatch, fuzzyScore } from '../utils/fuzzySearch';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
