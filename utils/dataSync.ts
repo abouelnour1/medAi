@@ -131,26 +131,26 @@ export async function syncData(): Promise<SyncResult> {
     // تحقق دايماً لو الـ food فاضي — مش بس كل 24 ساعة
     const shouldCheck = (now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty;
     if (shouldCheck) {
-      // لو food فاضي — انتظر النتيجة بدل ما تحطها في الخلفية
+      // لو food فاضي — حمّله مباشرة بدون مقارنة timestamp
       if (foodEmpty) {
-        const remoteMeta = await fetchRemoteMeta();
-        if (remoteMeta && remoteMeta.food_ts > (cachedMeta?.food_ts ?? 0)) {
-          const newFood = await fetchFromStorage(STORAGE_URLS.food);
-          if (newFood.length > 0) {
-            await setItem(CACHE_KEYS.food, newFood);
-            await setItem(CACHE_KEYS.meta, {
-              ...(cachedMeta || { medicines_ts: 0, supplements_ts: 0 }),
-              food_ts: remoteMeta.food_ts,
-              last_checked: now,
-            });
-            return {
-              medicines:   cachedMeds!,
-              supplements: cachedSups || [],
-              food:        newFood,
-              source: 'cache',
-              updated: true,
-            };
-          }
+        console.log('[dataSync] Food cache empty — fetching from Storage...');
+        const newFood = await fetchFromStorage(STORAGE_URLS.food);
+        console.log('[dataSync] Food loaded:', newFood.length, 'items');
+        if (newFood.length > 0) {
+          const remoteMeta = await fetchRemoteMeta();
+          await setItem(CACHE_KEYS.food, newFood);
+          await setItem(CACHE_KEYS.meta, {
+            ...(cachedMeta || { medicines_ts: 0, supplements_ts: 0 }),
+            food_ts: remoteMeta?.food_ts ?? Date.now(),
+            last_checked: now,
+          });
+          return {
+            medicines:   cachedMeds!,
+            supplements: cachedSups || [],
+            food:        newFood,
+            source: 'cache',
+            updated: true,
+          };
         }
       } else {
         checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
