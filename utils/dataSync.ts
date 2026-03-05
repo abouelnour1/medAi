@@ -113,7 +113,6 @@ async function checkForUpdatesInBackground(
 
 // ── الـ function الرئيسية ─────────────────────────────────────────────────────
 export async function syncData(): Promise<SyncResult> {
-  // جيب الـ Cache
   const [cachedMeds, cachedSups, cachedFood, cachedMeta] = await Promise.all([
     getItem<any[]>(CACHE_KEYS.medicines),
     getItem<any[]>(CACHE_KEYS.supplements),
@@ -122,39 +121,30 @@ export async function syncData(): Promise<SyncResult> {
   ]);
 
   const hasCachedData = cachedMeds && cachedMeds.length > 0;
-  console.log('[dataSync] Cache:', hasCachedData ? `✅ ${cachedMeds!.length} items` : '❌ empty');
+  const foodEmpty = !cachedFood || (Array.isArray(cachedFood) && cachedFood.length === 0);
+
+  // لو food فاضي — حمّله دلوقتي بدون أي شروط
+  if (hasCachedData && foodEmpty) {
+    console.log('[dataSync] Food empty — force loading from Storage');
+    const newFood = await fetchFromStorage(STORAGE_URLS.food);
+    console.log('[dataSync] Food fetched:', newFood.length);
+    if (newFood.length > 0) {
+      await setItem(CACHE_KEYS.food, newFood);
+      return {
+        medicines:   cachedMeds!,
+        supplements: cachedSups || [],
+        food:        newFood,
+        source: 'storage',
+        updated: true,
+      };
+    }
+  }
 
   if (hasCachedData) {
     const now = Date.now();
     const lastChecked = cachedMeta?.last_checked ?? 0;
-    const foodEmpty = !cachedFood || cachedFood.length === 0;
-    // تحقق دايماً لو الـ food فاضي — مش بس كل 24 ساعة
-    const shouldCheck = (now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty;
-    if (shouldCheck) {
-      // لو food فاضي — حمّله مباشرة بدون مقارنة timestamp
-      if (foodEmpty) {
-        console.log('[dataSync] Food cache empty — fetching from Storage...');
-        const newFood = await fetchFromStorage(STORAGE_URLS.food);
-        console.log('[dataSync] Food loaded:', newFood.length, 'items');
-        if (newFood.length > 0) {
-          const remoteMeta = await fetchRemoteMeta();
-          await setItem(CACHE_KEYS.food, newFood);
-          await setItem(CACHE_KEYS.meta, {
-            ...(cachedMeta || { medicines_ts: 0, supplements_ts: 0 }),
-            food_ts: remoteMeta?.food_ts ?? Date.now(),
-            last_checked: now,
-          });
-          return {
-            medicines:   cachedMeds!,
-            supplements: cachedSups || [],
-            food:        newFood,
-            source: 'cache',
-            updated: true,
-          };
-        }
-      } else {
-        checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
-      }
+    if ((now - lastChecked) > 24 * 60 * 60 * 1000) {
+      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups || [], cachedFood || []);
     }
     return {
       medicines:   cachedMeds!,
