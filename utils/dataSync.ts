@@ -126,10 +126,13 @@ export async function syncData(): Promise<SyncResult> {
 
   if (hasCachedData) {
     // تحقق كل 24 ساعة بس في الخلفية
+    // أو لو الـ food cache فاضي — تحقق فوراً
     const now = Date.now();
     const lastChecked = cachedMeta?.last_checked ?? 0;
-    if ((now - lastChecked) > 24 * 60 * 60 * 1000) {
-      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood!);
+    const foodEmpty = !cachedFood || cachedFood.length === 0;
+    if ((now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty) {
+      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
+    }
     }
     return {
       medicines:   cachedMeds!,
