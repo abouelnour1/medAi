@@ -142,8 +142,26 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </div>
         </div>
 
-        {/* Content */}
-        <div ref={contentRef} className="flex-grow overflow-y-auto no-scrollbar overscroll-contain px-4 pb-8" style={{ direction: 'rtl' }}>
+        {/* Content — سحب للتحت من أي مكان لو الـ scroll في الأعلى */}
+        <div
+          ref={contentRef}
+          className="flex-grow overflow-y-auto no-scrollbar overscroll-contain px-4 pb-8"
+          style={{ direction: 'ltr' }}
+          onTouchStart={(e) => {
+            const el = contentRef.current;
+            if (el && el.scrollTop === 0) onDragStart(e.touches[0].clientY);
+          }}
+          onTouchMove={(e) => {
+            const el = contentRef.current;
+            if (el && el.scrollTop === 0 && isDragging.current) {
+              e.preventDefault();
+              onDragMove(e.touches[0].clientY);
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (isDragging.current) onDragEnd(e.changedTouches[0].clientY);
+          }}
+        >
           {children}
         </div>
       </div>

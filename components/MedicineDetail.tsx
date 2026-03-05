@@ -171,6 +171,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               </div>
           </div>
           <div className="flex gap-4 items-center">
+              {medicine.imgBox && (
+                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-24 h-24 bg-white rounded-2xl p-1.5 shadow-xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
+                      <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
+                  </button>
+              )}
               <div className="flex-grow min-w-0">
                   <h1 className="text-xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
                   {/* ── المادة الفعالة + التركيز — لو أكتر من 3 نكتفي بـ badge ── */}
@@ -202,11 +207,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                   })()}
                   {price > 0 && <div className="mt-3 flex items-baseline gap-1"><span className="text-3xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-lg font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
               </div>
-              {medicine.imgBox && (
-                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-24 h-24 bg-white rounded-2xl p-1.5 shadow-xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
-                      <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
-                  </button>
-              )}
           </div>
       </div>
 
