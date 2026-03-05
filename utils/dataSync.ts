@@ -133,7 +133,6 @@ export async function syncData(): Promise<SyncResult> {
     if ((now - lastChecked) > 24 * 60 * 60 * 1000 || foodEmpty) {
       checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups!, cachedFood ?? []);
     }
-    }
     return {
       medicines:   cachedMeds!,
       supplements: cachedSups || [],
