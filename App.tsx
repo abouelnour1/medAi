@@ -394,25 +394,34 @@ const App: React.FC = () => {
     setSheetMedicine(m);  // افتح الـ BottomSheet
   };
 
-  // ── Android back button + Swipe to go back ──────────────────────────────
+  // ── Android back button ──────────────────────────────────────────────────
   useEffect(() => {
-    // Android back button
     const handleAndroidBack = (e: PopStateEvent) => {
-      if (view !== 'search' && !(view === 'insuranceSearch' && activeTab === 'insurance') && !(activeTab === 'settings')) {
-        e.preventDefault();
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.href);
+
+      // لو الـ sheet مفتوح → اقفله بس
+      if (sheetMedicine) { setSheetMedicine(null); return; }
+
+      const isHome = (view === 'search' || view === 'insuranceSearch' || activeTab === 'settings');
+      if (isHome) {
+        // خروج من البرنامج
+        import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {
+          (window as any).navigator?.app?.exitApp?.();
+        });
+      } else {
         handleBack();
-        window.history.pushState(null, '', window.location.href);
       }
     };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handleAndroidBack);
     return () => window.removeEventListener('popstate', handleAndroidBack);
-  }, [view, handleBack, activeTab]);
+  }, [view, handleBack, activeTab, sheetMedicine]);
 
-  // ── Swipe to go back (edge swipe من اليسار) ──────────────────────────────
+  // ── Swipe to go back — بس لو مفيش BottomSheet مفتوح ──────────────────────
   useEffect(() => {
-    const canGoBack = view !== 'search' && view !== 'insuranceSearch';
-    if (!canGoBack) return;
+    // لو الـ sheet مفتوح — مافيش swipe رجوع (الـ sheet عنده حركته)
+    if (sheetMedicine) return;
 
     let startX = 0;
     let startY = 0;
@@ -422,18 +431,26 @@ const App: React.FC = () => {
       const touch = e.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;
-      tracking = startX < 30; // فقط من edge اليسار
+      tracking = startX < 28; // edge اليسار بس
     };
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!tracking) return;
+      tracking = false;
       const touch = e.changedTouches[0];
       const dx = touch.clientX - startX;
       const dy = Math.abs(touch.clientY - startY);
-      if (dx > 60 && dy < 80) {
+      if (dx < 60 || dy > 80) return;
+
+      const isHome = view === 'search' || view === 'insuranceSearch' || activeTab === 'settings';
+      if (isHome) {
+        // من الواجهة الرئيسية → خروج من البرنامج
+        (window as any).navigator?.app?.exitApp?.();
+        // Capacitor
+        import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {});
+      } else {
         handleBack();
       }
-      tracking = false;
     };
 
     document.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -442,7 +459,7 @@ const App: React.FC = () => {
       document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchend', onTouchEnd);
     };
-  }, [view, handleBack]);
+  }, [view, handleBack, sheetMedicine, activeTab]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -797,7 +814,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine }), t)} onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine }), t)} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={()=>{}} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSelectedMedicine(m); setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
