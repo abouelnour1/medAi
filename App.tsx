@@ -201,7 +201,7 @@ const App: React.FC = () => {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
+  const [isMedicinesLoading, setIsMedicinesLoading] = useState(() => localStorage.getItem('app_has_loaded') !== 'true');
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
