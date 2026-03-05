@@ -106,11 +106,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchCancel={handleTouchEnd}
       className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all duration-150 cursor-pointer overflow-hidden"
     >
-      <div className="flex gap-3 p-4">
+      <div className="flex gap-2.5 p-3">
 
         {/* ── صورة العلبة ── */}
         {medicine.imgBox ? (
-          <div className="flex-shrink-0 w-[72px] h-[72px] bg-slate-50 dark:bg-slate-800/60 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1.5 self-start">
+          <div className="flex-shrink-0 w-[60px] h-[60px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start">
             <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
           </div>
         ) : (
@@ -126,18 +126,18 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
         <div className="flex-grow min-w-0 flex flex-col justify-between">
 
           {/* الصف الأول: اسم الشركة */}
-          <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none mb-1.5">
+          <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none mb-1">
             {medicine['Manufacture Name'] || '—'}
           </p>
 
           {/* الاسم التجاري — أكبر وأوضح */}
-          <h2 className="text-[17px] font-black text-slate-800 dark:text-white leading-snug break-words mb-1">
+          <h2 className="text-[14px] font-black text-slate-800 dark:text-white leading-snug break-words mb-0.5">
             {medicine['Trade Name']}
           </h2>
 
           {/* المادة الفعالة */}
           {ingredientsString ? (
-            <p className="text-[12px] text-slate-500 dark:text-slate-400 mb-2.5 leading-snug line-clamp-2" dir="ltr">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 leading-snug line-clamp-2" dir="ltr">
               {ingredientsString}
             </p>
           ) : ingredientCount > 3 ? (
@@ -203,8 +203,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
 
           {/* السعر */}
           {hasPrice ? (
-            <div className="bg-primary/8 dark:bg-primary/15 px-3 py-2.5 rounded-xl text-center min-w-[64px]">
-              <span className="text-[17px] font-black text-primary dark:text-primary-light block leading-none">
+            <div className="bg-primary/8 dark:bg-primary/15 px-2.5 py-2 rounded-xl text-center min-w-[56px]">
+              <span className="text-[15px] font-black text-primary dark:text-primary-light block leading-none">
                 {price.toFixed(2)}
               </span>
               <span className="text-[9px] font-semibold text-primary/60 dark:text-primary-light/60 block mt-0.5">

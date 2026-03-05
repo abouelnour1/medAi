@@ -15,22 +15,22 @@ import { getIngredientsList } from './MedicineCard';
 import { getClinicalData, ClinicalData } from '../utils/dailyMedicines';
 import ClinicalDataPage from './ClinicalDataPage';
 
-const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-    <div className="bg-white dark:bg-dark-card rounded-[2rem] p-5 shadow-sm border border-slate-50 dark:border-dark-border mb-4 animate-fade-in">
-        <div className="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-dark-border pb-3">
-            <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center p-1.5">{icon}</div>
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-dark-muted">{title}</h3>
+const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; accent?: string }> = ({ title, icon, children, accent = 'teal' }) => (
+    <div className="bg-white dark:bg-dark-card rounded-[1.75rem] overflow-hidden shadow-sm border border-slate-100/80 dark:border-dark-border mb-3 animate-fade-in">
+        <div className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-dark-card border-b border-slate-100 dark:border-dark-border`}>
+            <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center p-1.5 flex-shrink-0">{icon}</div>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-dark-muted">{title}</h3>
         </div>
-        <div className="space-y-3">{children}</div>
+        <div className="px-4 py-3 space-y-2">{children}</div>
     </div>
 );
 
 const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
   if (!value || String(value).trim() === '' || String(value).toLowerCase() === 'na') return null;
   return (
-    <div className="flex justify-between items-start gap-4 py-1.5">
-      <dt className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mt-1">{label}</dt>
-      <dd className="text-sm font-black text-slate-800 dark:text-slate-100 text-right leading-tight">{value}</dd>
+    <div className="flex justify-between items-center gap-3 py-1 border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+      <dt className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">{label}</dt>
+      <dd className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right leading-tight">{value}</dd>
     </div>
   );
 };
@@ -123,7 +123,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
 
   return (
     <div className="space-y-6 pb-24 animate-fade-in">
-      <div className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-slate-900 dark:to-slate-900/50 border border-teal-100 dark:border-dark-border rounded-[2.5rem] p-6 shadow-xl relative">
+      <div className="bg-gradient-to-br from-teal-50 via-white to-cyan-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/50 border border-teal-100/50 dark:border-dark-border rounded-[2rem] p-4 shadow-lg relative">
           <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 {/* Legal Status - ملون حسب النوع */}
@@ -172,7 +172,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
           <div className="flex gap-4 items-center">
               <div className="flex-grow min-w-0">
-                  <h1 className="text-2xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
+                  <h1 className="text-xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
                   {/* ── المادة الفعالة + التركيز — لو أكتر من 3 نكتفي بـ badge ── */}
                   {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
                     const sciNames = String(medicine['Scientific Name']).split(',').map(s => s.trim()).filter(Boolean);
@@ -200,10 +200,10 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                       </p>
                     );
                   })()}
-                  {price > 0 && <div className="mt-4 flex items-baseline gap-1.5"><span className="text-4xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-2xl font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
+                  {price > 0 && <div className="mt-3 flex items-baseline gap-1"><span className="text-3xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-lg font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
               </div>
               {medicine.imgBox && (
-                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-28 h-28 bg-white rounded-3xl p-2 shadow-2xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
+                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-24 h-24 bg-white rounded-2xl p-1.5 shadow-xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
                       <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
                   </button>
               )}
@@ -224,14 +224,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 px-1">
-          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-2 bg-white dark:bg-dark-card p-4 rounded-3xl shadow-sm border dark:border-slate-800 active:scale-95 transition-all font-black text-[11px] uppercase">
-              <div className="w-5 h-5 text-primary"><AlternativeIcon /></div>
-              {t('directAlternatives')}
+      <div className="grid grid-cols-2 gap-2.5 px-0.5">
+          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-2 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3.5 rounded-2xl active:scale-95 transition-all">
+              <div className="w-5 h-5 text-primary flex-shrink-0"><AlternativeIcon /></div>
+              <span className="font-black text-[10px] uppercase text-primary">{t('directAlternatives')}</span>
           </button>
-          <button onClick={onOpenAssistant} className="flex items-center justify-center gap-2 bg-white dark:bg-dark-card p-4 rounded-3xl shadow-sm border dark:border-slate-800 active:scale-95 transition-all font-black text-[11px] uppercase">
-              <div className="w-5 h-5 text-primary"><AssistantIcon /></div>
-              AI Assistant
+          <button onClick={onOpenAssistant} className="flex items-center justify-center gap-2 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-900/10 border border-violet-200/50 dark:border-violet-800/30 p-3.5 rounded-2xl active:scale-95 transition-all">
+              <div className="w-5 h-5 text-violet-600 dark:text-violet-400 flex-shrink-0"><AssistantIcon /></div>
+              <span className="font-black text-[10px] uppercase text-violet-600 dark:text-violet-400">AI Assistant</span>
           </button>
       </div>
 

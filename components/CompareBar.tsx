@@ -39,7 +39,7 @@ const CompareBar: React.FC<CompareBarProps> = ({ compareList, onRemove, onCompar
       <div
         className="fixed left-4 right-4 z-40 max-w-2xl mx-auto"
         style={{
-          bottom: 'calc(5rem + env(safe-area-inset-bottom) + 12px)',
+          bottom: 'calc(5.5rem + env(safe-area-inset-bottom) + 16px)',
           transform: visible ? 'translateY(0) scale(1)' : 'translateY(130%) scale(0.88)',
           opacity: visible ? 1 : 0,
           transition: 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',

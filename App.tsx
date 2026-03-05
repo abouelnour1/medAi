@@ -8,6 +8,7 @@ import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import MedicineDetail from './components/MedicineDetail';
+import BottomSheet from './components/BottomSheet';
 import BottomNavBar from './components/BottomNavBar';
 import FilterModal from './components/FilterModal';
 import SortControls from './components/SortControls';
@@ -241,6 +242,7 @@ const App: React.FC = () => {
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
+  const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasLoadedBefore, setHasLoadedBefore] = useState(() => localStorage.getItem('app_has_loaded') === 'true');
@@ -296,7 +298,7 @@ const App: React.FC = () => {
     if (!headerRef.current) return;
     const observer = new ResizeObserver(entries => {
       for (const entry of entries) {
-        setHeaderHeight(entry.contentRect.height + 16);
+        setHeaderHeight(Math.ceil(entry.contentRect.height) + 20);
       }
     });
     observer.observe(headerRef.current);
@@ -323,11 +325,15 @@ const App: React.FC = () => {
   }, [language]);
 
   const restoreScroll = useCallback((targetView: string) => {
+      const saved = scrollPositions.current.get(targetView) || 0;
+      if (!saved) return;
+      // محتاجين نستنى الـ DOM يتحدث الأول
       requestAnimationFrame(() => {
-          if (scrollContainerRef.current) {
-              const saved = scrollPositions.current.get(targetView) || 0;
-              scrollContainerRef.current.scrollTo({ top: saved, behavior: 'auto' });
-          }
+          requestAnimationFrame(() => {
+              if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTop = saved;
+              }
+          });
       });
   }, []);
 
@@ -341,6 +347,9 @@ const App: React.FC = () => {
           const backTarget: View = (previousView === 'alternatives' ? 'details' : (previousView || 'details')) as View;
           setView(backTarget);
           restoreScroll(backTarget);
+      } else if (sheetMedicine) {
+          setSheetMedicine(null);
+          return;
       } else if (view === 'alternatives') {
           setView('results');
           restoreScroll('results');
@@ -373,18 +382,66 @@ const App: React.FC = () => {
     if (scrollContainerRef.current) {
         scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
     }
-    // حفظ في سجل البحث الأخير
     setRecentSearchIds(prev => {
         const filtered = prev.filter(id => id !== m.RegisterNumber);
         const updated = [m.RegisterNumber, ...filtered].slice(0, MAX_RECENT);
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
         return updated;
     });
-    setPreviousView(view); // نحفظ الـ view الحالي قبل ما نروح details
+    setPreviousView(view);
     setSelectedMedicine(m);
-    setView('details');
-    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+    setSheetMedicine(m);  // افتح الـ BottomSheet
   };
+
+  // ── Android back button + Swipe to go back ──────────────────────────────
+  useEffect(() => {
+    // Android back button
+    const handleAndroidBack = (e: PopStateEvent) => {
+      if (view !== 'search' && !(view === 'insuranceSearch' && activeTab === 'insurance') && !(activeTab === 'settings')) {
+        e.preventDefault();
+        handleBack();
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handleAndroidBack);
+    return () => window.removeEventListener('popstate', handleAndroidBack);
+  }, [view, handleBack, activeTab]);
+
+  // ── Swipe to go back (edge swipe من اليسار) ──────────────────────────────
+  useEffect(() => {
+    const canGoBack = view !== 'search' && view !== 'insuranceSearch';
+    if (!canGoBack) return;
+
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      tracking = startX < 30; // فقط من edge اليسار
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - startX;
+      const dy = Math.abs(touch.clientY - startY);
+      if (dx > 60 && dy < 80) {
+        handleBack();
+      }
+      tracking = false;
+    };
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [view, handleBack]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -626,7 +683,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-      if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => setView('search')} />;
+      if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { const prev = previousView || 'search'; setView(prev as View); restoreScroll(prev); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
         const filtered = medicines.filter(m => 
@@ -909,13 +966,42 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
-      <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => setView('login')} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
+      <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 32, 124), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.15s ease, padding-bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          {!isDataLoaded ? (
-            <div className="space-y-4 pt-2">
-              <div className="h-32 bg-gradient-to-br from-primary/20 to-teal-500/20 rounded-3xl animate-pulse" />
-              <SkeletonList count={4} />
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 36, 130), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+          {isMedicinesLoading ? (
+            <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
+              {/* Progress Circle */}
+              <div className="relative w-28 h-28 mb-6">
+                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-slate-100 dark:text-slate-800" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none"
+                    stroke="url(#progressGrad)" strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray="263.9"
+                    strokeDashoffset="66"
+                    style={{
+                      animation: 'spin 1.4s linear infinite',
+                      transformOrigin: 'center',
+                    }}
+                  />
+                  <defs>
+                    <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#14b8a6" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-primary">💊</span>
+                </div>
+              </div>
+              <h2 className="text-[13px] font-black text-slate-700 dark:text-slate-300 mb-1">PharmaSource</h2>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase animate-pulse">
+                {language === 'ar' ? 'جاري تحميل قاعدة البيانات...' : 'Loading database...'}
+              </p>
+              <style>{`@keyframes spin { from { stroke-dashoffset: 263.9; } to { stroke-dashoffset: 0; } }`}</style>
             </div>
           ) : (
             <div
@@ -953,6 +1039,34 @@ const App: React.FC = () => {
       {showCompare && compareList.length === 2 && (
         <CompareModal medicines={compareList} onClose={() => setShowCompare(false)} language={language} />
       )}
+      {/* ── Bottom Sheet للدواء ── */}
+      <BottomSheet
+        isOpen={!!sheetMedicine}
+        onClose={() => setSheetMedicine(null)}
+      >
+        {sheetMedicine && (
+          <MedicineDetail
+            medicine={sheetMedicine}
+            insuranceData={insuranceData}
+            allMedicines={medicines}
+            t={t}
+            language={language}
+            isFavorite={favorites.includes(sheetMedicine.RegisterNumber)}
+            onToggleFavorite={toggleFavorite}
+            user={user}
+            onEdit={(m) => { setSelectedMedicine(m); setIsEditModalOpen(true); }}
+            onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)}
+            onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: sheetMedicine }), t)}
+            onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: sheetMedicine }), t)}
+            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
+            onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }}
+            onShare={handleShareMedicine}
+            onToggleCompare={toggleCompare}
+            isInCompare={compareList.some(m => m.RegisterNumber === sheetMedicine.RegisterNumber)}
+          />
+        )}
+      </BottomSheet>
+
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       {/* الزرار يظهر بس لو مسجل دخول */}
       {user && <FloatingAssistantButton onClick={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onLongPress={()=>{}} t={t} language={language} />}
