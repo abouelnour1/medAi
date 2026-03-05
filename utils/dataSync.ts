@@ -125,18 +125,28 @@ export async function syncData(): Promise<SyncResult> {
 
   // لو food فاضي — حمّله دلوقتي بدون أي شروط
   if (hasCachedData && foodEmpty) {
-    console.log('[dataSync] Food empty — force loading from Storage');
-    const newFood = await fetchFromStorage(STORAGE_URLS.food);
-    console.log('[dataSync] Food fetched:', newFood.length);
-    if (newFood.length > 0) {
-      await setItem(CACHE_KEYS.food, newFood);
-      return {
-        medicines:   cachedMeds!,
-        supplements: cachedSups || [],
-        food:        newFood,
-        source: 'storage',
-        updated: true,
-      };
+    console.log('[dataSync] 🍎 Food empty — force loading...');
+    console.log('[dataSync] URL:', STORAGE_URLS.food);
+    try {
+      const res = await fetch(STORAGE_URLS.food, { cache: 'no-store' });
+      console.log('[dataSync] Food response status:', res.status);
+      const newFood = await res.json();
+      console.log('[dataSync] Food parsed:', Array.isArray(newFood), newFood?.length);
+      if (Array.isArray(newFood) && newFood.length > 0) {
+        await setItem(CACHE_KEYS.food, newFood);
+        console.log('[dataSync] ✅ Food saved to cache');
+        return {
+          medicines:   cachedMeds!,
+          supplements: cachedSups || [],
+          food:        newFood,
+          source: 'storage',
+          updated: true,
+        };
+      } else {
+        console.warn('[dataSync] ❌ Food array empty or invalid');
+      }
+    } catch(e) {
+      console.error('[dataSync] ❌ Food fetch error:', e);
     }
   }
 
