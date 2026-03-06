@@ -153,7 +153,7 @@ export async function syncData(): Promise<SyncResult> {
   if (hasCachedData) {
     const now = Date.now();
     const lastChecked = cachedMeta?.last_checked ?? 0;
-    if ((now - lastChecked) > 24 * 60 * 60 * 1000) {
+    if ((now - lastChecked) > 8 * 60 * 60 * 1000) { // كل 8 ساعات
       checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups || [], cachedFood || []);
     }
     return {

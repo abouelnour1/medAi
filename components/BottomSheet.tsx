@@ -4,14 +4,16 @@ interface BottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  snapPoints?: number[]; // نسب من ارتفاع الشاشة: [0.5, 0.92]
+  snapPoints?: number[];
+  skipOpenAnimation?: boolean; // لما الـ sheet كان مفتوح ومش محتاج animation فتح
 }
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
   isOpen,
   onClose,
   children,
-  snapPoints = [0.62, 0.93],
+  snapPoints = [0.68, 0.93],
+  skipOpenAnimation = false,
 }) => {
   const sheetRef        = useRef<HTMLDivElement>(null);
   const contentRef      = useRef<HTMLDivElement>(null);
@@ -32,13 +34,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     if (isOpen) {
       setHeight(minH);
       setVisible(true);
-      setTimeout(() => setAnimate(true), 10);
+      if (skipOpenAnimation) {
+        setAnimate(true); // فوراً بدون animation
+      } else {
+        setTimeout(() => setAnimate(true), 10);
+      }
     } else {
       setAnimate(false);
       const t = setTimeout(() => setVisible(false), 220);
       return () => clearTimeout(t);
     }
-  }, [isOpen, minH]);
+  }, [isOpen, minH, skipOpenAnimation]);
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
   const onDragStart = useCallback((clientY: number) => {
@@ -51,7 +57,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const onDragMove = useCallback((clientY: number) => {
     if (!isDragging.current) return;
     const delta  = dragStartY.current - clientY;
-    const newH   = Math.min(maxH, Math.max(100, dragStartHeight.current + delta));
+    // resistance خفيف للسحب لفوق، مباشر للسحب لتحت
+    const resistance = delta > 0 ? 1 : 0.6;
+    const newH   = Math.min(maxH, Math.max(80, dragStartHeight.current + delta * resistance));
     setHeight(newH);
   }, [maxH]);
 
@@ -63,8 +71,8 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     const delta = dragStartY.current - clientY;
     const cur   = dragStartHeight.current + delta;
 
-    // لو سحب لتحت كتير → اقفل
-    if (cur < minH * 0.55) {
+    // لو سحب لتحت → اقفل بسرعة
+    if (cur < minH * 0.75) {
       onClose();
       return;
     }

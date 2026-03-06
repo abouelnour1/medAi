@@ -98,7 +98,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     return flags;
   }, [medicine]);
 
+  const [imgSearching, setImgSearching] = React.useState(false);
   const handleGoogleImageSearch = async () => {
+    if (imgSearching) return;
+    setImgSearching(true);
+    setTimeout(() => setImgSearching(false), 3000);
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
     try {
@@ -148,7 +152,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                 {isRestricted && <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-full text-[9px] font-black uppercase">Restricted</span>}
               </div>
               <div className="flex gap-2">
-                  <button onClick={handleGoogleImageSearch} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted hover:text-primary rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all">
+                  <button onClick={handleGoogleImageSearch} disabled={imgSearching} className={`p-2.5 rounded-2xl shadow-sm border active:scale-90 transition-all ${imgSearching ? "bg-primary/10 text-primary border-primary/20" : "bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted border-slate-100 dark:border-dark-border"}`}>
                       <div className="w-5 h-5"><CameraIcon /></div>
                   </button>
                   {onShare && (

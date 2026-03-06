@@ -21,6 +21,7 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
   const [clinicalExpanded, setClinicalExpanded] = useState(false);
   const [clinicalLoading, setClinicalLoading] = useState(false);
   const [clinicalSaved, setClinicalSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (medicine) {
@@ -44,9 +45,10 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData) {
-      onSave(formData);
-      onClose();
+    if (formData && !isSaving) {
+      setIsSaving(true);
+      try { onSave(formData); } catch(err) { console.error(err); }
+      setTimeout(() => { setIsSaving(false); onClose(); }, 300);
     }
   };
 
@@ -363,7 +365,7 @@ const EditMedicineModal: React.FC<EditMedicineModalProps> = ({ isOpen, onClose, 
           <button type="button" onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
             {t('cancel')}
           </button>
-          <button onClick={handleSave} className="px-8 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2">
+          <button onClick={handleSave} disabled={isSaving} className={`px-8 py-2.5 text-white rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2 ${isSaving ? "bg-primary/60 cursor-not-allowed" : "bg-primary hover:bg-primary-dark"}`}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             {isCompany ? 'إرسال للمراجعة' : t('save')}
           </button>

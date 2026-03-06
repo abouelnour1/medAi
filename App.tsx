@@ -243,6 +243,8 @@ const App: React.FC = () => {
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
+  const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
+  const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasLoadedBefore, setHasLoadedBefore] = useState(() => localStorage.getItem('app_has_loaded') === 'true');
@@ -353,7 +355,7 @@ const App: React.FC = () => {
       } else if (view === 'alternatives') {
           setView('results');
           restoreScroll('results');
-          if (selectedMedicine) setTimeout(() => setSheetMedicine(selectedMedicine), 50);
+          if (selectedMedicine) openSheet(selectedMedicine, true); // skip animation
       } else if (view === 'details') {
           const target = previousView === 'alternatives' ? 'alternatives' : 'results';
           setView(target);
@@ -418,48 +420,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handleAndroidBack);
   }, [view, handleBack, activeTab, sheetMedicine]);
 
-  // ── Swipe to go back — بس لو مفيش BottomSheet مفتوح ──────────────────────
-  useEffect(() => {
-    // لو الـ sheet مفتوح — مافيش swipe رجوع (الـ sheet عنده حركته)
-    if (sheetMedicine) return;
-
-    let startX = 0;
-    let startY = 0;
-    let tracking = false;
-
-    const onTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      tracking = startX < 28; // edge اليسار بس
-    };
-
-    const onTouchEnd = (e: TouchEvent) => {
-      if (!tracking) return;
-      tracking = false;
-      const touch = e.changedTouches[0];
-      const dx = touch.clientX - startX;
-      const dy = Math.abs(touch.clientY - startY);
-      if (dx < 60 || dy > 80) return;
-
-      const isHome = view === 'search' || view === 'insuranceSearch' || activeTab === 'settings';
-      if (isHome) {
-        // من الواجهة الرئيسية → خروج من البرنامج
-        (window as any).navigator?.app?.exitApp?.();
-        // Capacitor
-        import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {});
-      } else {
-        handleBack();
-      }
-    };
-
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchend', onTouchEnd, { passive: true });
-    return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [view, handleBack, sheetMedicine, activeTab]);
+  // Swipe to go back — تم إلغاؤه
 
   useEffect(() => {
     if (authLoading) return;
@@ -517,6 +478,7 @@ const App: React.FC = () => {
         // ── خطوة 4: اسمع لتحديثات Storage في الخلفية ─────────────
         const handleStorageUpdate = (e: Event) => {
           const { medicines, supplements, food } = (e as CustomEvent).detail;
+          setIsMedicinesLoading(true);  // شيل علامة التحميل
           setMedicines(prev => {
             const updatedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
             [...medicines, ...supplements, ...food]
@@ -524,6 +486,7 @@ const App: React.FC = () => {
               .forEach(m => updatedMap.set(m.RegisterNumber, m));
             return Array.from(updatedMap.values());
           });
+          setTimeout(() => setIsMedicinesLoading(false), 300);
         };
         window.addEventListener('pharma:storage-updated', handleStorageUpdate);
 
@@ -954,20 +917,7 @@ const App: React.FC = () => {
                               />
                             </div>
                           )}
-                          {/* زرار مسح الـ Cache */}
-                          <button
-                            onClick={async () => {
-                              if (window.confirm(language === 'ar' ? 'هيتم مسح الـ Cache وإعادة تحميل البيانات. هل أنت متأكد؟' : 'Cache will be cleared and data reloaded. Are you sure?')) {
-                                await clearDataCache();
-                                window.location.reload();
-                              }
-                            }}
-                            className="w-full mt-2 py-3.5 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-sm flex items-center justify-center gap-2"
-                          >
-                            <span>🔄</span>
-                            <span>{language === 'ar' ? 'تحديث قاعدة البيانات' : 'Refresh Database'}</span>
-                          </button>
-                          {user && <button onClick={logout} className="w-full mt-2 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
+                          {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
               </div>
@@ -1073,6 +1023,7 @@ const App: React.FC = () => {
       {/* ── Bottom Sheet للدواء ── */}
       <BottomSheet
         isOpen={!!sheetMedicine}
+        skipOpenAnimation={sheetSkipAnim}
         onClose={() => setSheetMedicine(null)}
       >
         {sheetMedicine && (
@@ -1139,7 +1090,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>{ setIsEditModalOpen(false); if(selectedMedicine) setSheetMedicine(selectedMedicine); }} medicine={selectedMedicine} onSave={async (m) => { await handleSaveMedicine(m); setIsEditModalOpen(false); setSheetMedicine(m); }} t={t} />}
+      {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>{ setIsEditModalOpen(false); if(selectedMedicine) openSheet(selectedMedicine, true); }} medicine={selectedMedicine} onSave={async (m) => { await handleSaveMedicine(m); setIsEditModalOpen(false); openSheet(m, true); }} t={t} />}
     </div>
   );
 };
