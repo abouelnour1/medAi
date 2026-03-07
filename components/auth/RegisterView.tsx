@@ -36,6 +36,11 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     setIsLoading(true);
     try {
       await register(email, password, role);
+      // رسالة تأكيد الإيميل
+      alert(ar
+        ? `✅ تم إنشاء حسابك!\n\nتم إرسال رسالة تأكيد إلى:\n${email}\n\nمن فضلك افتح بريدك وأكّد إيميلك قبل تسجيل الدخول.`
+        : `✅ Account created!\n\nA verification email was sent to:\n${email}\n\nPlease check your inbox and verify your email before logging in.`
+      );
       onRegisterSuccess();
     } catch (err: any) {
       setError(err.message || 'Registration failed');

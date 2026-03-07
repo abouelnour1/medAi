@@ -132,15 +132,13 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         >
           <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" style={{background: "linear-gradient(90deg, #14b8a6, #0ea5e9)"}} />
           <div className="w-full flex justify-between items-center px-4 pt-1.5">
-            <button onClick={onClose} className="flex items-center gap-1.5 text-slate-400 active:scale-90 transition-transform py-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-slate-400 active:scale-90 transition-transform rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
-              <span className="text-[10px] font-black uppercase tracking-widest">إغلاق</span>
             </button>
-            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="flex items-center gap-1 text-slate-400 active:scale-90 transition-transform py-1">
-              <span className="text-[10px] font-black uppercase tracking-widest">{isExpanded ? 'تصغير' : 'توسيع'}</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="w-8 h-8 flex items-center justify-center text-slate-400 active:scale-90 transition-transform rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? "M19 15l-7-7-7 7" : "M5 15l7-7 7 7"} />
               </svg>
             </button>

@@ -278,22 +278,20 @@ const App: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(90);
 
-  // منع الـ UI من الحركة لما تيجي إشعارات أو يتفتح الكيبورد
+  // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
+  const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    let lastHeight = vv.height;
     const handleResize = () => {
-      // لو الـ height اتغير بسبب كيبورد أو إشعار - نثبت الـ scrollTop
-      if (Math.abs(vv.height - lastHeight) > 50) {
-        lastHeight = vv.height;
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = scrollPositions.current.get(view) || 0;
-        }
+      setViewportOffsetTop(vv.offsetTop || 0);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollPositions.current.get(view) || 0;
       }
     };
     vv.addEventListener('resize', handleResize);
-    return () => vv.removeEventListener('resize', handleResize);
+    vv.addEventListener('scroll', handleResize);
+    return () => { vv.removeEventListener('resize', handleResize); vv.removeEventListener('scroll', handleResize); };
   }, [view]);
 
   useEffect(() => {
@@ -442,6 +440,13 @@ const App: React.FC = () => {
 
         if (baseMap.size > 0) setMedicines(Array.from(baseMap.values()));
         setIsMedicinesLoading(false);
+
+        // ── طلب إذن الإشعارات أول فتح للتطبيق ──────────────────
+        const notifAsked = localStorage.getItem('notif_permission_asked');
+        if (!notifAsked && 'Notification' in window && Notification.permission === 'default') {
+          localStorage.setItem('notif_permission_asked', 'true');
+          setTimeout(() => Notification.requestPermission(), 2000);
+        }
 
         // ── خطوة 2: اسمع لـ overrides live (للكل — أدمن ومستخدمين) ──
         const unsubOverrides = listenToOverrides((overrides) => {
@@ -947,9 +952,15 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
+      {/* Offline Banner — ثابت مش بيلعب */}
+      {!isOnline && (
+        <div className="fixed top-0 left-0 right-0 z-[9998] bg-red-500 text-white text-center py-1" style={{fontSize: '11px', fontWeight: 900, letterSpacing: '0.15em'}}>
+          OFFLINE
+        </div>
+      )}
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 36, 130), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 36, 130) + viewportOffsetTop, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {isMedicinesLoading ? (
             <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
               {/* Progress Circle */}

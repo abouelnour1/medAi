@@ -75,8 +75,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 matchingMeds = allMedicines.filter(m => regex.test(String(m[field])));
             }
         } else {
-            // أولاً: exact match
-            const exact = allMedicines.filter(m => String(m[field]).toLowerCase().includes(term));
+            // أولاً: exact match — اللي بيبدأ بالـ term الأول
+            const startsWith = allMedicines.filter(m => String(m[field]).toLowerCase().startsWith(term));
+            const contains   = allMedicines.filter(m => !String(m[field]).toLowerCase().startsWith(term) && String(m[field]).toLowerCase().includes(term));
+            const exact = [...startsWith, ...contains];
             // ثانياً: fuzzy match للحالات اللي مش فيها نتيجة كافية
             if (exact.length < 5) {
                 const fuzzy = allMedicines.filter(m =>
@@ -84,10 +86,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 ).sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
                 matchingMeds = [...exact, ...fuzzy];
             } else {
-                // ترتيب: اللي بيبدأ بالـ term الأول
-                const startsWith = exact.filter(m => String(m[field]).toLowerCase().startsWith(term));
-                const contains  = exact.filter(m => !String(m[field]).toLowerCase().startsWith(term));
-                matchingMeds = [...startsWith, ...contains];
+                matchingMeds = exact;
             }
         }
         // Food = Product type 'Food' — غير مغطى تأمينياً
