@@ -123,30 +123,27 @@ export async function syncData(): Promise<SyncResult> {
   const hasCachedData = cachedMeds && cachedMeds.length > 0;
   const foodEmpty = !cachedFood || (Array.isArray(cachedFood) && cachedFood.length === 0);
 
-  // لو food فاضي — حمّله دلوقتي بدون أي شروط
+  // لو food فاضي — حمّله مرة واحدة بس مع حماية من الـ loop
   if (hasCachedData && foodEmpty) {
-    console.log('[dataSync] 🍎 Food empty — force loading...');
-    console.log('[dataSync] URL:', STORAGE_URLS.food);
-    try {
-      const res = await fetch(STORAGE_URLS.food, { cache: 'no-store' });
-      console.log('[dataSync] Food response status:', res.status);
-      const newFood = await res.json();
-      console.log('[dataSync] Food parsed:', Array.isArray(newFood), newFood?.length);
-      if (Array.isArray(newFood) && newFood.length > 0) {
-        await setItem(CACHE_KEYS.food, newFood);
-        console.log('[dataSync] ✅ Food saved to cache');
-        return {
-          medicines:   cachedMeds!,
-          supplements: cachedSups || [],
-          food:        newFood,
-          source: 'storage',
-          updated: true,
-        };
-      } else {
-        console.warn('[dataSync] ❌ Food array empty or invalid');
+    const foodLastAttempt = (cachedMeta as any)?.food_last_attempt ?? 0;
+    const tenMinutes = 10 * 60 * 1000;
+    if (Date.now() - foodLastAttempt < tenMinutes) {
+      console.log('[dataSync] ⏸ Food skipped — tried recently');
+    } else {
+      console.log('[dataSync] 🍎 Food empty — loading...');
+      await setItem(CACHE_KEYS.meta, { ...(cachedMeta || {}), food_last_attempt: Date.now() });
+      try {
+        const res = await fetch(STORAGE_URLS.food);
+        const newFood = await res.json();
+        if (Array.isArray(newFood) && newFood.length > 0) {
+          await setItem(CACHE_KEYS.food, newFood);
+          await setItem(CACHE_KEYS.meta, { ...(cachedMeta || {}), food_last_attempt: Date.now(), last_checked: Date.now() });
+          console.log('[dataSync] ✅ Food cached:', newFood.length);
+          return { medicines: cachedMeds!, supplements: cachedSups || [], food: newFood, source: 'storage', updated: true };
+        }
+      } catch(e) {
+        console.error('[dataSync] ❌ Food fetch error:', e);
       }
-    } catch(e) {
-      console.error('[dataSync] ❌ Food fetch error:', e);
     }
   }
 
