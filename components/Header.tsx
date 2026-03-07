@@ -18,33 +18,23 @@ interface HeaderProps {
 
 const OnlineIndicator: React.FC = () => {
   const [online, setOnline] = React.useState(navigator.onLine);
-  const [justChanged, setJustChanged] = React.useState(false);
-
   React.useEffect(() => {
-    const handleChange = (val: boolean) => {
-      setOnline(val);
-      setJustChanged(true);
-      setTimeout(() => setJustChanged(false), 3000);
-    };
-    const on = () => handleChange(true);
-    const off = () => handleChange(false);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // لو أونلاين ومافيش تغيير حديث - ما نظهر حاجة
-  if (online && !justChanged) return null;
+  if (online) return null;
 
   return (
-    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black transition-all ${
-      online 
-        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' 
-        : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500 animate-pulse'
-    }`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-      {online ? '● متصل' : '✕ بلا نت'}
-    </div>
+    <span style={{
+      fontSize: '9px', fontWeight: 900, letterSpacing: '0.12em',
+      color: '#ef4444', userSelect: 'none'
+    }}>
+      OFFLINE
+    </span>
   );
 };
 
