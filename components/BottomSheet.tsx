@@ -150,17 +150,30 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {/* Content */}
         <div
           ref={contentRef}
-          className="flex-grow overflow-y-auto no-scrollbar overscroll-contain px-4 pb-8"
-          style={{ direction: 'ltr', willChange: 'transform' }}
+          className="flex-grow overflow-y-auto no-scrollbar overscroll-none px-4 pb-8"
+          style={{ direction: 'ltr', willChange: 'transform', touchAction: 'pan-y' }}
           onTouchStart={(e) => {
             const el = contentRef.current;
-            if (el && el.scrollTop === 0) onDragStart(e.touches[0].clientY);
+            if (el && el.scrollTop === 0) {
+              // نسجل نقطة البداية بس — مش نبدأ drag لحد ما نعرف الاتجاه
+              isDragging.current = false;
+              dragStartY.current = e.touches[0].clientY;
+              dragStartHeight.current = height;
+            }
           }}
           onTouchMove={(e) => {
             const el = contentRef.current;
-            if (el && el.scrollTop === 0 && isDragging.current) {
+            if (!el) return;
+            const dy = e.touches[0].clientY - dragStartY.current;
+            // بس لو سحب لتحت (dy > 0) وفي أعلى الـ scroll
+            if (el.scrollTop === 0 && dy > 8) {
+              if (!isDragging.current) {
+                isDragging.current = true;
+                if (sheetRef.current) sheetRef.current.style.transition = 'none';
+              }
               e.preventDefault();
-              onDragMove(e.touches[0].clientY);
+              const newH = Math.min(maxH, Math.max(80, dragStartHeight.current - dy));
+              setHeight(newH);
             }
           }}
           onTouchEnd={(e) => {
