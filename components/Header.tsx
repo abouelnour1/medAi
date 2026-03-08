@@ -56,7 +56,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className="fixed top-0 left-0 right-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-4 transition-all"
+        className="fixed top-0 left-0 right-0 z-[50] px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-4 transition-all"
     >
       <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2rem] px-4 h-16 flex justify-between items-center max-w-7xl mx-auto">
         

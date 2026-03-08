@@ -88,12 +88,23 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
         {/* Logo */}
         <div className="mb-10 text-center">
           <div className="relative inline-flex mb-5">
-            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center shadow-xl shadow-teal-500/30">
-              <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+            <img
+              src="/logo.png"
+              alt="PharmaSource"
+              className="w-20 h-20 rounded-[1.5rem] object-cover shadow-xl shadow-teal-500/30"
+              onError={(e) => {
+                // fallback لو الصورة مش موجودة
+                const t = e.currentTarget as HTMLImageElement;
+                t.style.display = 'none';
+                (t.nextElementSibling as HTMLElement).style.display = 'flex';
+              }}
+            />
+            <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-cyan-600 items-center justify-center shadow-xl shadow-teal-500/30 hidden">
+              <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <div className="absolute inset-0 rounded-[1.25rem] bg-gradient-to-br from-teal-400 to-cyan-600 blur-xl opacity-25 -z-10" />
+            <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-cyan-600 blur-xl opacity-25 -z-10" />
           </div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
             Pharma<span className="text-teal-500">Source</span>

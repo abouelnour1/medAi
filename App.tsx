@@ -956,7 +956,10 @@ const App: React.FC = () => {
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900">
-        <span className="text-4xl mb-3">💊</span>
+        <img src="/logo.png" alt="PharmaSource"
+          className="w-24 h-24 rounded-[1.75rem] object-cover shadow-xl shadow-teal-500/20 mb-4"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).replaceWith(Object.assign(document.createElement('span'), {className:'text-4xl mb-4',textContent:'💊'})); }}
+        />
         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest animate-pulse">PharmaSource</p>
       </div>
     );
@@ -980,7 +983,7 @@ const App: React.FC = () => {
 
       {/* SearchBar Fixed — مش بيختفي خلف الهيدر أبداً */}
       {(view === 'search' || view === 'results') && (
-        <div className="fixed left-0 right-0 z-[41] px-4" style={{ top: searchBarTop }}>
+        <div className="fixed left-0 right-0 z-[45] px-4" style={{ top: searchBarTop }}>
           <div className="max-w-5xl mx-auto bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm pb-2 pt-1 rounded-b-2xl">
             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
             <div className="flex gap-2 mt-2 items-center">
