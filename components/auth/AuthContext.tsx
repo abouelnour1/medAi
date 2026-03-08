@@ -45,6 +45,10 @@ const toPlainObject = (user: any): User | null => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
+  const hasCachedUser = (() => {
+    try { return !!localStorage.getItem(LOCAL_USER_STORAGE_KEY); } catch { return false; }
+  })();
+
   const [user, setUser] = useState<User | null>(() => {
     try {
       const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
@@ -53,7 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  // ✅ لو في cached user (PWA) → مش نظهر splash — نستنى Firebase في الخلفية
+  const [isLoading, setIsLoading] = useState(!hasCachedUser);
   const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
 

@@ -93,7 +93,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                         {user.username.charAt(0).toUpperCase()}
                     </div>
                 </button>
-                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-56 bg-white dark:bg-dark-card rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5 py-2 border dark:border-dark-border z-50
+                <div className={`absolute top-full ltr:right-0 rtl:left-0 mt-2 w-56 bg-white dark:bg-dark-card rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5 py-2 border dark:border-dark-border z-[9990]
                       transition-all duration-200 ease-out origin-top-right
                       ${isMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
                     <div className="px-4 py-2 border-b border-slate-50 dark:border-dark-border mb-1">
