@@ -36,11 +36,11 @@ export interface SyncResult {
 }
 
 // ── Storage URLs ──────────────────────────────────────────────────────────────
-const BUCKET = 'medainew-fa6a2.firebasestorage.app';
+const R2_BASE = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev';
 const STORAGE_URLS = {
-  medicines:   `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Fmedicines.json?alt=media`,
-  supplements: `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Fsupplements.json?alt=media`,
-  food:        `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/data%2Ffood.json?alt=media`,
+  medicines:   `${R2_BASE}/medicines.json`,
+  supplements: `${R2_BASE}/supplements.json`,
+  food:        `${R2_BASE}/food.json`,
 };
 
 // ── تحقق من الـ timestamp (1 read فقط) ───────────────────────────────────────
