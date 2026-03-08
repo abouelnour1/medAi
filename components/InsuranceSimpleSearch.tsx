@@ -94,7 +94,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             } else {
                 matchingMeds = exact;
             }
-            }
         }
         // Food = Product type 'Food' — غير مغطى تأمينياً
         foodMeds = matchingMeds.filter(m => 
