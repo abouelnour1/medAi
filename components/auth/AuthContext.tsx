@@ -13,8 +13,6 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -125,16 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-    }, 5000);
-
-    // ✅ قراءة نتيجة Google Redirect لما المستخدم يرجع للصفحة
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        syncUserData(result.user as FirebaseUser);
-      }
-    }).catch((err) => {
-      console.error("Redirect Result Error:", err);
-    });
+    }, 3000);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
@@ -164,9 +153,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // ✅ redirect بدل popup — الوحيد اللي بيشتغل صح على Vercel PWA
-    await signInWithRedirect(auth, provider);
-    // المستخدم هيتحول لجوجل ويرجع — الـ result بيتقرأ في useEffect بـ getRedirectResult
+    // ✅ popup فقط - بدون redirect عشان مايعملش صفحة بيضاء
+    const result = await signInWithPopup(auth, provider);
+    await syncUserData(result.user as FirebaseUser);
   };
 
   const loginWithApple = async () => {

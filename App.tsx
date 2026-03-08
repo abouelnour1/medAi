@@ -952,53 +952,24 @@ const App: React.FC = () => {
     );
   }
 
-  // ✅ لو Firebase لسه بيتحقق من الـ session — شاشة Loading عشان نمنع الـ Flash
+  // ✅ Auth Gate — لو لسه بيتحقق من الـ session اظهر splash
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900">
-        <div className="relative w-20 h-20 mb-4">
-          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-slate-100 dark:text-slate-800" />
-            <circle cx="50" cy="50" r="42" fill="none" stroke="url(#lg)" strokeWidth="6" strokeLinecap="round"
-              strokeDasharray="263.9" strokeDashoffset="66"
-              style={{ animation: 'spin 1.4s linear infinite', transformOrigin: 'center' }} />
-            <defs>
-              <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#14b8a6" />
-                <stop offset="100%" stopColor="#0ea5e9" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl">💊</span>
-          </div>
-        </div>
+        <span className="text-4xl mb-3">💊</span>
         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest animate-pulse">PharmaSource</p>
-        <style>{`@keyframes spin { from { stroke-dashoffset: 263.9; } to { stroke-dashoffset: 0; } }`}</style>
       </div>
     );
   }
 
-  // ✅ Auth Gate — لو مش مسجّل دخول يشوف Login/Register بس، التطبيق مقفول
+  // ✅ Auth Gate — مش مسجّل → Login مباشرة بدون أي تعديل تاني في الكود
   if (!user) {
     return (
-      <div
-        className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden"
-        style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}
-      >
-        {view === 'register' ? (
-          <RegisterView
-            t={t}
-            onSwitchToLogin={() => setView('login')}
-            onRegisterSuccess={() => setView('login')}
-          />
-        ) : (
-          <LoginView
-            t={t}
-            onSwitchToRegister={() => setView('register')}
-            onLoginSuccess={() => { /* user هيتحدّث تلقائياً من onAuthStateChanged */ }}
-          />
-        )}
+      <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
+        {view === 'register'
+          ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => {}} />
+        }
       </div>
     );
   }
