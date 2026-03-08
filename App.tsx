@@ -952,6 +952,30 @@ const App: React.FC = () => {
     );
   }
 
+  // ✅ Auth Gate — لو مش مسجّل دخول يشوف Login/Register بس، التطبيق مقفول
+  if (!authLoading && !user) {
+    return (
+      <div
+        className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden"
+        style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}
+      >
+        {view === 'register' ? (
+          <RegisterView
+            t={t}
+            onSwitchToLogin={() => setView('login')}
+            onRegisterSuccess={() => setView('login')}
+          />
+        ) : (
+          <LoginView
+            t={t}
+            onSwitchToRegister={() => setView('register')}
+            onLoginSuccess={() => setView('search')}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />

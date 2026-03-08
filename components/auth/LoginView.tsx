@@ -37,9 +37,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
   const handleGoogleLogin = async () => {
     setError(''); setIsSocialLoading('google');
-    try { await loginWithGoogle(); onLoginSuccess(); }
-    catch (err: any) { if (err.code !== 'auth/popup-closed-by-user') setError(ar ? 'فشل تسجيل الدخول بجوجل' : 'Google sign-in failed'); }
-    finally { setIsSocialLoading(null); }
+    try { 
+      await loginWithGoogle(); 
+      // ✅ مش هنكال onLoginSuccess هنا — لأن الـ redirect بيعمل reload للصفحة
+      // الـ AuthContext هيتعرف على المستخدم تلقائياً لما يرجع
+    }
+    catch (err: any) { 
+      if (err.code !== 'auth/popup-closed-by-user') setError(ar ? 'فشل تسجيل الدخول بجوجل' : 'Google sign-in failed'); 
+      setIsSocialLoading(null);
+    }
   };
 
   const handleAppleLogin = async () => {
