@@ -44,7 +44,7 @@ import { translations } from './translations';
 import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { syncData, listenToOverrides, saveOverride, clearDataCache, bumpDataVersion } from './utils/dataSync';
-import { areSameRouteGroup } from './utils/pharmaceuticalGroups';
+import { areSameRouteGroup, getPharmGroup } from './utils/pharmaceuticalGroups';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -279,6 +279,7 @@ const App: React.FC = () => {
   const [headerHeight, setHeaderHeight] = useState(90);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const [searchBarTop, setSearchBarTop] = useState(0);
+  const [quickFormFilter, setQuickFormFilter] = useState<string>('all');
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
@@ -302,7 +303,7 @@ const App: React.FC = () => {
       for (const entry of entries) {
         const h = Math.ceil(entry.contentRect.height) + 20;
         setHeaderHeight(h);
-        setSearchBarTop(h - 20);
+        setSearchBarTop(h - 10);
       }
     });
     observer.observe(headerRef.current);
@@ -533,6 +534,11 @@ const App: React.FC = () => {
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
     medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, exactSearchOnly
   );
+
+  const quickFormFiltered = useMemo(() => {
+    if (quickFormFilter === 'all') return finalFilteredMedicines;
+    return finalFilteredMedicines.filter(m => getPharmGroup(m.PharmaceuticalForm) === quickFormFilter);
+  }, [finalFilteredMedicines, quickFormFilter]);
 
   const alternatives = useMemo(() => {
     if (!selectedMedicine) return { direct: [], therapeutic: [] };
@@ -811,7 +817,7 @@ const App: React.FC = () => {
                   <div className="mt-6">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
-                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                        <ResultsList medicines={quickFormFiltered} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                       ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
@@ -960,9 +966,32 @@ const App: React.FC = () => {
         <div className="fixed left-0 right-0 z-[39] px-4" style={{ top: searchBarTop }}>
           <div className="max-w-5xl mx-auto bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm pb-2 pt-1 rounded-b-2xl">
             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2 items-center">
               <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
               <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
+              {/* Quick Form Filter */}
+              <div className="flex gap-1 ml-auto">
+                {([
+                  { key: 'all',       label: 'All'      },
+                  { key: 'solid',     label: 'Solid'    },
+                  { key: 'liquid',    label: 'Liquid'   },
+                  { key: 'injection', label: 'Inject'   },
+                  { key: 'topical',   label: 'Topical'  },
+                  { key: 'eye_ear',   label: 'Eye/Ear'  },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setQuickFormFilter(key)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-black transition-all active:scale-95 whitespace-nowrap ${
+                      quickFormFilter === key
+                        ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
