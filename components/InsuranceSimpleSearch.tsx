@@ -75,18 +75,25 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 matchingMeds = allMedicines.filter(m => regex.test(String(m[field])));
             }
         } else {
-            // أولاً: exact match — اللي بيبدأ بالـ term الأول
+            // ✅ نفس منطق البحث العادي: startsWith > startsWithWord > contains > fuzzy
             const startsWith = allMedicines.filter(m => String(m[field]).toLowerCase().startsWith(term));
-            const contains   = allMedicines.filter(m => !String(m[field]).toLowerCase().startsWith(term) && String(m[field]).toLowerCase().includes(term));
-            const exact = [...startsWith, ...contains];
-            // ثانياً: fuzzy match للحالات اللي مش فيها نتيجة كافية
+            const startsWithWord = allMedicines.filter(m => {
+                const v = String(m[field]).toLowerCase();
+                return !v.startsWith(term) && v.split(/[\s-]+/).some(w => w.startsWith(term));
+            });
+            const contains = allMedicines.filter(m => {
+                const v = String(m[field]).toLowerCase();
+                return !v.startsWith(term) && !v.split(/[\s-]+/).some(w => w.startsWith(term)) && v.includes(term);
+            });
+            const exact = [...startsWith, ...startsWithWord, ...contains];
             if (exact.length < 5) {
-                const fuzzy = allMedicines.filter(m =>
-                    !exact.includes(m) && fuzzyMatch(String(m[field]).toLowerCase(), term)
-                ).sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
+                const fuzzy = allMedicines
+                    .filter(m => !exact.includes(m) && fuzzyMatch(String(m[field]).toLowerCase(), term))
+                    .sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
                 matchingMeds = [...exact, ...fuzzy];
             } else {
                 matchingMeds = exact;
+            }
             }
         }
         // Food = Product type 'Food' — غير مغطى تأمينياً

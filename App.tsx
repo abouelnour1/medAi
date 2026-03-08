@@ -807,9 +807,15 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* SearchBar placeholder — الارتفاع الحقيقي محسوب */}
-                  <div style={{height: 100}} />
-                  <div className="mt-6">
+                  {/* SearchBar — داخل الـ scroll يتحرك مع المحتوى */}
+                  <div className="mb-4">
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
+                    <div className="flex gap-2 mt-2 items-center">
+                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
+                      <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
+                    </div>
+                  </div>
+                  <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
                         <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
@@ -981,20 +987,8 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      {/* SearchBar Fixed — مش بيختفي خلف الهيدر أبداً */}
-      {(view === 'search' || view === 'results') && (
-        <div className="fixed left-0 right-0 z-[45] px-4" style={{ top: searchBarTop }}>
-          <div className="max-w-5xl mx-auto bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm pb-2 pt-1 rounded-b-2xl">
-            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
-            <div className="flex gap-2 mt-2 items-center">
-              <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
-              <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
-
-            </div>
-          </div>
-        </div>
-      )}
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 36, 130), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      {/* SearchBar — يتحرك مع الصفحة بشكل طبيعي */}
+      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {isMedicinesLoading ? (
             <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
               {/* Progress Circle */}
