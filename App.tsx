@@ -278,7 +278,7 @@ const App: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(90);
   const searchBarRef = useRef<HTMLDivElement>(null);
-  const [searchBarTop, setSearchBarTop] = useState(0);
+  const [searchBarTop, setSearchBarTop] = useState(90);
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
@@ -980,7 +980,7 @@ const App: React.FC = () => {
 
       {/* SearchBar Fixed — مش بيختفي خلف الهيدر أبداً */}
       {(view === 'search' || view === 'results') && (
-        <div className="fixed left-0 right-0 z-[39] px-4" style={{ top: searchBarTop }}>
+        <div className="fixed left-0 right-0 z-[41] px-4" style={{ top: searchBarTop }}>
           <div className="max-w-5xl mx-auto bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm pb-2 pt-1 rounded-b-2xl">
             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
             <div className="flex gap-2 mt-2 items-center">
