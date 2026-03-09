@@ -17,7 +17,7 @@ self.addEventListener('install', event => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
+  // self.skipWaiting(); // disabled to prevent reload on app return
 });
 
 // Activate event - cleaning up old caches

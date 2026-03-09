@@ -9,6 +9,7 @@ import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import MedicineDetail from './components/MedicineDetail';
 import BottomSheet from './components/BottomSheet';
+import GeminiPromptModal from './components/GeminiPromptModal';
 import BottomNavBar from './components/BottomNavBar';
 import FilterModal from './components/FilterModal';
 import SortControls from './components/SortControls';
@@ -243,6 +244,7 @@ const App: React.FC = () => {
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
+  const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
   const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
   
@@ -1107,6 +1109,8 @@ const App: React.FC = () => {
           />
         )}
       </BottomSheet>
+
+      <GeminiPromptModal isOpen={geminiModal.open} prompt={geminiModal.prompt} onClose={() => setGeminiModal({ open: false, prompt: '' })} />
 
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       {/* الزرار يظهر بس لو مسجل دخول */}
