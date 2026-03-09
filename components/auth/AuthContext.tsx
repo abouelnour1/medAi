@@ -13,6 +13,8 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -126,6 +128,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(false);
     }, 8000);
 
+    // ✅ اقرأ نتيجة Google Redirect لو المستخدم جه من redirect
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) syncUserData(result.user as FirebaseUser);
+    }).catch(() => {});
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       // ✅ أول ما Firebase يرد — نشيل Loading فوراً (مش نستنى timeout)
       if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
@@ -156,9 +163,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // ✅ popup فقط - بدون redirect عشان مايعملش صفحة بيضاء
-    const result = await signInWithPopup(auth, provider);
-    await syncUserData(result.user as FirebaseUser);
+    // ✅ PWA standalone → redirect | متصفح عادي → popup
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                      || (window.navigator as any).standalone === true;
+    if (isStandalone) {
+      await signInWithRedirect(auth, provider);
+      // الصفحة هتعمل redirect وترجع — getRedirectResult في useEffect هيكمل
+    } else {
+      const result = await signInWithPopup(auth, provider);
+      await syncUserData(result.user as FirebaseUser);
+    }
   };
 
   const loginWithApple = async () => {
