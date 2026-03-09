@@ -1,5 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
 import { auth, db, FIREBASE_DISABLED } from '../../firebase';
 import { 
@@ -167,10 +168,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const result = await signInWithPopup(auth, provider);
-    await syncUserData(result.user as FirebaseUser);
+    // ✅ Android Native → Capacitor Google Auth Plugin
+    // ✅ Web/PWA → Firebase popup
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { SocialLogin } = await import('@capgo/capacitor-social-login');
+        await SocialLogin.initialize({ google: { 
+          webClientId: '568872568132-cg6f7ea60arn5tgkoq9dms0he053p7l6.apps.googleusercontent.com',
+          androidClientId: '568872568132-m434n8ol4u5tk1k7ern3kevn6snge628.apps.googleusercontent.com',
+        } });
+        const result = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+        const idToken = (result.result as any)?.idToken;
+        if (!idToken) throw new Error('No idToken from Google');
+        const { signInWithCredential } = await import('firebase/auth');
+        const credential = GoogleAuthProvider.credential(idToken);
+        const firebaseResult = await signInWithCredential(auth, credential);
+        await syncUserData(firebaseResult.user as FirebaseUser);
+      } catch (err: any) {
+        console.error('Google Native Sign-In Error:', JSON.stringify(err), err?.message, err?.code);
+        throw err;
+      }
+    } else {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      await syncUserData(result.user as FirebaseUser);
+    }
   };
 
   const loginWithApple = async () => {

@@ -46,6 +46,17 @@ const config: CapacitorConfig = {
     },
     FirebaseMessaging: {
       presentationOptions: ['badge', 'sound', 'alert']
+    },
+    SocialLogin: {
+      providers: {
+        google: {
+          webClientId: '568872568132-cg6f7ea60arn5tgkoq9dms0he053p7l6.apps.googleusercontent.com',
+          androidClientId: '568872568132-m434n8ol4u5tk1k7ern3kevn6snge628.apps.googleusercontent.com',
+        },
+        facebook: false,
+        apple: false,
+        twitter: false
+      }
     }
   }
 };

@@ -205,7 +205,7 @@ const App: React.FC = () => {
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
-  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') === 'ar' ? 'ar' : 'en'));
+  const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 100); // شبه live
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
@@ -575,6 +575,14 @@ const App: React.FC = () => {
   }, [filters]);
 
   // مشاركة الدواء
+  const handleAskGemini = (medicine: Medicine) => {
+    const name = medicine['Trade Name'] || '';
+    const active = medicine['Scientific Name'] || '';
+    const prompt = `What are the indications, contraindications, and side effects of ${name}${active ? ` (${active})` : ''}?`;
+    const url = `https://gemini.google.com/app?q=${encodeURIComponent(prompt)}`;
+    window.open(url, '_blank');
+  };
+
   const handleShareMedicine = (medicine: Medicine) => {
     const price = parseFloat(medicine['Public price']);
     const ar = language === 'ar';
@@ -786,8 +794,8 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine }), t)} onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine }), t)} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSelectedMedicine(m); setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine }), t)} onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine }), t)} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
@@ -807,14 +815,8 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* SearchBar — داخل الـ scroll يتحرك مع المحتوى */}
-                  <div className="mb-4">
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
-                    <div className="flex gap-2 mt-2 items-center">
-                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
-                      <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
-                    </div>
-                  </div>
+                  {/* placeholder عشان يعوض مكان الـ SearchBar الـ sticky */}
+                  <div className="mb-4" style={{height: '100px'}} />
                   <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
@@ -878,8 +880,7 @@ const App: React.FC = () => {
                               </button>
                           </div>
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">{t('language')}</span>
-                              <button onClick={()=>setLanguage(language==='ar'?'en':'ar')} className="px-4 py-1.5 bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border font-black text-xs">{language.toUpperCase()}</button>
+
                           </div>
                           {/* وضع الصيدلاني */}
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
@@ -987,7 +988,19 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      {/* SearchBar — يتحرك مع الصفحة بشكل طبيعي */}
+      {/* SearchBar sticky — ظاهر بس في search/results */}
+      {activeTab === 'search' && (view === 'search' || view === 'results') && (
+        <div
+          className="sticky z-[39] bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm px-4 pb-2"
+          style={{ top: headerHeight }}
+        >
+          <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
+          <div className="flex gap-2 mt-2 items-center">
+            <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
+            <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
+          </div>
+        </div>
+      )}
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {isMedicinesLoading ? (
             <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
@@ -1082,6 +1095,7 @@ const App: React.FC = () => {
             onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
             onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }}
             onShare={handleShareMedicine}
+            onAskGemini={handleAskGemini}
             onToggleCompare={toggleCompare}
             isInCompare={compareList.some(m => m.RegisterNumber === sheetMedicine.RegisterNumber)}
           />

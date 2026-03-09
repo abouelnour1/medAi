@@ -52,11 +52,12 @@ interface MedicineDetailProps {
     onImageZoom: (allImages: string[], initialIndex: number, title: string, indexFlags: boolean[]) => void;
     onFindAlternative: (medicine: Medicine) => void;
     onShare?: (medicine: Medicine) => void;
+    onAskGemini?: (medicine: Medicine) => void;
     onToggleCompare?: (medicine: Medicine) => void;
     isInCompare?: boolean;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini }) => {
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
@@ -228,14 +229,18 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2.5 px-0.5">
-          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-2 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3.5 rounded-2xl active:scale-95 transition-all">
-              <div className="w-5 h-5 text-primary flex-shrink-0"><AlternativeIcon /></div>
-              <span className="font-black text-[10px] uppercase text-primary">{t('directAlternatives')}</span>
+      <div className="grid grid-cols-3 gap-2 px-0.5">
+          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
+              <div className="w-4 h-4 text-primary flex-shrink-0"><AlternativeIcon /></div>
+              <span className="font-black text-[9px] uppercase text-primary">{t('directAlternatives')}</span>
           </button>
-          <button onClick={onOpenAssistant} className="flex items-center justify-center gap-2 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-900/10 border border-violet-200/50 dark:border-violet-800/30 p-3.5 rounded-2xl active:scale-95 transition-all">
-              <div className="w-5 h-5 text-violet-600 dark:text-violet-400 flex-shrink-0"><AssistantIcon /></div>
-              <span className="font-black text-[10px] uppercase text-violet-600 dark:text-violet-400">AI Assistant</span>
+          <button onClick={onOpenAssistant} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-900/10 border border-violet-200/50 dark:border-violet-800/30 p-3 rounded-2xl active:scale-95 transition-all">
+              <div className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0"><AssistantIcon /></div>
+              <span className="font-black text-[9px] uppercase text-violet-600 dark:text-violet-400">AI Assistant</span>
+          </button>
+          <button onClick={() => onAskGemini?.(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200/50 dark:border-blue-800/30 p-3 rounded-2xl active:scale-95 transition-all">
+              <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+              <span className="font-black text-[9px] uppercase text-blue-500">Ask Gemini</span>
           </button>
       </div>
 

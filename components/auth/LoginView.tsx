@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
-import AppleIcon from '../icons/AppleIcon';
 
 interface LoginViewProps {
   onSwitchToRegister: () => void;
@@ -18,9 +17,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const [resetEmail, setResetEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [isSocialLoading, setIsSocialLoading] = useState<'google' | null>(null);
   const [showPass, setShowPass] = useState(false);
-  const { login, loginWithGoogle, loginWithApple, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
 
   const ar = t('language') === 'ar';
 
@@ -50,16 +49,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     }
     setIsSocialLoading('google');
     try { await loginWithGoogle(); onLoginSuccess(); }
-    catch (err: any) { if (err.code !== 'auth/popup-closed-by-user') setError(ar ? 'فشل تسجيل الدخول بجوجل' : 'Google sign-in failed'); }
+    catch (err: any) { 
+      console.error('Login Google Error:', err);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(ar ? `فشل تسجيل الدخول بجوجل: ${err?.message || err?.code || 'خطأ غير معروف'}` : `Google sign-in failed: ${err?.message || err?.code || 'Unknown error'}`);
+      }
+    }
     finally { setIsSocialLoading(null); }
   };
 
-  const handleAppleLogin = async () => {
-    setError(''); setIsSocialLoading('apple');
-    try { await loginWithApple(); onLoginSuccess(); }
-    catch (err: any) { if (err.code !== 'auth/popup-closed-by-user') setError(ar ? 'فشل تسجيل الدخول بـ Apple' : 'Apple sign-in failed'); }
-    finally { setIsSocialLoading(null); }
-  };
+
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
@@ -128,16 +127,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
         {/* Social */}
         <div className="space-y-3 mb-6">
-          <button onClick={handleGoogleLogin} disabled={!!isSocialLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-200 active:scale-[0.98] transition-all shadow-sm hover:shadow-md disabled:opacity-60">
-            {isSocialLoading === 'google' ? <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" /> : <div className="w-5 h-5"><GoogleIcon /></div>}
-            {ar ? 'متابعة بـ Google' : 'Continue with Google'}
-          </button>
-          <button onClick={handleAppleLogin} disabled={!!isSocialLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 bg-slate-900 dark:bg-black border border-slate-800 rounded-2xl font-bold text-sm text-white active:scale-[0.98] transition-all shadow-sm disabled:opacity-60">
-            {isSocialLoading === 'apple' ? <div className="w-5 h-5 border-2 border-slate-600 border-t-white rounded-full animate-spin" /> : <div className="w-5 h-5"><AppleIcon /></div>}
-            {ar ? 'متابعة بـ Apple' : 'Continue with Apple'}
-          </button>
+          {isStandalone ? (
+            // ✅ PWA: Google مش بيشتغل — سجّل في المتصفح وارجع
+            <div className="w-full flex items-center gap-3 py-3.5 px-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl text-xs text-amber-700 dark:text-amber-400 font-bold">
+              <span className="text-lg">💡</span>
+              <span>{ar ? 'لتسجيل الدخول بـ Google، افتح الموقع في المتصفح أولاً وسجّل، ثم ارجع للتطبيق' : 'To use Google Sign-In, open the site in your browser, sign in, then return to the app'}</span>
+            </div>
+          ) : (
+            <button onClick={handleGoogleLogin} disabled={!!isSocialLoading}
+              className="w-full flex items-center justify-center gap-3 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-200 active:scale-[0.98] transition-all shadow-sm hover:shadow-md disabled:opacity-60">
+              {isSocialLoading === 'google' ? <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" /> : <div className="w-5 h-5"><GoogleIcon /></div>}
+              {ar ? 'متابعة بـ Google' : 'Continue with Google'}
+            </button>
+          )}
+
         </div>
 
         {/* Divider */}
