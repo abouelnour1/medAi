@@ -128,21 +128,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(false);
     }, 8000);
 
-    // ✅ اقرأ نتيجة Google Redirect لو المستخدم جه من redirect
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) syncUserData(result.user as FirebaseUser);
-    }).catch(() => {});
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // ✅ أول ما Firebase يرد — نشيل Loading فوراً (مش نستنى timeout)
       if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       if (firebaseUser) {
+        // ✅ مستخدم موجود — سواء من session أو redirect
         syncUserData(firebaseUser as FirebaseUser);
       } else {
-        try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
-        try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
-        setUser(null);
-        setIsLoading(false);
+        // ✅ مفيش مستخدم — بس ممكن يكون في redirect جاي
+        // نستنى getRedirectResult الأول قبل ما نعمل logout
+        getRedirectResult(auth).then((result) => {
+          if (result?.user) {
+            syncUserData(result.user as FirebaseUser);
+          } else {
+            try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
+            try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
+            setUser(null);
+            setIsLoading(false);
+          }
+        }).catch(() => {
+          setUser(null);
+          setIsLoading(false);
+        });
       }
     }, (error) => {
         console.error("Auth State Change Error:", error);
@@ -163,16 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // ✅ PWA standalone → redirect | متصفح عادي → popup
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-                      || (window.navigator as any).standalone === true;
-    if (isStandalone) {
-      await signInWithRedirect(auth, provider);
-      // الصفحة هتعمل redirect وترجع — getRedirectResult في useEffect هيكمل
-    } else {
-      const result = await signInWithPopup(auth, provider);
-      await syncUserData(result.user as FirebaseUser);
-    }
+    // ✅ redirect دايماً — يشتغل في PWA + متصفح + Android
+    await signInWithRedirect(auth, provider);
   };
 
   const loginWithApple = async () => {
