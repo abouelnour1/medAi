@@ -32,13 +32,8 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
     // 2. Open Gemini after short delay
     setTimeout(() => {
       setStatus('opening');
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      if (isAndroid) {
-        // Intent URL يفتح Gemini app مباشرة لو موجود
-        window.location.href = `intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com%2Fapp;end`;
-      } else {
-        window.open('https://gemini.google.com/app', '_blank');
-      }
+      // دايماً _blank — مش location.href عشان ميعملش reload للـ PWA
+      window.open('https://gemini.google.com/app', '_blank', 'noopener,noreferrer');
       setTimeout(onClose, 800);
     }, 700);
   };
