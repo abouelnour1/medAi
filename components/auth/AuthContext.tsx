@@ -47,7 +47,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
+      const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY) 
+                  || sessionStorage.getItem(LOCAL_USER_STORAGE_KEY);
       if (cached) return toPlainObject(JSON.parse(cached));
     } catch (e) {}
     return null;
@@ -95,7 +96,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (userData) {
               setUser(userData);
-              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(userData));
+              const serialized = JSON.stringify(userData);
+              try { localStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
+              try { sessionStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
           }
       } catch (err) {
           console.error("Critical Auth Sync Error:", err);
@@ -112,7 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           if (fallback) {
               setUser(fallback);
-              localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(fallback));
+              const serialized = JSON.stringify(fallback);
+              try { localStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
+              try { sessionStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
           }
       } finally {
           isSyncing.current = false;
@@ -133,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncUserData(firebaseUser as FirebaseUser);
       } else {
         localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
         setUser(null);
         setIsLoading(false);
         if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
@@ -185,7 +191,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+    try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
+    try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
   };
 
   const reloadUser = async () => {
