@@ -45,16 +45,8 @@ const toPlainObject = (user: any): User | null => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY) 
-                  || sessionStorage.getItem(LOCAL_USER_STORAGE_KEY);
-      if (cached) return toPlainObject(JSON.parse(cached));
-    } catch (e) {}
-    return null;
-  });
-
-  // ✅ isLoading = true دايماً — Firebase هيتحقق من IndexedDB (يشتغل في PWA + متصفح)
+  const [user, setUser] = useState<User | null>(null);
+  // ✅ isLoading = true دايماً — نستنى onAuthStateChanged يرد من Firebase/IndexedDB
   const [isLoading, setIsLoading] = useState(true);
   const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
@@ -127,21 +119,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    // ✅ لو في cached user → timeout قصير (500ms) — Firebase هيجيب الـ session من IndexedDB بسرعة
-    const hasCached = (() => { try { return !!localStorage.getItem(LOCAL_USER_STORAGE_KEY); } catch { return false; } })();
+    // ✅ الحل النهائي: نستنى onAuthStateChanged يرد الأول — مش timeout
+    // Firebase بيقرأ الـ session من IndexedDB تلقائياً (يشتغل في PWA + متصفح + standalone)
+    // Timeout طويل بس كـ safety net فقط
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-    }, hasCached ? 500 : 5000);
+    }, 8000);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      // ✅ أول ما Firebase يرد — نشيل Loading فوراً (مش نستنى timeout)
+      if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       if (firebaseUser) {
         syncUserData(firebaseUser as FirebaseUser);
       } else {
-        localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+        try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
         try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
         setUser(null);
         setIsLoading(false);
-        if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
       }
     }, (error) => {
         console.error("Auth State Change Error:", error);
