@@ -5,66 +5,54 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/manifest.json',
   '/icon.svg',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap'
 ];
 
-// Install event - caching the app shell
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('Caching app shell...');
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
   );
-  // self.skipWaiting(); // disabled to prevent reload on app return
+  // NO skipWaiting - prevents reload when returning from external app
 });
 
-// Activate event - cleaning up old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
     ))
   );
-  self.clients.claim();
+  // NO clients.claim() - prevents reload when returning from external app
 });
 
-// Fetch event - Cache First for assets, Network First for others
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // For Firebase and other dynamic APIs, try network first
-  if (url.hostname.includes('googleapis.com') || url.hostname.includes('firebaseio.com') || url.hostname.includes('firestore.googleapis.com')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
+  // Dynamic APIs - network only
+  if (
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('r2.dev') ||
+    url.hostname.includes('cloudflarestorage.com')
+  ) {
+    event.respondWith(fetch(request).catch(() => new Response('', { status: 503 })));
     return;
   }
 
-  // For app assets, try cache first
+  // App shell - cache first
   event.respondWith(
     caches.match(request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
+      if (cachedResponse) return cachedResponse;
       return fetch(request).then(networkResponse => {
-        // Cache new successful GET requests
         if (networkResponse && networkResponse.status === 200) {
-          const clonedResponse = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clonedResponse));
+          const cloned = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, cloned));
         }
         return networkResponse;
       }).catch(() => {
-        // If both fail and it's a navigation request, return the cached index.html
-        if (request.mode === 'navigate') {
-          return caches.match('/');
-        }
+        if (request.mode === 'navigate') return caches.match('/');
         return null;
       });
     })

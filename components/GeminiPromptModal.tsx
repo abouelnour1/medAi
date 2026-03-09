@@ -11,38 +11,33 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
 
   if (!isOpen) return null;
 
-  const handleCopy = async () => {
+  const handleCopyAndOpen = async () => {
+    // 1. Copy to clipboard
     try {
       await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
       const ta = document.createElement('textarea');
       ta.value = prompt;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
-  };
+    setCopied(true);
 
-  const handleOpenGemini = () => {
-    // حاول تفتح Gemini app أولاً، لو مش موجود يفتح المتصفح
-    const appUrl = `intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;end`;
-    const webUrl = `https://gemini.google.com/app`;
-    
-    // على Android نجرب الـ app intent
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      window.location.href = appUrl;
-      // fallback للمتصفح بعد 1.5s لو الـ app مش موجود
-      setTimeout(() => window.open(webUrl, '_blank'), 1500);
-    } else {
-      window.open(webUrl, '_blank');
-    }
+    // 2. Open Gemini after short delay
+    setTimeout(() => {
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        // جرب يفتح Gemini app مباشرة
+        window.location.href = `intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;end`;
+        // fallback للمتصفح
+        setTimeout(() => window.open('https://gemini.google.com/app', '_blank'), 1500);
+      } else {
+        window.open('https://gemini.google.com/app', '_blank');
+      }
+      onClose();
+    }, 600);
   };
 
   return (
@@ -78,43 +73,31 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
           </p>
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleCopy}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 ${
-              copied
-                ? 'bg-emerald-500 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
-            }`}
-          >
-            {copied ? (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Copied!
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Copy
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={handleOpenGemini}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            Open Gemini
-          </button>
-        </div>
+        {/* Single Button */}
+        <button
+          onClick={handleCopyAndOpen}
+          className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-lg ${
+            copied
+              ? 'bg-emerald-500 text-white shadow-emerald-500/25'
+              : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/25'
+          }`}
+        >
+          {copied ? (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Copied! Opening Gemini...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy & Open Gemini
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
