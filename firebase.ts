@@ -6,7 +6,7 @@ import {
   Firestore,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore';
-import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
+import { getAuth, setPersistence, indexedDBLocalPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
 export const FIREBASE_DISABLED = false;
@@ -44,8 +44,9 @@ try {
 
     auth = getAuth(app);
 
-    // ✅ نضمن إن الـ session يتحفظ حتى لو أغلق المتصفح
-    setPersistence(auth, browserLocalPersistence).catch(() => {});
+    // ✅ indexedDB يشتغل في PWA standalone + متصفح عادي
+    setPersistence(auth, indexedDBLocalPersistence)
+        .catch(() => setPersistence(auth, browserLocalPersistence).catch(() => {}));
 
     if (typeof window !== 'undefined') {
         getAnalytics(app);

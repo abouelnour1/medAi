@@ -45,10 +45,6 @@ const toPlainObject = (user: any): User | null => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
-  const hasCachedUser = (() => {
-    try { return !!localStorage.getItem(LOCAL_USER_STORAGE_KEY); } catch { return false; }
-  })();
-
   const [user, setUser] = useState<User | null>(() => {
     try {
       const cached = localStorage.getItem(LOCAL_USER_STORAGE_KEY);
@@ -57,8 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  // ✅ لو في cached user (PWA) → مش نظهر splash — نستنى Firebase في الخلفية
-  const [isLoading, setIsLoading] = useState(!hasCachedUser);
+  // ✅ isLoading = true دايماً — Firebase هيتحقق من IndexedDB (يشتغل في PWA + متصفح)
+  const [isLoading, setIsLoading] = useState(true);
   const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
 
@@ -126,9 +122,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    // ✅ لو في cached user → timeout قصير (500ms) — Firebase هيجيب الـ session من IndexedDB بسرعة
+    const hasCached = (() => { try { return !!localStorage.getItem(LOCAL_USER_STORAGE_KEY); } catch { return false; } })();
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-    }, 3000);
+    }, hasCached ? 500 : 5000);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
