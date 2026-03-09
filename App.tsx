@@ -580,22 +580,8 @@ const App: React.FC = () => {
   const handleAskGemini = (medicine: Medicine) => {
     const name = medicine['Trade Name'] || '';
     const active = medicine['Scientific Name'] || '';
-    const prompt = `${name}${active ? ' ' + active : ''}`;
-    // حاول تفتح الـ app الأول، لو مفيش افتح الموقع
-    const appUrl = `intent://gemini.google.com/app?q=${encodeURIComponent(prompt)}#Intent;scheme=https;package=com.google.android.apps.bard;end`;
-    const webUrl = `https://gemini.google.com/app`;
-    try {
-      // على Android حاول الـ app
-      if (/android/i.test(navigator.userAgent)) {
-        window.location.href = appUrl;
-        // fallback للموقع بعد 1.5 ثانية لو الـ app مش موجود
-        setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
-      } else {
-        window.open(webUrl, '_blank');
-      }
-    } catch {
-      window.open(webUrl, '_blank');
-    }
+    const prompt = `${name}${active ? ` (${active})` : ''} - Pharmacist reference:\n1. Indications & therapeutic use\n2. Contraindications & drug interactions\n3. Side effects & patient counseling points\n4. Unique selling points vs alternatives`;
+    setGeminiModal({ open: true, prompt });
   };
 
   const handleShareMedicine = (medicine: Medicine) => {
