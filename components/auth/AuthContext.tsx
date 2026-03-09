@@ -172,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ✅ Web/PWA → Firebase popup
     if (Capacitor.isNativePlatform()) {
       try {
+        // @ts-ignore
         const { SocialLogin } = await import('@capgo/capacitor-social-login');
         await SocialLogin.initialize({ google: { 
           webClientId: '568872568132-cg6f7ea60arn5tgkoq9dms0he053p7l6.apps.googleusercontent.com',
