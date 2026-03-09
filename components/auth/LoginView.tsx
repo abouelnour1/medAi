@@ -35,8 +35,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     finally { setIsLoading(false); }
   };
 
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                    || (window.navigator as any).standalone === true;
+
   const handleGoogleLogin = async () => {
-    setError(''); setIsSocialLoading('google');
+    setError('');
+    if (isStandalone) {
+      // ✅ افتح الموقع في Chrome — المستخدم يسجل هناك
+      // Firebase IndexedDB مشترك بين Chrome والـ PWA
+      // لما يرجع للـ PWA هيلاقي نفسه مسجل تلقائياً
+      const siteUrl = window.location.origin + window.location.pathname;
+      window.open(siteUrl, '_blank');
+      return;
+    }
+    setIsSocialLoading('google');
     try { await loginWithGoogle(); onLoginSuccess(); }
     catch (err: any) { if (err.code !== 'auth/popup-closed-by-user') setError(ar ? 'فشل تسجيل الدخول بجوجل' : 'Google sign-in failed'); }
     finally { setIsSocialLoading(null); }

@@ -169,8 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // ✅ redirect دايماً — يشتغل في PWA + متصفح + Android
-    await signInWithRedirect(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    await syncUserData(result.user as FirebaseUser);
   };
 
   const loginWithApple = async () => {
