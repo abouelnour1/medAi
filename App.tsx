@@ -197,8 +197,17 @@ const MAX_RECENT = 8;
 const App: React.FC = () => {
   const { user, logout, requestAIAccess, getSettings, isLoading: authLoading } = useAuth();
   const appSettings = getSettings();
-  const [activeTab, setActiveTab] = useState<Tab>('search');
-  const [view, setView] = useState<View>('search');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    try { return (sessionStorage.getItem('ps_tab') as Tab) || 'search'; } catch { return 'search'; }
+  });
+  const [view, setView] = useState<View>(() => {
+    try {
+      const v = sessionStorage.getItem('ps_view') as View;
+      // لو كان في alternatives نرجعه لـ results
+      if (v === 'alternatives') return 'results';
+      return v || 'search';
+    } catch { return 'search'; }
+  });
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -207,13 +216,23 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>('en');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
+  });
   const debouncedSearchTerm = useDebounce(searchTerm, 100); // شبه live
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  // helper يحفظ selectedMedicine في sessionStorage
+  const setSelectedMedicineWithSave = React.useCallback((m: Medicine | null) => {
+    setSelectedMedicine(m);
+    try {
+      if (m) sessionStorage.setItem('ps_selected_reg', m.RegisterNumber);
+      else sessionStorage.removeItem('ps_selected_reg');
+    } catch {}
+  }, []);
   const [previousView, setPreviousView] = useState<View>('results'); // للرجوع الصح
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -250,6 +269,26 @@ const App: React.FC = () => {
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasLoadedBefore, setHasLoadedBefore] = useState(() => localStorage.getItem('app_has_loaded') === 'true');
+
+  // حفظ navigation state في sessionStorage عشان يرجعله بعد reload
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('ps_view', view);
+      sessionStorage.setItem('ps_tab', activeTab);
+    } catch {}
+  }, [view, activeTab]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem('ps_search', searchTerm); } catch {}
+  }, [searchTerm]);
+
+  // حفظ sheetMedicine عشان يرجعه بعد reload
+  useEffect(() => {
+    try {
+      if (sheetMedicine) sessionStorage.setItem('ps_sheet_reg', sheetMedicine.RegisterNumber);
+      else sessionStorage.removeItem('ps_sheet_reg');
+    } catch {}
+  }, [sheetMedicine]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -444,8 +483,28 @@ const App: React.FC = () => {
           .map(normalizeMedicine)
           .forEach(m => baseMap.set(m.RegisterNumber, m));
 
-        if (baseMap.size > 0) setMedicines(Array.from(baseMap.values()));
+        const allMeds = Array.from(baseMap.values());
+        if (allMeds.length > 0) setMedicines(allMeds);
         setIsMedicinesLoading(false);
+
+        // ── restore state بعد reload (رجوع من Gemini أو أي app تاني) ──
+        try {
+          const savedReg = sessionStorage.getItem('ps_selected_reg');
+          const savedSheet = sessionStorage.getItem('ps_sheet_reg');
+          const savedView = sessionStorage.getItem('ps_view') as View;
+
+          if (savedReg && savedView && ['details', 'alternatives'].includes(savedView)) {
+            const med = allMeds.find(m => m.RegisterNumber === savedReg);
+            if (med) {
+              setSelectedMedicine(med);
+              setView(savedView === 'alternatives' ? 'results' : savedView);
+            }
+          }
+          if (savedSheet) {
+            const med = allMeds.find(m => m.RegisterNumber === savedSheet);
+            if (med) setTimeout(() => setSheetMedicine(med), 300);
+          }
+        } catch {}
 
         // ── طلب إذن الإشعارات أول فتح للتطبيق ──────────────────
         const notifAsked = localStorage.getItem('notif_permission_asked');
