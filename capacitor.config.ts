@@ -8,8 +8,9 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    allowNavigation: ['*'],
     cleartext: false,
+    // لا تسمح بالـ navigation لروابط خارجية — تفتح في المتصفح الخارجي
+    // هذا يمنع إعادة تحميل التطبيق عند الرجوع من Gemini
   },
   ios: {
     contentInset: 'automatic',   // يحسب safe area تلقائياً

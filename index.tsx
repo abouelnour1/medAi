@@ -27,6 +27,23 @@ root.render(
   </React.StrictMode>
 );
 
+// منع إعادة التحميل لما التطبيق يرجع من app تاني
+document.addEventListener('visibilitychange', () => {
+  // مش بنعمل حاجة - بس نمنع أي default behavior
+});
+
+// Capacitor App State - منع reload
+if ((window as any).Capacitor?.isNativePlatform?.()) {
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        // التطبيق رجع — مش هنعمل حاجة
+        console.log('App resumed');
+      }
+    });
+  }).catch(() => {});
+}
+
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
