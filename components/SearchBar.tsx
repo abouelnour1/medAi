@@ -34,10 +34,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   const handleFocus = () => {
-    // نستنى الكيبورد يطلع (200ms) وبعدين نعمل scroll عشان الـ SearchBar ميتخبيش
+    // لما الكيبورد يطلع، نتأكد ان الـ SearchBar مش خلف الهيدر
     setTimeout(() => {
-      wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 200);
+      if (!wrapperRef.current) return;
+      const scrollContainer = document.getElementById('main-scroll-container');
+      if (!scrollContainer) return;
+      // اسكرول للأعلى عشان الـ SearchBar يبان
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 350);
   };
 
   return (

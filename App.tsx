@@ -578,9 +578,22 @@ const App: React.FC = () => {
   const handleAskGemini = (medicine: Medicine) => {
     const name = medicine['Trade Name'] || '';
     const active = medicine['Scientific Name'] || '';
-    const prompt = `What are the indications, contraindications, and side effects of ${name}${active ? ` (${active})` : ''}?`;
-    const url = `https://gemini.google.com/app?q=${encodeURIComponent(prompt)}`;
-    window.open(url, '_blank');
+    const prompt = `${name}${active ? ' ' + active : ''}`;
+    // حاول تفتح الـ app الأول، لو مفيش افتح الموقع
+    const appUrl = `intent://gemini.google.com/app?q=${encodeURIComponent(prompt)}#Intent;scheme=https;package=com.google.android.apps.bard;end`;
+    const webUrl = `https://gemini.google.com/app`;
+    try {
+      // على Android حاول الـ app
+      if (/android/i.test(navigator.userAgent)) {
+        window.location.href = appUrl;
+        // fallback للموقع بعد 1.5 ثانية لو الـ app مش موجود
+        setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
+      } else {
+        window.open(webUrl, '_blank');
+      }
+    } catch {
+      window.open(webUrl, '_blank');
+    }
   };
 
   const handleShareMedicine = (medicine: Medicine) => {
@@ -815,8 +828,14 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* placeholder عشان يعوض مكان الـ SearchBar الـ sticky */}
-                  <div className="mb-4" style={{height: '100px'}} />
+                  {/* SearchBar — يتحرك مع الصفحة */}
+                  <div className="mb-4">
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
+                    <div className="flex gap-2 mt-2 items-center">
+                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
+                      <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
+                    </div>
+                  </div>
                   <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
@@ -988,19 +1007,6 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
-      {/* SearchBar sticky — ظاهر بس في search/results */}
-      {activeTab === 'search' && (view === 'search' || view === 'results') && (
-        <div
-          className="sticky z-[39] bg-light-bg/95 dark:bg-dark-bg/95 backdrop-blur-sm px-4 pb-2"
-          style={{ top: headerHeight }}
-        >
-          <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
-          <div className="flex gap-2 mt-2 items-center">
-            <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
-            <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
-          </div>
-        </div>
-      )}
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           {isMedicinesLoading ? (
             <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
