@@ -13,8 +13,8 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {
+      external: ['@capgo/capacitor-social-login'],
       output: {
-        // تقسيم الكود لتسريع التحميل
         manualChunks: {
           vendor: ['react', 'react-dom'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
