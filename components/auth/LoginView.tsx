@@ -72,6 +72,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     catch { setError(ar ? 'البريد الإلكتروني غير موجود' : 'Email not found'); }
   };
 
+  const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
+    setShowSpecialty(false);
+    if (user && updateUser) {
+      try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
+    }
+    onLoginSuccess();
+  };
+
   const inputBase = "w-full px-4 py-3.5 rounded-2xl text-sm font-semibold outline-none transition-all duration-200 bg-slate-50 dark:bg-slate-800/60 border-2 border-transparent focus:border-teal-400 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600";
 
   if (isResetMode) return (
