@@ -48,9 +48,22 @@ const toPlainObject = (user: any): User | null => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
-  const [user, setUser] = useState<User | null>(null);
-  // ✅ isLoading = true دايماً — نستنى onAuthStateChanged يرد من Firebase/IndexedDB
-  const [isLoading, setIsLoading] = useState(true);
+  // ✅ نحمل الـ user من cache فوراً — مش نستنى Firebase
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('medai_user_backup_v4') || sessionStorage.getItem('medai_user_backup_v4');
+      if (cached) return JSON.parse(cached) as User;
+    } catch {}
+    return null;
+  });
+  // لو في cached user → isLoading=false فوراً، مش محتاج نستنى Firebase
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('medai_user_backup_v4') || sessionStorage.getItem('medai_user_backup_v4');
+      return !cached; // لو في cache → false (مش loading)، لو مفيش → true (استنى)
+    } catch {}
+    return true;
+  });
   const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
 
@@ -127,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Timeout طويل بس كـ safety net فقط
     loadingTimeoutRef.current = window.setTimeout(() => {
         setIsLoading(false);
-    }, 8000);
+    }, 3000); // 3s max — بعدها نفتح حتى لو Firebase مش رد
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);

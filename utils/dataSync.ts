@@ -135,8 +135,14 @@ export async function syncData(): Promise<SyncResult> {
   const hasSups = cachedSups && cachedSups.length > 0;
   const hasFood = cachedFood && cachedFood.length > 0;
 
-  // ── كيس 1: مفيش cache خالص — حمّل كل شيء من R2 ──────────────────────────
+  // ── كيس 1: مفيش cache خالص ────────────────────────────────────────────────
   if (!hasMeds) {
+    // لو مفيش نت = مستحيل نجيب داتا — return empty فوراً، App هيعرض "need internet"
+    if (!navigator.onLine) {
+      console.log('[dataSync] ❌ No cache + offline — cannot load data');
+      return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
+    }
+
     console.log('[dataSync] 🚀 First launch — fetching all data from R2...');
     const [meds, sups, food] = await Promise.all([
       fetchJSON(STORAGE_URLS.medicines),

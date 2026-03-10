@@ -180,12 +180,20 @@ export interface Conversation {
   timestamp: number;
 }
 
+export type UserSpecialty = 'Pharmacist' | 'Physician' | 'Nurse' | 'Physical Therapist' | 'Nutritionist' | 'Other';
+export type PhysicianSubSpecialty = 
+  | 'General Practice' | 'Internal Medicine' | 'Pediatrics' | 'Surgery' | 'Obstetrics & Gynecology'
+  | 'Cardiology' | 'Neurology' | 'Oncology' | 'Orthopedics' | 'Dermatology'
+  | 'Psychiatry' | 'Ophthalmology' | 'ENT' | 'Urology' | 'Anesthesiology' | 'Emergency Medicine' | 'Other';
+
 export interface User {
   id: string;
   username: string;
   firstName?: string;
   lastName?: string;
-  role: 'admin' | 'premium' | 'company'; 
+  role: 'admin' | 'premium' | 'company';
+  specialty?: UserSpecialty;
+  subSpecialty?: PhysicianSubSpecialty;
   aiRequestCount: number;
   customAiLimit?: number;
   lastRequestDate: string; 

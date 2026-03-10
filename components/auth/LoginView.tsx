@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
-import { TFunction } from '../../types';
+import { TFunction, UserSpecialty, PhysicianSubSpecialty } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
+import SpecialtyModal from '../SpecialtyModal';
 
 interface LoginViewProps {
   onSwitchToRegister: () => void;
@@ -19,7 +20,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const [isLoading, setIsLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<'google' | null>(null);
   const [showPass, setShowPass] = useState(false);
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword, updateUser, user } = useAuth();
+  const [showSpecialty, setShowSpecialty] = useState(false);
 
   const ar = t('language') === 'ar';
 
@@ -48,7 +50,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       return;
     }
     setIsSocialLoading('google');
-    try { await loginWithGoogle(); onLoginSuccess(); }
+    try {
+      await loginWithGoogle();
+      // لو مش في specialty → فتح الـ modal
+      setShowSpecialty(true);
+    }
     catch (err: any) { 
       console.error('Login Google Error:', err);
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -197,5 +203,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
       </div>
     </div>
+    </>
   );
-};
+}

@@ -194,6 +194,8 @@ const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
+const WHATSAPP_NUMBER = '550806894';
+
 const App: React.FC = () => {
   const { user, logout, requestAIAccess, getSettings, isLoading: authLoading } = useAuth();
   const appSettings = getSettings();
@@ -211,7 +213,8 @@ const App: React.FC = () => {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isMedicinesLoading, setIsMedicinesLoading] = useState(() => localStorage.getItem('app_has_loaded') !== 'true');
+  // نشوف IndexedDB مباشرة — لو في داتا محلية مش نعرض loading
+  const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
@@ -466,7 +469,7 @@ const App: React.FC = () => {
   // Swipe to go back — تم إلغاؤه
 
   useEffect(() => {
-    if (authLoading) return;
+    // ✅ الداتا المحلية تتحمل فوراً — مش محتاجين نستنى auth خالص
     if (dataLoadedRef.current) return;
     dataLoadedRef.current = true;
 
@@ -476,7 +479,7 @@ const App: React.FC = () => {
         setInsuranceData(INITIAL_INSURANCE_DATA as any);
         setIsDataLoaded(true);
 
-        // ── خطوة 1: حمّل الداتا الكاملة من Cache أو Storage ──────
+        // ── خطوة 1: حمّل الداتا من IndexedDB أولاً — بدون نت ──────
         const syncResult = await syncData();
         const baseMap = new Map<string, Medicine>();
         [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
@@ -485,7 +488,7 @@ const App: React.FC = () => {
 
         const allMeds = Array.from(baseMap.values());
         if (allMeds.length > 0) setMedicines(allMeds);
-        setIsMedicinesLoading(false);
+        setIsMedicinesLoading(false); // دايماً نشيل اللودينج حتى لو الداتا فاضية
 
         // ── restore state بعد reload (رجوع من Gemini أو أي app تاني) ──
         try {
@@ -517,17 +520,15 @@ const App: React.FC = () => {
           }, 3000);
         }
 
-        // ── خطوة 2: اسمع لـ overrides live (للكل — أدمن ومستخدمين) ──
+        // ── خطوة 2: اسمع لـ overrides live — بدون auth ──────────
         const unsubOverrides = listenToOverrides((overrides) => {
           setMedicines(prev => {
             const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
             overrides.forEach((override, id) => {
               const existing = merged.get(id);
               if (existing) {
-                // دواء موجود — حدّثه بالـ override
                 merged.set(id, normalizeMedicine({ ...existing, ...override }));
               } else {
-                // دواء جديد أضافه الأدمن
                 merged.set(id, normalizeMedicine(override));
               }
             });
@@ -535,21 +536,7 @@ const App: React.FC = () => {
           });
         });
 
-        // ── خطوة 3: اسمع للإشعارات ────────────────────────────────
-        let unsubNotifs = () => {};
-        if (!FIREBASE_DISABLED && db) {
-          unsubNotifs = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-            const allNotifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
-            setNotifications(allNotifs.filter(n => {
-              if (!n.targetUserId && !n.targetRole) return true;
-              if (n.targetUserId && user && n.targetUserId === user.id) return true;
-              if (n.targetRole && user && n.targetRole === user.role) return true;
-              return false;
-            }));
-          });
-        }
-
-        // ── خطوة 4: اسمع لتحديثات Storage في الخلفية ─────────────
+        // ── خطوة 3: اسمع لتحديثات Storage في الخلفية ─────────────
         const handleStorageUpdate = (e: Event) => {
           const { medicines, supplements, food } = (e as CustomEvent).detail;
           setIsMedicinesLoading(true);  // شيل علامة التحميل
@@ -566,7 +553,6 @@ const App: React.FC = () => {
 
         return () => {
           unsubOverrides();
-          unsubNotifs();
           window.removeEventListener('pharma:storage-updated', handleStorageUpdate);
         };
 
@@ -577,7 +563,7 @@ const App: React.FC = () => {
       }
     };
     loadData();
-  }, [authLoading]);
+  }, []); // مش محتاجين نستنى authLoading — الداتا مستقلة
 
   // مطابقة Wildcard - * تعني أي حروف في أي مكان
   const matchesWildcard = (text: string, pattern: string): boolean => {
@@ -1001,7 +987,29 @@ const App: React.FC = () => {
                               />
                             </div>
                           )}
-                          {user && <button onClick={logout} className="w-full mt-4 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
+                          {/* Report Error */}
+                          {user && (
+                            <button
+                              onClick={() => {
+                                const msg = encodeURIComponent(
+                                  `[PharmaSource Report]\n` +
+                                  `User: ${user.username || 'Unknown'}\n` +
+                                  `Email: ${user.email || 'N/A'}\n` +
+                                  `Specialty: ${(user as any).specialty || 'N/A'}\n\n` +
+                                  `Describe the issue or medicine to add:\n`
+                                );
+                                window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+                              }}
+                              className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl font-black text-sm active:scale-95 transition-all"
+                            >
+                              <span className="text-lg">💬</span>
+                              <div className="text-left">
+                                <span className="block font-black text-sm">Report Error / Add Medicine</span>
+                                <span className="block text-[10px] font-medium opacity-70">Send via WhatsApp</span>
+                              </div>
+                            </button>
+                          )}
+                          {user && <button onClick={logout} className="w-full mt-2 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
                       </div>
                   </div>
               </div>
@@ -1010,20 +1018,22 @@ const App: React.FC = () => {
       return null;
   };
 
-  if (!isDataLoaded && !isOnline && !hasLoadedBefore) {
+  if (isDataLoaded && !isOnline && medicines.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900 p-6 text-center select-none">
-        <div className="w-16 h-16 mb-5 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-          <span className="text-3xl">📵</span>
+        <div className="w-20 h-20 mb-6 rounded-3xl bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/20 flex items-center justify-center shadow-lg">
+          <span className="text-4xl">📶</span>
         </div>
-        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-red-500 mb-2">OFFLINE</span>
-        <h1 className="text-lg font-black text-slate-800 dark:text-white mb-1">PharmaSource KSA</h1>
-        <p className="text-xs text-slate-400 mb-6">Connect to the internet and try again.</p>
+        <h1 className="text-xl font-black text-slate-800 dark:text-white mb-2">PharmaSource KSA</h1>
+        <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">Internet required for first launch</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-8 max-w-xs leading-relaxed">
+          Connect once to download the database. After that, the app works fully offline.
+        </p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs tracking-wide active:scale-95 transition-transform"
+          className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-teal-500/25 active:scale-95 transition-transform"
         >
-          RETRY
+          Try Again
         </button>
       </div>
     );
