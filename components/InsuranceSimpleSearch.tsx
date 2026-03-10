@@ -107,17 +107,20 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     const results: SearchResult[] = [];
 
     if (isNameSearch) {
-        // نبني sciGroups بنفس ترتيب أول ظهور في matchingMeds
+        // نبني sciGroups مرتبة على أساس أفضل rank (startsWith أولاً)
         const sciGroupsOrder: string[] = [];
+        const sciGroupsRank = new Map<string, number>();
         const sciGroups = new Map<string, Set<Medicine>>();
-        matchingMeds.forEach(m => {
+        matchingMeds.forEach((m, idx) => {
             const sci = m['Scientific Name'];
             if (!sciGroups.has(sci)) {
                 sciGroups.set(sci, new Set());
                 sciGroupsOrder.push(sci);
+                sciGroupsRank.set(sci, idx);
             }
             sciGroups.get(sci)!.add(m);
         });
+        sciGroupsOrder.sort((a, b) => (sciGroupsRank.get(a) ?? 999) - (sciGroupsRank.get(b) ?? 999));
 
         sciGroupsOrder.forEach(fullSciName => {
             const medsSet = sciGroups.get(fullSciName)!;
@@ -150,8 +153,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
         });
         // Food: غير مغطاة — تيجي في الآخر
         foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
-        // أضف الـ food في الآخر
-        foodResults.forEach(r => results.push(r));
     } else {
         let regex: RegExp;
         if (term.includes('*')) {
