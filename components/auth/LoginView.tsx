@@ -99,6 +99,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   );
 
   return (
+    <>
+    {showSpecialty && <SpecialtyModal isOpen={showSpecialty} onComplete={handleSpecialtyComplete} />}
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-5">
       <div className="w-full max-w-sm">
 
