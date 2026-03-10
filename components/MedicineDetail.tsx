@@ -105,7 +105,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     setTimeout(() => setImgSearching(false), 1500);
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
-    // دايماً window.open بـ _blank — بسيط وثابت
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
