@@ -2,28 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Filters, ProductTypeFilter, TFunction, Medicine } from '../types';
 import SearchableDropdown from './SearchableDropdown';
-import ClearIcon from './icons/ClearIcon';
 import { groupPharmaceuticalForms } from '../utils/formHelpers';
-
-// Icons
-const FormIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 3h5"/><path d="M9.5 21h5"/><path d="M14 3v2a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V3"/><path d="M14 21v-2a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v2"/><line x1="9" x2="15" y1="12" y2="12"/></svg>;
-const FactoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22h20"/><path d="M20 13.29V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="m14 13.29 6 3.42V22"/><path d="M18 16.71v.01"/><path d="M12 13.29V22"/><path d="m6 13.29 6 3.42"/><path d="M10 9.71v.01"/><path d="M14 9.71v.01"/><path d="M10 16.71v.01"/></svg>;
-const ScaleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>;
-const TagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.432 0l6.568-6.568a2.426 2.426 0 0 0 0-3.432L12.586 2.586Z"/><path d="M8 8h.01"/></svg>;
-const MoneyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
-
-const FilterItem: React.FC<{icon: React.ReactNode, label: string, children: React.ReactNode, count?: number}> = ({ icon, label, children, count }) => (
-    <div className="space-y-2">
-      <label className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2 text-[11px] font-black uppercase text-slate-400 tracking-widest">
-            {icon}
-            <span>{label}</span>
-        </div>
-        {count !== undefined && <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-full">{count}</span>}
-      </label>
-      {children}
-    </div>
-);
 
 interface FilterModalProps {
     isOpen: boolean;
@@ -31,243 +10,261 @@ interface FilterModalProps {
     filters: Filters;
     onApply: (newFilters: Filters) => void;
     onClearFilters: () => void;
-    allMedicines: Medicine[]; // هذا يمثل سياق البحث الحالي (لو البحث فاضي هيبقي كل الداتا)
+    allMedicines: Medicine[];
     t: TFunction;
 }
 
+// Collapsible Section
+const Section: React.FC<{
+  title: string;
+  icon: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  activeCount?: number;
+  children: React.ReactNode;
+}> = ({ title, icon, isOpen, onToggle, activeCount, children }) => (
+  <div className={`rounded-2xl overflow-hidden transition-all duration-200 ${isOpen ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-transparent'}`}>
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between px-4 py-3.5 active:scale-[0.99] transition-transform"
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-base">{icon}</span>
+        <span className="text-sm font-black text-slate-700 dark:text-slate-200">{title}</span>
+        {activeCount ? (
+          <span className="bg-teal-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+            {activeCount}
+          </span>
+        ) : null}
+      </div>
+      <svg
+        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+    {isOpen && (
+      <div className="px-4 pb-4">
+        {children}
+      </div>
+    )}
+  </div>
+);
+
+// Product Type Chips
+const TypeChips: React.FC<{
+  value: ProductTypeFilter;
+  onChange: (v: ProductTypeFilter) => void;
+  t: TFunction;
+}> = ({ value, onChange, t }) => {
+  const options: { key: ProductTypeFilter; label: string; emoji: string }[] = [
+    { key: 'all',        label: t('allProductTypes'), emoji: '🔍' },
+    { key: 'medicine',   label: t('medicines'),       emoji: '💊' },
+    { key: 'supplement', label: t('supplements'),     emoji: '🌿' },
+    { key: 'food',       label: t('food'),            emoji: '🥗' },
+  ];
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {options.map(o => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key)}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all active:scale-95 ${
+            value === o.key
+              ? 'bg-teal-500 text-white shadow-md shadow-teal-500/25'
+              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+          }`}
+        >
+          <span>{o.emoji}</span>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const FilterModal: React.FC<FilterModalProps> = ({
-    isOpen,
-    onClose,
-    filters,
-    onApply,
-    onClearFilters,
-    allMedicines,
-    t
+    isOpen, onClose, filters, onApply, onClearFilters, allMedicines, t
 }) => {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+      type: true, form: false, manufacturer: false, marketing: false, agent: false, price: false, legal: false
+    });
 
     useEffect(() => {
-        if (isOpen) {
-            setLocalFilters(filters);
-        }
+        if (isOpen) setLocalFilters(filters);
     }, [isOpen, filters]);
 
-    // وظيفة لفلترة مصفوفة بناءً على الفلاتر المختارة حالياً مع استثناء مفتاح معين (لحساب الخيارات المتاحة لهذا المفتاح)
     const getFilteredList = (medicines: Medicine[], currentFilters: Filters, excludeKey?: keyof Filters) => {
         return medicines.filter(m => {
-            // النوع
             if (excludeKey !== 'productType' && currentFilters.productType !== 'all') {
                 const type = currentFilters.productType === 'medicine' ? 'Human' : currentFilters.productType === 'supplement' ? 'Supplement' : 'Food';
                 if (m['Product type'] !== type) return false;
             }
-            // السعر
             const price = parseFloat(m['Public price']) || 0;
             if (currentFilters.priceMin && price < parseFloat(currentFilters.priceMin)) return false;
             if (currentFilters.priceMax && price > parseFloat(currentFilters.priceMax)) return false;
-            
-            // الشكل الصيدلاني
             if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && (Array.isArray(currentFilters.pharmaceuticalForm) ? currentFilters.pharmaceuticalForm.length > 0 && !currentFilters.pharmaceuticalForm.includes(m.PharmaceuticalForm) : m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm)) return false;
-            
-            // الحالة القانونية
             if (excludeKey !== 'legalStatus' && currentFilters.legalStatus && m['Legal Status'] !== currentFilters.legalStatus) return false;
-            
-            // المصنعين
             if (excludeKey !== 'manufactureName' && currentFilters.manufactureName.length > 0 && !currentFilters.manufactureName.includes(m['Manufacture Name'])) return false;
-            
-            // الشركات المسوقة
             if (excludeKey !== 'marketingCompany' && currentFilters.marketingCompany.length > 0 && !currentFilters.marketingCompany.includes(m['Marketing Company'])) return false;
-            
-            // الوكلاء
             if (excludeKey !== 'mainAgent' && currentFilters.mainAgent.length > 0 && !currentFilters.mainAgent.includes(m['Main Agent'])) return false;
-
             return true;
         });
     };
 
-    // حساب الخيارات المتاحة ديناميكياً لكل حقل بناءً على ما تم اختياره في الحقول الأخرى (Cascading Effect)
     const dynamicOptions = useMemo(() => {
-        const getUnique = (list: Medicine[], key: keyof Medicine) => 
+        const getUnique = (list: Medicine[], key: keyof Medicine) =>
             Array.from(new Set(list.map(m => String(m[key] || '')).filter(Boolean))).sort();
-
-        // لكل قائمة خيارات، بنفلتر الداتا "allMedicines" (سياق البحث) بكل الفلاتر ما عدا الفلتر نفسه
-        const listForManufacturers = getFilteredList(allMedicines, localFilters, 'manufactureName');
-        const listForMarketing = getFilteredList(allMedicines, localFilters, 'marketingCompany');
-        const listForAgents = getFilteredList(allMedicines, localFilters, 'mainAgent');
-        const listForForms = getFilteredList(allMedicines, localFilters, 'pharmaceuticalForm');
-        const listForStatus = getFilteredList(allMedicines, localFilters, 'legalStatus');
-
         return {
-            manufacturers: getUnique(listForManufacturers, 'Manufacture Name'),
-            marketingCompanies: getUnique(listForMarketing, 'Marketing Company'),
-            agents: getUnique(listForAgents, 'Main Agent'),
-            forms: groupPharmaceuticalForms(getUnique(listForForms, 'PharmaceuticalForm'), t),
-            legalStatuses: getUnique(listForStatus, 'Legal Status')
+            manufacturers:      getUnique(getFilteredList(allMedicines, localFilters, 'manufactureName'),  'Manufacture Name'),
+            marketingCompanies: getUnique(getFilteredList(allMedicines, localFilters, 'marketingCompany'), 'Marketing Company'),
+            agents:             getUnique(getFilteredList(allMedicines, localFilters, 'mainAgent'),        'Main Agent'),
+            forms:              groupPharmaceuticalForms(getUnique(getFilteredList(allMedicines, localFilters, 'pharmaceuticalForm'), 'PharmaceuticalForm'), t),
+            legalStatuses:      getUnique(getFilteredList(allMedicines, localFilters, 'legalStatus'),      'Legal Status'),
         };
     }, [allMedicines, localFilters, t]);
 
-    // عدد النتائج المتوقعة لو طبقنا الفلاتر الحالية
     const expectedCount = useMemo(() => getFilteredList(allMedicines, localFilters).length, [allMedicines, localFilters]);
 
-    const handleFilterChange = <K extends keyof Filters>(filterName: K, value: Filters[K]) => {
-        setLocalFilters(prev => ({ ...prev, [filterName]: value } as Filters));
-    };
+    const handleFilterChange = <K extends keyof Filters>(key: K, value: Filters[K]) =>
+        setLocalFilters(prev => ({ ...prev, [key]: value } as Filters));
 
-    const handleApply = () => {
-        onApply(localFilters);
-        onClose();
-    };
+    const handleApply = () => { onApply(localFilters); onClose(); };
 
     const handleReset = () => {
+        const empty: Filters = { productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: [], manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' };
         onClearFilters();
-        setLocalFilters({ 
-            productType: 'all', 
-            priceMin: '', 
-            priceMax: '', 
-            pharmaceuticalForm: [], 
-            manufactureName: [], 
-            marketingCompany: [], 
-            mainAgent: [], 
-            legalStatus: '' 
-        });
+        setLocalFilters(empty);
     };
+
+    const toggleSection = (key: string) =>
+        setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+    // Count active filters per section
+    const activeCounts = {
+      type:         localFilters.productType !== 'all' ? 1 : 0,
+      form:         Array.isArray(localFilters.pharmaceuticalForm) ? localFilters.pharmaceuticalForm.length : localFilters.pharmaceuticalForm ? 1 : 0,
+      manufacturer: localFilters.manufactureName.length,
+      marketing:    localFilters.marketingCompany.length,
+      agent:        localFilters.mainAgent.length,
+      price:        (localFilters.priceMin || localFilters.priceMax) ? 1 : 0,
+      legal:        localFilters.legalStatus ? 1 : 0,
+    };
+    const totalActive = Object.values(activeCounts).reduce((a, b) => a + b, 0);
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-dark-card w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <header className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 text-primary rounded-xl">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{t('filters')}</h2>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{expectedCount} Results in context</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ClearIcon/></button>
-                </header>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          onClick={onClose}
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+        >
+            <div
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] flex flex-col overflow-hidden"
+              style={{ maxHeight: '88vh', animation: 'slideUp 0.28s cubic-bezier(0.22,1,0.36,1)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <style>{`@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
-                {/* Body */}
-                <div className="flex-grow p-6 space-y-6 overflow-y-auto no-scrollbar bg-white dark:bg-dark-card">
-                    
-                    <FilterItem icon={<TagIcon />} label={t('filterByProductType')}>
-                      <select
-                        value={localFilters.productType}
-                        onChange={(e) => handleFilterChange('productType', e.target.value as ProductTypeFilter)}
-                        className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all font-bold text-sm dark:text-white"
-                      >
-                        <option value="all">{t('allProductTypes')}</option>
-                        <option value="medicine">{t('medicines')}</option>
-                        <option value="supplement">{t('supplements')}</option>
-                        <option value="food">{t('food')}</option>
-                      </select>
-                    </FilterItem>
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
+              </div>
 
-                    <FilterItem icon={<FactoryIcon />} label={t('marketingCompany')} count={dynamicOptions.marketingCompanies.length}>
-                      <SearchableDropdown
-                        ariaLabel={t('marketingCompany')}
-                        value={localFilters.marketingCompany}
-                        onChange={(value) => handleFilterChange('marketingCompany', Array.isArray(value) ? value : [])}
-                        options={dynamicOptions.marketingCompanies}
-                        placeholder={t('pleaseSelectOrAdd')}
-                        t={t}
-                        mode="multi"
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<FactoryIcon />} label={t('filterByManufacturer')} count={dynamicOptions.manufacturers.length}>
-                      <SearchableDropdown
-                        ariaLabel={t('filterByManufacturer')}
-                        value={localFilters.manufactureName}
-                        onChange={(value) => handleFilterChange('manufactureName', Array.isArray(value) ? value : [])}
-                        options={dynamicOptions.manufacturers}
-                        placeholder={t('allManufacturers')}
-                        t={t}
-                        mode="multi"
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<FactoryIcon />} label={t('agents')} count={dynamicOptions.agents.length}>
-                      <SearchableDropdown
-                        ariaLabel={t('agents')}
-                        value={localFilters.mainAgent}
-                        onChange={(value) => handleFilterChange('mainAgent', Array.isArray(value) ? value : [])}
-                        options={dynamicOptions.agents}
-                        placeholder={t('pleaseSelectOrAdd')}
-                        t={t}
-                        mode="multi"
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<FormIcon />} label={t('pharmaceuticalForm')}>
-                       <SearchableDropdown
-                        ariaLabel={t('pharmaceuticalForm')}
-                        value={localFilters.pharmaceuticalForm || []}
-                        onChange={(value) => handleFilterChange('pharmaceuticalForm', value)}
-                        options={dynamicOptions.forms}
-                        placeholder={t('all')}
-                        mode="multi"
-                        t={t}
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<ScaleIcon />} label={t('filterByLegalStatus')}>
-                      <SearchableDropdown
-                        ariaLabel={t('filterByLegalStatus')}
-                        value={localFilters.legalStatus}
-                        onChange={(value) => handleFilterChange('legalStatus', Array.isArray(value) ? '' : value)}
-                        options={dynamicOptions.legalStatuses}
-                        placeholder={t('allLegalStatuses')}
-                        t={t}
-                      />
-                    </FilterItem>
-
-                    <FilterItem icon={<MoneyIcon />} label={t('priceRange')}>
-                      <div className="flex gap-3">
-                        <div className="flex-1 relative">
-                            <input
-                            type="number"
-                            value={localFilters.priceMin}
-                            onChange={(e) => handleFilterChange('priceMin', e.target.value)}
-                            placeholder={t('priceFrom')}
-                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm dark:text-white"
-                            min="0"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Min</span>
-                        </div>
-                        <div className="flex-1 relative">
-                            <input
-                            type="number"
-                            value={localFilters.priceMax}
-                            onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-                            placeholder={t('priceTo')}
-                            className="w-full h-11 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary rounded-xl outline-none transition-all text-sm dark:text-white"
-                            min="0"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Max</span>
-                        </div>
-                      </div>
-                    </FilterItem>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-base font-black text-slate-800 dark:text-white">{t('filters')}</span>
+                    {totalActive > 0 && (
+                      <span className="ml-2 text-[10px] font-black text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-full">
+                        {totalActive} active
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400">{expectedCount} results</span>
+                  <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
-                {/* Footer */}
-                <footer className="flex items-center justify-between p-5 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
-                    <button
-                        onClick={handleReset}
-                        className="px-5 py-2.5 text-sm font-bold rounded-xl text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"
-                    >
-                        {t('resetFilters')}
-                    </button>
-                    <button
-                        onClick={handleApply}
-                        className="px-8 py-2.5 bg-primary hover:bg-primary-dark text-white font-black rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95"
-                    >
-                        {t('showResults')}
-                    </button>
-                </footer>
+              {/* Divider */}
+              <div className="h-px bg-slate-100 dark:bg-slate-800 mx-5 flex-shrink-0" />
+
+              {/* Sections */}
+              <div className="flex-grow overflow-y-auto no-scrollbar px-4 py-3 space-y-1.5">
+
+                <Section title={t('filterByProductType')} icon="🏷️" isOpen={openSections.type} onToggle={() => toggleSection('type')} activeCount={activeCounts.type}>
+                  <TypeChips value={localFilters.productType} onChange={v => handleFilterChange('productType', v)} t={t} />
+                </Section>
+
+                <Section title={t('pharmaceuticalForm')} icon="💊" isOpen={openSections.form} onToggle={() => toggleSection('form')} activeCount={activeCounts.form}>
+                  <SearchableDropdown ariaLabel={t('pharmaceuticalForm')} value={localFilters.pharmaceuticalForm || []} onChange={v => handleFilterChange('pharmaceuticalForm', v)} options={dynamicOptions.forms} placeholder={t('all')} mode="multi" t={t} />
+                </Section>
+
+                <Section title={t('marketingCompany')} icon="🏢" isOpen={openSections.marketing} onToggle={() => toggleSection('marketing')} activeCount={activeCounts.marketing}>
+                  <SearchableDropdown ariaLabel={t('marketingCompany')} value={localFilters.marketingCompany} onChange={v => handleFilterChange('marketingCompany', Array.isArray(v) ? v : [])} options={dynamicOptions.marketingCompanies} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                </Section>
+
+                <Section title={t('filterByManufacturer')} icon="🏭" isOpen={openSections.manufacturer} onToggle={() => toggleSection('manufacturer')} activeCount={activeCounts.manufacturer}>
+                  <SearchableDropdown ariaLabel={t('filterByManufacturer')} value={localFilters.manufactureName} onChange={v => handleFilterChange('manufactureName', Array.isArray(v) ? v : [])} options={dynamicOptions.manufacturers} placeholder={t('allManufacturers')} t={t} mode="multi" />
+                </Section>
+
+                <Section title={t('agents')} icon="👤" isOpen={openSections.agent} onToggle={() => toggleSection('agent')} activeCount={activeCounts.agent}>
+                  <SearchableDropdown ariaLabel={t('agents')} value={localFilters.mainAgent} onChange={v => handleFilterChange('mainAgent', Array.isArray(v) ? v : [])} options={dynamicOptions.agents} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                </Section>
+
+                <Section title={t('filterByLegalStatus')} icon="⚖️" isOpen={openSections.legal} onToggle={() => toggleSection('legal')} activeCount={activeCounts.legal}>
+                  <SearchableDropdown ariaLabel={t('filterByLegalStatus')} value={localFilters.legalStatus} onChange={v => handleFilterChange('legalStatus', Array.isArray(v) ? '' : v)} options={dynamicOptions.legalStatuses} placeholder={t('allLegalStatuses')} t={t} />
+                </Section>
+
+                <Section title={t('priceRange')} icon="💰" isOpen={openSections.price} onToggle={() => toggleSection('price')} activeCount={activeCounts.price}>
+                  <div className="flex gap-3">
+                    <div className="flex-1 relative">
+                      <input type="number" value={localFilters.priceMin} onChange={e => handleFilterChange('priceMin', e.target.value)} placeholder="0"
+                        className="w-full h-11 px-3 pr-12 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 focus:border-teal-400 rounded-xl outline-none text-sm font-bold dark:text-white transition-colors" min="0" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Min</span>
+                    </div>
+                    <div className="flex items-center text-slate-300 font-black text-sm">—</div>
+                    <div className="flex-1 relative">
+                      <input type="number" value={localFilters.priceMax} onChange={e => handleFilterChange('priceMax', e.target.value)} placeholder="∞"
+                        className="w-full h-11 px-3 pr-12 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 focus:border-teal-400 rounded-xl outline-none text-sm font-bold dark:text-white transition-colors" min="0" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">Max</span>
+                    </div>
+                  </div>
+                </Section>
+
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
+                <button
+                  onClick={handleReset}
+                  className="px-5 py-3 rounded-2xl text-sm font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 active:scale-95 transition-all"
+                >
+                  {t('resetFilters')}
+                </button>
+                <button
+                  onClick={handleApply}
+                  className="flex-1 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-teal-500/25 active:scale-[0.98] transition-all"
+                >
+                  {t('showResults')} {expectedCount > 0 && `(${expectedCount})`}
+                </button>
+              </div>
+
             </div>
         </div>
     );

@@ -107,16 +107,23 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     const results: SearchResult[] = [];
 
     if (isNameSearch) {
+        // نبني sciGroups بنفس ترتيب أول ظهور في matchingMeds
+        const sciGroupsOrder: string[] = [];
         const sciGroups = new Map<string, Set<Medicine>>();
         matchingMeds.forEach(m => {
-            if (!sciGroups.has(m['Scientific Name'])) sciGroups.set(m['Scientific Name'], new Set());
-            sciGroups.get(m['Scientific Name'])!.add(m);
+            const sci = m['Scientific Name'];
+            if (!sciGroups.has(sci)) {
+                sciGroups.set(sci, new Set());
+                sciGroupsOrder.push(sci);
+            }
+            sciGroups.get(sci)!.add(m);
         });
 
         // Food: غير مغطاة
         foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
 
-        sciGroups.forEach((medsSet, fullSciName) => {
+        sciGroupsOrder.forEach(fullSciName => {
+            const medsSet = sciGroups.get(fullSciName)!;
             const medsArray = Array.from(medsSet);
             const normalizedSci = normalizeForMatch(fullSciName);
             

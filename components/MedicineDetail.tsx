@@ -100,29 +100,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
   }, [medicine]);
 
   const [imgSearching, setImgSearching] = React.useState(false);
-  const handleGoogleImageSearch = async () => {
-    if (imgSearching) return;
+  const handleGoogleImageSearch = () => {
     setImgSearching(true);
-    setTimeout(() => setImgSearching(false), 3000);
+    setTimeout(() => setImgSearching(false), 1500);
     const q = encodeURIComponent(medicine['Trade Name']);
     const url = `https://www.google.com/search?tbm=isch&q=${q}`;
-    try {
-      const { Capacitor } = await import('@capacitor/core');
-      if (Capacitor.isNativePlatform()) {
-        // نستخدم cordova InAppBrowser أو native window.open بـ _system
-        // _system = يفتح في المتصفح الخارجي بدون reload للـ WebView
-        const w = window as any;
-        if (w.cordova?.InAppBrowser) {
-          w.cordova.InAppBrowser.open(url, '_system');
-        } else {
-          w.open(url, '_system');
-        }
-        return;
-      }
-    } catch {}
-    // ويب: anchor click
-    const a = document.createElement('a');
-    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    // دايماً window.open بـ _blank — بسيط وثابت
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
@@ -234,10 +217,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <div className="w-4 h-4 text-primary flex-shrink-0"><AlternativeIcon /></div>
               <span className="font-black text-[9px] uppercase text-primary">{t('directAlternatives')}</span>
           </button>
+          {onOpenAssistant && (
           <button onClick={onOpenAssistant} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-900/10 border border-violet-200/50 dark:border-violet-800/30 p-3 rounded-2xl active:scale-95 transition-all">
               <div className="w-4 h-4 text-violet-600 dark:text-violet-400 flex-shrink-0"><AssistantIcon /></div>
               <span className="font-black text-[9px] uppercase text-violet-600 dark:text-violet-400">AI Assistant</span>
           </button>
+          )}
           <button onClick={() => onAskGemini?.(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200/50 dark:border-blue-800/30 p-3 rounded-2xl active:scale-95 transition-all">
               <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
               <span className="font-black text-[9px] uppercase text-blue-500">Ask Gemini</span>

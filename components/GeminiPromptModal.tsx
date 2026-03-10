@@ -7,41 +7,44 @@ interface GeminiPromptModalProps {
 }
 
 const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, onClose }) => {
-  const [status, setStatus] = useState<'idle' | 'copied' | 'opening'>('idle');
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [openStatus, setOpenStatus] = useState<'idle' | 'copied' | 'opening'>('idle');
 
   if (!isOpen) return null;
 
-  const handleCopyAndOpen = async () => {
-    // 1. Copy
+  const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(prompt);
     } catch {
       const ta = document.createElement('textarea');
       ta.value = prompt;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
+      ta.style.cssText = 'position:fixed;opacity:0';
       document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
+      ta.focus(); ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
     }
+  };
 
-    setStatus('copied');
+  const handleCopyOnly = async () => {
+    await copyToClipboard();
+    setCopyStatus('copied');
+    setTimeout(() => setCopyStatus('idle'), 2000);
+  };
 
-    // 2. Open Gemini after short delay
+  const handleCopyAndOpen = async () => {
+    await copyToClipboard();
+    setOpenStatus('copied');
     setTimeout(() => {
-      setStatus('opening');
-      // دايماً _blank — مش location.href عشان ميعملش reload للـ PWA
+      setOpenStatus('opening');
       window.open('https://gemini.google.com/app', '_blank', 'noopener,noreferrer');
-      setTimeout(onClose, 800);
-    }, 700);
+      setTimeout(onClose, 500);
+    }, 600);
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
       <div
         className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] p-6 pb-10"
         style={{ animation: 'slideUp 0.25s ease-out' }}
@@ -63,48 +66,82 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
             <p className="font-black text-sm text-slate-800 dark:text-white">Ask Gemini</p>
             <p className="text-[10px] text-slate-400">Pharmacist reference prompt</p>
           </div>
+          <button onClick={onClose} className="ml-auto p-1.5 text-slate-400 hover:text-slate-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Prompt box */}
         <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-5 border border-slate-100 dark:border-slate-700">
           <p className="text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed select-all">
-            {prompt}
+            {prompt.replace(/\\n/g, '\n')}
           </p>
         </div>
 
-        {/* Button */}
-        <button
-          onClick={handleCopyAndOpen}
-          disabled={status !== 'idle'}
-          className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm transition-all active:scale-[0.98] shadow-lg ${
-            status === 'copied'  ? 'bg-emerald-500 text-white shadow-emerald-500/25' :
-            status === 'opening' ? 'bg-indigo-500 text-white shadow-indigo-500/25' :
-            'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/25'
-          }`}
-        >
-          {status === 'idle' && (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy & Open Gemini
-            </>
-          )}
-          {status === 'copied' && (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Copied! Opening...
-            </>
-          )}
-          {status === 'opening' && (
-            <>
-              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Opening Gemini...
-            </>
-          )}
-        </button>
+        {/* Two buttons */}
+        <div className="flex gap-3">
+          {/* Copy only */}
+          <button
+            onClick={handleCopyOnly}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 border-2 ${
+              copyStatus === 'copied'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-700'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+            }`}
+          >
+            {copyStatus === 'copied' ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+              </>
+            )}
+          </button>
+
+          {/* Copy & Open */}
+          <button
+            onClick={handleCopyAndOpen}
+            disabled={openStatus !== 'idle'}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-lg ${
+              openStatus === 'copied'  ? 'bg-emerald-500 text-white shadow-emerald-500/25' :
+              openStatus === 'opening' ? 'bg-indigo-500 text-white shadow-indigo-500/25' :
+              'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/25'
+            }`}
+          >
+            {openStatus === 'idle' && (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Copy & Open
+              </>
+            )}
+            {openStatus === 'copied' && (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Copied!
+              </>
+            )}
+            {openStatus === 'opening' && (
+              <>
+                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Opening...
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

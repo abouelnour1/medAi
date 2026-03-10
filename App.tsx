@@ -506,11 +506,15 @@ const App: React.FC = () => {
           }
         } catch {}
 
-        // ── طلب إذن الإشعارات أول فتح للتطبيق ──────────────────
+        // ── طلب إذن الإشعارات — إجباري أول مرة ──────────────────
         const notifAsked = localStorage.getItem('notif_permission_asked');
-        if (!notifAsked && 'Notification' in window && Notification.permission === 'default') {
+        if (!notifAsked && 'Notification' in window) {
           localStorage.setItem('notif_permission_asked', 'true');
-          setTimeout(() => Notification.requestPermission(), 2000);
+          setTimeout(async () => {
+            if (Notification.permission === 'default') {
+              await Notification.requestPermission();
+            }
+          }, 3000);
         }
 
         // ── خطوة 2: اسمع لـ overrides live (للكل — أدمن ومستخدمين) ──
@@ -854,7 +858,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: selectedMedicine }), t)} onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: selectedMedicine }), t)} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -926,7 +930,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
@@ -970,7 +974,7 @@ const App: React.FC = () => {
                             </button>
                           </div>
                           {/* إشعارات Push */}
-                          {user && <PushNotificationToggle userId={user.id} language={language} />}
+                          {/* PushNotificationToggle moved to app init */}
                           {/* رابط الشير — للأدمن بس */}
                           {user?.role === 'admin' && (
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
@@ -1142,9 +1146,9 @@ const App: React.FC = () => {
             onToggleFavorite={toggleFavorite}
             user={user}
             onEdit={(m) => { setSelectedMedicine(m); setSheetMedicine(null); setIsEditModalOpen(true); }}
-            onOpenAssistant={() => requestAIAccess(() => setIsAssistantOpen(true), t)}
-            onOpenInteractions={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'interaction', medicine: sheetMedicine }), t)}
-            onOpenDoseCalc={() => requestAIAccess(() => setDrugToolsModal({ open: true, mode: 'dose', medicine: sheetMedicine }), t)}
+            onOpenAssistant={undefined}
+            onOpenInteractions={undefined}
+            onOpenDoseCalc={undefined}
             onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
             onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); }}
             onShare={handleShareMedicine}
@@ -1159,8 +1163,8 @@ const App: React.FC = () => {
 
       <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
       {/* الزرار يظهر بس لو مسجل دخول */}
-      {user && <FloatingAssistantButton onClick={() => requestAIAccess(() => setIsAssistantOpen(true), t)} onLongPress={()=>{}} t={t} language={language} />}
-      {isAssistantOpen && <AssistantModal
+      {/* FloatingAssistantButton disabled */}
+      {false && isAssistantOpen && <AssistantModal
         isOpen={isAssistantOpen}
         onSaveAndClose={() => { setIsAssistantOpen(false); setLoadedConversation([]); }}
         contextMedicine={view === 'details' ? selectedMedicine : null}
@@ -1179,7 +1183,7 @@ const App: React.FC = () => {
           onClose={() => setShowChatHistory(false)}
         />
       )}
-      {drugToolsModal.open && (
+      {false && drugToolsModal.open && (
         <DrugToolsModal
           mode={drugToolsModal.mode}
           allMedicines={medicines}
