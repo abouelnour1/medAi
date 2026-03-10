@@ -119,9 +119,6 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             sciGroups.get(sci)!.add(m);
         });
 
-        // Food: غير مغطاة
-        foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
-
         sciGroupsOrder.forEach(fullSciName => {
             const medsSet = sciGroups.get(fullSciName)!;
             const medsArray = Array.from(medsSet);
@@ -151,6 +148,10 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 });
             }
         });
+        // Food: غير مغطاة — تيجي في الآخر
+        foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
+        // أضف الـ food في الآخر
+        foodResults.forEach(r => results.push(r));
     } else {
         let regex: RegExp;
         if (term.includes('*')) {

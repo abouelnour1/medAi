@@ -23,7 +23,7 @@ const Section: React.FC<{
   activeCount?: number;
   children: React.ReactNode;
 }> = ({ title, icon, isOpen, onToggle, activeCount, children }) => (
-  <div className={`rounded-2xl overflow-hidden transition-all duration-200 ${isOpen ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-transparent'}`}>
+  <div className={`rounded-2xl transition-all duration-200 ${isOpen ? 'bg-slate-50 dark:bg-slate-800/60' : 'bg-transparent'}`}>
     <button
       onClick={onToggle}
       className="w-full flex items-center justify-between px-4 py-3.5 active:scale-[0.99] transition-transform"
@@ -205,7 +205,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               <div className="h-px bg-slate-100 dark:bg-slate-800 mx-5 flex-shrink-0" />
 
               {/* Sections */}
-              <div className="flex-grow overflow-y-auto no-scrollbar px-4 py-3 space-y-1.5">
+              <div className="flex-grow overflow-y-auto no-scrollbar px-4 py-3 space-y-1.5" style={{ overflowX: 'visible' }}>
 
                 <Section title={t('filterByProductType')} icon="🏷️" isOpen={openSections.type} onToggle={() => toggleSection('type')} activeCount={activeCounts.type}>
                   <TypeChips value={localFilters.productType} onChange={v => handleFilterChange('productType', v)} t={t} />

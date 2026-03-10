@@ -2,17 +2,20 @@
  * dataSync.ts
  *
  * Flow:
- * 1. أول فتح   → يحمل JSON من Storage (9147 دواء) → يحفظ في Cache
- * 2. كل فتح    → من Cache فوراً + يسمع لـ medicine_overrides (live)
- * 3. كل 24 ساعة → 1 read من app_meta يتحقق لو في نسخة جديدة من Storage
+ * 1. أول فتح   → يحمل JSON من R2 → يحفظ في Cache
+ * 2. كل فتح    → من Cache فوراً (مفيش network) + يسمع لـ medicine_overrides (live)
+ * 3. كل 48 ساعة فقط → 1 read من app_meta يتحقق لو في نسخة جديدة
  * 4. لما الأدمن يعدل → يحفظ في medicine_overrides فقط → المستخدمين يشوفوا فوراً
  */
 
-import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db, FIREBASE_DISABLED } from '../firebase';
 import { setItem, getItem, removeItem } from './storage';
 
-// ── Cache Keys ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+const CHECK_INTERVAL_MS = 48 * 60 * 60 * 1000; // 48 ساعة
+const FOOD_RETRY_MS     = 30 * 60 * 1000;       // 30 دقيقة — مش 10
+
 const CACHE_KEYS = {
   medicines:   'pharma_medicines',
   supplements: 'pharma_supplements',
@@ -25,6 +28,7 @@ interface CacheMeta {
   supplements_ts: number;
   food_ts:        number;
   last_checked:   number;
+  food_last_attempt?: number;
 }
 
 export interface SyncResult {
@@ -35,7 +39,7 @@ export interface SyncResult {
   updated:     boolean;
 }
 
-// ── Storage URLs ──────────────────────────────────────────────────────────────
+// ── R2 URLs ───────────────────────────────────────────────────────────────────
 const R2_BASE = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev';
 const STORAGE_URLS = {
   medicines:   `${R2_BASE}/medicines.json`,
@@ -43,7 +47,7 @@ const STORAGE_URLS = {
   food:        `${R2_BASE}/food.json`,
 };
 
-// ── تحقق من الـ timestamp (1 read فقط) ───────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 async function fetchRemoteMeta(): Promise<CacheMeta | null> {
   try {
     if (FIREBASE_DISABLED || !db) return null;
@@ -52,58 +56,65 @@ async function fetchRemoteMeta(): Promise<CacheMeta | null> {
   } catch { return null; }
 }
 
-// ── حمّل JSON من Storage ──────────────────────────────────────────────────────
-async function fetchFromStorage(url: string): Promise<any[]> {
+async function fetchJSON(url: string): Promise<any[]> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.warn('[dataSync] Storage fetch failed:', url, e);
+    console.warn('[dataSync] fetch failed:', url, e);
     return [];
   }
 }
 
-// ── تحقق من updates في الخلفية ───────────────────────────────────────────────
+// ── Background update check (runs silently, NO reload unless data changed) ───
 async function checkForUpdatesInBackground(
-  localMeta: CacheMeta | null,
+  localMeta: CacheMeta,
   cachedMeds: any[], cachedSups: any[], cachedFood: any[]
 ): Promise<void> {
   try {
     const remoteMeta = await fetchRemoteMeta();
     const now = Date.now();
-    const local = localMeta || { medicines_ts: 0, supplements_ts: 0, food_ts: 0, last_checked: 0 };
-    await setItem(CACHE_KEYS.meta, { ...local, last_checked: now });
-    if (!remoteMeta) return;
 
-    const needsMeds = remoteMeta.medicines_ts > local.medicines_ts;
-    const needsSups = remoteMeta.supplements_ts > local.supplements_ts;
-    const needsFood = remoteMeta.food_ts > local.food_ts;
-    if (!needsMeds && !needsSups && !needsFood) return;
+    // حدّث last_checked بغض النظر عن النتيجة
+    await setItem(CACHE_KEYS.meta, { ...localMeta, last_checked: now });
 
+    if (!remoteMeta) return; // Firebase مش متاح — مش مشكلة
+
+    const needsMeds = remoteMeta.medicines_ts > (localMeta.medicines_ts ?? 0);
+    const needsSups = remoteMeta.supplements_ts > (localMeta.supplements_ts ?? 0);
+    const needsFood = remoteMeta.food_ts > (localMeta.food_ts ?? 0);
+
+    if (!needsMeds && !needsSups && !needsFood) {
+      console.log('[dataSync] ✅ Data is up to date, no download needed');
+      return;
+    }
+
+    console.log('[dataSync] 🔄 New data detected, downloading...');
     const [newMeds, newSups, newFood] = await Promise.all([
-      needsMeds ? fetchFromStorage(STORAGE_URLS.medicines) : Promise.resolve(cachedMeds),
-      needsSups ? fetchFromStorage(STORAGE_URLS.supplements) : Promise.resolve(cachedSups),
-      needsFood ? fetchFromStorage(STORAGE_URLS.food) : Promise.resolve(cachedFood),
+      needsMeds ? fetchJSON(STORAGE_URLS.medicines)   : Promise.resolve(cachedMeds),
+      needsSups ? fetchJSON(STORAGE_URLS.supplements) : Promise.resolve(cachedSups),
+      needsFood ? fetchJSON(STORAGE_URLS.food)        : Promise.resolve(cachedFood),
     ]);
 
     await Promise.all([
-      needsMeds && setItem(CACHE_KEYS.medicines, newMeds),
-      needsSups && setItem(CACHE_KEYS.supplements, newSups),
-      needsFood && setItem(CACHE_KEYS.food, newFood),
+      needsMeds && newMeds.length > 0 && setItem(CACHE_KEYS.medicines, newMeds),
+      needsSups && newSups.length > 0 && setItem(CACHE_KEYS.supplements, newSups),
+      needsFood && newFood.length > 0 && setItem(CACHE_KEYS.food, newFood),
       setItem(CACHE_KEYS.meta, {
-        medicines_ts:   needsMeds ? remoteMeta.medicines_ts   : local.medicines_ts,
-        supplements_ts: needsSups ? remoteMeta.supplements_ts : local.supplements_ts,
-        food_ts:        needsFood ? remoteMeta.food_ts        : local.food_ts,
+        medicines_ts:   needsMeds && newMeds.length > 0 ? remoteMeta.medicines_ts   : localMeta.medicines_ts,
+        supplements_ts: needsSups && newSups.length > 0 ? remoteMeta.supplements_ts : localMeta.supplements_ts,
+        food_ts:        needsFood && newFood.length > 0 ? remoteMeta.food_ts        : localMeta.food_ts,
         last_checked:   now,
       }),
     ]);
 
+    // بلّغ الـ App بالتحديث — بس لو في جديد فعلاً
     window.dispatchEvent(new CustomEvent('pharma:storage-updated', {
       detail: {
-        medicines:   needsMeds ? newMeds : cachedMeds,
-        supplements: needsSups ? newSups : cachedSups,
-        food:        needsFood ? newFood : cachedFood,
+        medicines:   needsMeds && newMeds.length > 0 ? newMeds : cachedMeds,
+        supplements: needsSups && newSups.length > 0 ? newSups : cachedSups,
+        food:        needsFood && newFood.length > 0 ? newFood : cachedFood,
       }
     }));
   } catch (e) {
@@ -111,7 +122,7 @@ async function checkForUpdatesInBackground(
   }
 }
 
-// ── الـ function الرئيسية ─────────────────────────────────────────────────────
+// ── Main sync function ────────────────────────────────────────────────────────
 export async function syncData(): Promise<SyncResult> {
   const [cachedMeds, cachedSups, cachedFood, cachedMeta] = await Promise.all([
     getItem<any[]>(CACHE_KEYS.medicines),
@@ -120,74 +131,80 @@ export async function syncData(): Promise<SyncResult> {
     getItem<CacheMeta>(CACHE_KEYS.meta),
   ]);
 
-  const hasCachedData = cachedMeds && cachedMeds.length > 0;
-  const foodEmpty = !cachedFood || (Array.isArray(cachedFood) && cachedFood.length === 0);
+  const hasMeds = cachedMeds && cachedMeds.length > 0;
+  const hasSups = cachedSups && cachedSups.length > 0;
+  const hasFood = cachedFood && cachedFood.length > 0;
 
-  // لو food فاضي — حمّله مرة واحدة بس مع حماية من الـ loop
-  if (hasCachedData && foodEmpty) {
-    const foodLastAttempt = (cachedMeta as any)?.food_last_attempt ?? 0;
-    const tenMinutes = 10 * 60 * 1000;
-    if (Date.now() - foodLastAttempt < tenMinutes) {
-      console.log('[dataSync] ⏸ Food skipped — tried recently');
-    } else {
-      console.log('[dataSync] 🍎 Food empty — loading...');
-      await setItem(CACHE_KEYS.meta, { ...(cachedMeta || {}), food_last_attempt: Date.now() });
-      try {
-        const res = await fetch(STORAGE_URLS.food);
-        const newFood = await res.json();
-        if (Array.isArray(newFood) && newFood.length > 0) {
-          await setItem(CACHE_KEYS.food, newFood);
-          await setItem(CACHE_KEYS.meta, { ...(cachedMeta || {}), food_last_attempt: Date.now(), last_checked: Date.now() });
-          console.log('[dataSync] ✅ Food cached:', newFood.length);
-          return { medicines: cachedMeds!, supplements: cachedSups || [], food: newFood, source: 'storage', updated: true };
-        }
-      } catch(e) {
-        console.error('[dataSync] ❌ Food fetch error:', e);
-      }
-    }
-  }
-
-  if (hasCachedData) {
-    const now = Date.now();
-    const lastChecked = cachedMeta?.last_checked ?? 0;
-    if ((now - lastChecked) > 8 * 60 * 60 * 1000) { // كل 8 ساعات
-      checkForUpdatesInBackground(cachedMeta, cachedMeds!, cachedSups || [], cachedFood || []);
-    }
-    return {
-      medicines:   cachedMeds!,
-      supplements: cachedSups || [],
-      food:        cachedFood || [],
-      source: 'cache',
-      updated: false,
-    };
-  }
-
-  // مفيش Cache — حمّل من Storage
-  console.log('[dataSync] Loading from Storage...');
-  const [meds, sups, food] = await Promise.all([
-    fetchFromStorage(STORAGE_URLS.medicines),
-    fetchFromStorage(STORAGE_URLS.supplements),
-    fetchFromStorage(STORAGE_URLS.food),
-  ]);
-
-  console.log('[dataSync] Storage:', meds.length, 'medicines,', sups.length, 'supplements');
-
-  if (meds.length > 0) {
-    const now = Date.now();
-    await Promise.all([
-      setItem(CACHE_KEYS.medicines, meds),
-      setItem(CACHE_KEYS.supplements, sups),
-      setItem(CACHE_KEYS.food, food),
-      setItem(CACHE_KEYS.meta, { medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now }),
+  // ── كيس 1: مفيش cache خالص — حمّل كل شيء من R2 ──────────────────────────
+  if (!hasMeds) {
+    console.log('[dataSync] 🚀 First launch — fetching all data from R2...');
+    const [meds, sups, food] = await Promise.all([
+      fetchJSON(STORAGE_URLS.medicines),
+      fetchJSON(STORAGE_URLS.supplements),
+      fetchJSON(STORAGE_URLS.food),
     ]);
-    return { medicines: meds, supplements: sups, food, source: 'storage', updated: true };
+
+    if (meds.length > 0) {
+      const now = Date.now();
+      await Promise.all([
+        setItem(CACHE_KEYS.medicines,   meds),
+        setItem(CACHE_KEYS.supplements, sups),
+        setItem(CACHE_KEYS.food,        food),
+        setItem(CACHE_KEYS.meta, {
+          medicines_ts: now, supplements_ts: now, food_ts: now, last_checked: now
+        }),
+      ]);
+      console.log('[dataSync] ✅ First load done:', meds.length, 'medicines');
+      return { medicines: meds, supplements: sups, food, source: 'storage', updated: true };
+    }
+
+    return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
   }
 
-  return { medicines: [], supplements: [], food: [], source: 'empty', updated: false };
+  // ── كيس 2: Cache موجود — return فوراً + load food لو ناقص ────────────────
+  // food فاضي؟ — حاول مرة بس كل 30 دقيقة
+  if (!hasFood) {
+    const lastAttempt = cachedMeta?.food_last_attempt ?? 0;
+    if (Date.now() - lastAttempt > FOOD_RETRY_MS) {
+      console.log('[dataSync] 🍎 Food missing — fetching...');
+      await setItem(CACHE_KEYS.meta, { ...(cachedMeta ?? {}), food_last_attempt: Date.now() });
+      fetchJSON(STORAGE_URLS.food).then(async (newFood) => {
+        if (newFood.length > 0) {
+          await setItem(CACHE_KEYS.food, newFood);
+          window.dispatchEvent(new CustomEvent('pharma:storage-updated', {
+            detail: { medicines: cachedMeds!, supplements: cachedSups || [], food: newFood }
+          }));
+        }
+      });
+    }
+  }
+
+  // ── كيس 3: هل مضى 48 ساعة على آخر check؟ ────────────────────────────────
+  const lastChecked = cachedMeta?.last_checked ?? 0;
+  const hoursSinceCheck = (Date.now() - lastChecked) / (1000 * 60 * 60);
+
+  if ((Date.now() - lastChecked) > CHECK_INTERVAL_MS) {
+    console.log(`[dataSync] ⏰ ${hoursSinceCheck.toFixed(0)}h since last check — checking for updates...`);
+    // في الخلفية — مش بيحجب الـ UI
+    checkForUpdatesInBackground(
+      cachedMeta ?? { medicines_ts: 0, supplements_ts: 0, food_ts: 0, last_checked: 0 },
+      cachedMeds!, cachedSups || [], cachedFood || []
+    );
+  } else {
+    console.log(`[dataSync] 💾 From cache — next check in ${(48 - hoursSinceCheck).toFixed(0)}h`);
+  }
+
+  // Return cache فوراً دايماً
+  return {
+    medicines:   cachedMeds!,
+    supplements: cachedSups || [],
+    food:        cachedFood || [],
+    source:      'cache',
+    updated:     false,
+  };
 }
 
-// ── اسمع لـ medicine_overrides live ──────────────────────────────────────────
-// بيتنادى عند أول تحميل وكل ما يحصل تعديل
+// ── Live overrides listener ───────────────────────────────────────────────────
 export function listenToOverrides(
   onUpdate: (overrides: Map<string, any>) => void
 ): () => void {
@@ -207,7 +224,7 @@ export function listenToOverrides(
   return unsub;
 }
 
-// ── حفظ تعديل دواء (أدمن فقط) ───────────────────────────────────────────────
+// ── Admin: save override ──────────────────────────────────────────────────────
 export async function saveOverride(medicine: any): Promise<void> {
   if (FIREBASE_DISABLED || !db) throw new Error('Firebase disabled');
   if (!medicine.RegisterNumber) throw new Error('No RegisterNumber');
@@ -218,7 +235,7 @@ export async function saveOverride(medicine: any): Promise<void> {
   );
 }
 
-// ── تحديث timestamp بعد رفع Storage ──────────────────────────────────────────
+// ── Admin: bump version after uploading new data ──────────────────────────────
 export async function bumpDataVersion(collectionName: string): Promise<void> {
   if (FIREBASE_DISABLED || !db) return;
   try {
@@ -232,7 +249,7 @@ export async function bumpDataVersion(collectionName: string): Promise<void> {
   }
 }
 
-// ── مسح الـ Cache ─────────────────────────────────────────────────────────────
+// ── Clear cache (for debugging / admin) ──────────────────────────────────────
 export async function clearDataCache(): Promise<void> {
   await Promise.all(Object.values(CACHE_KEYS).map(k => removeItem(k)));
 }
