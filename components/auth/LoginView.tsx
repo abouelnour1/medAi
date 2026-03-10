@@ -52,8 +52,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     setIsSocialLoading('google');
     try {
       await loginWithGoogle();
-      // لو مش في specialty → فتح الـ modal
-      setShowSpecialty(true);
+      // لو مش محدد specialty → فتح الـ modal للمرة الأولى بس
+      // بنشوف من localStorage عشان user object ممكن يكون لسه مش محدّث
+      const hasSpecialty = localStorage.getItem('user_specialty_set');
+      if (!hasSpecialty) setShowSpecialty(true);
+      else onLoginSuccess();
     }
     catch (err: any) { 
       console.error('Login Google Error:', err);
@@ -74,6 +77,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialty(false);
+    localStorage.setItem('user_specialty_set', 'true');
     if (user && updateUser) {
       try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
     }

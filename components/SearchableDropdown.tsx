@@ -159,7 +159,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-[300] w-full mt-2 bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[220px] flex flex-col overflow-hidden animate-zoom-in">
+        <div className="absolute z-[300] w-full bottom-full mb-2 bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[220px] flex flex-col overflow-hidden animate-zoom-in">
           <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="relative">
               <input

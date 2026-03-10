@@ -214,6 +214,7 @@ const App: React.FC = () => {
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   // نشوف IndexedDB مباشرة — لو في داتا محلية مش نعرض loading
+  // نشوف IndexedDB فوراً — لو في cache مش محتاجين loading
   const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -479,7 +480,18 @@ const App: React.FC = () => {
         setInsuranceData(INITIAL_INSURANCE_DATA as any);
         setIsDataLoaded(true);
 
-        // ── خطوة 1: حمّل الداتا من IndexedDB أولاً — بدون نت ──────
+        // ── خطوة 1: جيب من IndexedDB أولاً — فوري بدون نت ──────
+        const { getItem } = await import('./utils/storage');
+        const cachedMeds = await getItem<any[]>('pharma_medicines');
+        if (cachedMeds && cachedMeds.length > 0) {
+          // في cache → شيل اللودينج فوراً قبل أي network
+          const baseMapEarly = new Map<string, Medicine>();
+          cachedMeds.map(normalizeMedicine).forEach(m => baseMapEarly.set(m.RegisterNumber, m));
+          setMedicines(Array.from(baseMapEarly.values()));
+          setIsMedicinesLoading(false);
+        }
+
+        // بعدين اعمل full sync (بيجيب supplements + food + updates)
         const syncResult = await syncData();
         const baseMap = new Map<string, Medicine>();
         [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
@@ -488,7 +500,7 @@ const App: React.FC = () => {
 
         const allMeds = Array.from(baseMap.values());
         if (allMeds.length > 0) setMedicines(allMeds);
-        setIsMedicinesLoading(false); // دايماً نشيل اللودينج حتى لو الداتا فاضية
+        setIsMedicinesLoading(false);
 
         // ── restore state بعد reload (رجوع من Gemini أو أي app تاني) ──
         try {
@@ -844,26 +856,13 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); setView('alternatives'); setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 0); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
 
-                  {/* ── علامة تحميل الداتا ── */}
-                  {isMedicinesLoading && (
-                    <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-primary/8 dark:bg-primary/15 rounded-2xl border border-primary/15">
-                      <div className="ps-spinner flex-shrink-0" />
-                      <div>
-                        <p className="text-[11px] font-black text-primary dark:text-primary-light">
-                          {language === 'ar' ? 'جاري تحميل قاعدة البيانات...' : 'Loading database...'}
-                        </p>
-                        <p className="text-[9px] text-primary/60 mt-0.5">
-                          {language === 'ar' ? 'أول مرة قد تستغرق ثوانٍ' : 'First load may take a few seconds'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  {/* ── علامة تحميل — اتنقلت لتحت الـ SearchBar ── */}
 
                   {/* SearchBar — يتحرك مع الصفحة */}
                   <div className="mb-4">
@@ -910,6 +909,16 @@ const App: React.FC = () => {
                         </div>
                       ) : null}
                   </div>
+
+                  {/* ── علامة تحميل في آخر الكارت ── */}
+                  {isMedicinesLoading && (
+                    <div className="flex items-center justify-center gap-2 py-4 mt-2 opacity-60">
+                      <div className="w-3.5 h-3.5 border-2 border-teal-300 border-t-teal-500 rounded-full animate-spin flex-shrink-0" />
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Updating...
+                      </span>
+                    </div>
+                  )}
               </div>
           );
       }
@@ -1039,15 +1048,18 @@ const App: React.FC = () => {
     );
   }
 
-  // ✅ Auth Gate — لو لسه بيتحقق من الـ session اظهر splash
-  if (authLoading) {
+  // ✅ Splash screen — بسيطة: logo + spinner صغير
+  if (authLoading || (isMedicinesLoading && medicines.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900">
-        <img src="/logo.png" alt="PharmaSource"
-          className="w-24 h-24 rounded-[1.75rem] object-cover shadow-xl shadow-teal-500/20 mb-4"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).replaceWith(Object.assign(document.createElement('span'), {className:'text-4xl mb-4',textContent:'💊'})); }}
-        />
-        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest animate-pulse">PharmaSource</p>
+        <div className="relative flex flex-col items-center">
+          <img src="/logo.png" alt="PharmaSource"
+            className="w-24 h-24 rounded-[1.75rem] object-cover shadow-xl shadow-teal-500/20"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display='none'; }}
+          />
+          {/* Spinner تحت الصورة مباشرة */}
+          <div className="mt-4 w-5 h-5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
@@ -1069,42 +1081,7 @@ const App: React.FC = () => {
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          {isMedicinesLoading ? (
-            <div className="flex flex-col items-center justify-center" style={{minHeight: 'calc(100vh - 200px)'}}>
-              {/* Progress Circle */}
-              <div className="relative w-28 h-28 mb-6">
-                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="text-slate-100 dark:text-slate-800" />
-                  <circle
-                    cx="50" cy="50" r="42" fill="none"
-                    stroke="url(#progressGrad)" strokeWidth="6"
-                    strokeLinecap="round"
-                    strokeDasharray="263.9"
-                    strokeDashoffset="66"
-                    style={{
-                      animation: 'spin 1.4s linear infinite',
-                      transformOrigin: 'center',
-                    }}
-                  />
-                  <defs>
-                    <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#14b8a6" />
-                      <stop offset="100%" stopColor="#0ea5e9" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-black text-primary">💊</span>
-                </div>
-              </div>
-              <h2 className="text-[13px] font-black text-slate-700 dark:text-slate-300 mb-1">PharmaSource</h2>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase animate-pulse">
-                {language === 'ar' ? 'جاري تحميل قاعدة البيانات...' : 'Loading database...'}
-              </p>
-              <style>{`@keyframes spin { from { stroke-dashoffset: 263.9; } to { stroke-dashoffset: 0; } }`}</style>
-            </div>
-          ) : (
-            <div
+          <div
               key={view}
               style={{
                 animation: 'viewSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both',
@@ -1112,7 +1089,6 @@ const App: React.FC = () => {
             >
               {renderContent()}
             </div>
-          )}
       </main>
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (
