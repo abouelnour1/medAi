@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Medicine, TFunction } from '../types';
 
 export interface OrderItem {
@@ -98,7 +99,7 @@ const AddMedicineModal: React.FC<{
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
       style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}
       onClick={onClose}

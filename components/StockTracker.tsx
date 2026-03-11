@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Medicine, TFunction } from '../types';
 import { setItem, getItem } from '../utils/storage';
 
@@ -34,7 +35,7 @@ const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: b
       if (mainEl) mainEl.style.overflow = mainPrev;
     };
   }, []);
-  return (
+  return createPortal(
     <div
       style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)' }}
       onClick={onClose}
@@ -48,7 +49,8 @@ const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: b
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
