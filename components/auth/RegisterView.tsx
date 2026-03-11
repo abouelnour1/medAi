@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
-import AppleIcon from '../icons/AppleIcon';
 
 interface RegisterViewProps {
   onSwitchToLogin: () => void;
@@ -13,11 +12,11 @@ interface RegisterViewProps {
 export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onRegisterSuccess, t }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'premium' | 'company'>('premium');
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState<'google' | 'apple' | null>(null);
-  const { register, loginWithGoogle, loginWithApple } = useAuth();
+  const [isSocialLoading, setIsSocialLoading] = useState<'google' | null>(null);
+  const { register, loginWithGoogle } = useAuth();
 
   const ar = t('language') === 'ar';
   const inputStyle = "mt-1 block w-full px-3 py-2.5 bg-slate-50 dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-sm font-bold placeholder-slate-400 focus:outline-none focus:border-teal-500 transition-all";
@@ -35,7 +34,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     }
     setIsLoading(true);
     try {
-      await register(email, password, role);
+      await register(email, password);
       // رسالة تأكيد الإيميل
       alert(ar
         ? `✅ تم إنشاء حسابك!\n\nتم إرسال رسالة تأكيد إلى:\n${email}\n\nمن فضلك افتح بريدك وأكّد إيميلك قبل تسجيل الدخول.`
@@ -94,25 +93,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
           <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Create your account</p>
         </div>
 
-        {/* Account Type */}
-        <div className="mb-5">
-          <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 text-center">{t('accountType')}</label>
-          <div className="flex bg-slate-100 dark:bg-dark-card p-1 rounded-xl border dark:border-dark-border">
-            <button type="button" onClick={() => setRole('premium')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${role === 'premium' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400'}`}>
-              {t('individualAccount')}
-            </button>
-            <button type="button" onClick={() => setRole('company')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${role === 'company' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400'}`}>
-              {t('companyAccount')}
-            </button>
-          </div>
-          {role === 'company' && (
-            <p className="text-[10px] text-center text-slate-400 italic px-2 mt-2 animate-fade-in">
-              {ar ? '* حساب الشركات يسمح لك باقتراح تعديلات على الأدوية تخضع لموافقة المسؤول.' : '* Company accounts allow you to suggest medicine updates subject to admin approval.'}
-            </p>
-          )}
-        </div>
+
 
         {/* Social Sign-Up */}
         <div className="space-y-3 mb-5">
@@ -128,17 +109,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
             {ar ? 'التسجيل بـ Google' : 'Sign up with Google'}
           </button>
 
-          <button
-            onClick={handleAppleRegister}
-            disabled={!!isSocialLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 bg-black dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-2xl font-black text-sm text-white active:scale-95 transition-all disabled:opacity-50 shadow-sm"
-          >
-            {isSocialLoading === 'apple'
-              ? <div className="w-5 h-5 border-2 border-slate-500 border-t-white rounded-full animate-spin" />
-              : <div className="w-5 h-5"><AppleIcon /></div>
-            }
-            {ar ? 'التسجيل بـ Apple' : 'Sign up with Apple'}
-          </button>
+          
         </div>
 
         {/* Divider */}

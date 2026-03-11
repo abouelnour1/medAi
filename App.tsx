@@ -48,6 +48,7 @@ import { syncData, listenToOverrides, saveOverride, clearDataCache, bumpDataVers
 import { areSameRouteGroup } from './utils/pharmaceuticalGroups';
 import OrderList from './components/OrderList';
 import SpecialtyModal from './components/SpecialtyModal';
+import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -959,12 +960,24 @@ const App: React.FC = () => {
       }
 
       if (activeTab === 'settings') {
+          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
+                          {/* Stock Tracker */}
+                          <button onClick={() => setView('stockTracker')} className="w-full flex items-center justify-between p-4 bg-violet-50 dark:bg-violet-900/20 rounded-2xl">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">📦</span>
+                              <div className="text-left">
+                                <span className="font-black text-violet-700 dark:text-violet-400 block text-sm">Stock Tracker</span>
+                                <span className="text-[10px] text-violet-500/70">Track inventory per facility</span>
+                              </div>
+                            </div>
+                            <svg className="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
                           {/* Order List */}
                           <button onClick={() => { refreshOrderCount(); setView('orderList'); }} className="w-full flex items-center justify-between p-4 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
                             <div className="flex items-center gap-3">

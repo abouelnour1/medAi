@@ -808,7 +808,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                       {[
                         { label: 'الكل', value: users.length, color: 'text-slate-700' },
                         { label: 'أدمن', value: adminUsers.length, color: 'text-red-500' },
-                        { label: 'شركات', value: companyUsers.length, color: 'text-blue-500' },
+                        
                         { label: 'مميز', value: premiumUsers.length, color: 'text-amber-500' },
                       ].map(item => (
                         <div key={item.label} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center">
@@ -818,6 +818,43 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                       ))}
                     </div>
                   </div>
+
+                  {/* التخصصات */}
+                  {(() => {
+                    const specialties = ['Pharmacist','Physician','Nurse','Physical Therapist','Nutritionist','Other'];
+                    const specialtyEmojis: Record<string,string> = { Pharmacist:'💊', Physician:'🩺', Nurse:'🩹', 'Physical Therapist':'🏃', Nutritionist:'🥗', Other:'👤' };
+                    const specialtyCounts = specialties.map(s => ({
+                      label: s,
+                      emoji: specialtyEmojis[s] || '👤',
+                      value: users.filter(u => (u as any).specialty === s).length,
+                    }));
+                    const withSpecialty = users.filter(u => (u as any).specialty).length;
+                    return (
+                    <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">🎓 التخصصات</h4>
+                        <span className="text-[10px] font-black text-slate-400">{withSpecialty}/{users.length} سجّلوا</span>
+                      </div>
+                      <div className="space-y-2">
+                        {specialtyCounts.filter(s => s.value > 0 || true).map(item => (
+                          <div key={item.label} className="flex items-center gap-2">
+                            <span className="text-base w-6 text-center">{item.emoji}</span>
+                            <div className="flex-grow">
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{item.label}</span>
+                                <span className="text-[11px] font-black text-primary">{item.value}</span>
+                              </div>
+                              <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full transition-all duration-700"
+                                  style={{width: withSpecialty > 0 ? `${Math.round(item.value/withSpecialty*100)}%` : '0%'}} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    );
+                  })()}
 
                   {/* أكبر الشركات المصنعة */}
                   <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">

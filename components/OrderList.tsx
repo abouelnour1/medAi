@@ -89,7 +89,7 @@ const AddMedicineModal: React.FC<{
     <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] flex flex-col"
-        style={{ maxHeight: '80vh', animation: 'slideUp 0.25s ease-out' }}
+        style={{ maxHeight: '85vh', animation: 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={e => e.stopPropagation()}
       >
         <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
