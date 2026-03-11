@@ -12,6 +12,7 @@ interface FilterModalProps {
     onClearFilters: () => void;
     allMedicines: Medicine[];
     t: TFunction;
+    headerBottom?: number;
 }
 
 // Collapsible Section
@@ -212,23 +213,23 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 </Section>
 
                 <Section title={t('pharmaceuticalForm')} icon="💊" isOpen={openSections.form} onToggle={() => toggleSection('form')} activeCount={activeCounts.form}>
-                  <SearchableDropdown ariaLabel={t('pharmaceuticalForm')} value={localFilters.pharmaceuticalForm || []} onChange={v => handleFilterChange('pharmaceuticalForm', v)} options={dynamicOptions.forms} placeholder={t('all')} mode="multi" t={t} />
+                  <SearchableDropdown ariaLabel={t('pharmaceuticalForm')} headerBottom={headerBottom} value={localFilters.pharmaceuticalForm || []} onChange={v => handleFilterChange('pharmaceuticalForm', v)} options={dynamicOptions.forms} placeholder={t('all')} mode="multi" t={t} />
                 </Section>
 
                 <Section title={t('marketingCompany')} icon="🏢" isOpen={openSections.marketing} onToggle={() => toggleSection('marketing')} activeCount={activeCounts.marketing}>
-                  <SearchableDropdown ariaLabel={t('marketingCompany')} value={localFilters.marketingCompany} onChange={v => handleFilterChange('marketingCompany', Array.isArray(v) ? v : [])} options={dynamicOptions.marketingCompanies} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('marketingCompany')} headerBottom={headerBottom} value={localFilters.marketingCompany} onChange={v => handleFilterChange('marketingCompany', Array.isArray(v) ? v : [])} options={dynamicOptions.marketingCompanies} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
                 </Section>
 
                 <Section title={t('filterByManufacturer')} icon="🏭" isOpen={openSections.manufacturer} onToggle={() => toggleSection('manufacturer')} activeCount={activeCounts.manufacturer}>
-                  <SearchableDropdown ariaLabel={t('filterByManufacturer')} value={localFilters.manufactureName} onChange={v => handleFilterChange('manufactureName', Array.isArray(v) ? v : [])} options={dynamicOptions.manufacturers} placeholder={t('allManufacturers')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('filterByManufacturer')} headerBottom={headerBottom} value={localFilters.manufactureName} onChange={v => handleFilterChange('manufactureName', Array.isArray(v) ? v : [])} options={dynamicOptions.manufacturers} placeholder={t('allManufacturers')} t={t} mode="multi" />
                 </Section>
 
                 <Section title={t('agents')} icon="👤" isOpen={openSections.agent} onToggle={() => toggleSection('agent')} activeCount={activeCounts.agent}>
-                  <SearchableDropdown ariaLabel={t('agents')} value={localFilters.mainAgent} onChange={v => handleFilterChange('mainAgent', Array.isArray(v) ? v : [])} options={dynamicOptions.agents} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('agents')} headerBottom={headerBottom} value={localFilters.mainAgent} onChange={v => handleFilterChange('mainAgent', Array.isArray(v) ? v : [])} options={dynamicOptions.agents} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
                 </Section>
 
                 <Section title={t('filterByLegalStatus')} icon="⚖️" isOpen={openSections.legal} onToggle={() => toggleSection('legal')} activeCount={activeCounts.legal}>
-                  <SearchableDropdown ariaLabel={t('filterByLegalStatus')} value={localFilters.legalStatus} onChange={v => handleFilterChange('legalStatus', Array.isArray(v) ? '' : v)} options={dynamicOptions.legalStatuses} placeholder={t('allLegalStatuses')} t={t} />
+                  <SearchableDropdown ariaLabel={t('filterByLegalStatus')} headerBottom={headerBottom} value={localFilters.legalStatus} onChange={v => handleFilterChange('legalStatus', Array.isArray(v) ? '' : v)} options={dynamicOptions.legalStatuses} placeholder={t('allLegalStatuses')} t={t} />
                 </Section>
 
                 <Section title={t('priceRange')} icon="💰" isOpen={openSections.price} onToggle={() => toggleSection('price')} activeCount={activeCounts.price}>

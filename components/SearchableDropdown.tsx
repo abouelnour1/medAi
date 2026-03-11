@@ -17,6 +17,7 @@ interface SearchableDropdownProps {
   t: TFunction;
   ariaLabel: string;
   mode?: 'single' | 'multi';
+  headerBottom?: number; // ارتفاع الـ header من فوق
 }
 
 const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
@@ -27,6 +28,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   t,
   ariaLabel,
   mode = 'single',
+  headerBottom = 80,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,31 +54,17 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setDisplayLimit(50);
-      // احسب مكان الـ dropdown بالنسبة للشاشة
+      // دايماً يبدأ من تحت الـ header وينزل للأسفل
       if (triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const maxH = 220;
-        if (spaceBelow >= maxH || spaceBelow >= spaceAbove) {
-          // يطلع تحت
-          setDropdownStyle({
-            position: 'fixed',
-            top: rect.bottom + 6,
-            left: rect.left,
-            width: rect.width,
-            zIndex: 9998,
-          });
-        } else {
-          // يطلع فوق
-          setDropdownStyle({
-            position: 'fixed',
-            bottom: window.innerHeight - rect.top + 6,
-            left: rect.left,
-            width: rect.width,
-            zIndex: 9998,
-          });
-        }
+        setDropdownStyle({
+          position: 'fixed',
+          top: headerBottom + 8,
+          left: rect.left,
+          width: rect.width,
+          maxHeight: window.innerHeight - headerBottom - 24,
+          zIndex: 9998,
+        });
       }
     }
   }, [isOpen]);
@@ -188,7 +176,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[220px] flex flex-col overflow-hidden animate-zoom-in"
+        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700  flex flex-col overflow-hidden animate-zoom-in"
           style={dropdownStyle}>
           <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="relative">
