@@ -404,10 +404,20 @@ const App: React.FC = () => {
     return text;
   }, [language]);
 
-  // صفّر الـ scroll لما يدخل alternatives
+  // صفّر الـ scroll لما يدخل alternatives — نستخدم 3 طرق للضمان
   useEffect(() => {
     if (view === 'alternatives' && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
+      const el = scrollContainerRef.current;
+      // فوري
+      el.scrollTop = 0;
+      // بعد الـ render
+      requestAnimationFrame(() => {
+        el.scrollTop = 0;
+        // بعد كل حاجة
+        requestAnimationFrame(() => { el.scrollTop = 0; });
+      });
+      // بعد 80ms fallback
+      setTimeout(() => { el.scrollTop = 0; }, 80);
     }
   }, [view, selectedMedicine]);
 
@@ -443,6 +453,8 @@ const App: React.FC = () => {
           if (selectedMedicine) openSheet(selectedMedicine, true); // skip animation
       } else if (view === 'details') {
           const target = previousView === 'alternatives' ? 'alternatives' : 'results';
+          // لو راجع لـ alternatives نمسح الـ scroll المحفوظ عشان يبدأ من فوق
+          if (target === 'alternatives') scrollPositions.current.delete('alternatives');
           setView(target);
           restoreScroll(target);
       } else if (view === 'insuranceDetails') {

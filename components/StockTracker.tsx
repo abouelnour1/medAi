@@ -19,9 +19,16 @@ const saveFacilities = async (f: Facility[]) => { try { await setItem(FACILITIES
 // ── Bottom Sheet (fixed to viewport, not scroll container) ────────────────────
 const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: boolean }> = ({ onClose, children, tall }) => {
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    // نوقف الـ scroll على الـ main container مش الـ body
+    const mainEl = document.getElementById('main-scroll-container');
+    const bodyPrev = document.body.style.overflow;
+    const mainPrev = mainEl ? mainEl.style.overflow : '';
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    if (mainEl) mainEl.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = bodyPrev;
+      if (mainEl) mainEl.style.overflow = mainPrev;
+    };
   }, []);
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)' }} onClick={onClose}>

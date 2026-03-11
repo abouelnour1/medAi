@@ -87,9 +87,15 @@ const AddMedicineModal: React.FC<{
 
   // lock body scroll
   React.useEffect(() => {
-    const prev = document.body.style.overflow;
+    const mainEl = document.getElementById('main-scroll-container');
+    const bodyPrev = document.body.style.overflow;
+    const mainPrev = mainEl ? mainEl.style.overflow : '';
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    if (mainEl) mainEl.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = bodyPrev;
+      if (mainEl) mainEl.style.overflow = mainPrev;
+    };
   }, []);
 
   return (
