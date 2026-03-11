@@ -86,7 +86,7 @@ const TypeChips: React.FC<{
 };
 
 const FilterModal: React.FC<FilterModalProps> = ({
-    isOpen, onClose, filters, onApply, onClearFilters, allMedicines, t
+    isOpen, onClose, filters, onApply, onClearFilters, allMedicines, t, headerBottom = 80
 }) => {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
