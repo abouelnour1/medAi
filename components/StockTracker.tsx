@@ -314,8 +314,7 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
       s.note || '',
       new Date(s.lastUpdated).toLocaleString(),
     ].map(v => `"${v.replace(/"/g,'""')}"`).join(','));
-    const csv = BOM + [headers.join(','), ...rows].join('
-');
+    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -335,8 +334,7 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
       });
     });
     rows.sort(); // ترتيب حسب الاسم
-    const csv = BOM + [headers.join(','), ...rows].join('
-');
+    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
