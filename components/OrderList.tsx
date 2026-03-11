@@ -99,7 +99,11 @@ const AddMedicineModal: React.FC<{
   }, []);
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }} onClick={onClose}>
+    <div
+      style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)' }}
+      onClick={onClose}
+      onTouchMove={e => e.preventDefault()}
+    >
       <div
         className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] flex flex-col"
         style={{ maxHeight: '85vh', animation: 'orderSheetUp 0.3s cubic-bezier(0.22,1,0.36,1)', paddingBottom: 'env(safe-area-inset-bottom)' }}
