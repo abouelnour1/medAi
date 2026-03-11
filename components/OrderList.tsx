@@ -160,7 +160,8 @@ const AddMedicineModal: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
