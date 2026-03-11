@@ -61,6 +61,30 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
+  // ── Order List helpers ────────────────────────────────────────────────
+  const [inOrder, setInOrder] = useState(() => {
+    try {
+      const r = localStorage.getItem('pharma_order_list');
+      if (!r) return false;
+      return JSON.parse(r).some((i: any) => i.medicine?.RegisterNumber === medicine.RegisterNumber);
+    } catch { return false; }
+  });
+
+  const toggleOrder = () => {
+    try {
+      const raw = localStorage.getItem('pharma_order_list');
+      let items: any[] = raw ? JSON.parse(raw) : [];
+      if (inOrder) {
+        items = items.filter((i: any) => i.medicine?.RegisterNumber !== medicine.RegisterNumber);
+        setInOrder(false);
+      } else {
+        items.push({ medicine, quantity: 1 });
+        setInOrder(true);
+      }
+      localStorage.setItem('pharma_order_list', JSON.stringify(items));
+    } catch {}
+  };
+
   // Scroll lock handled inside ClinicalDataPage
 
   // Lazy load clinical data - بس لما الـ RegisterNumber يتغير فعلاً
@@ -213,7 +237,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2 px-0.5">
+      <div className="grid grid-cols-4 gap-2 px-0.5">
           {/* Alternatives */}
           <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
               <div className="w-4 h-4 text-primary flex-shrink-0"><AlternativeIcon /></div>

@@ -46,6 +46,9 @@ import { db, FIREBASE_DISABLED } from './firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { syncData, listenToOverrides, saveOverride, clearDataCache, bumpDataVersion } from './utils/dataSync';
 import { areSameRouteGroup } from './utils/pharmaceuticalGroups';
+import OrderList from './components/OrderList';
+import SpecialtyModal from './components/SpecialtyModal';
+import { UserSpecialty, PhysicianSubSpecialty } from './types';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -197,7 +200,7 @@ const MAX_RECENT = 8;
 const WHATSAPP_NUMBER = '550806894';
 
 const App: React.FC = () => {
-  const { user, logout, requestAIAccess, getSettings, isLoading: authLoading } = useAuth();
+  const { user, logout, requestAIAccess, getSettings, isLoading: authLoading, updateUser } = useAuth();
   const appSettings = getSettings();
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     try { return (sessionStorage.getItem('ps_tab') as Tab) || 'search'; } catch { return 'search'; }
@@ -245,6 +248,33 @@ const App: React.FC = () => {
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
   const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
+  const [orderCount, setOrderCount] = useState<number>(() => {
+    try { const r = localStorage.getItem('pharma_order_list'); return r ? JSON.parse(r).length : 0; } catch { return 0; }
+  });
+  // refresh order count when returning to settings
+  // ── Specialty Modal — يظهر مرة واحدة بعد Google login ──────────────
+  const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
+
+  // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal
+  useEffect(() => {
+    if (user && !localStorage.getItem('user_specialty_set')) {
+      // تأخير صغير عشان الـ UI يستقر أول
+      const t = setTimeout(() => setShowSpecialtyModal(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [user?.id]);
+
+  const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
+    setShowSpecialtyModal(false);
+    localStorage.setItem('user_specialty_set', 'true');
+    if (user && updateUser) {
+      try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
+    }
+  };
+
+  const refreshOrderCount = () => {
+    try { const r = localStorage.getItem('pharma_order_list'); setOrderCount(r ? JSON.parse(r).length : 0); } catch {}
+  };
   const [quickViewMedicine, setQuickViewMedicine] = useState<Medicine | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
@@ -929,11 +959,23 @@ const App: React.FC = () => {
       }
 
       if (activeTab === 'settings') {
+          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
+                          {/* Order List */}
+                          <button onClick={() => { refreshOrderCount(); setView('orderList'); }} className="w-full flex items-center justify-between p-4 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">🛒</span>
+                              <div className="text-left">
+                                <span className="font-black text-teal-700 dark:text-teal-400 block text-sm">Order List</span>
+                                <span className="text-[10px] text-teal-500/70">{orderCount > 0 ? `${orderCount} items` : 'Empty'}</span>
+                              </div>
+                            </div>
+                            <svg className="w-5 h-5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
                           <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1049,6 +1091,11 @@ const App: React.FC = () => {
   }
 
   // ✅ Splash screen — بسيطة: logo + spinner صغير
+  // Specialty modal يظهر فوق كل حاجة
+  const specialtyModalEl = showSpecialtyModal
+    ? <SpecialtyModal isOpen={true} onComplete={handleSpecialtyComplete} />
+    : null;
+
   if (authLoading || (isMedicinesLoading && medicines.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900">
@@ -1068,7 +1115,8 @@ const App: React.FC = () => {
   if (!user) {
     return (
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
-        {view === 'register'
+        {specialtyModalEl}
+      {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
           : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => {}} />
         }
@@ -1078,6 +1126,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
+      {specialtyModalEl}
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >

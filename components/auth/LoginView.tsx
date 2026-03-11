@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
-import { TFunction, UserSpecialty, PhysicianSubSpecialty } from '../../types';
+import { TFunction } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
-import SpecialtyModal from '../SpecialtyModal';
+
 
 interface LoginViewProps {
   onSwitchToRegister: () => void;
@@ -20,8 +20,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const [isLoading, setIsLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<'google' | null>(null);
   const [showPass, setShowPass] = useState(false);
-  const { login, loginWithGoogle, resetPassword, updateUser, user } = useAuth();
-  const [showSpecialty, setShowSpecialty] = useState(false);
+  const { login, loginWithGoogle, resetPassword } = useAuth();
 
   const ar = t('language') === 'ar';
 
@@ -52,11 +51,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     setIsSocialLoading('google');
     try {
       await loginWithGoogle();
-      // لو مش محدد specialty → فتح الـ modal للمرة الأولى بس
-      // بنشوف من localStorage عشان user object ممكن يكون لسه مش محدّث
-      const hasSpecialty = localStorage.getItem('user_specialty_set');
-      if (!hasSpecialty) setShowSpecialty(true);
-      else onLoginSuccess();
+      onLoginSuccess();
     }
     catch (err: any) { 
       console.error('Login Google Error:', err);
@@ -73,15 +68,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     e.preventDefault(); setError('');
     try { await resetPassword(resetEmail.trim()); setSuccessMessage(ar ? 'تم إرسال رابط إعادة تعيين كلمة المرور.' : 'Password reset link sent!'); }
     catch { setError(ar ? 'البريد الإلكتروني غير موجود' : 'Email not found'); }
-  };
-
-  const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
-    setShowSpecialty(false);
-    localStorage.setItem('user_specialty_set', 'true');
-    if (user && updateUser) {
-      try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
-    }
-    onLoginSuccess();
   };
 
   const inputBase = "w-full px-4 py-3.5 rounded-2xl text-sm font-semibold outline-none transition-all duration-200 bg-slate-50 dark:bg-slate-800/60 border-2 border-transparent focus:border-teal-400 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600";
@@ -112,7 +98,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
 
   return (
     <>
-    {showSpecialty && <SpecialtyModal isOpen={showSpecialty} onComplete={handleSpecialtyComplete} />}
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-5">
       <div className="w-full max-w-sm">
 
