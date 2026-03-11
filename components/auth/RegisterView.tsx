@@ -63,20 +63,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     }
   };
 
-  const handleAppleRegister = async () => {
-    setError('');
-    setIsSocialLoading('apple');
-    try {
-      await loginWithApple();
-      onRegisterSuccess();
-    } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(ar ? 'فشل التسجيل بـ Apple' : 'Apple sign-up failed');
-      }
-    } finally {
-      setIsSocialLoading(null);
-    }
-  };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 animate-card">
