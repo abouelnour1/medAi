@@ -192,7 +192,12 @@ exports.sendNotification = onCall(
       tokens = [extraData.token];
     }
 
-    if (tokens.length === 0) return { sent: 0, message: 'No tokens found' };
+    if (tokens.length === 0) {
+      console.log('❌ No tokens found - users with notificationsEnabled:true:', tokens.length);
+      return { sent: 0, message: 'No tokens found' };
+    }
+
+    console.log(`✅ Found ${tokens.length} tokens, sending...`);
 
     let sent = 0;
     for (let i = 0; i < tokens.length; i += 500) {
