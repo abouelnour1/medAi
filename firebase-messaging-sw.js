@@ -27,7 +27,7 @@ messaging.onBackgroundMessage((payload) => {
     tag: 'pharmasource-update', // Groups notifications
     renotify: true,
     data: {
-      url: window.location.origin
+      url: self.location.origin
     }
   };
 

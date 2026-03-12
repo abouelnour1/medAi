@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // مهم جداً لـ Android WebView
-  base: './',
+  base: '/',
   server: {
     host: true,
     port: 5173,
