@@ -47,12 +47,19 @@ if ((window as any).Capacitor?.isNativePlatform?.()) {
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    // نستخدم absolute path عشان يشتغل صح على Vercel
+    const swUrl = '/sw.js';
+    navigator.serviceWorker.register(swUrl)
       .then(registration => {
         console.log('SW registered:', registration);
       })
       .catch(err => {
         console.log('SW registration failed:', err);
       });
+
+    // Firebase Messaging SW
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then(reg => console.log('FCM SW registered:', reg))
+      .catch(err => console.log('FCM SW failed:', err));
   });
 }
