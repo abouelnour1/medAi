@@ -256,6 +256,20 @@ const App: React.FC = () => {
   // ── Specialty Modal — يظهر مرة واحدة بعد Google login ──────────────
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
 
+  const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
+
+  // لما user يتسجل لأول مرة → نظهر notification prompt بعد 3 ثواني
+  useEffect(() => {
+    if (!user) return;
+    // لو سبق رفض أو قبول → متسألش تاني
+    const alreadyAsked = localStorage.getItem('notif_prompt_shown_' + user.id);
+    if (alreadyAsked) return;
+    // لو عنده token بالفعل → متسألش
+    if (Notification.permission === 'granted') return;
+    const timer = setTimeout(() => setShowNotifPrompt(true), 3000);
+    return () => clearTimeout(timer);
+  }, [user?.id]);
+
   // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal
   useEffect(() => {
     if (user && !localStorage.getItem('user_specialty_set')) {
@@ -1157,6 +1171,50 @@ const App: React.FC = () => {
   return (
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       {specialtyModalEl}
+      {/* ── Notification Permission Prompt ── */}
+      {showNotifPrompt && user && (
+        <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(6px)' }}
+          onClick={() => { setShowNotifPrompt(false); localStorage.setItem('notif_prompt_shown_' + user.id, 'dismissed'); }}>
+          <div style={{ width:'100%', maxWidth:520, borderRadius:'2rem 2rem 0 0', paddingBottom:'env(safe-area-inset-bottom)', animation:'notifUp .35s cubic-bezier(.22,1,.36,1)' }}
+            className="bg-white dark:bg-slate-900 p-6"
+            onClick={e => e.stopPropagation()}>
+            <style>{`@keyframes notifUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+            <div className="flex justify-center mb-4"><div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700"/></div>
+            <div className="flex flex-col items-center text-center gap-3 mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
+                <span className="text-3xl">🔔</span>
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">
+                {language === 'ar' ? 'تفعيل الإشعارات' : 'Enable Notifications'}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                {language === 'ar'
+                  ? 'ابقَ على اطلاع بتغييرات الأسعار، والأدوية الجديدة، والتحديثات المهمة'
+                  : 'Stay updated on price changes, new medicines, and important updates'}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setShowNotifPrompt(false); localStorage.setItem('notif_prompt_shown_' + user.id, 'dismissed'); }}
+                className="py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-transform">
+                {language === 'ar' ? 'لاحقاً' : 'Later'}
+              </button>
+              <button
+                onClick={async () => {
+                  setShowNotifPrompt(false);
+                  localStorage.setItem('notif_prompt_shown_' + user.id, 'accepted');
+                  try {
+                    await requestPushPermission(user.id);
+                  } catch {}
+                }}
+                className="py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-black text-sm active:scale-95 transition-transform shadow-lg shadow-teal-500/25">
+                {language === 'ar' ? 'تفعيل ✓' : 'Enable ✓'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
 
       <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
