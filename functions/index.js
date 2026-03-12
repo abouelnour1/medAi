@@ -132,8 +132,6 @@ exports.notifyDailyFeatured = onDocumentWritten(
     // Index defined in firestore.indexes.json
     const usersSnap = await db.collection('users')
       .where('notificationsEnabled', '==', true)
-      .where('fcmToken', '!=', null)
-      .orderBy('fcmToken')
       .get();
 
     const tokens = usersSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
@@ -180,20 +178,13 @@ exports.sendNotification = onCall(
       // Index defined in firestore.indexes.json
       const snap = await db.collection('users')
         .where('notificationsEnabled', '==', true)
-        .where('fcmToken', '!=', null)
-        .orderBy('fcmToken')
         .get();
       tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
 
     } else if (target === 'specialty' && extraData?.specialty) {
-      // ابعت لـ specialty معينة
-      // NOTE: Requires composite index: notificationsEnabled ASC + specialty ASC + fcmToken ASC
-      // Index defined in firestore.indexes.json
       const snap = await db.collection('users')
         .where('notificationsEnabled', '==', true)
         .where('specialty', '==', extraData.specialty)
-        .where('fcmToken', '!=', null)
-        .orderBy('fcmToken')
         .get();
       tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
 
@@ -268,8 +259,6 @@ exports.priceChangeAlert = onDocumentWritten(
     const usersSnap = await db.collection('users')
       .where('favorites', 'array-contains', event.params.medicineId)
       .where('notificationsEnabled', '==', true)
-      .where('fcmToken', '!=', null)
-      .orderBy('fcmToken')
       .get();
 
     const tokens = usersSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
