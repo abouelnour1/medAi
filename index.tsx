@@ -51,15 +51,15 @@ if ('serviceWorker' in navigator) {
     const swUrl = '/sw.js';
     navigator.serviceWorker.register(swUrl)
       .then(registration => {
-        console.log('SW registered:', registration);
+        console.error('SW registered OK:', registration.scope);
       })
       .catch(err => {
-        console.log('SW registration failed:', err);
+        console.error('SW registration FAILED:', err);
       });
 
     // Firebase Messaging SW
     navigator.serviceWorker.register('/firebase-messaging-sw.js')
-      .then(reg => console.log('FCM SW registered:', reg))
-      .catch(err => console.log('FCM SW failed:', err));
+      .then(reg => console.error('FCM SW registered OK:', reg.scope))
+      .catch(err => console.error('FCM SW FAILED:', err));
   });
 }
