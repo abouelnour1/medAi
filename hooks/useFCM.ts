@@ -3,7 +3,7 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc } from 'firebase/firestore';
 import { app, db } from '../firebase';
 
-const VAPID_KEY = 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHCIOk3x8bDg';
+const VAPID_KEY = 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHCIOk3x8bDgM';
 
 export function useFCM(userId: string | undefined) {
   const tokenSaved = useRef(false);
