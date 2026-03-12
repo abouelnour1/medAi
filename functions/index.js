@@ -209,17 +209,12 @@ exports.sendNotification = onCall(
       });
       sent += result.successCount;
 
-      // احذف الـ tokens المنتهية
+      // لوق الـ tokens الفاشلة بس متمسحهاش — المستخدم هيجيب token جديد تلقائياً
       const failed = result.responses
         .map((r, idx) => (!r.success ? tokens[i + idx] : null))
         .filter(Boolean);
       if (failed.length > 0) {
-        const batch = db.batch();
-        const expiredSnap = await db.collection('users')
-          .where('fcmToken', 'in', failed.slice(0, 10))
-          .get();
-        expiredSnap.docs.forEach(d => batch.update(d.ref, { fcmToken: null, notificationsEnabled: false }));
-        await batch.commit();
+        console.log(`⚠️ ${failed.length} tokens failed (not deleted)`);
       }
     }
 

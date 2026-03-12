@@ -37,7 +37,25 @@ export async function requestPushPermission(userId: string): Promise<string | nu
     const { getMessaging, getToken } = await import('firebase/messaging');
     const { app } = await import('../firebase');
     const messaging = getMessaging(app);
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+    // نسجل الـ FCM Service Worker صريح عشان الـ token يكون ثابت
+    let swReg: ServiceWorkerRegistration | undefined;
+    try {
+      // نلاقي الـ SW المسجل أو نسجله
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      swReg = registrations.find(r => r.active?.scriptURL.includes('firebase-messaging-sw'));
+      if (!swReg) {
+        swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+        await navigator.serviceWorker.ready;
+      }
+    } catch (swErr) {
+      console.warn('SW registration failed, trying without:', swErr);
+    }
+
+    const token = await getToken(messaging, { 
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
 
     if (token) {
       await updateDoc(doc(db, 'users', userId), {
