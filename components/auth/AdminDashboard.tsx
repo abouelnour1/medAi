@@ -17,8 +17,9 @@ import FeaturedSchedulePanel from './FeaturedSchedulePanel';
 import PillIcon from '../icons/PillIcon';
 import FactoryIcon from '../icons/FactoryIcon';
 import GlobeIcon from '../icons/GlobeIcon';
-import { db, FIREBASE_DISABLED } from '../../firebase';
+import { db, FIREBASE_DISABLED, app } from '../../firebase';
 import { collection, doc, setDoc, addDoc, updateDoc, query, onSnapshot, where, getDoc, deleteDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { bumpDataVersion } from '../../utils/dataSync';
 
 // ── زر نشر التحديثات ─────────────────────────────────────────────────────────
@@ -194,6 +195,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             if (med) relatedMedicineId = med.RegisterNumber;
         }
 
+        // ١ — احفظ في Firestore (للإشعارات داخل التطبيق)
         await addDoc(collection(db, 'notifications'), {
             title: notifForm.title,
             body: notifForm.body,
@@ -202,7 +204,29 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             targetRole: notifForm.targetRole === 'all' ? null : notifForm.targetRole,
             relatedMedicineId: relatedMedicineId || null
         });
-        alert(t('saveSuccess'));
+
+        // ٢ — ابعت FCM Push Notification حقيقية
+        try {
+          const functions = getFunctions(app, 'us-central1');
+          const sendPush = httpsCallable(functions, 'sendNotification');
+          const result: any = await sendPush({
+            title: notifForm.title,
+            body: notifForm.body,
+            target: notifForm.targetRole === 'all' ? 'all' : 'specialty',
+            data: {
+              type: 'broadcast',
+              relatedMedicineId: relatedMedicineId || '',
+              specialty: notifForm.targetRole !== 'all' ? notifForm.targetRole : undefined,
+            }
+          });
+          const sent = result.data?.sent || 0;
+          alert(`✅ تم الإرسال!\nFirestore + Push Notification (${sent} جهاز)`);
+        } catch (pushErr: any) {
+          // لو فشل الـ FCM، الـ Firestore notification اتحفظ
+          console.warn('FCM push failed:', pushErr);
+          alert(`✅ تم الحفظ في Firestore\n⚠️ Push notification: ${pushErr.message || 'فشل'}`);
+        }
+
         setNotifForm({ title: '', body: '', targetRole: 'all', linkedMedicineTradeName: '' });
     } catch(e:any) { alert(e.message); } finally { setIsLoading(false); }
   };
@@ -538,7 +562,13 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                     <p className="text-[9px] text-slate-400 mt-2">سيظهر زر "عرض ملف الدواء" للمستخدم عند النقر على الإشعار.</p>
                 </div>
 
-                <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}><option value="all">الجميع (All Users)</option><option value="company">الشركات فقط</option></select></div>
+                <div><label className={labelClass}>المستهدفين</label><select value={notifForm.targetRole} onChange={e => setNotifForm({...notifForm, targetRole: e.target.value})} className={inputClass}>
+  <option value="all">🌍 الجميع (All Users)</option>
+  <option value="Pharmacist">💊 الصيادلة فقط</option>
+  <option value="Doctor">🩺 الأطباء فقط</option>
+  <option value="Nurse">👩‍⚕️ التمريض فقط</option>
+  <option value="company">🏢 الشركات فقط</option>
+</select></div>
                 <button type="submit" disabled={isLoading} className="w-full py-3 bg-red-600 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all">{isLoading ? '...' : t('sendBroadcast')}</button>
             </form>
         </div>

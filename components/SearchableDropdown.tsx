@@ -177,7 +177,10 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
       {isOpen && (
         <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700  flex flex-col overflow-hidden animate-zoom-in"
-          style={dropdownStyle}>
+          style={dropdownStyle}
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}>
           <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="relative">
               <input
