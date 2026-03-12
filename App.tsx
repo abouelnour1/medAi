@@ -258,16 +258,31 @@ const App: React.FC = () => {
 
   const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
 
-  // لما user يتسجل لأول مرة → نظهر notification prompt بعد 3 ثواني
+  // لما user يسجل دخول → نظهر notification prompt لو مفيش fcmToken
   useEffect(() => {
     if (!user) return;
-    // لو سبق رفض أو قبول → متسألش تاني
-    const alreadyAsked = localStorage.getItem('notif_prompt_shown_' + user.id);
-    if (alreadyAsked) return;
-    // لو عنده token بالفعل → متسألش
-    if (Notification.permission === 'granted') return;
-    const timer = setTimeout(() => setShowNotifPrompt(true), 3000);
-    return () => clearTimeout(timer);
+    // لو سبق رفض → متسألش تاني
+    const dismissed = localStorage.getItem('notif_prompt_shown_' + user.id);
+    if (dismissed === 'dismissed') return;
+    // لو الإذن محجوب → متسألش
+    if (Notification.permission === 'denied') return;
+    // دايماً نتحقق من Firestore لو عنده token فعلي
+    const checkToken = async () => {
+      try {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'users', user.id));
+        const hasToken = snap.data()?.fcmToken;
+        if (!hasToken) {
+          setTimeout(() => setShowNotifPrompt(true), 3000);
+        }
+      } catch {
+        // لو فشل التحقق، نظهر الـ prompt على أي حال
+        if (Notification.permission !== 'granted') {
+          setTimeout(() => setShowNotifPrompt(true), 3000);
+        }
+      }
+    };
+    checkToken();
   }, [user?.id]);
 
   // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal
