@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || '';
+const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHCIOk3x8bDg';
 
 // ============================================
 // طلب إذن + FCM Token (ويب)
