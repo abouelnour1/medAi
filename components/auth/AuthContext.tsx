@@ -189,6 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { SocialLogin } = await import('@capgo/capacitor-social-login');
         await SocialLogin.initialize({ google: { 
           webClientId: '568872568132-cg6f7ea60arn5tgkoq9dms0he053p7l6.apps.googleusercontent.com',
+          // @ts-ignore
           androidClientId: '568872568132-m434n8ol4u5tk1k7ern3kevn6snge628.apps.googleusercontent.com',
         } });
         const result = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });

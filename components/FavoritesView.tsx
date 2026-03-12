@@ -1,4 +1,5 @@
-import React, { createPortal } from 'react-dom';
+import React from 'react';
+import { createPortal } from 'react-dom';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
 import StarIcon from './icons/StarIcon';

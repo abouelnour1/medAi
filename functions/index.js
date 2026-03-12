@@ -115,7 +115,7 @@ exports.generateClinical = onCall(
 // Push Notifications - أدوية اليوم
 // ============================================
 exports.notifyDailyFeatured = onDocumentWritten(
-  'dailyFeatured/{date}',
+  { document: 'dailyFeatured/{date}', region: 'us-central1' },
   async (event) => {
     const after = event.data?.after?.data();
     const before = event.data?.before?.data();
@@ -239,7 +239,7 @@ exports.sendNotification = onCall(
 // لو سعر دواء في favorites المستخدم اتغير
 // ============================================
 exports.priceChangeAlert = onDocumentWritten(
-  'medicines/{medicineId}',
+  { document: 'medicines/{medicineId}', region: 'us-central1' },
   async (event) => {
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
