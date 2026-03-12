@@ -1035,7 +1035,7 @@ const App: React.FC = () => {
                             </button>
                           </div>
                           {/* إشعارات Push */}
-                          {/* PushNotificationToggle moved to app init */}
+                          {user && <PushNotificationToggle userId={user.id} language={language} />}
                           {/* رابط الشير — للأدمن بس */}
                           {user?.role === 'admin' && (
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
