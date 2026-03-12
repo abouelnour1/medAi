@@ -48,6 +48,12 @@ service cloud.firestore {
       allow write: if isLoggedIn();
     }
 
+    // ── سجل الإشعارات المرسلة (Cloud Functions فقط) ──────────────
+    match /notifications_log/{document=**} {
+      allow read:  if isAdmin();
+      allow write: if false; // Cloud Functions Admin SDK bypasses rules
+    }
+
     // ── البيانات السريرية ─────────────────────────────────────────
     match /clinicalData/{document=**} {
       allow read:  if true;
