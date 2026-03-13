@@ -256,6 +256,7 @@ const App: React.FC = () => {
   // ── Specialty Modal — يظهر مرة واحدة بعد Google login ──────────────
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
 
+  const [notifToast, setNotifToast] = React.useState<{title:string,body:string}|null>(null);
   const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
 
   // لما user يسجل دخول → نظهر notification prompt لو مفيش fcmToken
@@ -283,6 +284,15 @@ const App: React.FC = () => {
       }
     };
     checkToken();
+  }, [user?.id]);
+
+  // setup foreground notifications
+  useEffect(() => {
+    if (!user) return;
+    setupForegroundNotifications((title, body) => {
+      setNotifToast({ title, body });
+      setTimeout(() => setNotifToast(null), 5000);
+    });
   }, [user?.id]);
 
   // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal
