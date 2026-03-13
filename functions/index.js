@@ -171,45 +171,44 @@ exports.sendNotification = onCall(
     const messaging = getMessaging();
     let sent = 0;
 
-    // نحدد الـ topic بناءً على الـ target
-    let topic = 'all';
-    if (target === 'specialty' && extraData?.specialty) {
-      // نحول الـ specialty لـ topic name صالح (بدون مسافات أو رموز)
-      topic = 'specialty_' + extraData.specialty.replace(/[^a-zA-Z0-9]/g, '_');
+    // جيب الـ tokens مباشرة من Firestore
+    let tokens = [];
+    if (target === 'all') {
+      const snap = await db.collection('users').where('notificationsEnabled', '==', true).get();
+      tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
+    } else if (target === 'specialty' && extraData?.specialty) {
+      const snap = await db.collection('users')
+        .where('notificationsEnabled', '==', true)
+        .where('specialty', '==', extraData.specialty)
+        .get();
+      tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
+    } else if (target === 'token' && extraData?.token) {
+      tokens = [extraData.token];
     }
 
-    const message = {
-      topic,
-      notification: { title, body },
-      android: {
-        priority: 'high',
-        notification: { channelId: 'pharmasource_main', sound: 'default' }
-      },
-      apns: {
-        payload: { aps: { sound: 'default', badge: 1 } }
-      },
-      data: { type: extraData?.type || 'general' }
-    };
+    console.log('📱 Found ' + tokens.length + ' tokens for target: ' + target);
 
-    try {
-      await messaging.send(message);
-      sent = 1;
-      console.log(`✅ Sent to topic: ${topic}`);
-    } catch (err) {
-      console.error('❌ Topic send failed:', err.message);
-      // fallback للـ tokens لو الـ topic فشل
-      const snap = await db.collection('users').where('notificationsEnabled', '==', true).get();
-      const tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
-      if (tokens.length > 0) {
-        const result = await messaging.sendEachForMulticast({
-          tokens,
-          notification: { title, body },
-          android: { priority: 'high', notification: { channelId: 'pharmasource_main', sound: 'default' } },
-          apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-        });
-        sent = result.successCount;
-        console.log(`✅ Fallback tokens: ${sent}/${tokens.length}`);
-      }
+    if (tokens.length === 0) {
+      await db.collection('notifications_log').add({
+        title, body, target, sent: 0,
+        sentAt: new Date().toISOString(),
+        sentBy: request.auth.uid,
+      });
+      return { success: true, sent: 0, message: 'No tokens found' };
+    }
+
+    // ابعت على الـ tokens مباشرة
+    for (let i = 0; i < tokens.length; i += 500) {
+      const batch = tokens.slice(i, i + 500);
+      const result = await messaging.sendEachForMulticast({
+        tokens: batch,
+        notification: { title, body },
+        android: { priority: 'high', notification: { channelId: 'pharmasource_main', sound: 'default' } },
+        apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        data: { type: extraData?.type || 'general' }
+      });
+      sent += result.successCount;
+      console.log('✅ Batch ' + i + ': ' + result.successCount + '/' + batch.length + ' sent');
     }
 
     // سجّل الإشعار في Firestore
