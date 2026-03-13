@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHCIOk3x8bDgM';
+const VAPID_KEY = (import.meta.env as any)['VITE_VAPID_KEY'] || 'BNn53g7KGps9GuqXfKBgYyP3UmfSzed1F5OrEet036YyxA1QYGOg5hnqhgmGCqy98hgekzwWZAWHClOk3x8bDgM';
 
 // ============================================
 // طلب إذن + FCM Token (ويب)
@@ -52,10 +52,15 @@ export async function requestPushPermission(userId: string): Promise<string | nu
       console.warn('SW registration failed, trying without:', swErr);
     }
 
+    console.log('🔑 VAPID KEY:', VAPID_KEY?.substring(0, 20) + '...');
+    console.log('🔧 SW Registration:', swReg?.scope);
+
     const token = await getToken(messaging, { 
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg,
     });
+
+    console.log('📱 FCM Token result:', token ? token.substring(0, 30) + '...' : 'NULL/EMPTY');
 
     if (token) {
       await updateDoc(doc(db, 'users', userId), {
@@ -64,11 +69,13 @@ export async function requestPushPermission(userId: string): Promise<string | nu
         notificationsEnabled: true,
         platform: 'web'
       });
+      console.log('✅ Token saved to Firestore');
       return token;
     }
+    console.warn('⚠️ getToken returned empty - check VAPID key and SW');
     return null;
   } catch (error: any) {
-    console.error('خطأ في الإشعارات:', error);
+    console.error('❌ خطأ في الإشعارات:', error.code, error.message);
     throw error; // نرميه للـ App عشان يعرض رسالة واضحة
   }
 }

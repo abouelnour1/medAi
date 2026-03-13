@@ -169,57 +169,46 @@ exports.sendNotification = onCall(
     if (!title || !body) throw new HttpsError('invalid-argument', 'title and body required');
 
     const messaging = getMessaging();
-
-    let tokens = [];
-
-    if (target === 'all') {
-      // ابعت لكل المستخدمين
-      // NOTE: Requires composite index: notificationsEnabled ASC + fcmToken ASC
-      // Index defined in firestore.indexes.json
-      const snap = await db.collection('users')
-        .where('notificationsEnabled', '==', true)
-        .get();
-      tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
-
-    } else if (target === 'specialty' && extraData?.specialty) {
-      const snap = await db.collection('users')
-        .where('notificationsEnabled', '==', true)
-        .where('specialty', '==', extraData.specialty)
-        .get();
-      tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
-
-    } else if (target === 'token' && extraData?.token) {
-      tokens = [extraData.token];
-    }
-
-    if (tokens.length === 0) {
-      console.log('❌ No tokens found - users with notificationsEnabled:true:', tokens.length);
-      return { sent: 0, message: 'No tokens found' };
-    }
-
-    console.log(`✅ Found ${tokens.length} tokens, sending...`);
-
     let sent = 0;
-    for (let i = 0; i < tokens.length; i += 500) {
-      const result = await messaging.sendEachForMulticast({
-        tokens: tokens.slice(i, i + 500),
-        notification: { title, body },
-        android: {
-          notification: { channelId: 'pharmasource_main', priority: 'high', sound: 'default' }
-        },
-        apns: {
-          payload: { aps: { sound: 'default', badge: 1 } }
-        },
-        data: { type: extraData?.type || 'general', ...(extraData || {}) }
-      });
-      sent += result.successCount;
 
-      // لوق الـ tokens الفاشلة بس متمسحهاش — المستخدم هيجيب token جديد تلقائياً
-      const failed = result.responses
-        .map((r, idx) => (!r.success ? tokens[i + idx] : null))
-        .filter(Boolean);
-      if (failed.length > 0) {
-        console.log(`⚠️ ${failed.length} tokens failed (not deleted)`);
+    // نحدد الـ topic بناءً على الـ target
+    let topic = 'all';
+    if (target === 'specialty' && extraData?.specialty) {
+      // نحول الـ specialty لـ topic name صالح (بدون مسافات أو رموز)
+      topic = 'specialty_' + extraData.specialty.replace(/[^a-zA-Z0-9]/g, '_');
+    }
+
+    const message = {
+      topic,
+      notification: { title, body },
+      android: {
+        priority: 'high',
+        notification: { channelId: 'pharmasource_main', sound: 'default' }
+      },
+      apns: {
+        payload: { aps: { sound: 'default', badge: 1 } }
+      },
+      data: { type: extraData?.type || 'general' }
+    };
+
+    try {
+      await messaging.send(message);
+      sent = 1;
+      console.log(`✅ Sent to topic: ${topic}`);
+    } catch (err) {
+      console.error('❌ Topic send failed:', err.message);
+      // fallback للـ tokens لو الـ topic فشل
+      const snap = await db.collection('users').where('notificationsEnabled', '==', true).get();
+      const tokens = snap.docs.map(d => d.data().fcmToken).filter(Boolean);
+      if (tokens.length > 0) {
+        const result = await messaging.sendEachForMulticast({
+          tokens,
+          notification: { title, body },
+          android: { priority: 'high', notification: { channelId: 'pharmasource_main', sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+        sent = result.successCount;
+        console.log(`✅ Fallback tokens: ${sent}/${tokens.length}`);
       }
     }
 
@@ -230,7 +219,7 @@ exports.sendNotification = onCall(
       sentBy: request.auth.uid,
     });
 
-    return { sent, total: tokens.length };
+    return { sent, total: sent };
   }
 );
 
