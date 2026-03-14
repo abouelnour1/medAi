@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 interface GeminiPromptModalProps {
   isOpen: boolean;
@@ -35,9 +36,23 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
   const handleCopyAndOpen = async () => {
     await copyToClipboard();
     setOpenStatus('copied');
-    setTimeout(() => {
+    setTimeout(async () => {
       setOpenStatus('opening');
-      window.open('https://gemini.google.com/app', '_blank', 'noopener,noreferrer');
+      const url = 'https://gemini.google.com/app';
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // جرب App Launcher أول
+          const { AppLauncher } = await import('@capacitor/app-launcher');
+          const { completed } = await AppLauncher.openUrl({ url });
+          if (!completed) {
+            window.open(url, '_system');
+          }
+        } catch {
+          window.open(url, '_system');
+        }
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
       setTimeout(onClose, 500);
     }, 600);
   };

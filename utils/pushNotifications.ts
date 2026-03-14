@@ -106,41 +106,51 @@ export async function setupForegroundNotifications(
 // ============================================
 export async function setupCapacitorPush(
   userId: string,
-  onNotification: (title: string, body: string, data?: any) => void
+  onNotification: (title: string, body: string, data?: any) => void,
+  onTap?: (data?: any) => void
 ) {
   try {
     const { Capacitor } = await import('@capacitor/core');
     if (!Capacitor.isNativePlatform()) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { FirebaseMessaging } = await (Function('return import("@capacitor-firebase/messaging")')() as Promise<any>);
+    const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
 
     // طلب الإذن
-    const { receive } = await FirebaseMessaging.requestPermissions();
-    if (receive !== 'granted') return;
+    const permResult = await FirebaseMessaging.requestPermissions();
+    if (permResult.receive !== 'granted') {
+      console.log('Push permission denied');
+      return;
+    }
 
     // جلب وحفظ الـ Token
-    const { token } = await FirebaseMessaging.getToken();
-    if (token) {
+    const tokenResult = await FirebaseMessaging.getToken();
+    if (tokenResult.token) {
       await updateDoc(doc(db, 'users', userId), {
-        fcmToken: token,
+        fcmToken: tokenResult.token,
         fcmTokenUpdated: new Date().toISOString(),
         notificationsEnabled: true,
         platform: 'android'
       });
-      console.log('✅ Android FCM Token saved');
+      console.log('✅ Android FCM Token saved:', tokenResult.token.substring(0, 20) + '...');
     }
 
     // استقبال الإشعارات وهو مفتوح
     await FirebaseMessaging.addListener('notificationReceived', (event: any) => {
-      const { title, body } = event.notification;
-      onNotification(title || 'PharmaSource', body || '', event.notification.data);
+      const title = event.notification?.title || 'PharmaSource';
+      const body = event.notification?.body || '';
+      onNotification(title, body, event.notification?.data);
     });
 
     // استقبال الإشعارات لما يضغط عليها
     await FirebaseMessaging.addListener('notificationActionPerformed', (event: any) => {
-      const { title, body } = event.notification;
-      onNotification(title || 'PharmaSource', body || '', event.notification.data);
+      const data = event.notification?.data;
+      if (onTap) {
+        onTap(data);
+      } else {
+        const title = event.notification?.title || 'PharmaSource';
+        const body = event.notification?.body || '';
+        onNotification(title, body, data);
+      }
     });
 
     console.log('✅ Android Native Push ready');

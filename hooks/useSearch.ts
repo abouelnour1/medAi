@@ -94,11 +94,12 @@ export function useSearch(
     if (rawNoSpaces.length < 3 && hasActiveFilters) return [...searchContextMedicines].sort(sortFnEarly);
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
+    // Scientific name: استخدم contains بس (أسرع من fuzzy)
+    const isScientific = textSearchMode === 'scientificName';
     let results = searchContextMedicines.filter(m => {
       const text = String(m[field]).toLowerCase();
       if (raw.includes('*')) return matchesWildcard(text, term);
-      // exactOnly = بحث حرفي: الحروف لازم تكون موجودة بالترتيب متتالية
-      if (exactOnly) return text.includes(term);
+      if (exactOnly || isScientific) return text.includes(term);
       return fuzzyMatch(text, term);
     });
 

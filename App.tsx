@@ -33,6 +33,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
+import { Capacitor } from '@capacitor/core';
 import CompareBar from './components/CompareBar';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
@@ -222,13 +223,39 @@ const App: React.FC = () => {
   const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // تحميل الإشعارات من Firestore لما اليوزر يسجل دخول
+  useEffect(() => {
+    if (!user) { setNotifications([]); return; }
+    let unsub: (() => void) | undefined;
+    (async () => {
+      try {
+        const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
+        const q = query(
+          collection(db, 'users', user.id, 'notifications'),
+          orderBy('timestamp', 'desc'),
+          limit(50)
+        );
+        unsub = onSnapshot(q, (snap) => {
+          const notifs: AppNotification[] = snap.docs.map(d => ({
+            id: d.id,
+            ...d.data()
+          } as AppNotification));
+          setNotifications(notifs);
+        });
+      } catch (e) {
+        console.log('Notifications load error:', e);
+      }
+    })();
+    return () => unsub?.();
+  }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
-  const debouncedSearchTerm = useDebounce(searchTerm, 100); // شبه live
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
+  const debouncedSearchTerm = useDebounce(searchTerm, textSearchMode === 'scientificName' ? 400 : 100);
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -259,54 +286,66 @@ const App: React.FC = () => {
   const [notifToast, setNotifToast] = React.useState<{title:string,body:string}|null>(null);
   const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
 
-  // لما user يسجل دخول → نظهر notification prompt لو مفيش fcmToken
+  // نظهر notification prompt على الويب فقط — Android بيطلب الإذن من النظام
   useEffect(() => {
     if (!user) return;
-    // لو سبق رفض → متسألش تاني
+    if (Capacitor.isNativePlatform()) return; // Android/iOS بيتعاملوا مع الإشعارات بشكل مختلف
     const dismissed = localStorage.getItem('notif_prompt_shown_' + user.id);
     if (dismissed === 'dismissed') return;
-    // لو الإذن محجوب → متسألش
+    if (typeof Notification === 'undefined') return;
     if (Notification.permission === 'denied') return;
-    // دايماً نتحقق من Firestore لو عنده token فعلي
-    const checkToken = async () => {
-      try {
-        const { getDoc, doc } = await import('firebase/firestore');
-        const snap = await getDoc(doc(db, 'users', user.id));
-        const hasToken = snap.data()?.fcmToken;
-        if (!hasToken) {
-          setTimeout(() => setShowNotifPrompt(true), 3000);
-        }
-      } catch {
-        // لو فشل التحقق، نظهر الـ prompt على أي حال
-        if (Notification.permission !== 'granted') {
-          setTimeout(() => setShowNotifPrompt(true), 3000);
-        }
-      }
-    };
-    checkToken();
+    if (Notification.permission === 'granted') return;
+    setTimeout(() => setShowNotifPrompt(true), 3000);
   }, [user?.id]);
 
-  // setup foreground notifications
+  // setup notifications - Android native or web foreground
   useEffect(() => {
     if (!user) return;
-    setupForegroundNotifications((title, body) => {
-      setNotifToast({ title, body });
-      setTimeout(() => setNotifToast(null), 5000);
-    });
+    if (Capacitor.isNativePlatform()) {
+      // Android: setup FCM native + save token
+      setupCapacitorPush(
+        user.id,
+        (title, body, data) => {
+          // toast مؤقت بس — الإشعارات بتتحمل من Firestore أوتوماتيك
+          setNotifToast({ title, body });
+          setTimeout(() => setNotifToast(null), 5000);
+        },
+        (data) => {
+          // لما المستخدم يضغط على الإشعار
+          const medId = data?.medicineId || data?.relatedMedicineId;
+          if (medId) {
+            const medicine = medicines.find(m => m.RegisterNumber === medId);
+            if (medicine) {
+              setSelectedMedicineWithSave(medicine);
+              setView('details');
+              return;
+            }
+          }
+          setView('notifications');
+        }
+      );
+    } else {
+      // Web: foreground only
+      setupForegroundNotifications((title, body) => {
+        setNotifToast({ title, body });
+        setTimeout(() => setNotifToast(null), 5000);
+      });
+    }
   }, [user?.id]);
 
-  // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal
+  // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal مرة واحدة فقط
   useEffect(() => {
-    if (user && !localStorage.getItem('user_specialty_set')) {
-      // تأخير صغير عشان الـ UI يستقر أول
-      const t = setTimeout(() => setShowSpecialtyModal(true), 600);
-      return () => clearTimeout(t);
-    }
+    if (!user) return;
+    const key = 'user_specialty_set_' + user.id;
+    if (localStorage.getItem(key)) return;
+    if (user.specialty) { localStorage.setItem(key, 'true'); return; }
+    const t = setTimeout(() => setShowSpecialtyModal(true), 600);
+    return () => clearTimeout(t);
   }, [user?.id]);
 
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialtyModal(false);
-    localStorage.setItem('user_specialty_set', 'true');
+    localStorage.setItem('user_specialty_set_' + user.id, 'true');
     if (user && updateUser) {
       try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
     }
@@ -740,7 +779,16 @@ const App: React.FC = () => {
       ? `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`
       : `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`;
 
-    if (navigator.share) {
+    if (Capacitor.isNativePlatform()) {
+      // Android: استخدم Capacitor Share
+      import('@capacitor/share').then(({ Share }) => {
+        Share.share({ title: 'PharmaSource', text, ...(deepLink ? { url: deepLink } : {}) }).catch(() => {
+          navigator.clipboard?.writeText(text);
+        });
+      }).catch(() => {
+        navigator.clipboard?.writeText(text);
+      });
+    } else if (navigator.share) {
         navigator.share({ title: 'PharmaSource', text, ...(deepLink ? { url: deepLink } : {}) });
     } else {
         navigator.clipboard?.writeText(text).then(() => 
@@ -906,7 +954,7 @@ const App: React.FC = () => {
           setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
           // تحديث Firebase
           if (db) {
-            try { await updateDoc(doc(db, 'notifications', id), { isRead: true }); } catch(e) {}
+            try { await updateDoc(doc(db, 'users', user!.id, 'notifications', id), { isRead: true }); } catch(e) {}
           }
         }}
         onMarkAllRead={async () => {
@@ -916,13 +964,13 @@ const App: React.FC = () => {
           if (db) {
             const unread = notifications.filter(n => !n.isRead);
             await Promise.all(unread.map(n => 
-              updateDoc(doc(db, 'notifications', n.id), { isRead: true }).catch(()=>{})
+              updateDoc(doc(db, 'users', user!.id, 'notifications', n.id), { isRead: true }).catch(()=>{})
             ));
           }
         }}
         onDeleteNotification={async (id)=>{ 
           if (!db) return; 
-          await deleteDoc(doc(db, 'notifications', id)); 
+          await deleteDoc(doc(db, 'users', user!.id, 'notifications', id)); 
         }}
         onMedicineLink={(medicineId) => {
           // البحث عن الدواء وفتح صفحته
@@ -1074,7 +1122,7 @@ const App: React.FC = () => {
                             </button>
                           </div>
                           {/* إشعارات Push */}
-                          {user && <PushNotificationToggle userId={user.id} language={language} />}
+                          {/* Notifications managed by system */}
                           {/* رابط الشير — للأدمن بس */}
                           {user?.role === 'admin' && (
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
@@ -1116,7 +1164,11 @@ const App: React.FC = () => {
                                     `Specialty: ${(user as any).specialty || 'N/A'}\n\n` +
                                     `Describe the issue or medicine to add:\n`
                                   );
-                                  window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+                                  if (Capacitor.isNativePlatform()) {
+                                    window.open(`https://wa.me/550806894?text=${msg}`, '_system');
+                                  } else {
+                                    window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+                                  }
                                 }}
                                 className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl active:scale-95 transition-all"
                               >
@@ -1187,7 +1239,7 @@ const App: React.FC = () => {
         {specialtyModalEl}
       {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => {}} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); }} />
         }
       </div>
     );

@@ -1,3 +1,4 @@
+import { exportFile } from '../utils/exportFile';
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Medicine, TFunction } from '../types';
@@ -56,10 +57,10 @@ const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: b
 
 // ── Qty Control ───────────────────────────────────────────────────────────────
 const QtyCtrl: React.FC<{ value: number; onChange: (v: number) => void; amber?: boolean }> = ({ value, onChange, amber }) => (
-  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-2xl p-2">
-    <button onClick={() => onChange(Math.max(0, value-1))} className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-xl font-black shadow-sm active:scale-90 transition-transform text-slate-500">−</button>
-    <input type="number" value={value} min={0} onChange={e => onChange(Math.max(0, parseInt(e.target.value)||0))} className={`flex-1 text-center text-2xl font-black bg-transparent outline-none ${amber ? 'text-amber-500' : 'text-teal-600 dark:text-teal-400'}`} />
-    <button onClick={() => onChange(value+1)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-black shadow-sm active:scale-90 transition-transform text-white ${amber ? 'bg-amber-400' : 'bg-teal-500'}`}>+</button>
+  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-2">
+    <button onClick={() => onChange(Math.max(0, value-1))} className="w-12 h-12 flex-shrink-0 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-2xl font-black shadow-sm active:scale-90 transition-transform text-slate-500">−</button>
+    <input type="number" value={value} min={0} onChange={e => onChange(Math.max(0, parseInt(e.target.value)||0))} className={`w-20 text-center text-2xl font-black bg-transparent outline-none ${amber ? 'text-amber-500' : 'text-teal-600 dark:text-teal-400'}`} />
+    <button onClick={() => onChange(value+1)} className={`w-12 h-12 flex-shrink-0 rounded-xl flex items-center justify-center text-2xl font-black shadow-sm active:scale-90 transition-transform text-white ${amber ? 'bg-amber-400' : 'bg-teal-500'}`}>+</button>
   </div>
 );
 
@@ -308,7 +309,6 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
 
   // ── Export CSV ──────────────────────────────────────────────────────────────
   const exportCSV = (facilityToExport: Facility) => {
-    const BOM = '﻿';
     const headers = ['Trade Name','Scientific Name','Form','Unit','Quantity','Min Alert','Note','Last Updated'];
     const rows = Object.values(facilityToExport.stock).map(s => [
       s.tradeName, s.scientificName, s.form, s.unit,
@@ -316,16 +316,11 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
       s.note || '',
       new Date(s.lastUpdated).toLocaleString(),
     ].map(v => `"${v.replace(/"/g,'""')}"`).join(','));
-    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${facilityToExport.name}_Stock_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    const csv = [headers.join(','), ...rows].join('\r\n');
+    exportFile(csv, `${facilityToExport.name}_Stock_${new Date().toISOString().slice(0,10)}.csv`);
   };
 
   const exportHistoryCSV = (facilityToExport: Facility) => {
-    const BOM = '﻿';
     const headers = ['Medicine','Scientific Name','Quantity','Date & Time','Note'];
     const rows: string[] = [];
     Object.values(facilityToExport.stock).forEach(s => {
@@ -335,13 +330,9 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
           .map(v => `"${v.replace(/"/g,'""')}"`).join(','));
       });
     });
-    rows.sort(); // ترتيب حسب الاسم
-    const csv = BOM + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${facilityToExport.name}_History_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
+    rows.sort();
+    const csv = [headers.join(','), ...rows].join('\r\n');
+    exportFile(csv, `${facilityToExport.name}_History_${new Date().toISOString().slice(0,10)}.csv`);
   };
 
   if(loading) return <div className="flex items-center justify-center py-24"><div className="w-5 h-5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin"/></div>;
@@ -408,10 +399,10 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2 mb-4">
-              {[['Items',stockList.length,''],['Low Stock⚠️',lowCount,'text-amber-300'],[`OK`,stockList.length-lowCount,'']].map(([l,v,c]) => (
-                <div key={String(l)} className={`rounded-2xl p-3 text-center ${Number(v)>0&&String(l).includes('Low')?'bg-amber-400/30':'bg-white/10'}`}>
-                  <p className={`text-2xl font-black ${String(c)}`}>{v}</p>
-                  <p className="text-[8px] uppercase font-black opacity-70 mt-0.5">{l}</p>
+              {[['Items',stockList.length,''],['Low Stock⚠️',lowCount,'text-amber-300'],['OK',stockList.length-lowCount,'']].map(([l,v,col]) => (
+                <div key={String(l)} className={`rounded-2xl p-3 flex flex-col items-center justify-center ${Number(v)>0&&String(l).includes('Low')?'bg-amber-400/30':'bg-white/10'}`}>
+                  <p className={`text-2xl font-black text-center ${String(col)}`}>{v}</p>
+                  <p className="text-[8px] uppercase font-black opacity-70 mt-0.5 text-center">{l}</p>
                 </div>
               ))}
             </div>

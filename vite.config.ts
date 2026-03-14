@@ -13,7 +13,6 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {
-      external: ['@capgo/capacitor-social-login'],
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],

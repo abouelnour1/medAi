@@ -29,6 +29,12 @@ service cloud.firestore {
       allow write: if (isLoggedIn() && request.auth.uid == userId) || isAdmin();
     }
 
+    // ── إشعارات كل مستخدم (subcollection) ───────────────────────
+    match /users/{userId}/notifications/{notifId} {
+      allow read:  if isLoggedIn() && request.auth.uid == userId;
+      allow write: if false; // Cloud Functions Admin SDK فقط
+    }
+
     // ── طلبات التحديث (Company) ───────────────────────────────────
     match /pending_updates/{document=**} {
       allow read:   if isLoggedIn();

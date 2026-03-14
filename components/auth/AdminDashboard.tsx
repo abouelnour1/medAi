@@ -215,6 +215,7 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
             target: notifForm.targetRole === 'all' ? 'all' : 'specialty',
             data: {
               type: 'broadcast',
+              medicineId: relatedMedicineId || '',
               relatedMedicineId: relatedMedicineId || '',
               specialty: notifForm.targetRole !== 'all' ? notifForm.targetRole : undefined,
             }

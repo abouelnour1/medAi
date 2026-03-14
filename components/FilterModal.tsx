@@ -107,7 +107,12 @@ const FilterModal: React.FC<FilterModalProps> = ({
             if (currentFilters.priceMin && price < parseFloat(currentFilters.priceMin)) return false;
             if (currentFilters.priceMax && price > parseFloat(currentFilters.priceMax)) return false;
             if (excludeKey !== 'pharmaceuticalForm' && currentFilters.pharmaceuticalForm && (Array.isArray(currentFilters.pharmaceuticalForm) ? currentFilters.pharmaceuticalForm.length > 0 && !currentFilters.pharmaceuticalForm.includes(m.PharmaceuticalForm) : m.PharmaceuticalForm !== currentFilters.pharmaceuticalForm)) return false;
-            if (excludeKey !== 'legalStatus' && currentFilters.legalStatus && m['Legal Status'] !== currentFilters.legalStatus) return false;
+            if (excludeKey !== 'legalStatus' && currentFilters.legalStatus) {
+              const raw = (m['Legal Status'] || '').toLowerCase();
+              const isOTC = raw.includes('otc') || raw.includes('over') || raw.includes('بدون');
+              const normalized = isOTC ? 'OTC' : 'Prescription';
+              if (normalized !== currentFilters.legalStatus) return false;
+            }
             if (excludeKey !== 'manufactureName' && currentFilters.manufactureName.length > 0 && !currentFilters.manufactureName.includes(m['Manufacture Name'])) return false;
             if (excludeKey !== 'marketingCompany' && currentFilters.marketingCompany.length > 0 && !currentFilters.marketingCompany.includes(m['Marketing Company'])) return false;
             if (excludeKey !== 'mainAgent' && currentFilters.mainAgent.length > 0 && !currentFilters.mainAgent.includes(m['Main Agent'])) return false;
@@ -123,7 +128,20 @@ const FilterModal: React.FC<FilterModalProps> = ({
             marketingCompanies: getUnique(getFilteredList(allMedicines, localFilters, 'marketingCompany'), 'Marketing Company'),
             agents:             getUnique(getFilteredList(allMedicines, localFilters, 'mainAgent'),        'Main Agent'),
             forms:              groupPharmaceuticalForms(getUnique(getFilteredList(allMedicines, localFilters, 'pharmaceuticalForm'), 'PharmaceuticalForm'), t),
-            legalStatuses:      getUnique(getFilteredList(allMedicines, localFilters, 'legalStatus'),      'Legal Status'),
+            legalStatuses: (() => {
+              const raw = getUnique(getFilteredList(allMedicines, localFilters, 'legalStatus'), 'Legal Status');
+              // نجمّع كل الحالات في OTC أو Prescription بس
+              const normalized = new Set<string>();
+              raw.forEach(s => {
+                const lower = (s || '').toLowerCase();
+                if (lower.includes('otc') || lower.includes('over') || lower.includes('بدون')) {
+                  normalized.add('OTC');
+                } else {
+                  normalized.add('Prescription');
+                }
+              });
+              return Array.from(normalized).sort();
+            })(),
         };
     }, [allMedicines, localFilters, t]);
 

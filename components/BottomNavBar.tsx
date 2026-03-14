@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Tab, TFunction, User, View } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
@@ -13,6 +14,25 @@ interface BottomNavBarProps {
 }
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user, view }) => {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const onShow = () => setKeyboardOpen(true);
+    const onHide = () => setKeyboardOpen(false);
+    window.addEventListener('keyboardWillShow', onShow);
+    window.addEventListener('keyboardWillHide', onHide);
+    window.addEventListener('keyboardDidShow', onShow);
+    window.addEventListener('keyboardDidHide', onHide);
+    return () => {
+      window.removeEventListener('keyboardWillShow', onShow);
+      window.removeEventListener('keyboardWillHide', onHide);
+      window.removeEventListener('keyboardDidShow', onShow);
+      window.removeEventListener('keyboardDidHide', onHide);
+    };
+  }, []);
+
+  if (keyboardOpen) return null;
   const navItems = [
     { id: 'search', label: t('navSearch'), icon: <SearchIcon /> },
     { id: 'insurance', label: t('navInsurance'), icon: <HealthInsuranceIcon /> },

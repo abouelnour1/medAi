@@ -197,21 +197,60 @@ exports.sendNotification = onCall(
       return { success: true, sent: 0, message: 'No tokens found' };
     }
 
+    const imageUrl = extraData?.imageUrl || null;
+    const medicineId = extraData?.medicineId || null;
+
     // ابعت على الـ tokens مباشرة
     for (let i = 0; i < tokens.length; i += 500) {
       const batch = tokens.slice(i, i + 500);
-      const result = await messaging.sendEachForMulticast({
+      const msg = {
         tokens: batch,
-        notification: { title, body },
-        android: { priority: 'high', notification: { channelId: 'pharmasource_main', sound: 'default' } },
+        notification: { title, body, ...(imageUrl ? { imageUrl } : {}) },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'pharmasource_main',
+            sound: 'default',
+            ...(imageUrl ? { imageUrl } : {})
+          }
+        },
         apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-        data: { type: extraData?.type || 'general' }
-      });
+        data: {
+          type: extraData?.type || 'general',
+          ...(medicineId ? { medicineId } : {})
+        }
+      };
+      const result = await messaging.sendEachForMulticast(msg);
       sent += result.successCount;
       console.log('✅ Batch ' + i + ': ' + result.successCount + '/' + batch.length + ' sent');
     }
 
-    // سجّل الإشعار في Firestore
+    // احفظ الإشعار لكل يوزر في Firestore عشان يظهر في القايمة
+    const usersSnap = target === 'all'
+      ? await db.collection('users').where('notificationsEnabled', '==', true).get()
+      : target === 'specialty' && extraData?.specialty
+        ? await db.collection('users').where('notificationsEnabled', '==', true).where('specialty', '==', extraData.specialty).get()
+        : null;
+
+    const notifData = {
+      title, body,
+      timestamp: Date.now(),
+      type: 'info',
+      isRead: false,
+      ...(medicineId ? { relatedMedicineId: medicineId } : {}),
+      ...(imageUrl ? { imageUrl } : {})
+    };
+
+    if (usersSnap) {
+      const batch_write = db.batch();
+      usersSnap.docs.forEach(userDoc => {
+        const ref = db.collection('users').doc(userDoc.id).collection('notifications').doc();
+        batch_write.set(ref, notifData);
+      });
+      await batch_write.commit();
+    }
+
+    // سجّل الإشعار في notifications_log
     await db.collection('notifications_log').add({
       title, body, target, sent,
       sentAt: new Date().toISOString(),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Medicine, TFunction } from '../types';
+import { exportFile } from '../utils/exportFile';
 
 export interface OrderItem {
   medicine: Medicine;
@@ -31,8 +32,7 @@ const saveOrder = (items: OrderItem[]) => {
 // Export to Excel using SheetJS via CDN (already available in the app bundle context)
 const exportToExcel = (items: OrderItem[]) => {
   // Build CSV instead — universally supported, opens in Excel
-  const BOM = '\uFEFF';
-  const headers = ['Trade Name', 'Scientific Name', 'Pharmaceutical Form', 'Manufacturer', 'Public Price (SAR)', 'Quantity', 'Total (SAR)', 'Note'];
+    const headers = ['Trade Name', 'Scientific Name', 'Pharmaceutical Form', 'Manufacturer', 'Public Price (SAR)', 'Quantity', 'Total (SAR)', 'Note'];
   const rows = items.map(item => {
     const price = parseFloat(item.medicine['Public price']) || 0;
     const total = (price * item.quantity).toFixed(2);
@@ -54,16 +54,8 @@ const exportToExcel = (items: OrderItem[]) => {
   }, 0);
   rows.push(['', '', '', '', '', `"Total"`, `"${grandTotal.toFixed(2)}"`, ''].join(','));
 
-  const csv = BOM + [headers.map(h => `"${h}"`).join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `PharmaOrder_${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const csv = [headers.map(h => `"${h}"`).join(','), ...rows].join('\n');
+  exportFile(csv, `PharmaOrder_${new Date().toISOString().split('T')[0]}.csv`);
 };
 
 // ── Add Medicine Search Modal ──────────────────────────────────────────

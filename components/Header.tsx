@@ -1,4 +1,5 @@
 import React, { forwardRef, useState, useRef, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import BackIcon from './icons/BackIcon';
 import BellIcon from './icons/BellIcon';
 import { TFunction, View } from '../types';
@@ -56,22 +57,22 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header 
         ref={ref} 
-        className="fixed top-0 left-0 right-0 z-[50] px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-4 transition-all"
+        className={`fixed top-0 left-0 right-0 z-[50] px-3 pb-2 transition-all ${Capacitor.getPlatform() === 'android' ? 'pt-[36px]' : 'pt-[calc(env(safe-area-inset-top)+6px)]'}`}
     >
-      <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2rem] px-4 h-16 flex justify-between items-center max-w-7xl mx-auto">
+      <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[1.5rem] px-3 h-12 flex justify-between items-center max-w-7xl mx-auto">
         
         <div className="flex-1 flex justify-start items-center gap-2">
           {showBack ? (
             <button
               onClick={onBack}
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform"
+              className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform"
             >
               <div className="w-5 h-5 ltr:rotate-0 rtl:rotate-180"><BackIcon /></div>
             </button>
           ) : (
              <button 
                 onClick={onNotificationsClick}
-                className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform relative"
+                className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform relative"
               >
                   <BellIcon unreadCount={unreadCount} />
               </button>
@@ -79,7 +80,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         </div>
         
         <div className="flex-[2] flex justify-center"> 
-            <h1 className="text-lg font-black text-slate-800 dark:text-white font-poppins tracking-tight">
+            <h1 className="text-base font-black text-slate-800 dark:text-white font-poppins tracking-tight">
               Pharma<span className="text-primary">Source</span>
             </h1>
         </div>
@@ -89,7 +90,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
           {user ? (
             <div className="relative" ref={menuRef}>
                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-full active:scale-95 transition-all">
-                    <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white text-[10px] font-black">
+                    <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-[9px] font-black">
                         {user.username.charAt(0).toUpperCase()}
                     </div>
                 </button>

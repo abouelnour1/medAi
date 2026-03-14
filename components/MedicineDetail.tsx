@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, memo, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
@@ -456,7 +457,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
             `Reported by: ${user?.username || 'Unknown'}\n` +
             `Issue:\n`
           );
-          window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+          if (Capacitor.isNativePlatform()) {
+            window.open(`https://wa.me/550806894?text=${msg}`, '_system');
+          } else {
+            window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+          }
         }}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 active:scale-[0.99] transition-all text-slate-400 hover:text-emerald-500 hover:border-emerald-200"
       >

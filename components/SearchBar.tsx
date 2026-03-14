@@ -45,10 +45,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div ref={wrapperRef} className="space-y-4 animate-card">
+    <div ref={wrapperRef} className="space-y-2 animate-card">
       <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
-           <div className="w-6 h-6"><SearchIcon /></div>
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
+           <div className="w-4 h-4"><SearchIcon /></div>
         </div>
         <input
           id="search-term"
@@ -62,7 +62,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="w-full bg-white dark:bg-dark-card h-16 pl-12 pr-20 rounded-[2rem] text-sm font-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border-2 border-transparent focus:border-primary/30 focus:shadow-primary/10 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
+          className="w-full bg-white dark:bg-dark-card h-12 pl-11 pr-16 rounded-2xl text-sm font-semibold shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] border border-slate-100 dark:border-slate-700 focus:border-primary/40 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
         />
         {/* زرار وضع البحث الحرفي - دايماً ظاهر */}
         <button
@@ -70,7 +70,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           className={`absolute inset-y-0 flex items-center transition-all ${isSearchActive ? 'right-10 pr-2' : 'right-0 pr-4'}`}
           title={exactOnly ? 'وضع البحث الحرفي مفعّل - اضغط للبحث الذكي' : 'اضغط لتفعيل البحث الحرفي الدقيق'}
         >
-          <div className={`flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-black transition-all border-2 ${
+          <div className={`flex items-center justify-center w-6 h-6 rounded-full text-[9px] font-black transition-all border ${
             exactOnly
               ? 'bg-primary border-primary text-white shadow-md shadow-primary/30' 
               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-400'
@@ -83,21 +83,21 @@ const SearchBar: React.FC<SearchBarProps> = ({
             onClick={onClearSearch}
             className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-rose-500 transition-colors"
           >
-            <div className="w-6 h-6 p-1 bg-slate-100 dark:bg-slate-800 rounded-full"><ClearIcon /></div>
+            <div className="w-5 h-5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-full"><ClearIcon /></div>
           </button>
         )}
       </div>
 
-      <div className="flex bg-white/50 dark:bg-dark-card/50 backdrop-blur-sm p-1.5 rounded-2xl border border-white dark:border-dark-border shadow-sm max-w-sm mx-auto">
+      <div className="flex bg-white dark:bg-dark-card p-1 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm w-fit mx-auto gap-0.5">
         <button 
           onClick={() => setTextSearchMode('tradeName')}
-          className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${textSearchMode === 'tradeName' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${textSearchMode === 'tradeName' ? 'bg-primary text-white shadow-sm shadow-primary/20' : 'text-slate-400 hover:text-slate-600'}`}
         >
           {t('tradeName')}
         </button>
         <button 
           onClick={() => setTextSearchMode('scientificName')}
-          className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${textSearchMode === 'scientificName' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${textSearchMode === 'scientificName' ? 'bg-primary text-white shadow-sm shadow-primary/20' : 'text-slate-400 hover:text-slate-600'}`}
         >
           {t('scientificName')}
         </button>
