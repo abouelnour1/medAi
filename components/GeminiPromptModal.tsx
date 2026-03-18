@@ -38,20 +38,34 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
     setOpenStatus('copied');
     setTimeout(async () => {
       setOpenStatus('opening');
-      const url = 'https://gemini.google.com/app';
+      // نستخدم deep link لـ Gemini app مباشرة — يفتح التطبيق مش المتصفح
+      const geminiAppUrl = 'https://gemini.google.com/app';
+      const geminiDeepLink = 'com.google.android.apps.bard://';
       if (Capacitor.isNativePlatform()) {
         try {
-          // جرب App Launcher أول
           const { AppLauncher } = await import('@capacitor/app-launcher');
-          const { completed } = await AppLauncher.openUrl({ url });
-          if (!completed) {
-            window.open(url, '_system');
+          // نجرب deep link أول عشان يفتح التطبيق مباشرة
+          let opened = false;
+          try {
+            const r = await AppLauncher.openUrl({ url: geminiDeepLink });
+            opened = r.completed;
+          } catch {}
+          if (!opened) {
+            // fallback: Browser — يفتح بـ _system عشان ميرجعش للتطبيق
+            try {
+              const { Browser } = await import('@capacitor/browser');
+              await Browser.open({ url: geminiAppUrl, presentationStyle: 'popover' });
+              opened = true;
+            } catch {}
+          }
+          if (!opened) {
+            window.open(geminiAppUrl, '_system');
           }
         } catch {
-          window.open(url, '_system');
+          window.open(geminiAppUrl, '_system');
         }
       } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
+        window.open(geminiAppUrl, '_blank', 'noopener,noreferrer');
       }
       setTimeout(onClose, 500);
     }, 600);

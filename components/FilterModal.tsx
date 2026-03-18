@@ -13,6 +13,7 @@ interface FilterModalProps {
     allMedicines: Medicine[];
     t: TFunction;
     headerBottom?: number;
+    isAdmin?: boolean;
 }
 
 // Collapsible Section
@@ -58,12 +59,13 @@ const TypeChips: React.FC<{
   value: ProductTypeFilter;
   onChange: (v: ProductTypeFilter) => void;
   t: TFunction;
-}> = ({ value, onChange, t }) => {
+  isAdmin?: boolean;
+}> = ({ value, onChange, t, isAdmin = false }) => {
   const options: { key: ProductTypeFilter; label: string; emoji: string }[] = [
-    { key: 'all',        label: t('allProductTypes'), emoji: '🔍' },
+    ...(isAdmin ? [{ key: 'all' as ProductTypeFilter, label: t('allProductTypes'), emoji: '🔍' }] : []),
     { key: 'medicine',   label: t('medicines'),       emoji: '💊' },
-    { key: 'supplement', label: t('supplements'),     emoji: '🌿' },
-    { key: 'food',       label: t('food'),            emoji: '🥗' },
+    ...(isAdmin ? [{ key: 'supplement' as ProductTypeFilter, label: t('supplements'), emoji: '🌿' }] : []),
+    ...(isAdmin ? [{ key: 'food' as ProductTypeFilter,       label: t('food'),        emoji: '🥗' }] : []),
   ];
   return (
     <div className="flex gap-2 flex-wrap">
@@ -86,12 +88,39 @@ const TypeChips: React.FC<{
 };
 
 const FilterModal: React.FC<FilterModalProps> = ({
-    isOpen, onClose, filters, onApply, onClearFilters, allMedicines, t, headerBottom = 80
+    isOpen, onClose, filters, onApply, onClearFilters, allMedicines, t, headerBottom = 80, isAdmin = false
 }) => {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
       type: true, form: false, manufacturer: false, marketing: false, agent: false, price: false, legal: false
     });
+    const dragY = React.useRef(0);
+    const dragging = React.useRef(false);
+    const sheetRef = React.useRef<HTMLDivElement>(null);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+      dragY.current = e.touches[0].clientY;
+      dragging.current = true;
+    };
+    const handleTouchMove = (e: React.TouchEvent) => {
+      if (!dragging.current || !sheetRef.current) return;
+      const dy = e.touches[0].clientY - dragY.current;
+      if (dy > 0) sheetRef.current.style.transform = `translateY(${dy}px)`;
+    };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+      if (!dragging.current || !sheetRef.current) return;
+      dragging.current = false;
+      const dy = e.changedTouches[0].clientY - dragY.current;
+      if (dy > 80) {
+        sheetRef.current.style.transition = 'transform 0.25s ease';
+        sheetRef.current.style.transform = 'translateY(100%)';
+        setTimeout(onClose, 250);
+      } else {
+        sheetRef.current.style.transition = 'transform 0.2s ease';
+        sheetRef.current.style.transform = 'translateY(0)';
+        setTimeout(() => { if (sheetRef.current) sheetRef.current.style.transition = ''; }, 200);
+      }
+    };
 
     useEffect(() => {
         if (isOpen) setLocalFilters(filters);
@@ -177,19 +206,25 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
     return (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center"
+          className="fixed inset-0 z-[500] flex items-end justify-center"
           onClick={onClose}
           style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
         >
             <div
+              ref={sheetRef}
               className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] flex flex-col overflow-hidden"
-              style={{ maxHeight: '88vh', animation: 'slideUp 0.28s cubic-bezier(0.22,1,0.36,1)' }}
+              style={{ maxHeight: '85vh', marginBottom: 'env(safe-area-inset-bottom)', animation: 'slideUp 0.28s cubic-bezier(0.22,1,0.36,1)' }}
               onClick={e => e.stopPropagation()}
             >
               <style>{`@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              {/* Handle — drag to close */}
+              <div
+                className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
               </div>
 
@@ -211,7 +246,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400">{expectedCount} results</span>
+                  {isAdmin && <span className="text-xs font-bold text-slate-400">{expectedCount} results</span>}
                   <button onClick={onClose} className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -227,27 +262,40 @@ const FilterModal: React.FC<FilterModalProps> = ({
               <div className="flex-grow overflow-y-auto no-scrollbar px-4 py-3 space-y-1.5" style={{ overflowX: 'visible' }}>
 
                 <Section title={t('filterByProductType')} icon="🏷️" isOpen={openSections.type} onToggle={() => toggleSection('type')} activeCount={activeCounts.type}>
-                  <TypeChips value={localFilters.productType} onChange={v => handleFilterChange('productType', v)} t={t} />
+                  <TypeChips value={localFilters.productType} onChange={v => handleFilterChange('productType', v)} t={t} isAdmin={isAdmin} />
                 </Section>
 
                 <Section title={t('pharmaceuticalForm')} icon="💊" isOpen={openSections.form} onToggle={() => toggleSection('form')} activeCount={activeCounts.form}>
-                  <SearchableDropdown ariaLabel={t('pharmaceuticalForm')} headerBottom={headerBottom} value={localFilters.pharmaceuticalForm || []} onChange={v => handleFilterChange('pharmaceuticalForm', v)} options={dynamicOptions.forms} placeholder={t('all')} mode="multi" t={t} />
+                  <SearchableDropdown ariaLabel={t('pharmaceuticalForm')} headerBottom={headerBottom} value={localFilters.pharmaceuticalForm || []} onChange={v => handleFilterChange('pharmaceuticalForm', v)} options={dynamicOptions.forms} placeholder={t('all')} mode="multi" t={t} compact />
                 </Section>
 
                 <Section title={t('marketingCompany')} icon="🏢" isOpen={openSections.marketing} onToggle={() => toggleSection('marketing')} activeCount={activeCounts.marketing}>
-                  <SearchableDropdown ariaLabel={t('marketingCompany')} headerBottom={headerBottom} value={localFilters.marketingCompany} onChange={v => handleFilterChange('marketingCompany', Array.isArray(v) ? v : [])} options={dynamicOptions.marketingCompanies} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('marketingCompany')} headerBottom={headerBottom} value={localFilters.marketingCompany} onChange={v => handleFilterChange('marketingCompany', Array.isArray(v) ? v : [])} options={dynamicOptions.marketingCompanies} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" compact />
                 </Section>
 
                 <Section title={t('filterByManufacturer')} icon="🏭" isOpen={openSections.manufacturer} onToggle={() => toggleSection('manufacturer')} activeCount={activeCounts.manufacturer}>
-                  <SearchableDropdown ariaLabel={t('filterByManufacturer')} headerBottom={headerBottom} value={localFilters.manufactureName} onChange={v => handleFilterChange('manufactureName', Array.isArray(v) ? v : [])} options={dynamicOptions.manufacturers} placeholder={t('allManufacturers')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('filterByManufacturer')} headerBottom={headerBottom} value={localFilters.manufactureName} onChange={v => handleFilterChange('manufactureName', Array.isArray(v) ? v : [])} options={dynamicOptions.manufacturers} placeholder={t('allManufacturers')} t={t} mode="multi" compact />
                 </Section>
 
                 <Section title={t('agents')} icon="👤" isOpen={openSections.agent} onToggle={() => toggleSection('agent')} activeCount={activeCounts.agent}>
-                  <SearchableDropdown ariaLabel={t('agents')} headerBottom={headerBottom} value={localFilters.mainAgent} onChange={v => handleFilterChange('mainAgent', Array.isArray(v) ? v : [])} options={dynamicOptions.agents} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" />
+                  <SearchableDropdown ariaLabel={t('agents')} headerBottom={headerBottom} value={localFilters.mainAgent} onChange={v => handleFilterChange('mainAgent', Array.isArray(v) ? v : [])} options={dynamicOptions.agents} placeholder={t('pleaseSelectOrAdd')} t={t} mode="multi" compact />
                 </Section>
 
                 <Section title={t('filterByLegalStatus')} icon="⚖️" isOpen={openSections.legal} onToggle={() => toggleSection('legal')} activeCount={activeCounts.legal}>
-                  <SearchableDropdown ariaLabel={t('filterByLegalStatus')} headerBottom={headerBottom} value={localFilters.legalStatus} onChange={v => handleFilterChange('legalStatus', Array.isArray(v) ? '' : v)} options={dynamicOptions.legalStatuses} placeholder={t('allLegalStatuses')} t={t} />
+                  <div className="flex gap-2 flex-wrap">
+                    {['', 'OTC', 'Prescription'].map(opt => (
+                      <button key={opt}
+                        onClick={() => handleFilterChange('legalStatus', opt)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all active:scale-95 ${
+                          localFilters.legalStatus === opt
+                            ? 'bg-teal-500 text-white shadow-md'
+                            : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                        }`}
+                      >
+                        {opt === '' ? t('all') : opt}
+                      </button>
+                    ))}
+                  </div>
                 </Section>
 
                 <Section title={t('priceRange')} icon="💰" isOpen={openSections.price} onToggle={() => toggleSection('price')} activeCount={activeCounts.price}>

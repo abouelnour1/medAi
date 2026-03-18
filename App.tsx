@@ -10,7 +10,6 @@ import ResultsList from './components/ResultsList';
 import MedicineDetail from './components/MedicineDetail';
 import BottomSheet from './components/BottomSheet';
 import GeminiPromptModal from './components/GeminiPromptModal';
-import BottomNavBar from './components/BottomNavBar';
 import FilterModal from './components/FilterModal';
 import SortControls from './components/SortControls';
 import FilterButton from './components/FilterButton';
@@ -35,6 +34,7 @@ import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
 import { Capacitor } from '@capacitor/core';
 import CompareBar from './components/CompareBar';
+import ClinicalDataPage from './components/ClinicalDataPage';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
@@ -199,7 +199,7 @@ const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
 const MAX_RECENT = 8;
 
-const WHATSAPP_NUMBER = '550806894';
+const WHATSAPP_NUMBER = '966550806894'; // +966 Saudi Arabia
 
 const App: React.FC = () => {
   const { user, logout, requestAIAccess, getSettings, isLoading: authLoading, updateUser } = useAuth();
@@ -220,7 +220,13 @@ const App: React.FC = () => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   // نشوف IndexedDB مباشرة — لو في داتا محلية مش نعرض loading
   // نشوف IndexedDB فوراً — لو في cache مش محتاجين loading
-  const [isMedicinesLoading, setIsMedicinesLoading] = useState(true);
+  // لو في cache محلي → مش loading من البداية
+  const [isMedicinesLoading, setIsMedicinesLoading] = useState(() => {
+    try {
+      // نتحقق بسرعة لو في cache في IndexedDB عن طريق localStorage flag
+      return localStorage.getItem('pharma_has_cache') !== 'true';
+    } catch { return true; }
+  });
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -284,6 +290,7 @@ const App: React.FC = () => {
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
 
   const [notifToast, setNotifToast] = React.useState<{title:string,body:string}|null>(null);
+  const [dataReadyToast, setDataReadyToast] = React.useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
 
   // نظهر notification prompt على الويب فقط — Android بيطلب الإذن من النظام
@@ -377,6 +384,7 @@ const App: React.FC = () => {
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
   const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
+  const [clinicalModal, setClinicalModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
   const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
   
@@ -452,12 +460,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!headerRef.current) return;
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const h = Math.ceil(entry.contentRect.height) + 20;
-        setHeaderHeight(h);
-        setSearchBarTop(h - 10);
-      }
+    // نحفظ أول قيمة ونمنع تغييرها بسبب keyboard
+    let lastH = 0;
+    const observer = new ResizeObserver(() => {
+      if (!headerRef.current) return;
+      const vvHeight = window.visualViewport?.height ?? window.innerHeight;
+      const isKeyboardOpen = vvHeight < window.innerHeight * 0.75;
+      if (isKeyboardOpen && lastH > 0) return;
+      // getBoundingClientRect يعطي الارتفاع الفعلي شامل كل الـ padding
+      const rect = headerRef.current.getBoundingClientRect();
+      const h = Math.ceil(rect.height);
+      if (Math.abs(h - lastH) < 2 && lastH > 0) return;
+      lastH = h;
+      setHeaderHeight(h);
+      setSearchBarTop(h - 10);
     });
     observer.observe(headerRef.current);
     return () => observer.disconnect();
@@ -536,10 +552,15 @@ const App: React.FC = () => {
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
           setView(target);
           restoreScroll(target);
-      } else if (view === 'results' || view === 'insuranceSearch') { 
-          setView('search'); 
-          setSearchTerm(''); 
-          setInsuranceSearchTerm(''); 
+      } else if (view === 'results') {
+          setView('search');
+          setSearchTerm('');
+          restoreScroll('search');
+      } else if (view === 'insuranceSearch') {
+          // رجوع من التأمين → البحث الرئيسي
+          setActiveTab('search');
+          setView('search');
+          setInsuranceSearchTerm('');
           restoreScroll('search');
       } else { 
           setView('search'); 
@@ -569,10 +590,19 @@ const App: React.FC = () => {
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
 
-      // لو الـ sheet مفتوح → اقفله بس
+      // 1. الفلاتر مفتوحة → اقفلها
+      if (isFilterModalOpen) { setIsFilterModalOpen(false); return; }
+
+      // 2. لو في sheet مفتوح في StockTracker أو أي component تاني → اقفله
+      const closeEvent = new CustomEvent('pharma:close-top-sheet');
+      window.dispatchEvent(closeEvent);
+      if ((window as any).__pharma_sheet_open__) { return; }
+
+      // 3. الـ sheet مفتوح → اقفله
       if (sheetMedicine) { setSheetMedicine(null); return; }
 
-      const isHome = (view === 'search' || view === 'insuranceSearch' || activeTab === 'settings');
+      // insuranceSearch بقي view عادي — زرار الرجوع يرجعنا للـ search
+      const isHome = (view === 'search' && activeTab === 'search');
       if (isHome) {
         // خروج من البرنامج
         import('@capacitor/app').then(({ App }) => App.exitApp()).catch(() => {
@@ -585,7 +615,7 @@ const App: React.FC = () => {
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handleAndroidBack);
     return () => window.removeEventListener('popstate', handleAndroidBack);
-  }, [view, handleBack, activeTab, sheetMedicine]);
+  }, [view, handleBack, activeTab, sheetMedicine, isFilterModalOpen]);
 
   // Swipe to go back — تم إلغاؤه
 
@@ -609,6 +639,7 @@ const App: React.FC = () => {
           cachedMeds.map(normalizeMedicine).forEach(m => baseMapEarly.set(m.RegisterNumber, m));
           setMedicines(Array.from(baseMapEarly.values()));
           setIsMedicinesLoading(false);
+          try { localStorage.setItem('pharma_has_cache', 'true'); } catch {}
         }
 
         // بعدين اعمل full sync (بيجيب supplements + food + updates)
@@ -621,6 +652,10 @@ const App: React.FC = () => {
         const allMeds = Array.from(baseMap.values());
         if (allMeds.length > 0) setMedicines(allMeds);
         setIsMedicinesLoading(false);
+        // رسالة "تم التحديث" بس لو في داتا جديدة فعلاً من السيرفر
+        if (syncResult.updated && allMeds.length > 0) {
+          setTimeout(() => { setDataReadyToast(true); setTimeout(() => setDataReadyToast(false), 2500); }, 300);
+        }
 
         // ── restore state بعد reload (رجوع من Gemini أو أي app تاني) ──
         try {
@@ -652,34 +687,112 @@ const App: React.FC = () => {
           }, 3000);
         }
 
-        // ── خطوة 2: اسمع لـ overrides live — بدون auth ──────────
-        const unsubOverrides = listenToOverrides((overrides) => {
-          setMedicines(prev => {
-            const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-            overrides.forEach((override, id) => {
-              const existing = merged.get(id);
-              if (existing) {
-                merged.set(id, normalizeMedicine({ ...existing, ...override }));
-              } else {
-                merged.set(id, normalizeMedicine(override));
-              }
+        // ── خطوة 2: overrides ─────────────────────────────────
+        // Admin فقط يحتاج real-time listener
+        // باقي المستخدمين: fetch مرة واحدة عند التحميل + cache محلي
+        let unsubOverrides: (() => void) = () => {};
+        try {
+          const { getDocs, collection: col } = await import('firebase/firestore');
+          
+          // جيب الـ overrides مرة واحدة — مش محتاجين listener
+          const OVERRIDES_CACHE_KEY = 'pharma_overrides_cache';
+          const OVERRIDES_CACHE_TS  = 'pharma_overrides_ts';
+          const overridesCacheAge   = Date.now() - parseInt(localStorage.getItem(OVERRIDES_CACHE_TS) || '0');
+          const OVERRIDES_TTL       = 48 * 60 * 60 * 1000; // 48 ساعة
+          
+          let overridesData: any[] = [];
+          
+          if (overridesCacheAge < OVERRIDES_TTL) {
+            // استخدم الـ cache المحلي
+            try {
+              const cached = localStorage.getItem(OVERRIDES_CACHE_KEY);
+              if (cached) overridesData = JSON.parse(cached);
+            } catch {}
+          } else {
+            // fetch جديد من Firestore
+            const snap = await getDocs(col(db, 'medicine_overrides')).catch(() => null);
+            if (snap && !snap.empty) {
+              overridesData = snap.docs.map(d => ({ ...d.data(), RegisterNumber: d.id }));
+              // حفظ في cache
+              try {
+                localStorage.setItem(OVERRIDES_CACHE_KEY, JSON.stringify(overridesData));
+                localStorage.setItem(OVERRIDES_CACHE_TS, String(Date.now()));
+              } catch {}
+            }
+          }
+          
+          // طبّق الـ overrides على الـ medicines
+          if (overridesData.length > 0) {
+            const overridesMap = new Map<string, any>();
+            overridesData.forEach(o => overridesMap.set(o.RegisterNumber, o));
+            setMedicines(prev => {
+              const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+              overridesMap.forEach((override, id) => {
+                const existing = merged.get(id);
+                if (existing) merged.set(id, normalizeMedicine({ ...existing, ...override }));
+                else merged.set(id, normalizeMedicine(override));
+              });
+              return Array.from(merged.values());
             });
-            return Array.from(merged.values());
-          });
-        });
+          }
+          
+          // Admin فقط: real-time listener عشان يشوف تعديلاته فوراً
+          // نتحقق من الـ role من user state مش من Firestore
+          const cachedUserStr = localStorage.getItem('medai_user_backup_v4');
+          const cachedRole = cachedUserStr ? JSON.parse(cachedUserStr)?.role : null;
+          if (cachedRole === 'admin') {
+            unsubOverrides = listenToOverrides((overrides) => {
+              // حدّث الـ cache
+              const arr = Array.from(overrides.values());
+              try {
+                localStorage.setItem(OVERRIDES_CACHE_KEY, JSON.stringify(arr));
+                localStorage.setItem(OVERRIDES_CACHE_TS, String(Date.now()));
+              } catch {}
+              setMedicines(prev => {
+                const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+                overrides.forEach((override, id) => {
+                  const existing = merged.get(id);
+                  if (existing) merged.set(id, normalizeMedicine({ ...existing, ...override }));
+                  else merged.set(id, normalizeMedicine(override));
+                });
+                return Array.from(merged.values());
+              });
+            });
+          }
+        } catch { /* تجاهل */ }
 
         // ── خطوة 3: اسمع لتحديثات Storage في الخلفية ─────────────
+        // نحفظ hash من آخر داتا عشان نتحقق من تغيير حقيقي
+        let lastStorageHash = '';
+        const buildStorageHash = (meds: any[], sups: any[], food: any[]) =>
+          `${meds.length}:${sups.length}:${food.length}:` +
+          [...meds, ...sups, ...food]
+            .slice(0, 20) // نأخذ أول 20 بس للسرعة
+            .map(m => `${m.RegisterNumber ?? m.Id ?? ''}:${m['Last Update'] ?? m._updatedAt ?? ''}`)
+            .join('|');
+
         const handleStorageUpdate = (e: Event) => {
-          const { medicines, supplements, food } = (e as CustomEvent).detail;
-          setIsMedicinesLoading(true);  // شيل علامة التحميل
+          const { medicines: newMeds, supplements: newSups, food: newFood } = (e as CustomEvent).detail;
+          const newHash = buildStorageHash(newMeds, newSups, newFood);
+
+          // لو نفس الـ hash → مفيش تغيير حقيقي → تجاهل تماماً
+          if (newHash === lastStorageHash) {
+            console.log('[App] Storage update: no real change, skipping');
+            return;
+          }
+          lastStorageHash = newHash;
+
+          console.log('[App] ✅ Real data update detected, applying...');
+          // رسالة تحديث بس لما في تغيير حقيقي
+          setDataReadyToast(true);
+          setTimeout(() => setDataReadyToast(false), 2500);
           setMedicines(prev => {
             const updatedMap = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-            [...medicines, ...supplements, ...food]
+            [...newMeds, ...newSups, ...newFood]
               .map(normalizeMedicine)
               .forEach(m => updatedMap.set(m.RegisterNumber, m));
             return Array.from(updatedMap.values());
           });
-          setTimeout(() => setIsMedicinesLoading(false), 300);
         };
         window.addEventListener('pharma:storage-updated', handleStorageUpdate);
 
@@ -808,11 +921,22 @@ const App: React.FC = () => {
     });
   };
 
+  const FAVORITES_LIMIT = user?.role === 'admin' ? Infinity : 20;
   const toggleFavorite = (id: string) => {
+      if (!favorites.includes(id) && favorites.length >= FAVORITES_LIMIT) {
+        alert(language === 'ar' ? '⚠️ وصلت للحد الأقصى (20 دواء في المفضلة)' : '⚠️ Max 20 favorites reached');
+        return;
+      }
       const newFavs = favorites.includes(id) ? favorites.filter(f => f !== id) : [...favorites, id];
       setFavorites(newFavs);
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
   };
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+    setView('search');
+    setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''});
+  }, []);
 
   const handleSaveMedicine = async (updatedMed: Medicine) => {
     if (!user) return;
@@ -981,34 +1105,28 @@ const App: React.FC = () => {
           }
         }}
       />;
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={()=>{}} onFindAlternative={()=>{}} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
 
-                  {/* ── علامة تحميل — اتنقلت لتحت الـ SearchBar ── */}
 
-                  {/* SearchBar — يتحرك مع الصفحة */}
-                  <div className="mb-4">
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} textSearchMode={textSearchMode} setTextSearchMode={setTextSearchMode} isSearchActive={searchTerm.length > 0} onClearSearch={() => { setSearchTerm(''); setView('search'); setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''}); }} onForceSearch={() => { setView('results'); }} onBarcodeScanClick={()=>{}} exactOnly={exactSearchOnly} onToggleExactOnly={() => setExactSearchOnly(v => !v)} t={t} />
-                    <div className="flex gap-2 mt-2 items-center">
-                      <FilterButton onClick={() => setIsFilterModalOpen(true)} activeCount={activeFiltersCount} t={t} />
-                      <SortControls sortBy={sortBy} setSortBy={setSortBy} t={t} />
-                    </div>
-                  </div>
                   <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
                         <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                       ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
+                        // لو الـ debounce لسه شغال → مش نعرض "لا توجد نتائج" دلوقتي
+                        searchTerm !== debouncedSearchTerm ? null : (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
                         </div>
+                        )
                       ) : recentSearches.length > 0 ? (
                         <div className="animate-fade-in">
                           <div className="flex justify-between items-center mb-3 px-1">
@@ -1058,35 +1176,15 @@ const App: React.FC = () => {
       }
 
       if (activeTab === 'settings') {
-          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} />;
-          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} />;
+          // settings tab مش محتاج extra padding
+          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
-                          {/* Stock Tracker */}
-                          <button onClick={() => setView('stockTracker')} className="w-full flex items-center justify-between p-4 bg-violet-50 dark:bg-violet-900/20 rounded-2xl">
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg">📦</span>
-                              <div className="text-left">
-                                <span className="font-black text-violet-700 dark:text-violet-400 block text-sm">Stock Tracker</span>
-                                <span className="text-[10px] text-violet-500/70">Track inventory per facility</span>
-                              </div>
-                            </div>
-                            <svg className="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </button>
-                          {/* Order List */}
-                          <button onClick={() => { refreshOrderCount(); setView('orderList'); }} className="w-full flex items-center justify-between p-4 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg">🛒</span>
-                              <div className="text-left">
-                                <span className="font-black text-teal-700 dark:text-teal-400 block text-sm">Order List</span>
-                                <span className="text-[10px] text-teal-500/70">{orderCount > 0 ? `${orderCount} items` : 'Empty'}</span>
-                              </div>
-                            </div>
-                            <svg className="w-5 h-5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </button>
+
                           <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1165,9 +1263,9 @@ const App: React.FC = () => {
                                     `Describe the issue or medicine to add:\n`
                                   );
                                   if (Capacitor.isNativePlatform()) {
-                                    window.open(`https://wa.me/550806894?text=${msg}`, '_system');
+                                    window.open(`https://wa.me/966550806894?text=${msg}`, '_system');
                                   } else {
-                                    window.open(`https://wa.me/550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
+                                    window.open(`https://wa.me/966550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
                                   }
                                 }}
                                 className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl active:scale-95 transition-all"
@@ -1217,20 +1315,7 @@ const App: React.FC = () => {
     ? <SpecialtyModal isOpen={true} onComplete={handleSpecialtyComplete} />
     : null;
 
-  if (authLoading || (isMedicinesLoading && medicines.length === 0)) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-white dark:bg-slate-900">
-        <div className="relative flex flex-col items-center">
-          <img src="/logo.png" alt="PharmaSource"
-            className="w-24 h-24 rounded-[1.75rem] object-cover shadow-xl shadow-teal-500/20"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display='none'; }}
-          />
-          {/* Spinner تحت الصورة مباشرة */}
-          <div className="mt-4 w-5 h-5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  // لو auth لسه بيتحقق بس مفيش medicine خالص نكتفي بـ spinner صغير في الـ header
 
   // ✅ Auth Gate — مش مسجّل → Login مباشرة بدون أي تعديل تاني في الكود
   if (!user) {
@@ -1292,9 +1377,54 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <Header ref={headerRef} title="PharmaSource" showBack={view !== 'search' && view !== 'insuranceSearch' && activeTab !== 'settings'} onBack={handleBack} t={t} onLoginClick={() => { setPreviousView(view); setView('login'); }} onAdminClick={()=>setView('admin')} onNotificationsClick={() => setView('notifications')} view={view} unreadCount={notifications.filter(n => !n.isRead).length} />
+      <Header
+        ref={headerRef}
+        title="PharmaSource"
+        showBack={view !== 'search' || activeTab === 'insurance'}
+        onBack={handleBack}
+        t={t}
+        onLoginClick={() => { setPreviousView(view); setView('login'); }}
+        onAdminClick={()=>setView('admin')}
+        onNotificationsClick={() => setView('notifications')}
+        onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { setView('stockTracker'); } else if (target === 'orderList') { refreshOrderCount(); setView('orderList'); } else { setView('settings'); restoreScroll('settings'); } }}
+        view={view}
+        unreadCount={notifications.filter(n => !n.isRead).length}
+        isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
+        searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
+      />
 
-      <main id="main-scroll-container" ref={scrollContainerRef} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: Math.max(headerHeight + 8, 100), paddingBottom: compareList.length > 0 && !showCompare ? 'calc(280px + env(safe-area-inset-bottom))' : 'calc(120px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      {/* SearchBar — ثابت تحت الهيدر مباشرة */}
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view) && (
+        <div
+          className="fixed left-0 right-0 z-[59] px-3"
+          style={{ top: headerHeight }}
+        >
+          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1">
+            <SearchBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              textSearchMode={textSearchMode}
+              setTextSearchMode={setTextSearchMode}
+              isSearchActive={searchTerm.length > 0}
+onClearSearch={handleClearSearch}
+              onForceSearch={() => { setView('results'); }}
+              onBarcodeScanClick={()=>{}}
+              exactOnly={exactSearchOnly}
+              onToggleExactOnly={() => setExactSearchOnly(v => !v)}
+              t={t}
+              activeFiltersCount={activeFiltersCount}
+              onOpenFilters={() => setIsFilterModalOpen(true)}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              language={language}
+              onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
+              isSearching={searchTerm.length > 0 && searchTerm !== debouncedSearchTerm}
+            />
+          </div>
+        </div>
+      )}
+
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 96 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(160px + env(safe-area-inset-bottom))' : 'calc(32px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div
               key={view}
               style={{
@@ -1355,13 +1485,28 @@ const App: React.FC = () => {
             onAskGemini={handleAskGemini}
             onToggleCompare={toggleCompare}
             isInCompare={compareList.some(m => m.RegisterNumber === sheetMedicine.RegisterNumber)}
+            onOpenClinical={() => setClinicalModal({ open: true, medicine: sheetMedicine })}
           />
         )}
       </BottomSheet>
 
       <GeminiPromptModal isOpen={geminiModal.open} prompt={geminiModal.prompt} onClose={() => setGeminiModal({ open: false, prompt: '' })} />
 
-      <BottomNavBar activeTab={activeTab} setActiveTab={handleTabClick} t={t} user={user} view={view} />
+      {/* Clinical Page — فوق كل حاجة في App level */}
+      {clinicalModal.open && clinicalModal.medicine && (
+        <div className="fixed inset-0 z-[999]">
+          <ClinicalDataPage
+            registerNumber={clinicalModal.medicine.RegisterNumber}
+            tradeName={clinicalModal.medicine['Trade Name']}
+            scientificName={clinicalModal.medicine['Scientific Name']}
+            language={language}
+            isAdmin={user?.role === 'admin'}
+            allMedicines={medicines}
+            onClose={() => setClinicalModal({ open: false, medicine: null })}
+          />
+        </div>
+      )}
+
       {/* الزرار يظهر بس لو مسجل دخول */}
       {/* FloatingAssistantButton disabled */}
       {false && isAssistantOpen && <AssistantModal
@@ -1394,7 +1539,17 @@ const App: React.FC = () => {
           initialMedicine={drugToolsModal.medicine}
         />
       )}
-      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchTextResults.length > 0 ? searchTextResults : medicines} t={t} headerBottom={headerHeight} />
+      {/* ── Data Ready Toast ── */}
+      {dataReadyToast && (
+        <div style={{ position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, pointerEvents: 'none', animation: 'fadeInUp 0.3s ease' }}>
+          <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
+          <div className="flex items-center gap-2 bg-slate-800/90 dark:bg-slate-700/90 text-white px-4 py-2.5 rounded-2xl shadow-xl backdrop-blur-sm">
+            <span className="text-sm">✅</span>
+            <span className="text-xs font-black">{language === 'ar' ? 'تم تحميل البيانات' : 'Data loaded'}</span>
+          </div>
+        </div>
+      )}
+      <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchTextResults.length > 0 ? searchTextResults : medicines} t={t} headerBottom={headerHeight} isAdmin={user?.role === 'admin'} />
       {/* ── Image Viewer Overlay — فوق كل حاجة ── */}
       {view === 'imageView' && activeImageViewer && (
         <div className="fixed inset-0 z-[9999]">

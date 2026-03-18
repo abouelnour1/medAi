@@ -134,21 +134,68 @@ export async function setupCapacitorPush(
       console.log('✅ Android FCM Token saved:', tokenResult.token.substring(0, 20) + '...');
     }
 
+    // helper: احفظ الإشعار في Firestore
+    // نستخدم Map لمنع duplicates في نفس الجلسة بدون Firestore query
+    // منع duplicates: نحفظ hash في localStorage يدوم 5 دقايق
+    const NOTIF_DEDUP_KEY = 'pharma_notif_dedup';
+    const getDedupSet = (): Set<string> => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(NOTIF_DEDUP_KEY) || '{}');
+        const now = Date.now();
+        // نمسح القديم
+        const fresh: Record<string,number> = {};
+        Object.entries(raw).forEach(([k,v]) => { if (now - (v as number) < 5*60*1000) fresh[k] = v as number; });
+        return new Set(Object.keys(fresh));
+      } catch { return new Set(); }
+    };
+    const addToDedup = (key: string) => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(NOTIF_DEDUP_KEY) || '{}');
+        raw[key] = Date.now();
+        localStorage.setItem(NOTIF_DEDUP_KEY, JSON.stringify(raw));
+      } catch {}
+    };
+
+    const saveNotifToFirestore = async (title: string, body: string, data?: any) => {
+      try {
+        const key = `${title}:${body}:${data?.relatedMedicineId || data?.medicineId || ''}`;
+        const dedup = getDedupSet();
+        if (dedup.has(key)) return; // duplicate
+        addToDedup(key);
+
+        const { collection, addDoc } = await import('firebase/firestore');
+        await addDoc(collection(db, 'users', userId, 'notifications'), {
+          title,
+          body,
+          timestamp: Date.now(),
+          type: 'info',
+          isRead: false,
+          ...(data?.relatedMedicineId ? { relatedMedicineId: data.relatedMedicineId } : {}),
+          ...(data?.medicineId ? { relatedMedicineId: data.medicineId } : {}),
+        });
+      } catch (e) {
+        console.log('saveNotifToFirestore error:', e);
+      }
+    };
+
     // استقبال الإشعارات وهو مفتوح
-    await FirebaseMessaging.addListener('notificationReceived', (event: any) => {
+    await FirebaseMessaging.addListener('notificationReceived', async (event: any) => {
       const title = event.notification?.title || 'PharmaSource';
       const body = event.notification?.body || '';
-      onNotification(title, body, event.notification?.data);
+      const data = event.notification?.data;
+      await saveNotifToFirestore(title, body, data);
+      onNotification(title, body, data);
     });
 
     // استقبال الإشعارات لما يضغط عليها
-    await FirebaseMessaging.addListener('notificationActionPerformed', (event: any) => {
+    await FirebaseMessaging.addListener('notificationActionPerformed', async (event: any) => {
+      const title = event.notification?.title || 'PharmaSource';
+      const body = event.notification?.body || '';
       const data = event.notification?.data;
+      await saveNotifToFirestore(title, body, data);
       if (onTap) {
         onTap(data);
       } else {
-        const title = event.notification?.title || 'PharmaSource';
-        const body = event.notification?.body || '';
         onNotification(title, body, data);
       }
     });

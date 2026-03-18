@@ -14,6 +14,7 @@ interface OrderListProps {
   t: TFunction;
   language: string;
   onCountChange?: (count: number) => void;
+  isAdmin?: boolean;
 }
 
 const STORAGE_KEY = 'pharma_order_list';
@@ -158,16 +159,23 @@ const AddMedicineModal: React.FC<{
 };
 
 // ── Main Component ──────────────────────────────────────────────────────
-const OrderList: React.FC<OrderListProps> = ({ allMedicines, t, language, onCountChange }) => {
+const OrderList: React.FC<OrderListProps> = ({ allMedicines, t, language, onCountChange, isAdmin = false }) => {
   const [items, setItems] = useState<OrderItem[]>(loadOrder);
   const [showAdd, setShowAdd] = useState(false);
   const [exported, setExported] = useState(false);
 
   useEffect(() => { saveOrder(items); onCountChange?.(items.length); }, [items]);
 
+  const ORDER_LIMIT = isAdmin ? Infinity : 20;
   const addItem = useCallback((m: Medicine) => {
-    setItems(prev => [...prev, { medicine: m, quantity: 1 }]);
-  }, []);
+    setItems(prev => {
+      if (!isAdmin && prev.length >= ORDER_LIMIT) {
+        alert('⚠️ Max 20 items in order list');
+        return prev;
+      }
+      return [...prev, { medicine: m, quantity: 1 }];
+    });
+  }, [isAdmin]);
 
   const removeItem = useCallback((id: string) => {
     setItems(prev => prev.filter(i => i.medicine.RegisterNumber !== id));

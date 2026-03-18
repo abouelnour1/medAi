@@ -31,8 +31,12 @@ service cloud.firestore {
 
     // ── إشعارات كل مستخدم (subcollection) ───────────────────────
     match /users/{userId}/notifications/{notifId} {
-      allow read:  if isLoggedIn() && request.auth.uid == userId;
-      allow write: if false; // Cloud Functions Admin SDK فقط
+      allow read:   if isLoggedIn() && request.auth.uid == userId;
+      // السماح للمستخدم بالكتابة في إشعاراته (لما يوصله push notification)
+      // والأدمن يكتب في إشعارات أي مستخدم (لإرسال broadcast)
+      allow create: if isLoggedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isLoggedIn() && request.auth.uid == userId; // mark as read
+      allow delete: if isLoggedIn() && (request.auth.uid == userId || isAdmin());
     }
 
     // ── طلبات التحديث (Company) ───────────────────────────────────

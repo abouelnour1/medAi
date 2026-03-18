@@ -216,12 +216,57 @@ export function listenToOverrides(
 ): () => void {
   if (FIREBASE_DISABLED || !db) return () => {};
 
+  // hash من آخر snapshot — نتجاهل reconnect snapshots بدون تغيير حقيقي
+  let lastHash = '';
+  let isFirstSnapshot = true;
+
+  const buildHash = (snap: any): string =>
+    snap.docs
+      .map((d: any) => `${d.id}:${d.data()._updatedAt ?? d.data()['Last Update'] ?? ''}`)
+      .sort()
+      .join('|');
+
   const unsub = onSnapshot(
     collection(db, 'medicine_overrides'),
+    { includeMetadataChanges: false }, // تجاهل metadata-only changes (reconnect)
     (snap) => {
+      // تجاهل لو مفيش docs أصلاً
+      if (snap.empty && isFirstSnapshot) {
+        isFirstSnapshot = false;
+        return;
+      }
+
+      const newHash = buildHash(snap);
+
+      // الـ snapshot الأول — نطبّق دايماً (بيانات أولية)
+      if (isFirstSnapshot) {
+        isFirstSnapshot = false;
+        lastHash = newHash;
+        const overrides = new Map<string, any>();
+        snap.docs.forEach((d: any) => overrides.set(d.id, { ...d.data(), RegisterNumber: d.id }));
+        if (overrides.size > 0) {
+          console.log('[dataSync] ✅ Initial overrides:', overrides.size, 'items');
+          onUpdate(overrides);
+        }
+        return;
+      }
+
+      // Snapshots بعد كده — نتحقق من تغيير حقيقي
+      if (newHash === lastHash) {
+        console.log('[dataSync] Overrides: reconnect snapshot, no real change — skipped');
+        return;
+      }
+
+      // في تغيير فعلي — تحقق إن في docs اتغيرت فعلاً مش بس reconnect
+      const hasRealChange = snap.docChanges().some(
+        change => change.type === 'added' || change.type === 'modified' || change.type === 'removed'
+      );
+      if (!hasRealChange) return;
+
+      lastHash = newHash;
       const overrides = new Map<string, any>();
-      snap.docs.forEach(d => overrides.set(d.id, { ...d.data(), RegisterNumber: d.id }));
-      console.log('[dataSync] Overrides:', overrides.size, 'items');
+      snap.docs.forEach((d: any) => overrides.set(d.id, { ...d.data(), RegisterNumber: d.id }));
+      console.log('[dataSync] ✅ Real override change detected:', overrides.size, 'items');
       onUpdate(overrides);
     },
     (err) => console.warn('[dataSync] Overrides listen failed:', err)

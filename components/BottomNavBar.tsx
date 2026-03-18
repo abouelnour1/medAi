@@ -36,7 +36,6 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
   const navItems = [
     { id: 'search', label: t('navSearch'), icon: <SearchIcon /> },
     { id: 'insurance', label: t('navInsurance'), icon: <HealthInsuranceIcon /> },
-    { id: 'settings', label: t('navSettings'), icon: <SettingsIcon /> },
   ];
 
   return (

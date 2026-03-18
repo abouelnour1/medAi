@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { User, AuthContextType, AppSettings, TFunction } from '../../types';
@@ -27,6 +26,7 @@ import {
 
 const SETTINGS_DOC_ID = 'app_settings';
 const LOCAL_USER_STORAGE_KEY = 'medai_user_backup_v4';
+const USER_SYNC_INTERVAL = 30 * 60 * 1000; // 30 دقيقة بين كل Firestore read
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -46,143 +46,194 @@ const toPlainObject = (user: any): User | null => {
     };
 };
 
+// ── Helper: read/write user cache ─────────────────────────────────────────────
+const getCachedUser = (): User | null => {
+  try {
+    const s = localStorage.getItem(LOCAL_USER_STORAGE_KEY) || sessionStorage.getItem(LOCAL_USER_STORAGE_KEY);
+    return s ? JSON.parse(s) as User : null;
+  } catch { return null; }
+};
+
+const setCachedUser = (user: User) => {
+  try {
+    const s = JSON.stringify(user);
+    localStorage.setItem(LOCAL_USER_STORAGE_KEY, s);
+    sessionStorage.setItem(LOCAL_USER_STORAGE_KEY, s);
+  } catch {}
+};
+
+const clearCachedUser = () => {
+  try {
+    localStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+    sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY);
+  } catch {}
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [appSettings, setAppSettings] = useState<AppSettings>({ aiRequestLimit: 3, isAiEnabled: true, isFeaturedEnabled: true });
-  // ✅ نحمل الـ user من cache فوراً — مش نستنى Firebase
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const cached = localStorage.getItem('medai_user_backup_v4') || sessionStorage.getItem('medai_user_backup_v4');
-      if (cached) return JSON.parse(cached) as User;
-    } catch {}
-    return null;
-  });
-  // لو في cached user → isLoading=false فوراً، مش محتاج نستنى Firebase
-  const [isLoading, setIsLoading] = useState(() => {
-    try {
-      const cached = localStorage.getItem('medai_user_backup_v4') || sessionStorage.getItem('medai_user_backup_v4');
-      return !cached; // لو في cache → false (مش loading)، لو مفيش → true (استنى)
-    } catch {}
-    return true;
-  });
+
+  // نحمل الـ user من cache فوراً بدون أي network
+  const [user, setUser] = useState<User | null>(() => getCachedUser());
+
+  // لو في cache → مش loading، التطبيق يفتح فوراً
+  const [isLoading, setIsLoading] = useState(() => !getCachedUser());
+
+  // منع أي network call زيادة
+  const activeUid = useRef<string | null>(null);
   const isSyncing = useRef(false);
   const loadingTimeoutRef = useRef<number | null>(null);
 
+  // ── syncUserData: بيتشتغل بس لو مفيش cache أو فات 30 دقيقة ────────────────
   const syncUserData = useCallback(async (firebaseUser: FirebaseUser) => {
-      // ✅ منع double sync
-      if (isSyncing.current) return;
-      isSyncing.current = true;
+    if (isSyncing.current) return;
 
-      try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          let userData: User | null = null;
-          
-          const userDoc = await getDoc(userDocRef).catch(() => null);
-          if (userDoc?.exists()) {
-              const data = userDoc.data();
-              userData = toPlainObject({
-                  ...data,
-                  id: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  emailVerified: firebaseUser.emailVerified
-              });
-          } else {
-              // مستخدم جديد - ننشئ له doc
-              userData = toPlainObject({
-                  id: firebaseUser.uid,
-                  username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                  role: 'premium',
-                  email: firebaseUser.email || '',
-                  emailVerified: firebaseUser.emailVerified,
-                  status: 'active',
-                  aiRequestCount: 0,
-                  lastRequestDate: new Date().toISOString().split('T')[0]
-              });
-              if (userData) {
-                  await setDoc(userDocRef, userData);
-              }
-          }
-          
-          if (userData) {
-              setUser(userData);
-              const serialized = JSON.stringify(userData);
-              try { localStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
-              try { sessionStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
-          }
-      } catch (err) {
-          console.error("Critical Auth Sync Error:", err);
-          // ✅ لو فشل Firestore، نبني من Firebase user مباشرة
-          const fallback = toPlainObject({
-              id: firebaseUser.uid,
-              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              role: 'premium',
-              email: firebaseUser.email || '',
-              emailVerified: firebaseUser.emailVerified,
-              status: 'active',
-              aiRequestCount: 0,
-              lastRequestDate: new Date().toISOString().split('T')[0]
-          });
-          if (fallback) {
-              setUser(fallback);
-              const serialized = JSON.stringify(fallback);
-              try { localStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
-              try { sessionStorage.setItem(LOCAL_USER_STORAGE_KEY, serialized); } catch {}
-          }
-      } finally {
-          isSyncing.current = false;
-          setIsLoading(false);
-          if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+    // لو نفس اليوزر → تحقق من الـ interval بس
+    if (activeUid.current === firebaseUser.uid) {
+      const lastSyncKey = `last_user_sync_${firebaseUser.uid}`;
+      const lastSync = parseInt(localStorage.getItem(lastSyncKey) || '0');
+      if (Date.now() - lastSync < USER_SYNC_INTERVAL) {
+        // مش فاتت 30 دقيقة → الـ cache كافي، مش محتاجين Firestore
+        setIsLoading(false);
+        if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+        return;
       }
+    }
+
+    // أول مرة أو فات الـ interval → اتحقق من cache الأول
+    const cached = getCachedUser();
+    if (cached && cached.id === firebaseUser.uid) {
+      // عندنا cache صالح → استخدمه فوراً
+      setUser(cached);
+      setIsLoading(false);
+      if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+      activeUid.current = firebaseUser.uid;
+
+      // الـ Firestore sync في الخلفية تماماً — مش بيأثر على الـ UI
+      const lastSyncKey = `last_user_sync_${firebaseUser.uid}`;
+      const lastSync = parseInt(localStorage.getItem(lastSyncKey) || '0');
+      if (Date.now() - lastSync < USER_SYNC_INTERVAL) return; // مش فاتت 30 دقيقة
+      localStorage.setItem(lastSyncKey, String(Date.now()));
+
+      // background sync — لا loading ولا state change إلا لو في فرق فعلي
+      (async () => {
+        try {
+          isSyncing.current = true;
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid)).catch(() => null);
+          if (userDoc?.exists()) {
+            const fresh = toPlainObject({
+              ...userDoc.data(),
+              id: firebaseUser.uid,
+              email: firebaseUser.email,
+              emailVerified: firebaseUser.emailVerified
+            });
+            if (fresh) {
+              // نتحقق لو في فرق فعلي قبل ما نعمل setUser
+              const cachedNow = getCachedUser();
+              if (JSON.stringify(fresh) !== JSON.stringify(cachedNow)) {
+                setUser(fresh);
+                setCachedUser(fresh);
+              }
+            }
+          }
+        } catch {} finally {
+          isSyncing.current = false;
+        }
+      })();
+      return;
+    }
+
+    // مفيش cache صالح → أول تسجيل دخول، لازم نجيب من Firestore
+    isSyncing.current = true;
+    try {
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userDocRef).catch(() => null);
+      let userData: User | null = null;
+
+      if (userDoc?.exists()) {
+        userData = toPlainObject({
+          ...userDoc.data(),
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          emailVerified: firebaseUser.emailVerified
+        });
+      } else {
+        // مستخدم جديد
+        userData = toPlainObject({
+          id: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          role: 'premium',
+          email: firebaseUser.email || '',
+          emailVerified: firebaseUser.emailVerified,
+          status: 'active',
+          aiRequestCount: 0,
+          lastRequestDate: new Date().toISOString().split('T')[0]
+        });
+        if (userData) await setDoc(userDocRef, userData);
+      }
+
+      if (userData) {
+        setUser(userData);
+        setCachedUser(userData);
+        activeUid.current = firebaseUser.uid;
+        localStorage.setItem(`last_user_sync_${firebaseUser.uid}`, String(Date.now()));
+      }
+    } catch (err) {
+      // Firestore فشل — نبني من Firebase auth مباشرة
+      const fallback = toPlainObject({
+        id: firebaseUser.uid,
+        username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        role: 'premium',
+        email: firebaseUser.email || '',
+        emailVerified: firebaseUser.emailVerified,
+        status: 'active',
+        aiRequestCount: 0,
+        lastRequestDate: new Date().toISOString().split('T')[0]
+      });
+      if (fallback) { setUser(fallback); setCachedUser(fallback); }
+    } finally {
+      isSyncing.current = false;
+      setIsLoading(false);
+      if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+    }
   }, []);
 
+  // ── onAuthStateChanged: Firebase بيبعت event كل reconnect ────────────────
   useEffect(() => {
-    // ✅ الحل النهائي: نستنى onAuthStateChanged يرد الأول — مش timeout
-    // Firebase بيقرأ الـ session من IndexedDB تلقائياً (يشتغل في PWA + متصفح + standalone)
-    // Timeout طويل بس كـ safety net فقط
-    loadingTimeoutRef.current = window.setTimeout(() => {
-        setIsLoading(false);
-    }, 3000); // 3s max — بعدها نفتح حتى لو Firebase مش رد
+    loadingTimeoutRef.current = window.setTimeout(() => setIsLoading(false), 3000);
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+
       if (firebaseUser) {
-        // ✅ مستخدم موجود — سواء من session أو redirect
         syncUserData(firebaseUser as FirebaseUser);
       } else {
-        // ✅ مفيش مستخدم — بس ممكن يكون في redirect جاي
-        // نستنى getRedirectResult الأول قبل ما نعمل logout
         getRedirectResult(auth).then((result) => {
           if (result?.user) {
             syncUserData(result.user as FirebaseUser);
           } else {
-            try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
-            try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
+            clearCachedUser();
+            activeUid.current = null;
             setUser(null);
             setIsLoading(false);
           }
-        }).catch(() => {
-          setUser(null);
-          setIsLoading(false);
-        });
+        }).catch(() => { setUser(null); setIsLoading(false); });
       }
-    }, (error) => {
-        console.error("Auth State Change Error:", error);
-        setIsLoading(false);
-    });
+    }, () => setIsLoading(false));
 
     return () => {
-        unsubscribe();
-        if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
+      unsubscribe();
+      if (loadingTimeoutRef.current) window.clearTimeout(loadingTimeoutRef.current);
     };
   }, [syncUserData]);
 
   const login = async (email: string, password: string) => {
+    activeUid.current = null; // reset عشان يعمل full sync
     const result = await signInWithEmailAndPassword(auth, email, password);
     await syncUserData(result.user as FirebaseUser);
   };
 
   const loginWithGoogle = async () => {
-    // ✅ Android Native → Capacitor Google Auth Plugin
-    // ✅ Web/PWA → Firebase popup
+    activeUid.current = null;
     if (Capacitor.isNativePlatform()) {
       try {
         // @ts-ignore
@@ -200,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const firebaseResult = await signInWithCredential(auth, credential);
         await syncUserData(firebaseResult.user as FirebaseUser);
       } catch (err: any) {
-        console.error('Google Native Sign-In Error:', JSON.stringify(err), err?.message, err?.code);
+        console.error('Google Native Sign-In Error:', err?.message);
         throw err;
       }
     } else {
@@ -212,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithApple = async () => {
+    activeUid.current = null;
     const provider = new OAuthProvider('apple.com');
     provider.addScope('email');
     provider.addScope('name');
@@ -223,62 +275,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await sendEmailVerification(result.user);
     const userData = toPlainObject({
-        id: result.user.uid, username: email.split('@')[0], email: email, role: role,
-        emailVerified: false, status: 'active', aiRequestCount: 0, lastRequestDate: new Date().toISOString().split('T')[0]
+      id: result.user.uid, username: email.split('@')[0], email, role,
+      emailVerified: false, status: 'active', aiRequestCount: 0,
+      lastRequestDate: new Date().toISOString().split('T')[0]
     });
-    if (userData) {
-        await setDoc(doc(db, 'users', result.user.uid), userData);
-        setUser(userData);
-    }
+    if (userData) { await setDoc(doc(db, 'users', result.user.uid), userData); setUser(userData); }
   };
 
   const logout = async () => {
     await signOut(auth);
+    clearCachedUser();
+    activeUid.current = null;
     setUser(null);
-    try { localStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
-    try { sessionStorage.removeItem(LOCAL_USER_STORAGE_KEY); } catch {}
   };
 
   const reloadUser = async () => {
-      if (auth.currentUser) {
-          await reload(auth.currentUser);
-          await syncUserData(auth.currentUser as FirebaseUser);
-      }
+    if (auth.currentUser) {
+      await reload(auth.currentUser);
+      activeUid.current = null; // force full sync
+      await syncUserData(auth.currentUser as FirebaseUser);
+    }
   };
 
   const resendVerificationEmail = async () => {
-      if (auth.currentUser) await sendEmailVerification(auth.currentUser);
+    if (auth.currentUser) await sendEmailVerification(auth.currentUser);
   };
 
   const resetPassword = async (email: string) => {
-      await sendPasswordResetEmail(auth, email);
+    await sendPasswordResetEmail(auth, email);
   };
 
   const getAllUsers = () => [];
+
   const updateUser = async (updatedUser: User) => {
-      const plain = toPlainObject(updatedUser);
-      if (!plain) return;
-      const userRef = doc(db, 'users', plain.id);
-      await setDoc(userRef, plain, { merge: true }).catch(() => {});
-      if (user?.id === plain.id) setUser(plain);
+    const plain = toPlainObject(updatedUser);
+    if (!plain) return;
+    await setDoc(doc(db, 'users', plain.id), plain, { merge: true }).catch(() => {});
+    if (user?.id === plain.id) {
+      setUser(plain);
+      setCachedUser(plain);
+    }
   };
+
   const deleteUser = async (userId: string) => { await deleteDoc(doc(db, 'users', userId)); };
   const getSettings = (): AppSettings => appSettings;
   const updateSettings = async (settings: AppSettings) => { await setDoc(doc(db, 'settings', SETTINGS_DOC_ID), settings); };
 
   const requestAIAccess = useCallback((callback: () => void, t: TFunction) => {
-    if (!user) {
-      alert(t('loginRequired') || 'يجب تسجيل الدخول أولاً');
-      return;
-    }
-    if (user.role === 'admin') {
-      callback();
-      return;
-    }
+    if (!user) { alert(t('loginRequired') || 'يجب تسجيل الدخول أولاً'); return; }
+    if (user.role === 'admin') { callback(); return; }
     const today = new Date().toISOString().split('T')[0];
-    const globalLimit = appSettings.aiRequestLimit || 3;
-    const limit = user.customAiLimit !== undefined ? user.customAiLimit : globalLimit;
-    
+    const limit = user.customAiLimit !== undefined ? user.customAiLimit : (appSettings.aiRequestLimit || 3);
     if (user.lastRequestDate !== today) {
       updateUser({ ...user, aiRequestCount: 1, lastRequestDate: today });
       callback();
@@ -288,16 +335,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       alert(
         (t('usageLimitReached') || 'وصلت للحد اليومي')
-          .replace('{limit}', String(limit))
-          .replace('%d', String(limit))
+          .replace('{limit}', String(limit)).replace('%d', String(limit))
         + ` (${limit} يومياً / per day)`
       );
     }
   }, [user, appSettings]);
 
   const value = { 
-      user, login, loginWithGoogle, loginWithApple, register, logout, requestAIAccess, resendVerificationEmail, 
-      reloadUser, resetPassword, isLoading, getAllUsers, updateUser, deleteUser, getSettings, updateSettings 
+    user, login, loginWithGoogle, loginWithApple, register, logout, requestAIAccess,
+    resendVerificationEmail, reloadUser, resetPassword, isLoading, getAllUsers,
+    updateUser, deleteUser, getSettings, updateSettings
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -25,17 +25,23 @@ const saveFacilities = async (f: Facility[]) => { try { await setItem(FACILITIES
 // ── Bottom Sheet (fixed to viewport, not scroll container) ────────────────────
 const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: boolean }> = ({ onClose, children, tall }) => {
   useEffect(() => {
-    // نوقف الـ scroll على الـ main container مش الـ body
     const mainEl = document.getElementById('main-scroll-container');
     const bodyPrev = document.body.style.overflow;
     const mainPrev = mainEl ? mainEl.style.overflow : '';
     document.body.style.overflow = 'hidden';
     if (mainEl) mainEl.style.overflow = 'hidden';
+    // اعلم الـ App إن في sheet مفتوح
+    (window as any).__pharma_sheet_open__ = true;
+    // لما Android back يتضغط → اقفل الـ sheet
+    const handleClose = () => { onClose(); };
+    window.addEventListener('pharma:close-top-sheet', handleClose);
     return () => {
       document.body.style.overflow = bodyPrev;
       if (mainEl) mainEl.style.overflow = mainPrev;
+      (window as any).__pharma_sheet_open__ = false;
+      window.removeEventListener('pharma:close-top-sheet', handleClose);
     };
-  }, []);
+  }, [onClose]);
   return createPortal(
     <div
       style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)' }}
@@ -254,7 +260,7 @@ const StockCard: React.FC<{ entry: StockEntry; onClick: ()=>void }> = ({ entry, 
 };
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language: string }> = ({ allMedicines }) => {
+const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language: string; onBack?: () => void; isAdmin?: boolean }> = ({ allMedicines, onBack, isAdmin = false }) => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [activeId, setActiveId] = useState<string|null>(null);
   const [loading, setLoading] = useState(true);
@@ -287,10 +293,18 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
     const rest = facilities.filter(f => f.id !== id);
     setFacilities(rest); setActiveId(rest[0]?.id||null);
   };
+  const STOCK_LIMIT = isAdmin ? Infinity : 20;
   const addStock = useCallback((entry: Omit<StockEntry,'lastUpdated'>) => {
     if(!activeId) return;
-    setFacilities(prev => prev.map(f => f.id===activeId ? { ...f, stock:{ ...f.stock, [entry.medicineId]:{ ...entry, lastUpdated:new Date().toISOString() } } } : f));
-  }, [activeId]);
+    setFacilities(prev => prev.map(f => {
+      if(f.id !== activeId) return f;
+      if(!isAdmin && Object.keys(f.stock).length >= STOCK_LIMIT) {
+        alert('⚠️ Max 20 items in stock tracker');
+        return f;
+      }
+      return { ...f, stock:{ ...f.stock, [entry.medicineId]:{ ...entry, lastUpdated:new Date().toISOString() } } };
+    }));
+  }, [activeId, isAdmin]);
   const updateStock = useCallback((id: string, qty: number, minAlert: number, note: string) => {
     if(!activeId) return;
     const now = new Date().toISOString();
@@ -340,7 +354,16 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
   return (
     <div className="space-y-4 animate-fade-in pb-8">
       {showAdd && active && <AddSheet allMedicines={allMedicines} existingIds={new Set(stockList.map(s=>s.medicineId))} onAdd={addStock} onClose={() => setShowAdd(false)} />}
-      {editEntry && <EditSheet entry={editEntry} onSave={(q,m,n) => updateStock(editEntry.medicineId,q,m,n)} onRemove={() => removeStock(editEntry.medicineId)} onClose={() => setEditEntry(null)} />}
+      {editEntry && <EditSheet entry={editEntry} onSave={(q,m,n) => { updateStock(editEntry.medicineId,q,m,n); setEditEntry(null); }} onRemove={() => { removeStock(editEntry.medicineId); setEditEntry(null); }} onClose={() => setEditEntry(null)} />}
+      {/* Back button */}
+      {onBack && (
+        <button onClick={onBack} className="flex items-center gap-2 text-primary font-black text-sm mb-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Settings
+        </button>
+      )}
 
       {/* Notice */}
       <div className="flex items-center gap-2.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/15 rounded-2xl border border-amber-200/40">

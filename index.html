@@ -32,8 +32,14 @@
       })();
     </script>
     <style>
-      :root { font-size: 14px; }
-      /* منع الوميض - تأكيد الألوان الأساسية */
+      /* ── الحجم الثابت بغض النظر عن إعدادات الموبايل ── */
+      :root {
+        font-size: 14px !important;
+        -webkit-text-size-adjust: 100% !important;
+        -moz-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+      }
+      /* منع الوميض */
       html { background-color: #f8fafc; }
       html.dark { background-color: #020617; }
       body {
@@ -44,6 +50,9 @@
         -webkit-font-smoothing: antialiased;
         overflow: hidden;
         color: #0f172a;
+        /* منع تغيير الخط بإعدادات المستخدم */
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
       }
       .dark body {
         background-color: #020617;
@@ -55,7 +64,6 @@
         overflow: hidden; 
         position: fixed; 
         width: 100%;
-        /* منع الـ bounce والـ scroll اللي بيحصل لما تيجي إشعارات */
         overscroll-behavior: none;
         -webkit-overflow-scrolling: touch;
       }
@@ -72,7 +80,10 @@
         border-color: rgba(255, 255, 255, 0.05);
       }
 
-      @media (min-width: 640px) { :root { font-size: 16px; } }
+      /* الحجم ثابت على كل الشاشات — مش بيتغير بحجم الموبايل */
+      @media (min-width: 390px)  { :root { font-size: 14px !important; } }
+      @media (min-width: 768px)  { :root { font-size: 15px !important; } }
+      @media (min-width: 1024px) { :root { font-size: 16px !important; } }
     </style>
   </head>
   <body>
