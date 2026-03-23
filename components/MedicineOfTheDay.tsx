@@ -33,7 +33,7 @@ const MedicineOfTheDay: React.FC<Props> = ({ medicines, language, t, onSelect })
     if (topSearched.length > 0) {
       // نختار من أعلى 10 مبحوثاً - يتغير كل يوم عشان ما يتكررش
       const dayIndex = Math.floor(Date.now() / 86400000) % Math.min(topSearched.length, 10);
-      const topName = topSearched[dayIndex].name;
+      const topName = topSearched[dayIndex].term;
       const found = medicines.find(m =>
         m['Trade Name'].toLowerCase() === topName.toLowerCase()
       );

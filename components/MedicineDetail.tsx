@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { logMedicineView } from '../utils/analytics';
+import { abbreviateForm } from '../utils/formAbbrev';
+import { PEDIATRIC_DRUG_NAMES } from './PediatricDoseCalculator';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
@@ -16,22 +19,22 @@ import { getIngredientsList } from './MedicineCard';
 import { getClinicalData, ClinicalData } from '../utils/dailyMedicines';
 import ClinicalDataPage from './ClinicalDataPage';
 
-const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; accent?: string }> = ({ title, icon, children, accent = 'teal' }) => (
-    <div className="bg-white dark:bg-dark-card rounded-[1.75rem] overflow-hidden shadow-sm border border-slate-100/80 dark:border-dark-border mb-3 animate-fade-in">
-        <div className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-dark-card border-b border-slate-100 dark:border-dark-border`}>
-            <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center p-1.5 flex-shrink-0">{icon}</div>
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-dark-muted">{title}</h3>
+const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; accent?: string }> = ({ title, icon, children }) => (
+    <div className="bg-white dark:bg-dark-card rounded-2xl overflow-hidden shadow-sm border border-slate-100/80 dark:border-dark-border animate-fade-in">
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60">
+            <div className="w-6 h-6 text-primary/70 flex-shrink-0">{icon}</div>
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-dark-muted">{title}</h3>
         </div>
-        <div className="px-4 py-3 space-y-2">{children}</div>
+        <div className="px-4 py-2.5 space-y-1">{children}</div>
     </div>
 );
 
-const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
+const DetailRow: React.FC<{ label: string; value?: string | number | null; highlight?: boolean }> = ({ label, value, highlight }) => {
   if (!value || String(value).trim() === '' || String(value).toLowerCase() === 'na') return null;
   return (
-    <div className="flex justify-between items-center gap-3 py-1 border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+    <div className="flex justify-between items-center gap-3 py-1.5 border-b border-slate-50 dark:border-slate-800/40 last:border-0">
       <dt className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">{label}</dt>
-      <dd className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right leading-tight">{value}</dd>
+      <dd className={`text-[11px] font-bold text-right leading-tight ${highlight ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}`}>{value}</dd>
     </div>
   );
 };
@@ -60,6 +63,10 @@ interface MedicineDetailProps {
 }
 
 const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini, onOpenClinical }) => {
+  React.useEffect(() => {
+    logMedicineView(medicine['Trade Name'], medicine.RegisterNumber, medicine['Product type']);
+  }, [medicine.RegisterNumber]);
+
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
@@ -100,6 +107,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
 
 
   const hasImportantPhysical = !!(medicine.liquidTaste || medicine.liquidColor);
+  const hasPhysicalContent = !!(medicine.pillShape || medicine.pillScored || medicine.pillMarkings || medicine.physicalNotes);
   const [isPhysicalOpen, setIsPhysicalOpen] = useState(hasImportantPhysical);
   const price = parseFloat(medicine['Public price']);
   const ingredients = useMemo(() => getIngredientsList(medicine), [medicine]);
@@ -137,92 +145,95 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
   };
 
   return (
-    <div className="space-y-6 pb-24 animate-fade-in bg-light-bg dark:bg-dark-bg">
-      <div className="bg-white dark:bg-dark-card border border-teal-100/50 dark:border-dark-border rounded-[2rem] p-4 shadow-lg relative">
-          <div className="flex justify-between items-center mb-4">
-              <div className="flex gap-2">
-                {/* Legal Status - ملون حسب النوع */}
-                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
-                  medicine['Legal Status'] === 'Prescription'
-                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                }`}>
-                  {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+    <div className="space-y-3 pb-24 animate-fade-in bg-light-bg dark:bg-dark-bg">
+      {/* ── Hero Card ── */}
+      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+        
+        {/* Action Bar */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-50 dark:border-slate-800/60">
+          <div className="flex items-center gap-1.5">
+            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${
+              medicine['Legal Status'] === 'Prescription'
+                ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+            }`}>
+              {medicine['Legal Status'] === 'Prescription' ? 'Rx' : 'OTC'}
+            </span>
+            {medicine.DrugType && (
+              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${
+                medicine.DrugType.toLowerCase().includes('generic')
+                  ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'
+              }`}>
+                {medicine.DrugType.toLowerCase().includes('generic') ? 'Generic' : 'Brand'}
+              </span>
+            )}
+            {isControlled && <span className="bg-purple-50 text-purple-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide">Controlled</span>}
+            {isRestricted && <span className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide">Restricted</span>}
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={handleGoogleImageSearch} disabled={imgSearching} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${imgSearching ? 'bg-primary/10 text-primary' : 'text-slate-400'}`}>
+              <div className="w-4 h-4"><CameraIcon /></div>
+            </button>
+            {onShare && (
+              <button onClick={() => onShare(medicine)} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-emerald-500 active:scale-90 transition-all">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              </button>
+            )}
+            {onToggleCompare && (
+              <button onClick={() => onToggleCompare(medicine)} className={`w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all ${isInCompare ? 'bg-primary text-white' : 'text-slate-400'}`}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              </button>
+            )}
+            <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`w-8 h-8 rounded-xl flex items-center justify-center active:scale-90 transition-all ${isFavorite ? 'text-amber-500' : 'text-slate-300'}`}>
+              <div className="w-4 h-4"><StarIcon isFilled={isFavorite} /></div>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex gap-3 items-start">
+            {medicine.imgBox ? (
+              <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)}
+                className="flex-shrink-0 w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden active:scale-95 transition-all border border-slate-100 dark:border-slate-700">
+                <img src={medicine.imgBox} alt="" className="w-full h-full object-contain p-1" />
+              </button>
+            ) : (
+              <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/20 rounded-xl flex items-center justify-center border border-teal-100 dark:border-teal-800/30">
+                <span className="text-[11px] font-black text-teal-600 dark:text-teal-400 text-center leading-tight px-1">
+                  {medicine['Trade Name'].substring(0, 4).toUpperCase()}
                 </span>
-                {/* Drug Type */}
-                {medicine.DrugType && (
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
-                    medicine.DrugType.toLowerCase().includes('generic')
-                      ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'
-                  }`}>
-                    {medicine.DrugType.toLowerCase().includes('generic') ? 'Generic' : 'Brand'}
-                  </span>
-                )}
-                {isControlled && <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-3 py-1 rounded-full text-[9px] font-black uppercase">Controlled</span>}
-                {isRestricted && <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-full text-[9px] font-black uppercase">Restricted</span>}
               </div>
-              <div className="flex gap-2">
-                  <button onClick={handleGoogleImageSearch} disabled={imgSearching} className={`p-2.5 rounded-2xl shadow-sm border active:scale-90 transition-all ${imgSearching ? "bg-primary/10 text-primary border-primary/20" : "bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted border-slate-100 dark:border-dark-border"}`}>
-                      <div className="w-5 h-5"><CameraIcon /></div>
-                  </button>
-                  {onShare && (
-                    <button onClick={() => onShare(medicine)} className="p-2.5 bg-white dark:bg-dark-card text-slate-400 hover:text-green-500 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-all" title="مشاركة">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                      </svg>
-                    </button>
-                  )}
-                  {onToggleCompare && (
-                    <button onClick={() => onToggleCompare(medicine)} className={`p-2.5 rounded-2xl shadow-sm border active:scale-90 transition-all ${isInCompare ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-dark-card text-slate-400 border-slate-100 dark:border-dark-border'}`} title="مقارنة">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </button>
-                  )}
-                  <button onClick={() => onToggleFavorite(medicine.RegisterNumber)} className={`p-2.5 rounded-2xl active:scale-90 transition-all ${isFavorite ? 'bg-amber-500 text-white shadow-lg' : 'bg-white dark:bg-dark-card text-slate-400 dark:text-dark-muted border border-slate-100 dark:border-dark-border'}`}>
-                    <div className="w-5 h-5"><StarIcon isFilled={isFavorite} /></div>
-                  </button>
-              </div>
-          </div>
-          <div className="flex gap-4 items-center">
-              {medicine.imgBox && (
-                  <button onClick={() => onImageZoom(productImages, 0, medicine['Trade Name'], imageIndexFlags)} className="flex-shrink-0 w-24 h-24 bg-white rounded-2xl p-1.5 shadow-xl border border-slate-100 active:scale-95 transition-all overflow-hidden">
-                      <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
-                  </button>
+            )}
+            <div className="flex-grow min-w-0">
+              <h1 className="text-base font-black text-slate-800 dark:text-white leading-tight">{medicine['Trade Name']}</h1>
+              {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
+                const sciNames = String(medicine['Scientific Name']).split(',').map((s: string) => s.trim()).filter(Boolean);
+                if (sciNames.length > 3) {
+                  return <span className="inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-teal-100/60 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400">{sciNames.length} ingredients</span>;
+                }
+                const strengths = String(medicine.Strength || '').split(',').map((s: string) => s.trim());
+                const strengthUnit = String(medicine.StrengthUnit || '').trim();
+                const KNOWN_UNITS = /(mg|ml|g|mcg|ug|iu|unit|units|mmol|%|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)/i;
+                const parts = sciNames.map((name: string, i: number) => {
+                  const s = (strengths[i] || strengths[0] || '').trim();
+                  if (!s) return name;
+                  const hasUnit = KNOWN_UNITS.test(s);
+                  const display = (!hasUnit && strengthUnit) ? `${s} ${strengthUnit}` : s;
+                  return `${name} ${display}`;
+                });
+                return <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug" dir="ltr">{parts.join(' · ')}</p>;
+              })()}
+              {price > 0 && (
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-teal-600 dark:text-teal-400">{price.toFixed(2)}</span>
+                  <span className="text-sm font-black text-teal-500/70">{language === 'ar' ? 'ر.س' : 'SAR'}</span>
+                </div>
               )}
-              <div className="flex-grow min-w-0">
-                  <h1 className="text-xl font-black text-teal-800 dark:text-teal-400 leading-tight">{medicine['Trade Name']}</h1>
-                  {/* ── المادة الفعالة + التركيز — لو أكتر من 3 نكتفي بـ badge ── */}
-                  {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
-                    const sciNames = String(medicine['Scientific Name']).split(',').map(s => s.trim()).filter(Boolean);
-                    // لو أكتر من 3 مواد → badge بس، التفاصيل تحت في الـ InfoCard
-                    if (sciNames.length > 3) {
-                      return (
-                        <span className="inline-block mt-1.5 text-[9px] font-black px-2.5 py-1 rounded-full bg-teal-200/60 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400">
-                          {sciNames.length} {language === 'ar' ? 'مواد فعالة' : 'ingredients'}
-                        </span>
-                      );
-                    }
-                    const strengths = String(medicine.Strength || '').split(',').map(s => s.trim());
-                    const strengthUnit = String(medicine.StrengthUnit || '').trim();
-                    const KNOWN_UNITS = /\b(mg|ml|g|mcg|ug|iu|unit|units|mmol|%|μg|µg|mcg\/ml|mg\/ml|mg\/g|g\/ml|mg\/dose|iu\/ml)\b/i;
-                    const parts = sciNames.map((name, i) => {
-                      const s = (strengths[i] || strengths[0] || '').trim();
-                      if (!s) return name;
-                      const hasUnit = KNOWN_UNITS.test(s);
-                      const display = (!hasUnit && strengthUnit) ? `${s} ${strengthUnit}` : s;
-                      return `${name} ${display}`;
-                    });
-                    return (
-                      <p className="text-sm font-semibold text-teal-600/70 dark:text-teal-400/60 mt-1 leading-snug" dir="ltr">
-                        {parts.join(' · ')}
-                      </p>
-                    );
-                  })()}
-                  {price > 0 && <div className="mt-3 flex items-baseline gap-1"><span className="text-3xl font-black text-teal-600 dark:text-teal-300">{price.toFixed(2)}</span><span className="text-lg font-black text-teal-500">{language === 'ar' ? 'ر.س' : 'SAR'}</span></div>}
-              </div>
+            </div>
           </div>
+        </div>
       </div>
 
       {productImages.length > 1 && (
@@ -250,6 +261,27 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span className="font-black text-[9px] uppercase text-blue-500">Ask Gemini</span>
           </button>
+          {/* Pediatric Dose Calculator - بيظهر بس للأدوية الموجودة في القائمة */}
+          {(() => {
+            const sciName = String(medicine['Scientific Name'] || '').toLowerCase().trim();
+            const tradeName = String(medicine['Trade Name'] || '').toLowerCase().trim();
+            // بس للأشكال السائلة (شراب/قطرات) — مش أقراص أو كبسولات
+            const form = String(medicine['PharmaceuticalForm'] || '').toLowerCase();
+            const isLiquid = /syrup|suspension|drops|solution|elixir|oral liquid|شراب|قطر|محلول|معلق/.test(form);
+            if (!isLiquid) return null;
+            // نجرب كل كلمة في الاسم العلمي والتجاري
+            const tokens = [...sciName.split(/[\s/,()-]+/), ...tradeName.split(/[\s/,()-]+/)].filter(t => t.length > 2);
+            const hasPediatric = PEDIATRIC_DRUG_NAMES.has(sciName) || PEDIATRIC_DRUG_NAMES.has(tradeName) ||
+              tokens.some(tok => PEDIATRIC_DRUG_NAMES.has(tok)) ||
+              Array.from(PEDIATRIC_DRUG_NAMES).some(n => sciName.includes(n) || tradeName.includes(n));
+            if (!hasPediatric) return null;
+            return (
+              <button onClick={() => onOpenDoseCalc?.()} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200/60 dark:border-teal-800/40 p-3 rounded-2xl active:scale-95 transition-all">
+                <span className="text-base">👶</span>
+                <span className="font-black text-[9px] uppercase text-teal-600 dark:text-teal-400">{language === 'ar' ? 'جرعة الأطفال' : 'Pediatric'}</span>
+              </button>
+            );
+          })()}
       </div>
 
       {/* ── Clinical Data Card ── */}
@@ -378,42 +410,63 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
       </InfoCard>
 
-      {/* معلومات العبوة والتوزيع */}
-      {(medicine.PackageSize || medicine.PackageTypes || medicine['Distribute area']) && (
-        <InfoCard title={t('packagingInfo')} icon={
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        }>
-          <DetailRow label={t('packageSize')} value={
-            medicine.PackageSize && medicine.SizeUnit 
-              ? `${medicine.PackageSize} ${medicine.SizeUnit}` 
-              : medicine.PackageSize
-          } />
-          <DetailRow label={t('packageType')} value={medicine.PackageTypes} />
-          {medicine['Distribute area'] && (
-            <div className="flex justify-between items-center py-1.5">
-              <dt className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('distributeArea')}</dt>
-              <dd>
-                <span className={`text-[10px] font-black px-3 py-1 rounded-full ${
-                  medicine['Distribute area']?.toLowerCase().includes('hospital') || medicine['Distribute area']?.toLowerCase().includes('مستشفى')
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                    : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+      {/* معلومات العبوة - table design */}
+      {(medicine.PackageSize || medicine.PackageTypes || medicine['Distribute area'] || medicine.PharmaceuticalForm) && (
+        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100/80 dark:border-dark-border overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60">
+            <svg className="w-4 h-4 text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('packagingInfo')}</h3>
+          </div>
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/40">
+            {medicine.PharmaceuticalForm && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Form</span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{abbreviateForm(medicine.PharmaceuticalForm)}</span>
+              </div>
+            )}
+            {medicine.PackageSize && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{t('packageSize')}</span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{medicine.PackageSize}{medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''}</span>
+              </div>
+            )}
+            {medicine.PackageTypes && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{t('packageType')}</span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{medicine.PackageTypes}</span>
+              </div>
+            )}
+            {medicine['Distribute area'] && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{t('distributeArea')}</span>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
+                  medicine['Distribute area']?.toLowerCase().includes('hospital')
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                    : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
                 }`}>
-                  {medicine['Distribute area']?.toLowerCase().includes('hospital') || medicine['Distribute area']?.toLowerCase().includes('مستشفى')
-                    ? (language === 'ar' ? '🏥 مستشفى' : '🏥 Hospital')
-                    : medicine['Distribute area']?.toLowerCase().includes('pharmacy') || medicine['Distribute area']?.toLowerCase().includes('صيدلية')
-                    ? (language === 'ar' ? '💊 صيدلية' : '💊 Pharmacy')
-                    : medicine['Distribute area']
-                  }
+                  {medicine['Distribute area']?.toLowerCase().includes('hospital') ? 'Hospital' 
+                    : medicine['Distribute area']?.toLowerCase().includes('pharmacy') ? 'Pharmacy' 
+                    : medicine['Distribute area']}
                 </span>
-              </dd>
-            </div>
-          )}
-        </InfoCard>
+              </div>
+            )}
+            {medicine.liquidTaste && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Taste</span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{medicine.liquidTaste}</span>
+              </div>
+            )}
+            {medicine.liquidColor && (
+              <div className="flex justify-between items-center px-4 py-2.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Color</span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{medicine.liquidColor}</span>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
+      {hasPhysicalContent && <div className="bg-white dark:bg-dark-card rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-dark-border overflow-hidden">
           <button onClick={() => setIsPhysicalOpen(!isPhysicalOpen)} className="w-full flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0"><PillIcon /></div>
@@ -438,40 +491,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </button>
           <div className={`${isPhysicalOpen ? 'max-h-[500px] opacity-100 px-4 pb-4' : 'max-h-0 opacity-0 overflow-hidden'} transition-all duration-300`}>
                 <div className="space-y-3 border-t border-slate-100 dark:border-dark-border pt-3 mt-2">
-                    <DetailRow label={t('pharmaceuticalForm')} value={medicine.PharmaceuticalForm} />
                     <DetailRow label={t('pillShape')} value={medicine.pillShape} />
                     <DetailRow label={t('scored')} value={medicine.pillScored} />
                     <DetailRow label={t('markings')} value={medicine.pillMarkings} />
-                    {medicine.liquidTaste && (
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
-                        <span className="text-[11px] font-black text-slate-400 uppercase">
-                          {language === 'ar' ? '👅 الطعم' : '👅 Taste'}
-                        </span>
-                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                          {medicine.liquidTaste}
-                        </span>
-                      </div>
-                    )}
-                    {medicine.liquidColor && (
-                      <div className="flex justify-between items-center py-2 border-b border-slate-50 dark:border-slate-800">
-                        <span className="text-[11px] font-black text-slate-400 uppercase">
-                          {language === 'ar' ? '🎨 اللون' : '🎨 Color'}
-                        </span>
-                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                          {medicine.liquidColor}
-                        </span>
-                      </div>
-                    )}
+
                     <DetailRow label={t('notes')} value={medicine.physicalNotes} />
                 </div>
           </div>
-      </div>
+      </div>}
 
 
       <InfoCard title={t('regulatory')} icon={<ShieldIcon />}>
-          <DetailRow label={t('regNumLabel')} value={medicine.RegisterNumber} />
+          <DetailRow label={t('regNumLabel')} value={medicine.RegisterNumber} highlight />
           <DetailRow label={t('productControlLabel')} value={medicine['Product Control']} />
-          <DetailRow label={t('atcCodeLabel')} value={medicine.AtcCode1} />
+          <DetailRow label={t('atcCodeLabel')} value={medicine.AtcCode1} highlight />
       </InfoCard>
 
       <InfoCard title={t('manufacturing')} icon={<FactoryIcon />}>

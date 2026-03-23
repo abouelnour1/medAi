@@ -12,7 +12,7 @@ import BackIcon from '../icons/BackIcon';
 import DatabaseIcon from '../icons/DatabaseIcon';
 import BellIcon from '../icons/BellIcon';
 import DownloadIcon from '../icons/DownloadIcon';
-import { getTopSearched, getTotalSearches, clearAnalytics } from '../../utils/analytics';
+import { getTopSearched, getTotalSearches, getTopMedicineViews, clearAnalytics } from '../../utils/analytics';
 import FeaturedSchedulePanel from './FeaturedSchedulePanel';
 import PillIcon from '../icons/PillIcon';
 import FactoryIcon from '../icons/FactoryIcon';
@@ -907,6 +907,59 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
                       ))}
                     </div>
                   </div>
+
+                  {/* أكثر البحثات */}
+                  {topSearched.length > 0 && (
+                  <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">🔍 أكثر البحثات ({totalSearches} بحث)</h4>
+                      <button onClick={() => { clearAnalytics(); }} className="text-[10px] text-rose-400 font-black">مسح</button>
+                    </div>
+                    <div className="space-y-2">
+                      {topSearched.map((item, idx) => (
+                        <div key={item.term} className="flex items-center gap-2">
+                          <span className="text-[11px] font-black text-slate-300 w-4">#{idx+1}</span>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">{item.term}</span>
+                              <span className="text-[11px] font-black text-primary ml-2">{item.count}</span>
+                            </div>
+                            <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                              <div className="h-full bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full" style={{width: `${Math.round(item.count/topSearched[0].count*100)}%`}} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+
+                  {/* أكثر الأدوية مشاهدة */}
+                  {(() => {
+                    const topViews = getTopMedicineViews(10);
+                    if (topViews.length === 0) return null;
+                    return (
+                    <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">
+                      <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-4">💊 أكثر الأدوية مشاهدة</h4>
+                      <div className="space-y-2">
+                        {topViews.map((item, idx) => (
+                          <div key={item.name} className="flex items-center gap-2">
+                            <span className="text-[11px] font-black text-slate-300 w-4">#{idx+1}</span>
+                            <div className="flex-grow">
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">{item.name}</span>
+                                <span className="text-[11px] font-black text-primary ml-2">{item.count}</span>
+                              </div>
+                              <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                <div className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" style={{width: `${Math.round(item.count/topViews[0].count*100)}%`}} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    );
+                  })()}
 
                   {/* الإشعارات */}
                   <div className="bg-white dark:bg-dark-card rounded-2xl p-5 border border-slate-100 dark:border-dark-border shadow-sm">

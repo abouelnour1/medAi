@@ -12,6 +12,7 @@ interface HeaderProps {
   t: TFunction;
   onLoginClick: () => void;
   onAdminClick: () => void;
+  onPediatricCalcClick?: () => void;
   onNotificationsClick: () => void;
   onSettingsClick?: () => void;
   view: View;
@@ -42,7 +43,7 @@ const OnlineIndicator: React.FC = () => {
   );
 };
 
-const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, onSettingsClick, view, unreadCount = 0, isLoading = false, searchBarVisible }, ref) => {
+const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, onSettingsClick, onPediatricCalcClick, view, unreadCount = 0, isLoading = false, searchBarVisible }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -139,6 +140,13 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                     <span className="text-base">🛒</span>
                     Order List
+                  </button>
+
+                  {/* Pedia Dose Calc */}
+                  <button onClick={() => { onPediatricCalcClick?.(); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                    <span className="text-base">👶</span>
+                    Pedia Dose Calc
                   </button>
 
                   {/* Admin */}

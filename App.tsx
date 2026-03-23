@@ -21,10 +21,10 @@ import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
-import { useDebounce } from './hooks/useDebounce';
 import { useSearch } from './hooks/useSearch';
 import { useAlternatives } from './hooks/useMedicineUtils';
 import DrugToolsModal from './components/DrugToolsModal';
+import PediatricDoseCalculator from './components/PediatricDoseCalculator';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
@@ -33,6 +33,9 @@ import PullToRefresh from './components/PullToRefresh';
 import PharmacistQuickView from './components/PharmacistQuickView';
 import { requestPushPermission, setupForegroundNotifications, setupCapacitorPush } from './utils/pushNotifications';
 import { Capacitor } from '@capacitor/core';
+import { trackAppOpen } from './utils/inAppReview';
+import { logSearch, logShareMedicine, logFavoriteToggle, logTabSwitch, setUserSpecialty } from './utils/analytics';
+import { syncAnalyticsToFirestore } from './utils/analyticsSync';
 import CompareBar from './components/CompareBar';
 import ClinicalDataPage from './components/ClinicalDataPage';
 import CompareModal from './components/CompareModal';
@@ -230,12 +233,21 @@ const App: React.FC = () => {
   const dataLoadedRef = React.useRef(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  // تحميل الإشعارات من Firestore لما اليوزر يسجل دخول
+  // تحميل الإشعارات - من IndexedDB أولاً (فوري) ثم Firestore (live)
   useEffect(() => {
     if (!user) { setNotifications([]); return; }
     let unsub: (() => void) | undefined;
+    const cacheKey = 'notifs_cache_' + user.id;
+
     (async () => {
       try {
+        // أولاً: اعرض الـ cache المحلي فوراً
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) setNotifications(JSON.parse(cached));
+        } catch {}
+
+        // ثانياً: اسمع لـ Firestore للتحديثات
         const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
         const q = query(
           collection(db, 'users', user.id, 'notifications'),
@@ -248,6 +260,8 @@ const App: React.FC = () => {
             ...d.data()
           } as AppNotification));
           setNotifications(notifs);
+          // احفظ في الـ cache
+          try { localStorage.setItem(cacheKey, JSON.stringify(notifs)); } catch {}
         });
       } catch (e) {
         console.log('Notifications load error:', e);
@@ -261,7 +275,8 @@ const App: React.FC = () => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
-  const debouncedSearchTerm = useDebounce(searchTerm, textSearchMode === 'scientificName' ? 400 : 100);
+  // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
+  const debouncedSearchTerm = searchTerm;
   const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -281,28 +296,39 @@ const App: React.FC = () => {
   const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-  const [pharmacistMode, setPharmacistMode] = useState(() => localStorage.getItem('pharmacist_mode') === 'true');
+  const pharmacistMode = true; // دايماً مفعل
   const [orderCount, setOrderCount] = useState<number>(() => {
     try { const r = localStorage.getItem('pharma_order_list'); return r ? JSON.parse(r).length : 0; } catch { return 0; }
   });
   // refresh order count when returning to settings
   // ── Specialty Modal — يظهر مرة واحدة بعد Google login ──────────────
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
+  const [isEditingSpecialty, setIsEditingSpecialty] = useState(false);
 
   const [notifToast, setNotifToast] = React.useState<{title:string,body:string}|null>(null);
   const [dataReadyToast, setDataReadyToast] = React.useState(false);
-  const [showNotifPrompt, setShowNotifPrompt] = React.useState(false);
 
   // نظهر notification prompt على الويب فقط — Android بيطلب الإذن من النظام
+  // Notification permission handled by native system
+
+  // In-App Review — بعد ٥ مرات فتح
   useEffect(() => {
     if (!user) return;
-    if (Capacitor.isNativePlatform()) return; // Android/iOS بيتعاملوا مع الإشعارات بشكل مختلف
-    const dismissed = localStorage.getItem('notif_prompt_shown_' + user.id);
-    if (dismissed === 'dismissed') return;
-    if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'denied') return;
-    if (Notification.permission === 'granted') return;
-    setTimeout(() => setShowNotifPrompt(true), 3000);
+    trackAppOpen();
+    // Sync analytics to Firestore مرة في اليوم
+    syncAnalyticsToFirestore(user.id, (user as any).specialty);
+  }, [user?.id]);
+
+  // Crashlytics — تسجيل اليوزر عشان نعرف مين عنده crash
+  useEffect(() => {
+    if (!user || !Capacitor.isNativePlatform()) return;
+    (async () => {
+      try {
+        const { FirebaseCrashlytics } = await import('@capacitor-firebase/crashlytics');
+        await FirebaseCrashlytics.setUserId({ userId: user.id });
+        await FirebaseCrashlytics.setCustomKey({ key: 'specialty', value: (user as any).specialty || 'unknown', type: 'string' });
+      } catch {}
+    })();
   }, [user?.id]);
 
   // setup notifications - Android native or web foreground
@@ -340,15 +366,17 @@ const App: React.FC = () => {
     }
   }, [user?.id]);
 
-  // لما user يتسجل لأول مرة بدون specialty → نظهر الـ modal مرة واحدة فقط
+  // التخصص — يظهر مرة واحدة فقط لو مش محفوظ في Firestore
   useEffect(() => {
     if (!user) return;
+    // لو عنده تخصص في user object (من Firestore) → مش محتاج يختار
+    if (user.specialty) return;
+    // لو سبق وتم التعيين في هذا الجهاز
     const key = 'user_specialty_set_' + user.id;
     if (localStorage.getItem(key)) return;
-    if (user.specialty) { localStorage.setItem(key, 'true'); return; }
     const t = setTimeout(() => setShowSpecialtyModal(true), 600);
     return () => clearTimeout(t);
-  }, [user?.id]);
+  }, [user?.id, user?.specialty]);
 
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialtyModal(false);
@@ -381,6 +409,8 @@ const App: React.FC = () => {
   // API key انتقل للـ Firebase Cloud Function - الـ proxy بيستخدم Firebase Auth
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
+  const [pedCalcOpen, setPedCalcOpen] = useState(false);
+  const [pedCalcDrug, setPedCalcDrug] = useState<string | undefined>(undefined);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
   const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
@@ -399,8 +429,13 @@ const App: React.FC = () => {
     } catch {}
   }, [view, activeTab]);
 
+  // sessionStorage write — مرة كل 500ms بس مش على كل حرف
+  const sessionTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    try { sessionStorage.setItem('ps_search', searchTerm); } catch {}
+    if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+    sessionTimerRef.current = setTimeout(() => {
+      try { sessionStorage.setItem('ps_search', searchTerm); } catch {}
+    }, 500);
   }, [searchTerm]);
 
   // حفظ sheetMedicine عشان يرجعه بعد reload
@@ -523,6 +558,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleBack = useCallback(() => {
+      // لو QuickView مفتوح → اقفله الأول
+      if (quickViewMedicine) { setQuickViewMedicine(null); return; }
       // احفظ position الـ view الحالي
       if (scrollContainerRef.current) {
           scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
@@ -530,15 +567,25 @@ const App: React.FC = () => {
       if (view === 'imageView') {
           // لو جيت من details نرجع لها، لو من حته تانية كمان
           const backTarget: View = (previousView === 'alternatives' ? 'details' : (previousView || 'details')) as View;
+          setActiveImageViewer(null);
           setView(backTarget);
           restoreScroll(backTarget);
       } else if (sheetMedicine) {
           setSheetMedicine(null);
           return;  // فوري بدون delay
       } else if (view === 'alternatives') {
-          setView('results');
-          restoreScroll('results');
-          if (selectedMedicine) openSheet(selectedMedicine, true); // skip animation
+          if (previousView === 'details') {
+              // جاي من صفحة التفاصيل → ارجع للتفاصيل بدون sheet
+              setView('details');
+              restoreScroll('details');
+          } else if (previousView === 'favorites') {
+              setView('favorites');
+              restoreScroll('favorites');
+          } else {
+              // جاي من نتائج البحث → ارجع للنتائج وافتح الكارت
+              setView('results');
+              restoreScroll('results');
+          }
       } else if (view === 'details') {
           const target = previousView === 'alternatives' ? 'alternatives' : 'results';
           // لو راجع لـ alternatives نمسح الـ scroll المحفوظ عشان يبدأ من فوق
@@ -567,7 +614,7 @@ const App: React.FC = () => {
           setActiveTab('search'); 
           restoreScroll('search');
       }
-  }, [view, activeTab, searchTerm, restoreScroll]);
+  }, [view, activeTab, searchTerm, restoreScroll, quickViewMedicine]);
 
   const handleMedicineSelect = (m: Medicine) => {
     if (scrollContainerRef.current) {
@@ -579,6 +626,7 @@ const App: React.FC = () => {
         localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
         return updated;
     });
+    trackMedicineView(m['Trade Name'], m.RegisterNumber);
     setPreviousView(view);
     setSelectedMedicine(m);
     setSheetMedicine(m);  // افتح الـ BottomSheet
@@ -590,16 +638,29 @@ const App: React.FC = () => {
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
 
+      // 0. الحاسبة مفتوحة → اقفلها أولاً
+      if (pedCalcOpen) { setPedCalcOpen(false); return; }
+
       // 1. الفلاتر مفتوحة → اقفلها
       if (isFilterModalOpen) { setIsFilterModalOpen(false); return; }
 
-      // 2. لو في sheet مفتوح في StockTracker أو أي component تاني → اقفله
-      const closeEvent = new CustomEvent('pharma:close-top-sheet');
-      window.dispatchEvent(closeEvent);
-      if ((window as any).__pharma_sheet_open__) { return; }
+      // 2. لو في dropdown مفتوح (SearchableDropdown) → اقفله أولاً
+      if ((window as any).__pharma_dropdown_open__) {
+        window.dispatchEvent(new CustomEvent('pharma:close-top-sheet'));
+        return;
+      }
 
-      // 3. الـ sheet مفتوح → اقفله
+      // 3. لو في sheet مفتوح (StockTracker edit) → اقفله
+      if ((window as any).__pharma_sheet_open__) {
+        window.dispatchEvent(new CustomEvent('pharma:close-top-sheet'));
+        return;
+      }
+
+      // 4. الـ BottomSheet مفتوح → اقفله
       if (sheetMedicine) { setSheetMedicine(null); return; }
+
+      // 4b. الـ QuickView مفتوح → اقفله
+      if (quickViewMedicine) { setQuickViewMedicine(null); return; }
 
       // insuranceSearch بقي view عادي — زرار الرجوع يرجعنا للـ search
       const isHome = (view === 'search' && activeTab === 'search');
@@ -615,7 +676,7 @@ const App: React.FC = () => {
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handleAndroidBack);
     return () => window.removeEventListener('popstate', handleAndroidBack);
-  }, [view, handleBack, activeTab, sheetMedicine, isFilterModalOpen]);
+  }, [view, handleBack, activeTab, sheetMedicine, isFilterModalOpen, quickViewMedicine, pedCalcOpen]);
 
   // Swipe to go back — تم إلغاؤه
 
@@ -827,8 +888,24 @@ const App: React.FC = () => {
   };
 
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
-    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, exactSearchOnly
+    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, exactSearchOnly, user?.role === 'admin'
   );
+
+  // نحتفظ بآخر نتائج حقيقية عشان منعمليش flicker أثناء الـ debounce
+  const lastResultsRef = React.useRef<typeof finalFilteredMedicines>([]);
+  if (searchTerm === debouncedSearchTerm) {
+    lastResultsRef.current = finalFilteredMedicines;
+  }
+  const displayedMedicines = searchTerm === debouncedSearchTerm ? finalFilteredMedicines : lastResultsRef.current;
+
+  // Analytics: log search
+  const prevSearchTerm = React.useRef('');
+  useEffect(() => {
+    if (!debouncedSearchTerm || debouncedSearchTerm === prevSearchTerm.current) return;
+    if (debouncedSearchTerm.length < 3) return;
+    prevSearchTerm.current = debouncedSearchTerm;
+    logSearch(debouncedSearchTerm, finalFilteredMedicines.length, textSearchMode);
+  }, [debouncedSearchTerm, finalFilteredMedicines.length]);
 
 
   const alternatives = useMemo(() => {
@@ -892,6 +969,7 @@ const App: React.FC = () => {
       ? `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`
       : `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' SAR' : 'N/A'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`;
 
+    logShareMedicine(medicine['Trade Name']);
     if (Capacitor.isNativePlatform()) {
       // Android: استخدم Capacitor Share
       import('@capacitor/share').then(({ Share }) => {
@@ -982,6 +1060,7 @@ const App: React.FC = () => {
           if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
           if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
           if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
+          logTabSwitch(tab);
           // scroll to top دايماً لما يضغط على نفس الـ tab
           requestAnimationFrame(() => {
               if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -1109,7 +1188,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={undefined} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -1117,16 +1196,13 @@ const App: React.FC = () => {
 
 
                   <div className="mt-2">
-                      {/* نعرض النتائج لو: في بحث (3+ حروف) أو في فلاتر نشطة */}
-                      {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length > 0 ? (
-                        <ResultsList medicines={finalFilteredMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
-                      ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && finalFilteredMedicines.length === 0 ? (
-                        // لو الـ debounce لسه شغال → مش نعرض "لا توجد نتائج" دلوقتي
-                        searchTerm !== debouncedSearchTerm ? null : (
+                      {/* نعرض النتائج لو: في بحث (2+ حروف) أو في فلاتر نشطة */}
+                      {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && displayedMedicines.length > 0 ? (
+                        <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                      ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && searchTerm === debouncedSearchTerm && displayedMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
                         </div>
-                        )
                       ) : recentSearches.length > 0 ? (
                         <div className="animate-fade-in">
                           <div className="flex justify-between items-center mb-3 px-1">
@@ -1185,6 +1261,44 @@ const App: React.FC = () => {
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
 
+                          {/* Profile Card */}
+                          {user && (
+                            <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-2xl border border-teal-100 dark:border-teal-800/30">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white text-lg font-black flex-shrink-0">
+                                  {user.username.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-black text-slate-800 dark:text-white truncate">{user.username}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                                  {(user as any).specialty && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                        {(user as any).specialty}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                {!(user as any).specialty && (
+                                  <button
+                                    onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
+                                    className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1.5 rounded-xl active:scale-95"
+                                  >
+                                    {language === 'ar' ? 'اختر تخصصك' : 'Set Specialty'}
+                                  </button>
+                                )}
+                                {(user as any).specialty && (
+                                  <button
+                                    onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
+                                    className="text-[10px] font-bold text-slate-400 px-2 py-1 rounded-xl active:scale-95"
+                                  >
+                                    {language === 'ar' ? 'تغيير' : 'Edit'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1198,27 +1312,7 @@ const App: React.FC = () => {
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
 
                           </div>
-                          {/* وضع الصيدلاني */}
-                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                            <div>
-                              <span className="font-bold text-slate-700 dark:text-slate-300 block">
-                                💊 {language === 'ar' ? 'وضع الصيدلاني' : 'Pharmacist Mode'}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {language === 'ar' ? 'اضغط طويلاً على أي دواء لعرض سريع' : 'Long press any medicine for quick view'}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => {
-                                const newVal = !pharmacistMode;
-                                setPharmacistMode(newVal);
-                                localStorage.setItem('pharmacist_mode', String(newVal));
-                              }}
-                              className={`w-12 h-6 rounded-full relative transition-all ${pharmacistMode ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${pharmacistMode ? 'right-1' : 'left-1'}`} />
-                            </button>
-                          </div>
+
                           {/* إشعارات Push */}
                           {/* Notifications managed by system */}
                           {/* رابط الشير — للأدمن بس */}
@@ -1312,7 +1406,7 @@ const App: React.FC = () => {
   // ✅ Splash screen — بسيطة: logo + spinner صغير
   // Specialty modal يظهر فوق كل حاجة
   const specialtyModalEl = showSpecialtyModal
-    ? <SpecialtyModal isOpen={true} onComplete={handleSpecialtyComplete} />
+    ? <SpecialtyModal isOpen={true} onComplete={handleSpecialtyComplete} onCancel={isEditingSpecialty ? () => { setShowSpecialtyModal(false); setIsEditingSpecialty(false); } : undefined} />
     : null;
 
   // لو auth لسه بيتحقق بس مفيش medicine خالص نكتفي بـ spinner صغير في الـ header
@@ -1334,48 +1428,7 @@ const App: React.FC = () => {
     <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden relative">
       {specialtyModalEl}
       {/* ── Notification Permission Prompt ── */}
-      {showNotifPrompt && user && (
-        <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(6px)' }}
-          onClick={() => { setShowNotifPrompt(false); localStorage.setItem('notif_prompt_shown_' + user.id, 'dismissed'); }}>
-          <div style={{ width:'100%', maxWidth:520, borderRadius:'2rem 2rem 0 0', paddingBottom:'env(safe-area-inset-bottom)', animation:'notifUp .35s cubic-bezier(.22,1,.36,1)' }}
-            className="bg-white dark:bg-slate-900 p-6"
-            onClick={e => e.stopPropagation()}>
-            <style>{`@keyframes notifUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-            <div className="flex justify-center mb-4"><div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700"/></div>
-            <div className="flex flex-col items-center text-center gap-3 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
-                <span className="text-3xl">🔔</span>
-              </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white">
-                {language === 'ar' ? 'تفعيل الإشعارات' : 'Enable Notifications'}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                {language === 'ar'
-                  ? 'ابقَ على اطلاع بتغييرات الأسعار، والأدوية الجديدة، والتحديثات المهمة'
-                  : 'Stay updated on price changes, new medicines, and important updates'}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => { setShowNotifPrompt(false); localStorage.setItem('notif_prompt_shown_' + user.id, 'dismissed'); }}
-                className="py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-transform">
-                {language === 'ar' ? 'لاحقاً' : 'Later'}
-              </button>
-              <button
-                onClick={async () => {
-                  setShowNotifPrompt(false);
-                  localStorage.setItem('notif_prompt_shown_' + user.id, 'accepted');
-                  try {
-                    await requestPushPermission(user.id);
-                  } catch {}
-                }}
-                className="py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-black text-sm active:scale-95 transition-transform shadow-lg shadow-teal-500/25">
-                {language === 'ar' ? 'تفعيل ✓' : 'Enable ✓'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       <Header
         ref={headerRef}
@@ -1385,6 +1438,7 @@ const App: React.FC = () => {
         t={t}
         onLoginClick={() => { setPreviousView(view); setView('login'); }}
         onAdminClick={()=>setView('admin')}
+        onPediatricCalcClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
         onNotificationsClick={() => setView('notifications')}
         onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { setView('stockTracker'); } else if (target === 'orderList') { refreshOrderCount(); setView('orderList'); } else { setView('settings'); restoreScroll('settings'); } }}
         view={view}
@@ -1399,7 +1453,7 @@ const App: React.FC = () => {
           className="fixed left-0 right-0 z-[59] px-3"
           style={{ top: headerHeight }}
         >
-          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1">
+          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1" style={{boxShadow: "0 4px 12px -2px rgba(0,0,0,0.06)"}}>
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -1418,13 +1472,13 @@ onClearSearch={handleClearSearch}
               setSortBy={setSortBy}
               language={language}
               onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
-              isSearching={searchTerm.length > 0 && searchTerm !== debouncedSearchTerm}
+              isSearching={false}
             />
           </div>
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 96 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(160px + env(safe-area-inset-bottom))' : 'calc(32px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(160px + env(safe-area-inset-bottom))' : 'calc(32px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div
               key={view}
               style={{
@@ -1478,7 +1532,7 @@ onClearSearch={handleClearSearch}
             onEdit={(m) => { setSelectedMedicine(m); setSheetMedicine(null); setIsEditModalOpen(true); }}
             onOpenAssistant={undefined}
             onOpenInteractions={undefined}
-            onOpenDoseCalc={undefined}
+            onOpenDoseCalc={() => { setPedCalcDrug(sheetMedicine?.['Scientific Name'] as string || sheetMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }}
             onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
             onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }}
             onShare={handleShareMedicine}
@@ -1528,6 +1582,14 @@ onClearSearch={handleClearSearch}
           onClose={() => setShowChatHistory(false)}
         />
       )}
+      {pedCalcOpen && (
+        <PediatricDoseCalculator
+          onClose={() => setPedCalcOpen(false)}
+          initialDrugName={pedCalcDrug}
+          language={language}
+        />
+      )}
+
       {false && drugToolsModal.open && (
         <DrugToolsModal
           mode={drugToolsModal.mode}

@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserSpecialty, PhysicianSubSpecialty } from '../types';
 
 interface SpecialtyModalProps {
   isOpen: boolean;
   onComplete: (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => void;
+  onCancel?: () => void;
 }
 
 const SPECIALTIES: { key: UserSpecialty; icon: string; label: string }[] = [
   { key: 'Pharmacist',        icon: '💊', label: 'Pharmacist' },
   { key: 'Physician',         icon: '🩺', label: 'Physician' },
+  { key: 'Dentist',           icon: '🦷', label: 'Dentist' },
   { key: 'Nurse',             icon: '🩹', label: 'Nurse' },
   { key: 'Physical Therapist',icon: '🏃', label: 'Physical Therapist' },
   { key: 'Nutritionist',      icon: '🥗', label: 'Nutritionist' },
+  { key: 'Veterinarian',      icon: '🐾', label: 'Veterinarian' },
+  { key: 'Medical Student',   icon: '📚', label: 'Medical Student' },
   { key: 'Other',             icon: '👤', label: 'Other' },
 ];
 
@@ -22,9 +26,21 @@ const PHYSICIAN_SUBS: PhysicianSubSpecialty[] = [
   'ENT', 'Urology', 'Anesthesiology', 'Emergency Medicine', 'Other',
 ];
 
-const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) => {
-  const [step, setStep] = useState<'specialty' | 'subspecialty'>('specialty');
+const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete, onCancel }) => {
+  const [step, setStep] = useState<'specialty' | 'subspecialty' | 'other'>('specialty');
   const [selected, setSelected] = useState<UserSpecialty | null>(null);
+  const [otherText, setOtherText] = useState('');
+
+  // Android back button / backdrop click → إلغاء لو من Settings
+  useEffect(() => {
+    if (!isOpen || !onCancel) return;
+    const handleBack = (e: PopStateEvent) => {
+      e.preventDefault();
+      onCancel();
+    };
+    window.addEventListener('popstate', handleBack);
+    return () => window.removeEventListener('popstate', handleBack);
+  }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
 
@@ -32,6 +48,8 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
     setSelected(s);
     if (s === 'Physician') {
       setStep('subspecialty');
+    } else if (s === 'Other') {
+      setStep('other');
     } else {
       onComplete(s);
     }
@@ -41,22 +59,46 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
     onComplete('Physician', sub);
   };
 
+  const handleOtherSubmit = () => {
+    const val = otherText.trim();
+    if (!val) return;
+    onComplete('Other');
+  };
+
+  const handleBackdropClick = () => {
+    if (onCancel) onCancel();
+  };
+
   return (
-    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
       <div
         className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] pb-10"
         style={{ animation: 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)', maxHeight: '88vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}
       >
         <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
 
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-2">
+        {/* Handle + Cancel */}
+        <div className="flex justify-center pt-3 pb-2 relative">
           <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="absolute right-4 top-2 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-90"
+            >
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
-        {step === 'specialty' ? (
+        {/* Step: Specialty */}
+        {step === 'specialty' && (
           <div className="px-5 pb-4">
-            {/* Header */}
             <div className="text-center mb-6 pt-2">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-teal-500/25">
                 <span className="text-2xl">👋</span>
@@ -64,8 +106,6 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
               <h2 className="text-xl font-black text-slate-800 dark:text-white">Welcome!</h2>
               <p className="text-sm text-slate-400 mt-1">What's your specialty?</p>
             </div>
-
-            {/* Options */}
             <div className="grid grid-cols-2 gap-3">
               {SPECIALTIES.map(s => (
                 <button
@@ -79,13 +119,15 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
               ))}
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* Step: Physician Sub-specialty */}
+        {step === 'subspecialty' && (
           <div className="px-5 pb-4">
-            {/* Header */}
-            <div className="text-center mb-6 pt-2">
+            <div className="text-center mb-6 pt-2 relative">
               <button
                 onClick={() => setStep('specialty')}
-                className="absolute left-5 top-8 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+                className="absolute left-0 top-1 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
               >
                 <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -97,8 +139,6 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
               <h2 className="text-xl font-black text-slate-800 dark:text-white">Your Specialty</h2>
               <p className="text-sm text-slate-400 mt-1">Select your medical specialty</p>
             </div>
-
-            {/* Sub-specialties */}
             <div className="space-y-2">
               {PHYSICIAN_SUBS.map(sub => (
                 <button
@@ -113,6 +153,42 @@ const SpecialtyModal: React.FC<SpecialtyModalProps> = ({ isOpen, onComplete }) =
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Step: Other - free text */}
+        {step === 'other' && (
+          <div className="px-5 pb-4">
+            <div className="text-center mb-6 pt-2 relative">
+              <button
+                onClick={() => setStep('specialty')}
+                className="absolute left-0 top-1 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+              >
+                <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <span className="text-2xl">👤</span>
+              </div>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">Your Role</h2>
+              <p className="text-sm text-slate-400 mt-1">Tell us what you do</p>
+            </div>
+            <input
+              type="text"
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              placeholder="e.g. Lab Technician, Researcher..."
+              className="w-full h-12 px-4 rounded-2xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold outline-none focus:border-primary transition-colors mb-4"
+              autoFocus
+            />
+            <button
+              onClick={handleOtherSubmit}
+              disabled={!otherText.trim()}
+              className="w-full py-4 bg-primary text-white rounded-2xl font-black text-sm disabled:opacity-40 active:scale-95 transition-all"
+            >
+              Continue
+            </button>
           </div>
         )}
       </div>

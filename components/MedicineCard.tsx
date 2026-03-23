@@ -1,3 +1,4 @@
+import { abbreviateForm } from '../utils/formAbbrev';
 import React, { useMemo, useState } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
@@ -131,7 +132,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           </p>
 
           {/* الاسم التجاري */}
-          <h2 className="text-[14px] font-black text-slate-800 dark:text-white leading-snug break-words mb-0.5">
+          <h2 className="text-[14px] font-black text-slate-800 dark:text-white leading-snug truncate mb-0.5" title={medicine['Trade Name']}>
             {medicine['Trade Name']}
           </h2>
 
@@ -153,25 +154,9 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           {/* Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
 
-            {/* Rx / OTC */}
-            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
-              isRx
-                ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
-                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400'
-            }`}>
-              {isRx ? 'Rx' : 'OTC'}
-            </span>
 
-            {/* Brand / Generic */}
-            {isHumanMed && medicine.DrugType && (
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
-                isGeneric
-                  ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400'
-              }`}>
-                {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'براند' : 'Brand')}
-              </span>
-            )}
+
+
 
             {/* Controlled */}
             {isControlled && (
@@ -184,8 +169,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
             {medicine.PharmaceuticalForm && (
               <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-lg truncate max-w-[100px]">
                 {medicine.PackageSize
-                  ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${medicine.PharmaceuticalForm}`
-                  : medicine.PharmaceuticalForm}
+                  ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${abbreviateForm(medicine.PharmaceuticalForm)}`
+                  : abbreviateForm(medicine.PharmaceuticalForm)}
               </span>
             )}
 

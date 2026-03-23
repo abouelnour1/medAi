@@ -1,62 +1,104 @@
-/**
- * Search Analytics - تتبع أكثر الأدوية بحثاً
- * بيخزن محلياً بدون سيرفر
- */
+import { Capacitor } from '@capacitor/core';
 
-const KEY = 'pharmasource_analytics_v1';
-const MAX_ENTRIES = 500;
-
-interface AnalyticsData {
-  searches: Record<string, number>;   // tradeName → count
-  lastUpdated: string;
-}
-
-function load(): AnalyticsData {
+// ============================================
+// Firebase Analytics (Native Android/iOS)
+// ============================================
+async function getFirebaseAnalytics() {
+  if (!Capacitor.isNativePlatform()) return null;
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { searches: {}, lastUpdated: new Date().toISOString() };
+    const { FirebaseAnalytics } = await import('@capacitor-firebase/analytics');
+    return FirebaseAnalytics;
+  } catch { return null; }
 }
 
-function save(data: AnalyticsData) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  } catch {}
-}
-
-// تسجيل بحث عن دواء
-export function trackMedicineView(tradeName: string) {
-  if (!tradeName) return;
-  const data = load();
-  data.searches[tradeName] = (data.searches[tradeName] || 0) + 1;
-  data.lastUpdated = new Date().toISOString();
-  
-  // تنظيف لو كبر كتير
-  const entries = Object.entries(data.searches);
-  if (entries.length > MAX_ENTRIES) {
-    const sorted = entries.sort((a, b) => b[1] - a[1]).slice(0, MAX_ENTRIES);
-    data.searches = Object.fromEntries(sorted);
+export async function logMedicineView(tradeName: string, registerNumber: string, productType?: string) {
+  const fa = await getFirebaseAnalytics();
+  if (fa) {
+    await fa.logEvent({ name: 'view_medicine', params: { medicine_name: tradeName, register_number: registerNumber, product_type: productType || 'Human' } });
   }
-  save(data);
+  // أيضاً احفظ في localStorage للـ Admin Dashboard
+  trackMedicineView(tradeName, registerNumber);
 }
 
-// جلب أكثر الأدوية بحثاً
-export function getTopSearched(limit = 10): Array<{ name: string; count: number }> {
-  const data = load();
-  return Object.entries(data.searches)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, count]) => ({ name, count }));
+export async function logSearch(searchTerm: string, resultsCount: number, mode: string) {
+  const fa = await getFirebaseAnalytics();
+  if (fa) {
+    await fa.logEvent({ name: 'search', params: { search_term: searchTerm.substring(0, 100), results_count: resultsCount, search_mode: mode } });
+  }
+  trackSearch(searchTerm);
 }
 
-// إجمالي عمليات البحث
+export async function logShareMedicine(tradeName: string) {
+  const fa = await getFirebaseAnalytics();
+  if (fa) await fa.logEvent({ name: 'share_medicine', params: { medicine_name: tradeName } });
+}
+
+export async function logFavoriteToggle(tradeName: string, action: 'add' | 'remove') {
+  const fa = await getFirebaseAnalytics();
+  if (fa) await fa.logEvent({ name: 'favorite_toggle', params: { medicine_name: tradeName, action } });
+}
+
+export async function logTabSwitch(tab: string) {
+  const fa = await getFirebaseAnalytics();
+  if (fa) await fa.logEvent({ name: 'tab_switch', params: { tab_name: tab } });
+}
+
+export async function setUserSpecialty(specialty: string) {
+  const fa = await getFirebaseAnalytics();
+  if (fa) {
+    try { await fa.setUserProperty({ key: 'specialty', value: specialty }); } catch {}
+  }
+}
+
+// ============================================
+// Local Analytics (localStorage) — للـ Admin Dashboard
+// ============================================
+const MEDICINE_VIEWS_KEY = 'ps_analytics_medicine_views';
+const SEARCH_TERMS_KEY = 'ps_analytics_searches';
+
+function getLocalData(key: string): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+}
+
+function saveLocalData(key: string, data: Record<string, number>) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+
+export function trackMedicineView(tradeName: string, _registerNumber?: string) {
+  const data = getLocalData(MEDICINE_VIEWS_KEY);
+  data[tradeName] = (data[tradeName] || 0) + 1;
+  saveLocalData(MEDICINE_VIEWS_KEY, data);
+}
+
+export function trackSearch(term: string) {
+  if (!term || term.length < 2) return;
+  const data = getLocalData(SEARCH_TERMS_KEY);
+  data[term] = (data[term] || 0) + 1;
+  saveLocalData(SEARCH_TERMS_KEY, data);
+}
+
+export function getTopSearched(limit = 10): { term: string; count: number }[] {
+  const data = getLocalData(SEARCH_TERMS_KEY);
+  return Object.entries(data)
+    .map(([term, count]) => ({ term, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+export function getTopMedicineViews(limit = 10): { name: string; count: number }[] {
+  const data = getLocalData(MEDICINE_VIEWS_KEY);
+  return Object.entries(data)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 export function getTotalSearches(): number {
-  const data = load();
-  return Object.values(data.searches).reduce((a, b) => a + b, 0);
+  const data = getLocalData(SEARCH_TERMS_KEY);
+  return Object.values(data).reduce((sum, v) => sum + v, 0);
 }
 
-// مسح البيانات
 export function clearAnalytics() {
-  localStorage.removeItem(KEY);
+  localStorage.removeItem(MEDICINE_VIEWS_KEY);
+  localStorage.removeItem(SEARCH_TERMS_KEY);
 }

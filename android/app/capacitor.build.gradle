@@ -18,6 +18,9 @@ dependencies {
     implementation project(':capacitor-filesystem')
     implementation project(':capacitor-app-launcher')
     implementation project(':capacitor-browser')
+    implementation project(':capacitor-community-in-app-review')
+    implementation project(':capacitor-firebase-crashlytics')
+    implementation project(':capacitor-firebase-analytics')
 
 }
 

@@ -62,10 +62,9 @@ const TypeChips: React.FC<{
   isAdmin?: boolean;
 }> = ({ value, onChange, t, isAdmin = false }) => {
   const options: { key: ProductTypeFilter; label: string; emoji: string }[] = [
-    ...(isAdmin ? [{ key: 'all' as ProductTypeFilter, label: t('allProductTypes'), emoji: '🔍' }] : []),
-    { key: 'medicine',   label: t('medicines'),       emoji: '💊' },
-    ...(isAdmin ? [{ key: 'supplement' as ProductTypeFilter, label: t('supplements'), emoji: '🌿' }] : []),
-    ...(isAdmin ? [{ key: 'food' as ProductTypeFilter,       label: t('food'),        emoji: '🥗' }] : []),
+    { key: 'medicine',    label: t('medicines'),       emoji: '💊' },
+    { key: 'supplement',  label: t('supplements'),     emoji: '🌿' },
+    { key: 'food',        label: t('food'),            emoji: '🥗' },
   ];
   return (
     <div className="flex gap-2 flex-wrap">
@@ -328,7 +327,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                   onClick={handleApply}
                   className="flex-1 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-teal-500/25 active:scale-[0.98] transition-all"
                 >
-                  {t('showResults')} {expectedCount > 0 && `(${expectedCount})`}
+                  {t('showResults')} {isAdmin && expectedCount > 0 && `(${expectedCount})`}
                 </button>
               </div>
 

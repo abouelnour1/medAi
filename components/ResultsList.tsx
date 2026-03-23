@@ -15,8 +15,8 @@ interface ResultsListProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
-const INITIAL_BATCH = 30;  // نبدأ بـ 30 كارت
-const LOAD_MORE_BATCH = 20; // نحمل 20 كل مرة
+const INITIAL_BATCH = 40;  // نبدأ بـ 40 كارت
+const LOAD_MORE_BATCH = 30; // نحمل 30 كل مرة
 
 const ResultsList: React.FC<ResultsListProps> = ({
   medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative,
@@ -57,7 +57,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   const hasMore = visibleCount < medicines.length;
 
   return (
-    <div className="animate-fade-in">
+    <div>
       <div className="px-1 mb-3 flex items-center justify-between">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
           {language === 'ar' ? `${medicines.length} نتيجة` : `${medicines.length} results`}

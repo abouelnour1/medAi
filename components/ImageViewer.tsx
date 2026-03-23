@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { TFunction } from '../types';
 import BackIcon from './icons/BackIcon';
 import ClearIcon from './icons/ClearIcon';
@@ -23,6 +23,24 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
 
   const prev = () => setCurrent(c => (c - 1 + images.length) % images.length);
   const next = () => setCurrent(c => (c + 1) % images.length);
+
+  // ── Swipe detection ──────────────────────────────────────────────────────
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (images.length <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // نتجاهل لو السحب رأسي أكتر من أفقي
+    if (Math.abs(dx) < Math.abs(dy) || Math.abs(dx) < 40) return;
+    if (dx < 0) next(); else prev();
+  };
 
   const img = images[current];
 
@@ -54,7 +72,7 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
       </header>
 
       {/* الصورة */}
-      <div className="flex-grow flex items-center justify-center relative bg-black">
+      <div className="flex-grow flex items-center justify-center relative bg-black" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
 
         {/* spinner */}
         {!loaded[current] && (

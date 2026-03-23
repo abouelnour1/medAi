@@ -49,9 +49,22 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         }
       }
     };
-    document.addEventListener('mousedown', handleClickOutside, true); // capture phase
+    document.addEventListener('mousedown', handleClickOutside, true);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [isOpen]);
+
+  // Android back button — يقفل الـ dropdown بدون ما يقفل الفلتر
+  useEffect(() => {
+    if (!isOpen) return;
+    // نعلم الـ App إن في dropdown مفتوح
+    (window as any).__pharma_dropdown_open__ = true;
+    const handleBack = () => { setIsOpen(false); };
+    window.addEventListener('pharma:close-top-sheet', handleBack);
+    return () => {
+      (window as any).__pharma_dropdown_open__ = false;
+      window.removeEventListener('pharma:close-top-sheet', handleBack);
     };
   }, [isOpen]);
 

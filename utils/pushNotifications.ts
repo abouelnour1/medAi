@@ -187,12 +187,17 @@ export async function setupCapacitorPush(
       onNotification(title, body, data);
     });
 
-    // استقبال الإشعارات لما يضغط عليها
+    // لما المستخدم يضغط على الإشعار
+    // لو التطبيق كان شغال → الإشعار اتحفظ من notificationReceived → navigation بس
+    // لو التطبيق كان مقفول → notificationReceived ماتبعتش → نحفظ هنا
     await FirebaseMessaging.addListener('notificationActionPerformed', async (event: any) => {
       const title = event.notification?.title || 'PharmaSource';
-      const body = event.notification?.body || '';
-      const data = event.notification?.data;
+      const body  = event.notification?.body  || '';
+      const data  = event.notification?.data;
+
+      // نحاول نحفظ — الـ dedup هيمنع التكرار لو اتحفظ قبل كده
       await saveNotifToFirestore(title, body, data);
+
       if (onTap) {
         onTap(data);
       } else {

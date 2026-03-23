@@ -180,7 +180,7 @@ export interface Conversation {
   timestamp: number;
 }
 
-export type UserSpecialty = 'Pharmacist' | 'Physician' | 'Nurse' | 'Physical Therapist' | 'Nutritionist' | 'Other';
+export type UserSpecialty = 'Pharmacist' | 'Physician' | 'Dentist' | 'Nurse' | 'Physical Therapist' | 'Nutritionist' | 'Veterinarian' | 'Medical Student' | 'Other';
 export type PhysicianSubSpecialty = 
   | 'General Practice' | 'Internal Medicine' | 'Pediatrics' | 'Surgery' | 'Obstetrics & Gynecology'
   | 'Cardiology' | 'Neurology' | 'Oncology' | 'Orthopedics' | 'Dermatology'
