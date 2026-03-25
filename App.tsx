@@ -296,7 +296,7 @@ const App: React.FC = () => {
   const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-  const pharmacistMode = true; // دايماً مفعل
+  const pharmacistMode = true; // شغال دايماً — الضغط الطويل متاح للكل
   const [orderCount, setOrderCount] = useState<number>(() => {
     try { const r = localStorage.getItem('pharma_order_list'); return r ? JSON.parse(r).length : 0; } catch { return 0; }
   });
@@ -1260,7 +1260,6 @@ const App: React.FC = () => {
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
                       <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
                       <div className="space-y-4">
-
                           {/* Profile Card */}
                           {user && (
                             <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-2xl border border-teal-100 dark:border-teal-800/30">
@@ -1312,7 +1311,6 @@ const App: React.FC = () => {
                           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
 
                           </div>
-
                           {/* إشعارات Push */}
                           {/* Notifications managed by system */}
                           {/* رابط الشير — للأدمن بس */}

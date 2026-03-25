@@ -154,9 +154,25 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           {/* Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
 
+            {/* Rx / OTC */}
+            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
+              isRx
+                ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
+                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400'
+            }`}>
+              {isRx ? 'Rx' : 'OTC'}
+            </span>
 
-
-
+            {/* Brand / Generic */}
+            {isHumanMed && medicine.DrugType && (
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
+                isGeneric
+                  ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400'
+              }`}>
+                {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'براند' : 'Brand')}
+              </span>
+            )}
 
             {/* Controlled */}
             {isControlled && (

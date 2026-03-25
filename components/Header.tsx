@@ -124,28 +124,24 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                   {/* Settings */}
                   <button onClick={() => { onSettingsClick?.(); setIsMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <span className="text-base">⚙️</span>
                     {t('navSettings')}
                   </button>
 
                   {/* Stock Tracker */}
                   <button onClick={() => { (onSettingsClick as any)?.('stockTracker'); setIsMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <span className="text-base">📦</span>
                     Stock Tracker
                   </button>
 
                   {/* Order List */}
                   <button onClick={() => { (onSettingsClick as any)?.('orderList'); setIsMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <span className="text-base">🛒</span>
                     Order List
                   </button>
 
                   {/* Pedia Dose Calc */}
                   <button onClick={() => { onPediatricCalcClick?.(); setIsMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
-                    <span className="text-base">👶</span>
                     Pedia Dose Calc
                   </button>
 
@@ -153,7 +149,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                   {user.role === 'admin' && (
                     <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                      <span className="text-base">🛡️</span>
                       {t('adminDashboard')}
                     </button>
                   )}
@@ -164,7 +159,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                   {/* Logout */}
                   <button onClick={logout}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-                    <span className="text-base">🚪</span>
                     {t('logout')}
                   </button>
                 </div>

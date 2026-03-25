@@ -119,14 +119,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
           )}
         </div>
 
-        {/* Wildcard hint */}
-        {isSearchActive && inputRef.current?.value?.includes('*') && (
-          <div className="absolute -bottom-5 left-2 flex items-center gap-1">
-            <span className="text-[9px] font-black text-teal-500">✦ wildcard</span>
-            <span className="text-[9px] text-slate-400">— * = any letters</span>
-          </div>
-        )}
-
         {/* Settings button — يختفي لما focused */}
         {!isFocused && (
           <button
@@ -178,14 +170,11 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
               onClick={onToggleExactOnly}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
-              <div>
-                <span className="text-xs font-black text-slate-600 dark:text-slate-300">
-                  {ar ? 'بحث مرن (Fuzzy)' : 'Fuzzy Search'}
-                </span>
-                <p className="text-[9px] text-slate-400">{ar ? 'يتسامح مع الأخطاء الإملائية' : 'Tolerates spelling mistakes'}</p>
-              </div>
-              <div className={`w-10 h-5 rounded-full relative transition-all ${!exactOnly ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${!exactOnly ? 'right-0.5' : 'left-0.5'}`} />
+              <span className="text-xs font-black text-slate-600 dark:text-slate-300">
+                {ar ? 'تطابق دقيق' : 'Exact Match'}
+              </span>
+              <div className={`w-10 h-5 rounded-full relative transition-all ${exactOnly ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${exactOnly ? 'right-0.5' : 'left-0.5'}`} />
               </div>
             </button>
           </div>

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
 
@@ -15,34 +15,12 @@ interface ResultsListProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
-const INITIAL_BATCH = 40;  // نبدأ بـ 40 كارت
-const LOAD_MORE_BATCH = 30; // نحمل 30 كل مرة
+const MAX_RESULTS = 100;
 
 const ResultsList: React.FC<ResultsListProps> = ({
   medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative,
   t, language, resultsState, favorites, onToggleFavorite
 }) => {
-  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
-  const loaderRef = useRef<HTMLDivElement>(null);
-
-  // reset لما تتغير النتائج
-  useEffect(() => {
-    setVisibleCount(INITIAL_BATCH);
-  }, [medicines.length, medicines[0]?.RegisterNumber]);
-
-  // Intersection Observer - يحمل أكتر لما توصل للآخر
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && visibleCount < medicines.length) {
-          setVisibleCount(prev => Math.min(prev + LOAD_MORE_BATCH, medicines.length));
-        }
-      },
-      { threshold: 0.1 }
-    );
-    if (loaderRef.current) observer.observe(loaderRef.current);
-    return () => observer.disconnect();
-  }, [visibleCount, medicines.length]);
 
   if (resultsState === 'empty') {
     return (
@@ -53,20 +31,15 @@ const ResultsList: React.FC<ResultsListProps> = ({
     );
   }
 
-  const visibleMeds = medicines.slice(0, visibleCount);
-  const hasMore = visibleCount < medicines.length;
+  const visibleMeds = medicines.slice(0, MAX_RESULTS);
+  const displayCount = visibleMeds.length;
 
   return (
     <div>
-      <div className="px-1 mb-3 flex items-center justify-between">
+      <div className="px-1 mb-3">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          {language === 'ar' ? `${medicines.length} نتيجة` : `${medicines.length} results`}
+          {language === 'ar' ? `${displayCount} نتيجة` : `${displayCount} results`}
         </span>
-        {hasMore && (
-          <span className="text-[9px] text-slate-300 dark:text-slate-600">
-            {language === 'ar' ? `عارض ${visibleCount} من ${medicines.length}` : `Showing ${visibleCount} of ${medicines.length}`}
-          </span>
-        )}
       </div>
 
       <div className="space-y-2.5" style={{ contain: 'content' }}>
@@ -85,16 +58,6 @@ const ResultsList: React.FC<ResultsListProps> = ({
           </div>
         ))}
       </div>
-
-      {/* Infinite scroll trigger */}
-      {hasMore && (
-        <div ref={loaderRef} className="flex items-center justify-center py-6 gap-2">
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-slate-400">
-            {language === 'ar' ? 'تحميل المزيد...' : 'Loading more...'}
-          </span>
-        </div>
-      )}
     </div>
   );
 };
