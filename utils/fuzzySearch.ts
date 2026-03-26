@@ -1,9 +1,9 @@
 /**
- * Fuzzy Search - يتسامح مع الأخطاء الإملائية
- * مثال: "amxcilin" يجيب "Amoxicillin"
+ * Fuzzy Search - يتسامح مع الأخطاء الإملائية الحقيقية فقط
+ * مثال: "amoxcilin" يجيب "Amoxicillin"
+ * مثال: "hepl" يجيب "Hepaform" (خطأ حرف واحد في البداية)
  */
 
-// حساب Levenshtein distance بين كلمتين
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
@@ -17,43 +17,51 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-// حساب درجة التشابه بين النص والبحث (0 = لا يتطابق, 1 = تطابق كامل)
 export function fuzzyScore(text: string, query: string): number {
   const t = text.toLowerCase();
   const q = query.toLowerCase().trim();
   if (!q) return 0;
 
-  // تطابق مباشر = أعلى درجة
+  // تطابق مباشر
   if (t === q) return 1;
   if (t.startsWith(q)) return 0.95;
   if (t.includes(q)) return 0.85;
 
-  // تطابق جزئي لكل كلمة في الاسم
-  const words = t.split(/[\s-,]+/);
+  // تطابق في كلمة واحدة من الاسم المركب
+  const words = t.split(/[\s\-,./]+/);
   for (const word of words) {
     if (word.startsWith(q)) return 0.80;
     if (word.includes(q)) return 0.70;
   }
 
-  // Fuzzy: نقارن أجزاء من النص بنفس طول البحث
-  const qLen = q.length;
-  let bestDist = Infinity;
-  
-  // نجرب كل نافذة بنفس طول الـ query في النص
-  for (let i = 0; i <= t.length - qLen + 2; i++) {
-    const window = t.slice(i, i + qLen);
-    const dist = levenshtein(window, q);
-    if (dist < bestDist) bestDist = dist;
+  // Prefix Fuzzy: قارن الـ query بـ prefix بنفس الطول من كل كلمة
+  // يصلح حالة "hepl" → "hepaform" — خطأ حرف واحد في البداية
+  if (q.length >= 4) {
+    for (const word of words) {
+      if (word.length >= q.length) {
+        const prefix = word.substring(0, q.length);
+        const dist = levenshtein(prefix, q);
+        if (dist === 1) return 0.65;
+      }
+    }
   }
 
-  // نحسب الدرجة - أقل errors = درجة أعلى
-  const maxAllowedErrors = Math.floor(qLen * 0.35); // 35% tolerance
-  if (bestDist > maxAllowedErrors) return 0;
-  
-  return 0.6 * (1 - bestDist / qLen);
+  // Full-word Fuzzy: نقارن الـ query بكل كلمة كاملة
+  // بنسمح بـ خطأ واحد لكل 4 حروف بحد أقصى خطأين
+  const maxErrors = Math.min(2, Math.floor(q.length / 4));
+  if (maxErrors === 0) return 0;
+
+  for (const word of words) {
+    if (Math.abs(word.length - q.length) > maxErrors + 1) continue;
+    const dist = levenshtein(word, q);
+    if (dist <= maxErrors) {
+      return 0.5 * (1 - dist / q.length);
+    }
+  }
+
+  return 0;
 }
 
-// هل النص يطابق البحث (مع tolerance للأخطاء)
 export function fuzzyMatch(text: string, query: string): boolean {
   return fuzzyScore(text, query) > 0;
 }

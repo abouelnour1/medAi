@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Medicine, TextSearchMode, SortByOption, Filters } from '../types';
 import { fuzzyMatch, fuzzyScore } from '../utils/fuzzySearch';
 
@@ -80,10 +80,8 @@ export function useSearch(
     filters.mainAgent.length > 0;
 
   const finalFilteredMedicines = useMemo(() => {
-    // لو مش في بحث ومش في فلاتر → لا ترجع نتائج
     if (rawNoSpaces.length < 3 && !hasActiveFilters) return [];
 
-    // sortFn مشترك
     const sortFnEarly = (a: Medicine, b: Medicine): number => {
       if (sortBy === 'priceAsc') return (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0);
       if (sortBy === 'priceDesc') return (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0);
@@ -93,18 +91,10 @@ export function useSearch(
       return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
     };
 
-    // لو في فلاتر بس بدون بحث → رجّع الفلاتر مع sort
     if (rawNoSpaces.length < 3 && hasActiveFilters) return [...searchContextMedicines].sort(sortFnEarly);
 
     const field = textSearchMode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-    // Scientific name: استخدم contains بس (أسرع من fuzzy)
     const isScientific = textSearchMode === 'scientificName';
-    let results = searchContextMedicines.filter(m => {
-      const text = String(m[field]).toLowerCase();
-      if (raw.includes('*')) return matchesWildcard(text, term);
-      if (exactOnly || isScientific) return text.includes(term);
-      return fuzzyMatch(text, term);
-    });
 
     const sortFn = (a: Medicine, b: Medicine): number => {
       const aName = String(a[field]).toLowerCase();
@@ -114,23 +104,63 @@ export function useSearch(
       if (sortBy === 'strengthAsc') return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
       if (sortBy === 'strengthDesc') return (parseFloat(b.Strength) || 0) - (parseFloat(a.Strength) || 0);
       if (sortBy === 'scientificName') return String(a['Scientific Name']).localeCompare(String(b['Scientific Name']));
-      return aName.localeCompare(bName); // alphabetical default
+      return aName.localeCompare(bName);
     };
 
-    const exactStart   = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
-    const exactContain = results.filter(m => { const n = String(m[field]).toLowerCase(); return !n.startsWith(term) && n.includes(term); });
-    
-    exactStart.sort(sortFn);
-    exactContain.sort(sortFn);
-
-    if (exactOnly) {
-      // وضع التدقيق: حرفي فقط - مش fuzzy
-      return [...exactStart, ...exactContain];
+    if (exactOnly || isScientific) {
+      // وضع التدقيق: حرفي فقط
+      const results = searchContextMedicines.filter(m => {
+        const text = String(m[field]).toLowerCase();
+        if (raw.includes('*')) return matchesWildcard(text, term);
+        return text.includes(term);
+      });
+      const tier1 = results.filter(m => String(m[field]).toLowerCase().startsWith(term));
+      const tier2 = results.filter(m => !String(m[field]).toLowerCase().startsWith(term));
+      tier1.sort(sortFn);
+      tier2.sort(sortFn);
+      return [...tier1, ...tier2];
     }
 
-    const fuzzyOnly = results.filter(m => !String(m[field]).toLowerCase().includes(term))
-                             .sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
-    return [...exactStart, ...exactContain, ...fuzzyOnly];
+    // وضع الـ fuzzy العادي — 4 طبقات أولوية
+    // الطبقة 1: يبدأ بنفس الحروف بالظبط  → "Fixtral" عند بحث "fixt"
+    // الطبقة 2: يحتوي الحروف في نصه      → "Cefixtine"
+    // الطبقة 3: fuzzy قريب جداً (score عالي)
+    // الطبقة 4: fuzzy بعيد (score منخفض)
+
+    const tier1: Medicine[] = [];
+    const tier2: Medicine[] = [];
+    const tier3: Medicine[] = [];
+    const tier4: Medicine[] = [];
+
+    for (const m of searchContextMedicines) {
+      const text = String(m[field]).toLowerCase();
+
+      if (raw.includes('*')) {
+        if (matchesWildcard(text, term)) tier2.push(m);
+        continue;
+      }
+
+      if (text.startsWith(term)) {
+        tier1.push(m);
+      } else if (text.includes(term)) {
+        tier2.push(m);
+      } else {
+        const score = fuzzyScore(text, term);
+        if (score >= 0.6) {
+          tier3.push(m);
+        } else if (score > 0) {
+          tier4.push(m);
+        }
+      }
+    }
+
+    tier1.sort(sortFn);
+    tier2.sort(sortFn);
+    // الطبقة 3 و 4 تترتب بالـ score تنازلياً
+    tier3.sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
+    tier4.sort((a, b) => fuzzyScore(String(b[field]), term) - fuzzyScore(String(a[field]), term));
+
+    return [...tier1, ...tier2, ...tier3, ...tier4];
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy]);
 
   return { finalFilteredMedicines, searchContextMedicines, searchTextResults };
