@@ -92,11 +92,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
 
   const ingredientsString = useMemo(() => zipIngredients(medicine), [medicine]);
   const ingredientCount   = useMemo(() => getIngredientsCount(medicine), [medicine]);
-  const isControlled = medicine['Product Control']?.toLowerCase() === 'controlled';
-  const isHumanMed   = medicine['Product type'] === 'Human';
-  const isGeneric    = medicine.DrugType?.toLowerCase().includes('generic');
-  const isRx         = medicine['Legal Status'] === 'Prescription';
-  const ar           = language === 'ar';
+  const ar = language === 'ar';
   const hasPrice     = price > 0 && !isNaN(price);
 
   return (
@@ -151,49 +147,13 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
             <div className="mb-2.5" />
           )}
 
-          {/* Badges */}
+          {/* Badges — الشكل الصيدلاني فقط */}
           <div className="flex items-center gap-1.5 flex-wrap">
-
-            {/* Rx / OTC */}
-            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
-              isRx
-                ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'
-                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400'
-            }`}>
-              {isRx ? 'Rx' : 'OTC'}
-            </span>
-
-            {/* Brand / Generic */}
-            {isHumanMed && medicine.DrugType && (
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
-                isGeneric
-                  ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  : 'bg-sky-50 text-sky-600 dark:bg-sky-900/25 dark:text-sky-400'
-              }`}>
-                {isGeneric ? (ar ? 'جنيس' : 'Generic') : (ar ? 'براند' : 'Brand')}
-              </span>
-            )}
-
-            {/* Controlled */}
-            {isControlled && (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
-                {ar ? 'مضبوط' : 'Controlled'}
-              </span>
-            )}
-
-            {/* الشكل الصيدلاني + حجم العبوة */}
             {medicine.PharmaceuticalForm && (
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-lg truncate max-w-[100px]">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-lg truncate max-w-[120px]">
                 {medicine.PackageSize
                   ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${abbreviateForm(medicine.PharmaceuticalForm)}`
                   : abbreviateForm(medicine.PharmaceuticalForm)}
-              </span>
-            )}
-
-            {/* الطعم */}
-            {medicine.liquidTaste && (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 flex items-center gap-1">
-                👅 {medicine.liquidTaste}
               </span>
             )}
           </div>

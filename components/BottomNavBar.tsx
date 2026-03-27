@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { Tab, TFunction, User, View } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import HealthInsuranceIcon from './icons/HealthInsuranceIcon';
-import SettingsIcon from './icons/SettingsIcon';
+import StarIcon from './icons/StarIcon';
 
 interface BottomNavBarProps {
   activeTab: Tab;
@@ -11,10 +11,16 @@ interface BottomNavBarProps {
   t: TFunction;
   user: User | null;
   view: View;
+  onPediatricCalc?: () => void;
+  onFavoritesClick?: () => void;
 }
 
-const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t, user, view }) => {
+const BottomNavBar: React.FC<BottomNavBarProps> = ({
+  activeTab, setActiveTab, t, user, view, onPediatricCalc, onFavoritesClick
+}) => {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ar = t('language') === 'ar';
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -32,38 +38,131 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActiveTab, t,
     };
   }, []);
 
+  // اقفل لما يضغط خارج
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const t = setTimeout(() => document.addEventListener('click', close, { once: true }), 50);
+    return () => { clearTimeout(t); document.removeEventListener('click', close); };
+  }, [open]);
+
   if (keyboardOpen) return null;
-  const navItems = [
-    { id: 'search', label: t('navSearch'), icon: <SearchIcon /> },
-    { id: 'insurance', label: t('navInsurance'), icon: <HealthInsuranceIcon /> },
+
+  const isSearchActive = activeTab === 'search';
+  const isInsuranceActive = activeTab === 'insurance';
+  const isFavActive = view === 'favorites';
+  const isSettingsActive = activeTab === 'settings';
+
+  const items = [
+    {
+      label: ar ? 'بحث' : 'Search',
+      active: isSearchActive,
+      color: 'teal',
+      icon: <div className="w-5 h-5"><SearchIcon /></div>,
+      onClick: () => { setActiveTab('search' as Tab); setOpen(false); },
+    },
+    {
+      label: ar ? 'تأمين' : 'Insurance',
+      active: isInsuranceActive,
+      color: 'teal',
+      icon: <div className="w-5 h-5"><HealthInsuranceIcon /></div>,
+      onClick: () => { setActiveTab('insurance' as Tab); setOpen(false); },
+    },
+    {
+      label: ar ? 'جرعات' : 'Pedi',
+      active: false,
+      color: 'teal',
+      icon: <span className="text-lg">👶</span>,
+      onClick: () => { onPediatricCalc?.(); setOpen(false); },
+    },
+    {
+      label: ar ? 'مفضلة' : 'Saved',
+      active: isFavActive,
+      color: 'amber',
+      icon: <div className="w-5 h-5"><StarIcon isFilled={isFavActive} /></div>,
+      onClick: () => { onFavoritesClick?.(); setOpen(false); },
+    },
+    {
+      label: ar ? 'إعدادات' : 'Settings',
+      active: isSettingsActive,
+      color: 'teal',
+      icon: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      ),
+      onClick: () => { setActiveTab('settings' as Tab); setOpen(false); },
+    },
   ];
 
+  // أي تاب نشط؟ عشان نحدد أيقونة الزر
+  const activeItem = items.find(i => i.active);
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pointer-events-none">
-      <div className="bg-white/40 dark:bg-dark-card/40 backdrop-blur-md border border-white/20 dark:border-dark-border shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2.5rem] h-20 flex justify-around items-center max-w-2xl mx-auto px-2 pointer-events-auto">
-        {navItems.map(item => {
-          const isActive = activeTab === item.id;
-          return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
+
+      {/* Backdrop خفيف لما القايمة مفتوحة */}
+      {open && (
+        <div className="absolute inset-0 pointer-events-auto" style={{ bottom: 0, top: '-100vh' }} />
+      )}
+
+      {/* القايمة المنبثقة — 5 أزرار أفقية */}
+      <div className={`absolute left-1/2 -translate-x-1/2 transition-all duration-200 pointer-events-auto
+        ${open ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/40 dark:border-slate-700 shadow-2xl rounded-[2rem] px-3 py-2 flex gap-1">
+          {items.map((item) => (
             <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id as Tab)}
-              className={`relative flex flex-col items-center justify-center w-20 h-full transition-all duration-300 group ${isActive ? 'text-teal-600' : 'text-slate-400'}`}
+              key={item.label}
+              onClick={item.onClick}
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all active:scale-90
+                ${item.active
+                  ? item.color === 'amber'
+                    ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500'
+                    : 'bg-teal-50 dark:bg-teal-900/20 text-teal-600'
+                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
             >
-              {isActive && (
-                  <span className="absolute top-2 w-1.5 h-1.5 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.8)]"></span>
-              )}
-              <div className={`w-6 h-6 mb-1 transition-transform duration-300 flex items-center justify-center ${isActive ? 'scale-110 -translate-y-1' : 'group-hover:scale-105'}`}>
-                {item.icon}
-              </div>
-              <span className={`text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                {item.label}
-              </span>
+              {item.icon}
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{item.label}</span>
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </nav>
+
+      {/* الزر الرئيسي */}
+      <div className="flex justify-center pointer-events-auto">
+        <button
+          onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200 active:scale-90
+            ${open
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 rotate-45'
+              : activeItem
+                ? activeItem.color === 'amber'
+                  ? 'bg-amber-500 text-white shadow-amber-300/40'
+                  : 'bg-primary text-white shadow-primary/40'
+                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500'
+            }`}
+        >
+          {open ? (
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          ) : activeItem ? (
+            activeItem.icon
+          ) : (
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
   );
 };
 
 export default BottomNavBar;
+

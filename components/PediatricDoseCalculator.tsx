@@ -16,6 +16,9 @@ interface WeightEntry { age: string; weight: number; }
 
 // ── R2 Fetch + localStorage Cache ───────────────────────────────────────────
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
+
+// Max single dose per active ingredient (from Excel)
+const MAX_DOSE_MAP: Record<string, number> = {"paracetamol":1000,"paracetamol suppository":1000,"diclofenac (rofinac) supp":50,"ibuprofen":400,"amoxicillin":1000,"amoxicillin/clavulanate":875,"amoxicillin/clavulanate (es)":1000,"azithromycin":500,"cefdinir":600,"cefixime":400,"cephalexin":1000,"clarithromycin":500,"metronidazole":750,"trimethoprim/sulfamethoxazole":160,"cetirizine":10,"loratadine":10,"desloratadine":5,"fexofenadine":60,"diphenhydramine":50,"salbutamol":4,"prednisolone":60,"dexamethasone":16,"domperidone":10,"ondansetron":8,"simethicone":80,"iron polymaltose":100,"ferrous sulfate (drops)":125,"vitamin d3 (drops)":1000,"zinc":20,"ambroxol (ambolar)":30,"guaifenesin":400,"chlorpheniramine":4,"nifuroxazide":220,"furazolidone":100,"albendazole":400,"mebendazole":100,"nitazoxanide":500,"ketotifen":1,"hydroxyzine":25,"cefadroxil":1000};
 const CACHE_KEY = 'ps_pediatric_drugs_v2';
 
 async function fetchPediatricData(): Promise<{ drugs: DrugEntry[]; weightChart: WeightEntry[] }> {
@@ -97,27 +100,26 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     return entry?.weight || 0;
   }, [inputMode, weight, selectedAge]);
 
-  // الحساب
+  // الحساب مع تطبيق Max Dose
   const result = useMemo(() => {
     if (!drug || effectiveWeight <= 0) return null;
-    const doseMg = drug.dose_mg_kg * effectiveWeight;
+    const rawDoseMg = drug.dose_mg_kg * effectiveWeight;
+    // جيب الـ max من الـ map أو من الـ drug نفسه
+    const maxFromMap = MAX_DOSE_MAP[drug.active.toLowerCase()];
+    const maxDoseMg = maxFromMap ?? Infinity;
+    const capped = rawDoseMg > maxDoseMg;
+    const doseMg = Math.min(rawDoseMg, maxDoseMg);
     const doseML = (doseMg / drug.conc_mg) * drug.conc_ml;
     const concPerML = drug.conc_mg / drug.conc_ml;
-    return { doseMg, doseML, concPerML };
+    return { doseMg, doseML, concPerML, capped, maxDoseMg, rawDoseMg };
   }, [drug, effectiveWeight]);
 
-  // هل الجرعة محتاجة تحذير؟ (لو في max في الـ notes)
+  // تحذير لو اتطبق الحد الأقصى
   const maxWarning = useMemo(() => {
-    if (!result || !drug) return null;
-    const notes = drug.notes.toLowerCase();
-    const maxMatch = notes.match(/max\s+([\d.]+)\s*(mg\/kg\/day|mg\/dose|mg\/day|g\/day)/);
-    if (!maxMatch) return null;
-    const maxVal = parseFloat(maxMatch[1]);
-    const unit = maxMatch[2];
-    if (unit === 'mg/dose' && result.doseMg > maxVal) return `تجاوز الحد الأقصى ${maxVal}mg/dose`;
-    if (unit === 'mg/kg/day' && drug.dose_mg_kg > maxVal) return `تجاوز الحد الأقصى ${maxVal}mg/kg/day`;
+    if (!result) return null;
+    if (result.capped) return `الجرعة المحسوبة (${result.rawDoseMg.toFixed(1)}mg) تجاوزت الحد الأقصى — تم تحديدها بـ ${result.maxDoseMg}mg`;
     return null;
-  }, [result, drug]);
+  }, [result]);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (

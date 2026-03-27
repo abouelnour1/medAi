@@ -51,12 +51,23 @@ const PharmacistQuickView: React.FC<PharmacistQuickViewProps> = ({
         </div>
 
         {/* Badges */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {isControlled && <Badge label={ar ? 'مخدر' : 'Controlled'} color="bg-red-100 text-red-600" />}
-          {isOTC ? <Badge label="OTC" color="bg-green-100 text-green-600" /> : <Badge label={ar ? 'بوصفة' : 'Rx'} color="bg-blue-100 text-blue-600" />}
-          {isGeneric ? <Badge label={ar ? 'جنيس' : 'Generic'} color="bg-slate-100 text-slate-600" /> : <Badge label={ar ? 'أصيل' : 'Brand'} color="bg-amber-100 text-amber-600" />}
-          {medicine.PharmaceuticalForm && <Badge label={medicine.PharmaceuticalForm} color="bg-primary/10 text-primary" />}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {isControlled && <Badge label={ar ? 'مخدر' : 'Controlled'} color="bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400" />}
+          {isOTC ? <Badge label="OTC" color="bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400" /> : <Badge label={ar ? 'بوصفة' : 'Rx'} color="bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" />}
+          {isGeneric ? <Badge label={ar ? 'جنيس' : 'Generic'} color="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" /> : <Badge label={ar ? 'براند' : 'Brand'} color="bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400" />}
+          {medicine.PharmaceuticalForm && <Badge label={medicine.PharmaceuticalForm} color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400" />}
         </div>
+
+        {/* الطعم — واضح وبارز */}
+        {medicine.liquidTaste && (
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 rounded-xl px-3 py-2 mb-3">
+            <span className="text-lg">👅</span>
+            <div>
+              <p className="text-[9px] font-black text-amber-500 uppercase tracking-wider">{ar ? 'الطعم' : 'Flavor'}</p>
+              <p className="text-[13px] font-black text-amber-700 dark:text-amber-300">{medicine.liquidTaste}</p>
+            </div>
+          </div>
+        )}
 
         {/* المواد الفعالة والتركيز */}
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 mb-3">

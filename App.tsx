@@ -54,6 +54,7 @@ import OrderList from './components/OrderList';
 import SpecialtyModal from './components/SpecialtyModal';
 import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
+import BottomNavBar from './components/BottomNavBar';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -1198,7 +1199,7 @@ const App: React.FC = () => {
                   <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث (2+ حروف) أو في فلاتر نشطة */}
                       {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && displayedMedicines.length > 0 ? (
-                        <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                        <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                       ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && searchTerm === debouncedSearchTerm && displayedMedicines.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                           <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
@@ -1476,7 +1477,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(160px + env(safe-area-inset-bottom))' : 'calc(32px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(180px + env(safe-area-inset-bottom))' : 'calc(90px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div
               key={view}
               style={{
@@ -1618,6 +1619,19 @@ onClearSearch={handleClearSearch}
       )}
 
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>{ setIsEditModalOpen(false); if(selectedMedicine) openSheet(selectedMedicine, true); }} medicine={selectedMedicine} onSave={async (m) => { await handleSaveMedicine(m); setIsEditModalOpen(false); openSheet(m, true); }} t={t} />}
+
+      {/* ── Bottom Nav Bar ── */}
+      {!['login', 'register', 'imageView'].includes(view) && (
+        <BottomNavBar
+          activeTab={activeTab}
+          setActiveTab={handleTabClick}
+          t={t}
+          user={user}
+          view={view}
+          onPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
+          onFavoritesClick={() => { setView('favorites'); }}
+        />
+      )}
     </div>
   );
 };

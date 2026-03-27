@@ -1,7 +1,8 @@
 /**
  * Fuzzy Search - يتسامح مع الأخطاء الإملائية الحقيقية فقط
- * مثال: "amoxcilin" يجيب "Amoxicillin"
- * مثال: "hepl" يجيب "Hepaform" (خطأ حرف واحد في البداية)
+ * مثال: "pkmer"     → "PK-Merz"     (الداش مش مهم)
+ * مثال: "amoxcilin" → "Amoxicillin" (خطأ إملائي)
+ * مثال: "foti"      → "Forti"       (حرف مقلوب)
  */
 
 function levenshtein(a: string, b: string): number {
@@ -17,37 +18,53 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
+// نشيل الداش والمسافات لمقارنة موحّدة
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[-\s.,/]+/g, '');
+}
+
 export function fuzzyScore(text: string, query: string): number {
-  const t = text.toLowerCase();
   const q = query.toLowerCase().trim();
   if (!q) return 0;
 
-  // تطابق مباشر
-  if (t === q) return 1;
-  if (t.startsWith(q)) return 0.95;
-  if (t.includes(q)) return 0.85;
+  const t = text.toLowerCase();
+  const tNorm = normalize(text);  // pk-merz → pkmerz
+  const qNorm = normalize(query); // pkmer   → pkmer
 
-  // تطابق في كلمة واحدة من الاسم المركب
+  // ── الطبقة 1: تطابق بعد حذف الداش ──
+  if (tNorm === qNorm) return 1;
+  if (tNorm.startsWith(qNorm)) return 0.95;
+  if (tNorm.includes(qNorm)) return 0.85;
+
+  // ── الطبقة 2: تطابق في كلمة واحدة (بدون normalize) ──
   const words = t.split(/[\s\-,./]+/);
   for (const word of words) {
     if (word.startsWith(q)) return 0.80;
     if (word.includes(q)) return 0.70;
   }
 
-  // Prefix Fuzzy: قارن الـ query بـ prefix بنفس الطول من كل كلمة
-  // يصلح حالة "hepl" → "hepaform" — خطأ حرف واحد في البداية
+  // ── الطبقة 3: Prefix fuzzy على كل كلمة ──
   if (q.length >= 4) {
     for (const word of words) {
+      // لو الحرف الأول مختلف خالص → مش prefix fuzzy
+      if (!word.startsWith(q[0])) continue;
       if (word.length >= q.length) {
-        const prefix = word.substring(0, q.length);
-        const dist = levenshtein(prefix, q);
-        if (dist === 1) return 0.65;
+        const p1 = word.substring(0, q.length);
+        if (levenshtein(p1, q) === 1) return 0.65;
+        if (word.length > q.length) {
+          const p2 = word.substring(0, q.length + 1);
+          if (levenshtein(p2, q) === 1) return 0.62;
+        }
       }
+    }
+    // نجرب كمان على الـ normalized (مفيد لـ pk-mer → pkmer)
+    if (tNorm.length >= qNorm.length && tNorm[0] === qNorm[0]) {
+      const pn = tNorm.substring(0, qNorm.length);
+      if (levenshtein(pn, qNorm) === 1) return 0.63;
     }
   }
 
-  // Full-word Fuzzy: نقارن الـ query بكل كلمة كاملة
-  // بنسمح بـ خطأ واحد لكل 4 حروف بحد أقصى خطأين
+  // ── الطبقة 4: Full-word fuzzy ──
   const maxErrors = Math.min(2, Math.floor(q.length / 4));
   if (maxErrors === 0) return 0;
 
