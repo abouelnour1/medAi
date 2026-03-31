@@ -147,7 +147,7 @@ export type TFunction = (key: TranslationKeys, replacements?: { [key: string]: s
 
 export type Tab = 'search' | 'insurance' | 'prescriptions' | 'settings';
 
-export type SortByOption = 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc' | 'strengthAsc' | 'strengthDesc';
+export type SortByOption = 'relevance' | 'alphabetical' | 'scientificName' | 'priceAsc' | 'priceDesc' | 'strengthAsc' | 'strengthDesc';
 
 export interface SerializablePart {
   text?: string;

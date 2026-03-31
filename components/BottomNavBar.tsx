@@ -12,11 +12,12 @@ interface BottomNavBarProps {
   user: User | null;
   view: View;
   onPediatricCalc?: () => void;
+  onDrugTestCheck?: () => void;
   onFavoritesClick?: () => void;
 }
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({
-  activeTab, setActiveTab, t, user, view, onPediatricCalc, onFavoritesClick
+  activeTab, setActiveTab, t, user, view, onPediatricCalc, onFavoritesClick, onDrugTestCheck
 }) => {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -53,7 +54,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const isFavActive = view === 'favorites';
   const isSettingsActive = activeTab === 'settings';
 
-  const items = [
+  const items: { label: string; active: boolean; color: string; icon: React.ReactNode; onClick: () => void }[] = [
     {
       label: ar ? 'بحث' : 'Search',
       active: isSearchActive,
@@ -74,6 +75,13 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
       color: 'teal',
       icon: <span className="text-lg">👶</span>,
       onClick: () => { onPediatricCalc?.(); setOpen(false); },
+    },
+    {
+      label: ar ? 'تحليل' : 'Drug Test',
+      active: false,
+      color: 'teal',
+      icon: <span className="text-lg">🧪</span>,
+      onClick: () => { onDrugTestCheck?.(); setOpen(false); },
     },
     {
       label: ar ? 'مفضلة' : 'Saved',

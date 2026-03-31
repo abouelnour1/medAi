@@ -11,13 +11,14 @@ interface NotificationsViewProps {
   onMarkAllRead: () => void;
   onMarkAsRead: (id: string) => void;
   onDeleteNotification: (id: string) => void;
+  onClearAll: () => void;
   isAdmin: boolean;
   t: TFunction;
   language: Language;
   onMedicineLink?: (medicineId: string) => void;
 }
 
-const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, onMarkAllRead, onMarkAsRead, onDeleteNotification, isAdmin, t, language, onMedicineLink }) => {
+const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, onMarkAllRead, onMarkAsRead, onDeleteNotification, onClearAll, isAdmin, t, language, onMedicineLink }) => {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const formatDate = (timestamp: number) => new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(timestamp));
 
@@ -53,7 +54,22 @@ const NotificationsView: React.FC<NotificationsViewProps> = ({ notifications, on
     <div className="animate-fade-in space-y-4">
       <div className="flex justify-between items-center px-1">
         <h2 className="text-xl font-black">{t('notifications')}</h2>
-        {notifications.some(n => !n.isRead) && <button onClick={onMarkAllRead} className="text-xs font-black text-primary hover:underline">{t('markAllRead')}</button>}
+        {notifications.length > 0 && (
+          <div className="flex items-center gap-2">
+            {notifications.some(n => !n.isRead) && (
+              <button onClick={onMarkAllRead} className="text-xs font-black text-primary">
+                {language === 'ar' ? 'تحديد كمقروء' : 'Mark all read'}
+              </button>
+            )}
+            <button
+              onClick={() => { if (window.confirm(language === 'ar' ? 'مسح كل الإشعارات؟' : 'Clear all notifications?')) onClearAll(); }}
+              className="text-xs font-black text-rose-400 flex items-center gap-1"
+            >
+              <div className="w-3.5 h-3.5"><TrashIcon /></div>
+              {language === 'ar' ? 'مسح الكل' : 'Clear all'}
+            </button>
+          </div>
+        )}
       </div>
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 opacity-60"><div className="w-16 h-16 text-slate-200 dark:text-slate-800"><BellIcon /></div><p className="text-slate-500 font-bold">{t('noNotifications')}</p></div>

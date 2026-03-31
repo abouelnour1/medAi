@@ -25,6 +25,7 @@ import { useSearch } from './hooks/useSearch';
 import { useAlternatives } from './hooks/useMedicineUtils';
 import DrugToolsModal from './components/DrugToolsModal';
 import PediatricDoseCalculator from './components/PediatricDoseCalculator';
+import DrugTestChecker from './components/DrugTestChecker';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
@@ -278,7 +279,7 @@ const App: React.FC = () => {
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
-  const [sortBy, setSortBy] = useState<SortByOption>('alphabetical');
+  const [sortBy, setSortBy] = useState<SortByOption>('relevance');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
@@ -367,23 +368,28 @@ const App: React.FC = () => {
     }
   }, [user?.id]);
 
-  // التخصص — يظهر مرة واحدة فقط لو مش محفوظ في Firestore
+  // التخصص — يظهر مرة واحدة فقط
   useEffect(() => {
     if (!user) return;
-    // لو عنده تخصص في user object (من Firestore) → مش محتاج يختار
-    if (user.specialty) return;
-    // لو سبق وتم التعيين في هذا الجهاز
-    const key = 'user_specialty_set_' + user.id;
-    if (localStorage.getItem(key)) return;
+    if (authLoading) return; // استنى حتى يخلص التحميل من Firestore
+    if ((user as any).specialty) return; // محفوظ في Firestore → تمام
+    // نشيك على localStorage كـ fallback (لو Firestore تأخر في التحميل)
+    const localSpecialty = localStorage.getItem('user_specialty_fallback_' + user.id);
+    if (localSpecialty) return; // محفوظ في localStorage → مش نعيد السؤال
     const t = setTimeout(() => setShowSpecialtyModal(true), 600);
     return () => clearTimeout(t);
-  }, [user?.id, user?.specialty]);
+  }, [user?.id, (user as any)?.specialty, authLoading]);
 
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialtyModal(false);
-    localStorage.setItem('user_specialty_set_' + user.id, 'true');
     if (user && updateUser) {
-      try { await updateUser({ ...user, specialty, subSpecialty }); } catch {}
+      try {
+        // حفظ في Firestore مباشرة — دي الطريقة الوحيدة
+        await updateUser({ ...user, specialty, subSpecialty } as any);
+      } catch (e) {
+        // fallback: حفظ في localStorage لو Firestore فشل
+        localStorage.setItem('user_specialty_fallback_' + user.id, specialty);
+      }
     }
   };
 
@@ -411,6 +417,8 @@ const App: React.FC = () => {
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
   const [pedCalcOpen, setPedCalcOpen] = useState(false);
+  const [drugTestOpen, setDrugTestOpen] = useState(false);
+  const [drugTestInitial, setDrugTestInitial] = useState<string | undefined>(undefined);
   const [pedCalcDrug, setPedCalcDrug] = useState<string | undefined>(undefined);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
@@ -640,6 +648,7 @@ const App: React.FC = () => {
       window.history.pushState(null, '', window.location.href);
 
       // 0. الحاسبة مفتوحة → اقفلها أولاً
+      if (drugTestOpen) { setDrugTestOpen(false); return; }
       if (pedCalcOpen) { setPedCalcOpen(false); return; }
 
       // 1. الفلاتر مفتوحة → اقفلها
@@ -1174,7 +1183,16 @@ const App: React.FC = () => {
         }}
         onDeleteNotification={async (id)=>{ 
           if (!db) return; 
+          setNotifications(prev => prev.filter(n => n.id !== id));
           await deleteDoc(doc(db, 'users', user!.id, 'notifications', id)); 
+        }}
+        onClearAll={async () => {
+          setNotifications([]);
+          if (db) {
+            await Promise.all(notifications.map(n =>
+              deleteDoc(doc(db, 'users', user!.id, 'notifications', n.id)).catch(()=>{})
+            ));
+          }
         }}
         onMedicineLink={(medicineId) => {
           // البحث عن الدواء وفتح صفحته
@@ -1581,11 +1599,24 @@ onClearSearch={handleClearSearch}
           onClose={() => setShowChatHistory(false)}
         />
       )}
-      {pedCalcOpen && (
+            {pedCalcOpen && (
         <PediatricDoseCalculator
           onClose={() => setPedCalcOpen(false)}
           initialDrugName={pedCalcDrug}
           language={language}
+        />
+      )}
+
+      {drugTestOpen && (
+        <DrugTestChecker
+          onClose={() => setDrugTestOpen(false)}
+          initialDrugName={drugTestInitial}
+          language={language}
+          allMedicines={medicines}
+          onMedicineSelect={(m) => {
+            setSelectedMedicine(m);
+            setView('details');
+          }}
         />
       )}
 
@@ -1630,6 +1661,7 @@ onClearSearch={handleClearSearch}
           view={view}
           onPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
           onFavoritesClick={() => { setView('favorites'); }}
+          onDrugTestCheck={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
         />
       )}
     </div>

@@ -19,6 +19,7 @@ const SortControls: React.FC<SortControlsProps> = ({ sortBy, setSortBy, t }) => 
           className="h-9 px-3 py-1.5 ltr:pr-8 rtl:pl-8 text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary dark:focus:border-primary rounded-lg outline-none transition-colors appearance-none cursor-pointer"
           aria-label={t('sortBy')}
         >
+          <option value="relevance">{t('language') === 'ar' ? 'الأكثر تطابقاً' : 'Best Match'}</option>
           <option value="alphabetical">{t('alphabetical')}</option>
           <option value="scientificName">{t('scientificNameSort')}</option>
           <option value="strengthDesc">{t('strengthDesc')}</option>

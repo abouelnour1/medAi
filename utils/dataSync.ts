@@ -60,11 +60,42 @@ async function fetchJSON(url: string): Promise<any[]> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    // بعض الملفات فيها escape sequences غلط — نحاول نصلحها
+    try {
+      return await res.json();
+    } catch {
+      const text = await res.clone().text();
+      const fixed = fixInvalidEscapes(text);
+      return JSON.parse(fixed);
+    }
   } catch (e) {
     console.warn('[dataSync] fetch failed:', url, e);
     return [];
   }
+}
+
+function fixInvalidEscapes(s: string): string {
+  const result: string[] = [];
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '\\' && i + 1 < s.length) {
+      const next = s[i + 1];
+      if ('"\\\/bfnrt'.includes(next)) {
+        result.push(s[i], s[i + 1]);
+        i += 2;
+      } else if (next === 'u' && i + 5 < s.length) {
+        result.push(s.substring(i, i + 6));
+        i += 6;
+      } else {
+        // invalid escape — skip backslash
+        i++;
+      }
+    } else {
+      result.push(s[i]);
+      i++;
+    }
+  }
+  return result.join('');
 }
 
 // ── Background update check (runs silently, NO reload unless data changed) ───

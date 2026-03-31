@@ -8,19 +8,28 @@ export function useAlternatives(selectedMedicine: Medicine | null, medicines: Me
     const isFood = selectedMedicine['Product type'] === 'Food';
 
     if (isFood) {
-      // ── منطق خاص للـ Food ──────────────────────────────────────────────
-      // الـ Food بيكون من مكونات كتير — نستخدم منطق مختلف:
-      // ١. نفس المادة الفعالة (أي تركيز) → direct
-      // ٢. 3 مواد مشتركة أو أكثر → therapeutic
-      const sciName = String(selectedMedicine['Scientific Name'] || '').toLowerCase();
-      const myIngredients = sciName.split(',').map(s => s.trim()).filter(Boolean);
+      // ── منطق Food: المكونات بغض النظر عن التركيز ──────────────────────
+      // نقسم المادة الفعالة على فاصلة ونشيل التركيزات الرقمية
+      function extractIngredients(sciName: string): string[] {
+        return String(sciName || '')
+          .split(',')
+          .map(s => s.trim().toLowerCase().replace(/[\d.,]+\s*(mg|mcg|iu|g|ml|%|μg|µg|units?)?(\s|$)/gi, '').trim())
+          .filter(s => s.length > 2);
+      }
 
-      // Direct: نفس المادة الفعالة (بغض النظر عن التركيز)
-      const direct = medicines.filter(m =>
-        m.RegisterNumber !== selectedMedicine.RegisterNumber &&
-        m['Product type'] === 'Food' &&
-        String(m['Scientific Name'] || '').toLowerCase() === sciName
-      ).slice(0, 20);
+      const myIngredients = extractIngredients(selectedMedicine['Scientific Name']);
+
+      // Direct: نفس المواد الفعالة بالاسم (بغض النظر عن التركيز)
+      const direct = medicines.filter(m => {
+        if (m.RegisterNumber === selectedMedicine.RegisterNumber) return false;
+        if (m['Product type'] !== 'Food') return false;
+        const theirIngredients = extractIngredients(m['Scientific Name']);
+        // نفس العدد من المكونات الرئيسية
+        if (myIngredients.length === 0 || theirIngredients.length === 0) return false;
+        const shared = myIngredients.filter(i => theirIngredients.some(t => t.includes(i) || i.includes(t)));
+        // لو عندهم على الأقل أعلى 2 مواد مشتركة → direct
+        return shared.length >= Math.min(2, myIngredients.length);
+      }).slice(0, 20);
 
       const directIds = new Set(direct.map(m => m.RegisterNumber));
 
@@ -29,9 +38,9 @@ export function useAlternatives(selectedMedicine: Medicine | null, medicines: Me
         if (m.RegisterNumber === selectedMedicine.RegisterNumber) return false;
         if (directIds.has(m.RegisterNumber)) return false;
         if (m['Product type'] !== 'Food') return false;
-        const theirIngredients = String(m['Scientific Name'] || '').toLowerCase()
-          .split(',').map(s => s.trim()).filter(Boolean);
-        const shared = myIngredients.filter(i => theirIngredients.includes(i));
+        const theirIngredients = extractIngredients(m['Scientific Name']);
+        if (theirIngredients.length === 0) return false;
+        const shared = myIngredients.filter(i => theirIngredients.some(t => t.includes(i) || i.includes(t)));
         return shared.length >= 3;
       }).slice(0, 20);
 

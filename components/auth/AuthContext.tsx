@@ -179,6 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       // Firestore فشل — نبني من Firebase auth مباشرة
+      // نحتفظ بالـ specialty لو موجودة في cache أو localStorage عشان ميطلبهاش تاني
+      const cachedForFallback = getCachedUser();
+      const savedSpecialty = (cachedForFallback as any)?.specialty
+        || localStorage.getItem('user_specialty_fallback_' + firebaseUser.uid)
+        || undefined;
+      const savedSubSpecialty = (cachedForFallback as any)?.subSpecialty || undefined;
       const fallback = toPlainObject({
         id: firebaseUser.uid,
         username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -187,7 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailVerified: firebaseUser.emailVerified,
         status: 'active',
         aiRequestCount: 0,
-        lastRequestDate: new Date().toISOString().split('T')[0]
+        lastRequestDate: new Date().toISOString().split('T')[0],
+        ...(savedSpecialty ? { specialty: savedSpecialty } : {}),
+        ...(savedSubSpecialty ? { subSpecialty: savedSubSpecialty } : {})
       });
       if (fallback) { setUser(fallback); setCachedUser(fallback); }
     } finally {
@@ -237,7 +245,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (Capacitor.isNativePlatform()) {
       try {
         // @ts-ignore
-        const { SocialLogin } = await import('@capgo/capacitor-social-login');
+        const socialLoginModule = await import('@capgo/capacitor-social-login').catch(() => null);
+        if (!socialLoginModule) throw new Error('SocialLogin plugin not available');
+        const { SocialLogin } = socialLoginModule;
         await SocialLogin.initialize({ google: { 
           webClientId: '568872568132-cg6f7ea60arn5tgkoq9dms0he053p7l6.apps.googleusercontent.com',
           // @ts-ignore
