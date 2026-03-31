@@ -383,12 +383,12 @@ const App: React.FC = () => {
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialtyModal(false);
     if (user && updateUser) {
-      // نحفظ في localStorage دايماً عشان منعرضش الـ modal تاني لما التطبيق يفتح
-      localStorage.setItem('user_specialty_fallback_' + user.id, specialty);
       try {
+        // حفظ في Firestore مباشرة — دي الطريقة الوحيدة
         await updateUser({ ...user, specialty, subSpecialty } as any);
       } catch (e) {
-        // localStorage موجود بالفعل — مش هيظهر الـ modal تاني
+        // fallback: حفظ في localStorage لو Firestore فشل
+        localStorage.setItem('user_specialty_fallback_' + user.id, specialty);
       }
     }
   };
@@ -648,8 +648,7 @@ const App: React.FC = () => {
       window.history.pushState(null, '', window.location.href);
 
       // 0. الحاسبة مفتوحة → اقفلها أولاً
-      // لو في details والـ drugTest مفتوح → ارجع للـ details view وسيب drugTest مفتوح
-      if (drugTestOpen && view !== 'details') { setDrugTestOpen(false); return; }
+      if (drugTestOpen) { setDrugTestOpen(false); return; }
       if (pedCalcOpen) { setPedCalcOpen(false); return; }
 
       // 1. الفلاتر مفتوحة → اقفلها
@@ -687,7 +686,7 @@ const App: React.FC = () => {
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handleAndroidBack);
     return () => window.removeEventListener('popstate', handleAndroidBack);
-  }, [view, handleBack, activeTab, sheetMedicine, isFilterModalOpen, quickViewMedicine, pedCalcOpen, drugTestOpen]);
+  }, [view, handleBack, activeTab, sheetMedicine, isFilterModalOpen, quickViewMedicine, pedCalcOpen]);
 
   // Swipe to go back — تم إلغاؤه
 
@@ -1615,10 +1614,8 @@ onClearSearch={handleClearSearch}
           language={language}
           allMedicines={medicines}
           onMedicineSelect={(m) => {
-            setPreviousView(view);
             setSelectedMedicine(m);
             setView('details');
-            // مش بنقفل الـ DrugTest — هيرجعله لما يضغط back
           }}
         />
       )}
