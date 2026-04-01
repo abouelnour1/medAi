@@ -39,7 +39,7 @@ export default async function handler(req: Request) {
   try { body = await req.json(); } catch {}
 
   const fcmToken = body.fcmToken;
-  const title    = body.title || '🧪 PharmaSource Test';
+  const title    = body.title || '🧪 Easy Drug Test';
   const bodyText = body.body  || 'Push notification is working!';
 
   if (!fcmToken) {
@@ -119,7 +119,7 @@ export default async function handler(req: Request) {
             token: fcmToken,
             notification: { title, body: bodyText },
             data: { click_action: 'FLUTTER_NOTIFICATION_CLICK', url: '/' },
-            android: { priority: 'high', notification: { sound: 'default', channel_id: 'pharmasource' } },
+            android: { priority: 'high', notification: { sound: 'default', channel_id: 'easydrug' } },
             apns: { payload: { aps: { sound: 'default', badge: 1 } } },
           }
         })

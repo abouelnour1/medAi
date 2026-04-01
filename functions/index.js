@@ -144,7 +144,7 @@ exports.notifyDailyFeatured = onDocumentWritten(
     for (let i = 0; i < tokens.length; i += 500) {
       await messaging.sendEachForMulticast({
         tokens: tokens.slice(i, i + 500),
-        notification: { title: '💊 أدوية اليوم - PharmaSource', body },
+        notification: { title: '💊 أدوية اليوم - Easy Drug', body },
         android: { notification: { channelId: 'daily_featured', priority: 'high' } },
         data: { type: 'daily_featured', date: event.params.date }
       });
@@ -209,7 +209,7 @@ exports.sendNotification = onCall(
         android: {
           priority: 'high',
           notification: {
-            channelId: 'pharmasource_main',
+            channelId: 'easydrug_main',
             sound: 'default',
             ...(imageUrl ? { imageUrl } : {})
           }

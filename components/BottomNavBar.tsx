@@ -142,7 +142,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
       </div>
 
       {/* الزر الرئيسي */}
-      <div className="flex justify-center pointer-events-auto">
+      <div className="flex justify-end pr-6 pointer-events-auto">
         <button
           onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
           className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200 active:scale-90

@@ -140,7 +140,7 @@ const AssistantModal: React.FC<Props> = ({
       ctxInfo = `\n[CONTEXT: ${contextMedicine['Trade Name']} | ${contextMedicine['Scientific Name']} | ${contextMedicine['Public price']} SAR | ${contextMedicine.PharmaceuticalForm}]`;
     }
 
-    const systemInstruction = `You are PharmaSource AI — Senior Clinical Pharmacist in Saudi Arabia.
+    const systemInstruction = `You are Easy Drug AI — Senior Clinical Pharmacist in Saudi Arabia.
 
 ## RULES:
 1. LANGUAGE: Match the user's language exactly. Arabic → Arabic (keep medical terms in English: BID, TID, mg, etc). English → English. Never mix.
@@ -227,7 +227,7 @@ ${ctxInfo}`;
             </svg>
           </div>
           <div>
-            <h2 className="font-black text-slate-800 dark:text-white text-sm">PharmaSource AI</h2>
+            <h2 className="font-black text-slate-800 dark:text-white text-sm">Easy Drug AI</h2>
             <p className="text-[9px] text-slate-400 font-medium">
               {user?.role === 'admin'
                 ? (ar ? '👑 أدمن — غير محدود' : '👑 Admin — Unlimited')

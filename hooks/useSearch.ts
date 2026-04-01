@@ -125,7 +125,7 @@ export function useSearch(
   textSearchMode: TextSearchMode,
   filters: Filters,
   sortBy: SortByOption,
-  exactOnly: boolean = false,
+  fuzzyEnabled: boolean = false,
   isAdmin: boolean = false
 ) {
   const rawFull     = debouncedSearchTerm.toLowerCase().trim();
@@ -186,16 +186,17 @@ export function useSearch(
     if (rawNoSpaces.length < 1 && hasActiveFilters)
       return [...searchContextMedicines].sort(sortFnAlpha);
 
-    if (exactOnly || textSearchMode === 'scientificName') {
+    if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const field = textSearchMode === 'scientificName' ? 'Scientific Name' : 'Trade Name';
       const qn = queryWords.join('');
       const results = searchContextMedicines.filter(m => {
         const t = norm(String(m[field] || ''));
-        return hasWildcard ? matchesWildcard(t, raw) : t.includes(qn);
+        if (hasWildcard) return matchesWildcard(t, raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw) || matchesWildcard(norm(String(m['Trade Name'] || '')), raw);
+        return t.startsWith(qn) || t.includes(' ' + qn);
       });
       const t1 = results.filter(m =>  norm(String(m[field] || '')).startsWith(qn)).sort(sortFnAlpha);
       const t2 = results.filter(m => !norm(String(m[field] || '')).startsWith(qn)).sort(sortFnAlpha);
-      return [...t1, ...t2].slice(0, SEARCH_RESULT_LIMIT);
+      return isAdmin ? [...t1, ...t2] : [...t1, ...t2].slice(0, SEARCH_RESULT_LIMIT);
     }
 
     type Bucket = {
@@ -289,8 +290,8 @@ export function useSearch(
       return 0;
     });
 
-    return buckets.slice(0, SEARCH_RESULT_LIMIT).map(b => b.m);
-  }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy, exactOnly]);
+    return isAdmin ? buckets.map(b => b.m) : buckets.slice(0, SEARCH_RESULT_LIMIT).map(b => b.m);
+  }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy, fuzzyEnabled]);
 
   return { finalFilteredMedicines, searchContextMedicines, searchTextResults };
 }

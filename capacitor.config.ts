@@ -2,8 +2,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.pharmasource.ksa',
-  appName: 'PharmaSource KSA',
+  appId: 'com.easydrug.ksa',
+  appName: 'Easy Drug',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

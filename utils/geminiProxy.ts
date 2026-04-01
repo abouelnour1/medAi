@@ -17,7 +17,7 @@ function getProxyUrl(): string {
         return `${origin}/api/gemini`;
       }
       // إشارة واضحة للمطور
-      console.warn('[PharmaSource] VITE_PROXY_URL not set. Add it to .env.local');
+      console.warn('[Easy Drug] VITE_PROXY_URL not set. Add it to .env.local');
     }
     return configuredUrl || '/api/gemini';
   }

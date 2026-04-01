@@ -41,9 +41,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
   const handleGoogleLogin = async () => {
     setError('');
     if (isStandalone) {
-      // ✅ افتح الموقع في Chrome — المستخدم يسجل هناك
-      // Firebase IndexedDB مشترك بين Chrome والـ PWA
-      // لما يرجع للـ PWA هيلاقي نفسه مسجل تلقائياً
       const siteUrl = window.location.origin + window.location.pathname;
       window.open(siteUrl, '_blank');
       return;
@@ -53,16 +50,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
       await loginWithGoogle();
       onLoginSuccess();
     }
-    catch (err: any) { 
-      console.error('Login Google Error:', err);
+    catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(ar ? `فشل تسجيل الدخول بجوجل: ${err?.message || err?.code || 'خطأ غير معروف'}` : `Google sign-in failed: ${err?.message || err?.code || 'Unknown error'}`);
       }
     }
     finally { setIsSocialLoading(null); }
   };
-
-
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
@@ -106,7 +100,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
           <div className="relative inline-flex mb-5">
             <img
               src="/logo.png"
-              alt="PharmaSource"
+              alt="Easy Drug"
               className="w-20 h-20 rounded-[1.5rem] object-cover shadow-xl shadow-teal-500/30"
               onError={(e) => {
                 // fallback لو الصورة مش موجودة
@@ -123,7 +117,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
             <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-cyan-600 blur-xl opacity-25 -z-10" />
           </div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-            Pharma<span className="text-teal-500">Source</span>
+            Easy<span className="text-teal-500">Drug</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-medium tracking-widest uppercase">
             {ar ? 'تسجيل الدخول' : 'Sign in to continue'}
@@ -133,7 +127,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
         {/* Social */}
         <div className="space-y-3 mb-6">
           {isStandalone ? (
-            // ✅ PWA: Google مش بيشتغل — سجّل في المتصفح وارجع
             <div className="w-full flex items-center gap-3 py-3.5 px-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl text-xs text-amber-700 dark:text-amber-400 font-bold">
               <span className="text-lg">💡</span>
               <span>{ar ? 'لتسجيل الدخول بـ Google، افتح الموقع في المتصفح أولاً وسجّل، ثم ارجع للتطبيق' : 'To use Google Sign-In, open the site in your browser, sign in, then return to the app'}</span>
@@ -145,7 +138,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
               {ar ? 'متابعة بـ Google' : 'Continue with Google'}
             </button>
           )}
-
         </div>
 
         {/* Divider */}

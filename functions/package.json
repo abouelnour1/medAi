@@ -1,5 +1,5 @@
 {
-  "name": "pharmasource-functions",
+  "name": "easydrug-functions",
   "version": "1.0.0",
   "engines": { "node": "20" },
   "main": "index.js",

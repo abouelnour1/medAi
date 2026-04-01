@@ -92,7 +92,7 @@ export async function setupForegroundNotifications(
     const { app } = await import('../firebase');
     const messaging = getMessaging(app);
     onMessage(messaging, (payload) => {
-      const title = payload.notification?.title || 'PharmaSource';
+      const title = payload.notification?.title || 'Easy Drug';
       const body = payload.notification?.body || '';
       onNotification(title, body, payload.data);
     });
@@ -180,7 +180,7 @@ export async function setupCapacitorPush(
 
     // استقبال الإشعارات وهو مفتوح
     await FirebaseMessaging.addListener('notificationReceived', async (event: any) => {
-      const title = event.notification?.title || 'PharmaSource';
+      const title = event.notification?.title || 'Easy Drug';
       const body = event.notification?.body || '';
       const data = event.notification?.data;
       await saveNotifToFirestore(title, body, data);
@@ -191,7 +191,7 @@ export async function setupCapacitorPush(
     // لو التطبيق كان شغال → الإشعار اتحفظ من notificationReceived → navigation بس
     // لو التطبيق كان مقفول → notificationReceived ماتبعتش → نحفظ هنا
     await FirebaseMessaging.addListener('notificationActionPerformed', async (event: any) => {
-      const title = event.notification?.title || 'PharmaSource';
+      const title = event.notification?.title || 'Easy Drug';
       const body  = event.notification?.body  || '';
       const data  = event.notification?.data;
 
@@ -227,7 +227,7 @@ export async function notifyDailyFeaturedChanged(medicines: { tradeName: string;
 
     const reg = await navigator.serviceWorker?.ready;
     if (reg?.showNotification) {
-      await reg.showNotification('💊 أدوية اليوم - PharmaSource', {
+      await reg.showNotification('💊 أدوية اليوم - Easy Drug', {
         body,
         icon: '/icon-192.png',
         badge: '/icon-72.png',
@@ -236,7 +236,7 @@ export async function notifyDailyFeaturedChanged(medicines: { tradeName: string;
         data: { url: '/' }
       } as NotificationOptions);
     } else {
-      new Notification('💊 أدوية اليوم - PharmaSource', { body, icon: '/icon-192.png', tag: 'daily-featured' });
+      new Notification('💊 أدوية اليوم - Easy Drug', { body, icon: '/icon-192.png', tag: 'daily-featured' });
     }
   } catch (e) {
     console.log('Local notification skipped:', e);

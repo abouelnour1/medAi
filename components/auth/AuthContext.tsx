@@ -32,7 +32,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const toPlainObject = (user: any): User | null => {
     if (!user) return null;
-    return {
+    const obj: any = {
         id: String(user.id || user.uid || ''),
         username: String(user.username || user.displayName || user.email?.split('@')[0] || 'User'),
         role: (typeof user.role === 'string' ? user.role : 'premium') as any,
@@ -44,6 +44,10 @@ const toPlainObject = (user: any): User | null => {
         lastRequestDate: String(user.lastRequestDate || new Date().toISOString().split('T')[0]),
         prescriptionPrivilege: Boolean(user.prescriptionPrivilege)
     };
+    // ── احتفظ بالـ specialty دايماً عشان ميطلبهاش تاني ──
+    if (user.specialty) obj.specialty = user.specialty;
+    if (user.subSpecialty) obj.subSpecialty = user.subSpecialty;
+    return obj as User;
 };
 
 // ── Helper: read/write user cache ─────────────────────────────────────────────
@@ -350,6 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
     }
   }, [user, appSettings]);
+
 
   const value = { 
     user, login, loginWithGoogle, loginWithApple, register, logout, requestAIAccess,

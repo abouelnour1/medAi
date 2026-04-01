@@ -13,8 +13,8 @@ interface SearchBarProps {
   onForceSearch: () => void;
   onSearchIconClick?: () => void;
   onBarcodeScanClick: () => void;
-  exactOnly?: boolean;
-  onToggleExactOnly?: () => void;
+  fuzzyEnabled?: boolean;
+  onToggleFuzzy?: () => void;
   t: TFunction;
   activeFiltersCount?: number;
   onOpenFilters?: () => void;
@@ -42,8 +42,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   isSearchActive,
   onClearSearch,
   onForceSearch,
-  exactOnly = false,
-  onToggleExactOnly,
+  fuzzyEnabled = false,
+  onToggleFuzzy,
   t,
   activeFiltersCount = 0,
   onOpenFilters,
@@ -124,7 +124,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
           <button
             onClick={() => { setShowSettings(v => !v); setShowSort(false); }}
             className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all active:scale-90 ${
-              showSettings || exactOnly || textSearchMode !== 'tradeName'
+              showSettings || fuzzyEnabled || textSearchMode !== 'tradeName'
                 ? 'bg-primary text-white border-primary'
                 : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
             }`}
@@ -167,14 +167,14 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
             <div className="h-px bg-slate-100 dark:bg-slate-800" />
             {/* Exact toggle */}
             <button
-              onClick={onToggleExactOnly}
+              onClick={onToggleFuzzy}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <span className="text-xs font-black text-slate-600 dark:text-slate-300">
-                {ar ? 'تطابق دقيق' : 'Exact Match'}
+                {ar ? 'البحث الذكي (Fuzzy)' : 'Smart Search (Fuzzy)'}
               </span>
-              <div className={`w-10 h-5 rounded-full relative transition-all ${exactOnly ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${exactOnly ? 'right-0.5' : 'left-0.5'}`} />
+              <div className={`w-10 h-5 rounded-full relative transition-all ${fuzzyEnabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${fuzzyEnabled ? 'right-0.5' : 'left-0.5'}`} />
               </div>
             </button>
           </div>

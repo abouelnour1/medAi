@@ -1,4 +1,4 @@
-# iOS Setup Guide - PharmaSource KSA
+# iOS Setup Guide - Easy Drug
 
 ## المتطلبات
 - Mac (مش ممكن تعمل iOS build على Windows)
@@ -25,7 +25,7 @@ npx cap open ios
 
 ### ٤. في Xcode
 - اختار Team (Apple Developer Account)
-- غير Bundle ID لو محتاج: `com.pharmasource.ksa`
+- غير Bundle ID لو محتاج: `com.easydrug.ksa`
 - Signing & Capabilities → Automatic Signing
 
 ### ٥. إضافة Push Notifications في Xcode

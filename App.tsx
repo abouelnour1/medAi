@@ -303,6 +303,8 @@ const App: React.FC = () => {
     try { const r = localStorage.getItem('pharma_order_list'); return r ? JSON.parse(r).length : 0; } catch { return 0; }
   });
   // refresh order count when returning to settings
+
+
   // ── Specialty Modal — يظهر مرة واحدة بعد Google login ──────────────
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
   const [isEditingSpecialty, setIsEditingSpecialty] = useState(false);
@@ -404,15 +406,14 @@ const App: React.FC = () => {
     localStorage.getItem('pharma_share_url') || ''
   );
 
-  const [exactSearchOnly, setExactSearchOnly] = useState<boolean>(() => {
-    const saved = localStorage.getItem('pharma_exact_search');
-    return saved !== null ? saved === 'true' : true; // default = true
+  const [fuzzyEnabled, setFuzzyEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('pharma_fuzzy_search');
+    return saved !== null ? saved === 'true' : false; // default = false = exact
   });
 
-  // حفظ في localStorage لما يتغير
   useEffect(() => {
-    localStorage.setItem('pharma_exact_search', String(exactSearchOnly));
-  }, [exactSearchOnly]);
+    localStorage.setItem('pharma_fuzzy_search', String(fuzzyEnabled));
+  }, [fuzzyEnabled]);
   // API key انتقل للـ Firebase Cloud Function - الـ proxy بيستخدم Firebase Auth
   const geminiApiKey = undefined; // مش محتاجه في الـ client بعد كده
   const [drugToolsModal, setDrugToolsModal] = useState<{ open: boolean; mode: 'interaction' | 'dose'; medicine?: Medicine | null }>({ open: false, mode: 'interaction' });
@@ -713,17 +714,45 @@ const App: React.FC = () => {
           try { localStorage.setItem('pharma_has_cache', 'true'); } catch {}
         }
 
-        // بعدين اعمل full sync (بيجيب supplements + food + updates)
+        // ── جيب sync + overrides مع بعض ثم setMedicines مرة واحدة بس ──────
+        // ده بيمنع الـ re-render المتعدد اللي بيبطّئ الفتح والقفل
         const syncResult = await syncData();
         const baseMap = new Map<string, Medicine>();
         [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]
           .map(normalizeMedicine)
           .forEach(m => baseMap.set(m.RegisterNumber, m));
 
+        // جيب الـ overrides وادمجهم في baseMap قبل setMedicines — مرة واحدة بس
+        try {
+          const { getDocs, collection: col } = await import('firebase/firestore');
+          const OVERRIDES_CACHE_KEY = 'pharma_overrides_cache';
+          const OVERRIDES_CACHE_TS  = 'pharma_overrides_ts';
+          const overridesCacheAge   = Date.now() - parseInt(localStorage.getItem(OVERRIDES_CACHE_TS) || '0');
+          const OVERRIDES_TTL       = 48 * 60 * 60 * 1000;
+          let overridesData: any[] = [];
+          if (overridesCacheAge < OVERRIDES_TTL) {
+            try { const c = localStorage.getItem(OVERRIDES_CACHE_KEY); if (c) overridesData = JSON.parse(c); } catch {}
+          } else {
+            const snap = await getDocs(col(db, 'medicine_overrides')).catch(() => null);
+            if (snap && !snap.empty) {
+              overridesData = snap.docs.map(d => ({ ...d.data(), RegisterNumber: d.id }));
+              try {
+                localStorage.setItem(OVERRIDES_CACHE_KEY, JSON.stringify(overridesData));
+                localStorage.setItem(OVERRIDES_CACHE_TS, String(Date.now()));
+              } catch {}
+            }
+          }
+          overridesData.forEach(o => {
+            const existing = baseMap.get(o.RegisterNumber);
+            if (existing) baseMap.set(o.RegisterNumber, normalizeMedicine({ ...existing, ...o }));
+            else baseMap.set(o.RegisterNumber, normalizeMedicine(o));
+          });
+        } catch {}
+
+        // setMedicines مرة واحدة بس بعد دمج كل حاجة
         const allMeds = Array.from(baseMap.values());
         if (allMeds.length > 0) setMedicines(allMeds);
         setIsMedicinesLoading(false);
-        // رسالة "تم التحديث" بس لو في داتا جديدة فعلاً من السيرفر
         if (syncResult.updated && allMeds.length > 0) {
           setTimeout(() => { setDataReadyToast(true); setTimeout(() => setDataReadyToast(false), 2500); }, 300);
         }
@@ -758,79 +787,6 @@ const App: React.FC = () => {
           }, 3000);
         }
 
-        // ── خطوة 2: overrides ─────────────────────────────────
-        // Admin فقط يحتاج real-time listener
-        // باقي المستخدمين: fetch مرة واحدة عند التحميل + cache محلي
-        let unsubOverrides: (() => void) = () => {};
-        try {
-          const { getDocs, collection: col } = await import('firebase/firestore');
-          
-          // جيب الـ overrides مرة واحدة — مش محتاجين listener
-          const OVERRIDES_CACHE_KEY = 'pharma_overrides_cache';
-          const OVERRIDES_CACHE_TS  = 'pharma_overrides_ts';
-          const overridesCacheAge   = Date.now() - parseInt(localStorage.getItem(OVERRIDES_CACHE_TS) || '0');
-          const OVERRIDES_TTL       = 48 * 60 * 60 * 1000; // 48 ساعة
-          
-          let overridesData: any[] = [];
-          
-          if (overridesCacheAge < OVERRIDES_TTL) {
-            // استخدم الـ cache المحلي
-            try {
-              const cached = localStorage.getItem(OVERRIDES_CACHE_KEY);
-              if (cached) overridesData = JSON.parse(cached);
-            } catch {}
-          } else {
-            // fetch جديد من Firestore
-            const snap = await getDocs(col(db, 'medicine_overrides')).catch(() => null);
-            if (snap && !snap.empty) {
-              overridesData = snap.docs.map(d => ({ ...d.data(), RegisterNumber: d.id }));
-              // حفظ في cache
-              try {
-                localStorage.setItem(OVERRIDES_CACHE_KEY, JSON.stringify(overridesData));
-                localStorage.setItem(OVERRIDES_CACHE_TS, String(Date.now()));
-              } catch {}
-            }
-          }
-          
-          // طبّق الـ overrides على الـ medicines
-          if (overridesData.length > 0) {
-            const overridesMap = new Map<string, any>();
-            overridesData.forEach(o => overridesMap.set(o.RegisterNumber, o));
-            setMedicines(prev => {
-              const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-              overridesMap.forEach((override, id) => {
-                const existing = merged.get(id);
-                if (existing) merged.set(id, normalizeMedicine({ ...existing, ...override }));
-                else merged.set(id, normalizeMedicine(override));
-              });
-              return Array.from(merged.values());
-            });
-          }
-          
-          // Admin فقط: real-time listener عشان يشوف تعديلاته فوراً
-          // نتحقق من الـ role من user state مش من Firestore
-          const cachedUserStr = localStorage.getItem('medai_user_backup_v4');
-          const cachedRole = cachedUserStr ? JSON.parse(cachedUserStr)?.role : null;
-          if (cachedRole === 'admin') {
-            unsubOverrides = listenToOverrides((overrides) => {
-              // حدّث الـ cache
-              const arr = Array.from(overrides.values());
-              try {
-                localStorage.setItem(OVERRIDES_CACHE_KEY, JSON.stringify(arr));
-                localStorage.setItem(OVERRIDES_CACHE_TS, String(Date.now()));
-              } catch {}
-              setMedicines(prev => {
-                const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
-                overrides.forEach((override, id) => {
-                  const existing = merged.get(id);
-                  if (existing) merged.set(id, normalizeMedicine({ ...existing, ...override }));
-                  else merged.set(id, normalizeMedicine(override));
-                });
-                return Array.from(merged.values());
-              });
-            });
-          }
-        } catch { /* تجاهل */ }
 
         // ── خطوة 3: اسمع لتحديثات Storage في الخلفية ─────────────
         // نحفظ hash من آخر داتا عشان نتحقق من تغيير حقيقي
@@ -867,6 +823,31 @@ const App: React.FC = () => {
         };
         window.addEventListener('pharma:storage-updated', handleStorageUpdate);
 
+        // Admin فقط: real-time listener للـ overrides
+        let unsubOverrides: (() => void) = () => {};
+        try {
+          const cachedUserStr = localStorage.getItem('medai_user_backup_v4');
+          const cachedRole = cachedUserStr ? JSON.parse(cachedUserStr)?.role : null;
+          if (cachedRole === 'admin') {
+            unsubOverrides = listenToOverrides((overrides) => {
+              const arr = Array.from(overrides.values());
+              try {
+                localStorage.setItem('pharma_overrides_cache', JSON.stringify(arr));
+                localStorage.setItem('pharma_overrides_ts', String(Date.now()));
+              } catch {}
+              setMedicines(prev => {
+                const merged = new Map<string, Medicine>(prev.map(m => [m.RegisterNumber, m]));
+                overrides.forEach((override, id) => {
+                  const existing = merged.get(id);
+                  if (existing) merged.set(id, normalizeMedicine({ ...existing, ...override }));
+                  else merged.set(id, normalizeMedicine(override));
+                });
+                return Array.from(merged.values());
+              });
+            });
+          }
+        } catch {}
+
         return () => {
           unsubOverrides();
           window.removeEventListener('pharma:storage-updated', handleStorageUpdate);
@@ -898,7 +879,7 @@ const App: React.FC = () => {
   };
 
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
-    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, exactSearchOnly, user?.role === 'admin'
+    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, fuzzyEnabled, user?.role === 'admin'
   );
 
   // نحتفظ بآخر نتائج حقيقية عشان منعمليش flicker أثناء الـ debounce
@@ -973,7 +954,7 @@ const App: React.FC = () => {
       ? `${baseUrl.replace(/\/$/, '')}/${medicine.RegisterNumber}`
       : null;
     const linkLine = deepLink
-      ? (ar ? `\n🔗 افتح في PharmaSource: ${deepLink}` : `\n🔗 Open in PharmaSource: ${deepLink}`)
+      ? (ar ? `\n🔗 افتح في Easy Drug: ${deepLink}` : `\n🔗 Open in Easy Drug: ${deepLink}`)
       : '';
     const text = ar
       ? `💊 *${medicine['Trade Name']}*\n🧪 ${medicine['Scientific Name']}\n💰 ${price > 0 ? price.toFixed(2) + ' ر.س' : 'غير متاح'}\n🏭 ${medicine['Manufacture Name']}\n📋 ${medicine['Legal Status']}${linkLine}`
@@ -983,14 +964,14 @@ const App: React.FC = () => {
     if (Capacitor.isNativePlatform()) {
       // Android: استخدم Capacitor Share
       import('@capacitor/share').then(({ Share }) => {
-        Share.share({ title: 'PharmaSource', text, ...(deepLink ? { url: deepLink } : {}) }).catch(() => {
+        Share.share({ title: 'Easy Drug', text, ...(deepLink ? { url: deepLink } : {}) }).catch(() => {
           navigator.clipboard?.writeText(text);
         });
       }).catch(() => {
         navigator.clipboard?.writeText(text);
       });
     } else if (navigator.share) {
-        navigator.share({ title: 'PharmaSource', text, ...(deepLink ? { url: deepLink } : {}) });
+        navigator.share({ title: 'Easy Drug', text, ...(deepLink ? { url: deepLink } : {}) });
     } else {
         navigator.clipboard?.writeText(text).then(() => 
           alert(ar ? '✅ تم نسخ بيانات الدواء!' : '✅ Copied!')
@@ -1154,7 +1135,7 @@ const App: React.FC = () => {
         const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `pharmasource_${type}_${new Date().toISOString().slice(0,10)}.csv`;
+        a.href = url; a.download = `easydrug_${type}_${new Date().toISOString().slice(0,10)}.csv`;
         a.click(); URL.revokeObjectURL(url);
       }} />;
       if (view === 'notifications') return <NotificationsView 
@@ -1350,7 +1331,7 @@ const App: React.FC = () => {
                                   setAppShareUrl(e.target.value);
                                   localStorage.setItem('pharma_share_url', e.target.value);
                                 }}
-                                placeholder="https://pharmasource.app/medicine"
+                                placeholder="https://easydrug.app/medicine"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck={false}
@@ -1367,7 +1348,7 @@ const App: React.FC = () => {
                               <button
                                 onClick={() => {
                                   const msg = encodeURIComponent(
-                                    `[PharmaSource Report]\n` +
+                                    `[Easy Drug Report]\n` +
                                     `User: ${user.username || 'Unknown'}\n` +
                                     `Email: ${user.email || 'N/A'}\n` +
                                     `Specialty: ${(user as any).specialty || 'N/A'}\n\n` +
@@ -1405,7 +1386,7 @@ const App: React.FC = () => {
         <div className="w-20 h-20 mb-6 rounded-3xl bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/20 flex items-center justify-center shadow-lg">
           <span className="text-4xl">📶</span>
         </div>
-        <h1 className="text-xl font-black text-slate-800 dark:text-white mb-2">PharmaSource KSA</h1>
+        <h1 className="text-xl font-black text-slate-800 dark:text-white mb-2">Easy Drug</h1>
         <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">Internet required for first launch</p>
         <p className="text-xs text-slate-400 dark:text-slate-500 mb-8 max-w-xs leading-relaxed">
           Connect once to download the database. After that, the app works fully offline.
@@ -1449,7 +1430,7 @@ const App: React.FC = () => {
 
       <Header
         ref={headerRef}
-        title="PharmaSource"
+        title="Easy Drug"
         showBack={view !== 'search' || activeTab === 'insurance'}
         onBack={handleBack}
         t={t}
@@ -1480,8 +1461,8 @@ const App: React.FC = () => {
 onClearSearch={handleClearSearch}
               onForceSearch={() => { setView('results'); }}
               onBarcodeScanClick={()=>{}}
-              exactOnly={exactSearchOnly}
-              onToggleExactOnly={() => setExactSearchOnly(v => !v)}
+              fuzzyEnabled={fuzzyEnabled}
+              onToggleFuzzy={() => setFuzzyEnabled(v => !v)}
               t={t}
               activeFiltersCount={activeFiltersCount}
               onOpenFilters={() => setIsFilterModalOpen(true)}

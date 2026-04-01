@@ -18,13 +18,13 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received', payload);
   
-  const notificationTitle = payload.notification.title || 'PharmaSource';
+  const notificationTitle = payload.notification.title || 'Easy Drug';
   const notificationOptions = {
     body: payload.notification.body || '',
     icon: '/logo.png',
     badge: '/logo.png',
     vibrate: [200, 100, 200], // Vibration pattern
-    tag: 'pharmasource-update', // Groups notifications
+    tag: 'easydrug-update', // Groups notifications
     renotify: true,
     data: {
       url: self.location.origin

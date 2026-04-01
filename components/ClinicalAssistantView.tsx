@@ -81,11 +81,11 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     if (chatHistory.length === 0) {
       const welcome = contextMedicine
         ? (ar 
-            ? `مرحباً! 👋 أنا **PharmaSource AI**، مساعدك السريري المتخصص.\n\nأرى أنك تتصفح **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nيمكنني مساعدتك في الجرعات، التعاملات الدوائية، موانع الاستخدام، والبدائل. اختر سؤالاً سريعاً أو اكتب سؤالك:`
-            : `Hello! 👋 I'm **PharmaSource AI**, your clinical specialist.\n\nI see you're viewing **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nI can help with dosing, drug interactions, contraindications, and alternatives. Pick a quick question or type yours:`)
+            ? `مرحباً! 👋 أنا **Easy Drug AI**، مساعدك السريري المتخصص.\n\nأرى أنك تتصفح **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nيمكنني مساعدتك في الجرعات، التعاملات الدوائية، موانع الاستخدام، والبدائل. اختر سؤالاً سريعاً أو اكتب سؤالك:`
+            : `Hello! 👋 I'm **Easy Drug AI**, your clinical specialist.\n\nI see you're viewing **${contextMedicine['Trade Name']}** (${contextMedicine['Scientific Name']})\n\nI can help with dosing, drug interactions, contraindications, and alternatives. Pick a quick question or type yours:`)
         : (ar
-            ? `مرحباً! 👋 أنا **PharmaSource AI**\n\nمساعدك السريري المتخصص بأدوية المملكة العربية السعودية 🇸🇦\n\nأستطيع مساعدتك في:\n• 💊 الجرعات والتعاملات الدوائية\n• 📋 كتابة الوصفات الطبية\n• 🏥 بروتوكولات العلاج السعودية\n• ⚕️ الأدوية المغطاة بالتأمين\n\nاسألني أي سؤال سريري:`
-            : `Hello! 👋 I'm **PharmaSource AI**\n\nYour clinical specialist for Saudi Arabian medications 🇸🇦\n\nI can help with:\n• 💊 Dosing & drug interactions\n• 📋 Writing prescriptions\n• 🏥 Saudi treatment protocols\n• ⚕️ Insurance-covered medications\n\nAsk me any clinical question:`);
+            ? `مرحباً! 👋 أنا **Easy Drug AI**\n\nمساعدك السريري المتخصص بأدوية المملكة العربية السعودية 🇸🇦\n\nأستطيع مساعدتك في:\n• 💊 الجرعات والتعاملات الدوائية\n• 📋 كتابة الوصفات الطبية\n• 🏥 بروتوكولات العلاج السعودية\n• ⚕️ الأدوية المغطاة بالتأمين\n\nاسألني أي سؤال سريري:`
+            : `Hello! 👋 I'm **Easy Drug AI**\n\nYour clinical specialist for Saudi Arabian medications 🇸🇦\n\nI can help with:\n• 💊 Dosing & drug interactions\n• 📋 Writing prescriptions\n• 🏥 Saudi treatment protocols\n• ⚕️ Insurance-covered medications\n\nAsk me any clinical question:`);
       setChatHistory([{ role: 'model', parts: [{ text: welcome }] }]);
     }
   }, []);
@@ -99,7 +99,7 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
     description: 'Search the Saudi medicine database',
     parameters: {
       type: Type.OBJECT,
-      description: 'Search the PharmaSource KSA drug database',
+      description: 'Search the Easy Drug drug database',
       properties: {
         tradeName: { type: Type.STRING, description: 'Trade name of the drug' },
         scientificName: { type: Type.STRING, description: 'Scientific/generic name' }
@@ -129,7 +129,7 @@ const ClinicalAssistantView: React.FC<ClinicalAssistantViewProps> = ({
       ? `\n\nCURRENT DRUG CONTEXT - User is viewing:\nTrade Name: ${contextMedicine['Trade Name']}\nScientific Name: ${contextMedicine['Scientific Name']}\nStrength: ${contextMedicine.Strength} ${contextMedicine.StrengthUnit}\nForm: ${contextMedicine.PharmaceuticalForm}\nLegal Status: ${contextMedicine['Legal Status']}\nPrice: ${contextMedicine['Public price']} SAR\nManufacturer: ${contextMedicine['Manufacture Name']}`
       : '';
 
-    return `You are PharmaSource AI, a Senior Clinical Pharmacist & Consultant Physician with 20+ years in Saudi Arabia.
+    return `You are Easy Drug AI, a Senior Clinical Pharmacist & Consultant Physician with 20+ years in Saudi Arabia.
 
 ## LANGUAGE RULE (HIGHEST PRIORITY):
 - Detect the language of each user message automatically
@@ -296,7 +296,7 @@ ${conditionList || 'Saudi MOH standard protocols'}`;
           </button>
         </div>
         <p className="text-center text-[9px] text-slate-300 dark:text-slate-600 mt-1.5 font-medium">
-          {ar ? 'PharmaSource AI · للاستخدام السريري فقط' : 'PharmaSource AI · For clinical use only'}
+          {ar ? 'Easy Drug AI · للاستخدام السريري فقط' : 'Easy Drug AI · For clinical use only'}
         </p>
       </div>
     </div>

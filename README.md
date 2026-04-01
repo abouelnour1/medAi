@@ -1,4 +1,4 @@
-# PharmaSource KSA 🏥
+# Easy Drug 🏥
 
 ## المتطلبات
 - Node.js v18+

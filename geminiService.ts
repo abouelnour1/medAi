@@ -56,7 +56,7 @@ function getProxyUrl(): string {
     // أندرويد: لازم URL كامل — حطه في .env.local
     const url = (import.meta as any).env?.VITE_PROXY_URL;
     if (!url || url.includes('your-app')) {
-      console.warn('[PharmaSource] ⚠️ VITE_PROXY_URL غير مضبوط في .env.local');
+      console.warn('[Easy Drug] ⚠️ VITE_PROXY_URL غير مضبوط في .env.local');
     }
     return url || 'https://your-app.vercel.app/api/gemini';
   }

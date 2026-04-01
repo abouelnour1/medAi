@@ -61,7 +61,7 @@ const CompareBar: React.FC<CompareBarProps> = ({ compareList, onRemove, onCompar
             {compareList.map((med, idx) => (
               <div
                 key={med.RegisterNumber}
-                className="flex-1 bg-white/20 rounded-2xl p-2.5 relative"
+                className="flex-1 min-w-0 bg-white/20 rounded-2xl p-2.5 relative"
                 style={{
                   animation: 'compareCardIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
                   animationDelay: `${idx * 0.07}s`,
@@ -76,7 +76,7 @@ const CompareBar: React.FC<CompareBarProps> = ({ compareList, onRemove, onCompar
                     <path d="M6 18L18 6M6 6l12 12"/>
                   </svg>
                 </button>
-                <p className="font-black text-[11px] truncate leading-tight">{med['Trade Name']}</p>
+                <p className="font-black text-[11px] leading-tight break-words overflow-hidden" style={{wordBreak:'break-word',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{med['Trade Name']}</p>
                 <p className="text-[9px] opacity-70 truncate">{med.Strength} {med.StrengthUnit}</p>
               </div>
             ))}

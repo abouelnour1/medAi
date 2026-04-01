@@ -88,7 +88,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
         
         <div className="flex-[2] flex justify-center items-center gap-2"> 
             <h1 className="text-base font-black text-slate-800 dark:text-white font-poppins tracking-tight">
-              Pharma<span className="text-primary">Source</span>
+              Easy<span className="text-primary">Drug</span>
             </h1>
             {isLoading && (
               <div className="w-3.5 h-3.5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin flex-shrink-0" title="Loading data..." />

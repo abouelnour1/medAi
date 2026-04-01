@@ -548,7 +548,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
       <button
         onClick={() => {
           const msg = encodeURIComponent(
-            `[PharmaSource Report]\n` +
+            `[Easy Drug Report]\n` +
             `Medicine: ${medicine['Trade Name']}\n` +
             `Active: ${medicine['Scientific Name']}\n` +
             `Price: ${medicine['Public price'] || 'N/A'} SAR\n` +

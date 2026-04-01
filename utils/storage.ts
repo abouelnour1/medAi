@@ -1,4 +1,4 @@
-const DB_NAME    = 'PharmaSourceDB';
+const DB_NAME    = 'Easy DrugDB';
 const STORE_NAME = 'keyval';
 const DB_VERSION = 1;
 

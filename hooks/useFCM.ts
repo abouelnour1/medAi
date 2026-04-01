@@ -39,7 +39,7 @@ export function useFCM(userId: string | undefined) {
           console.log('📬 Foreground message:', payload);
           // اعرض إشعار يدوي لأن المتصفح مش بيعرضه لو التطبيق مفتوح
           if (payload.notification) {
-            new Notification(payload.notification.title || 'PharmaSource', {
+            new Notification(payload.notification.title || 'Easy Drug', {
               body: payload.notification.body,
               icon: '/logo.png',
               badge: '/logo.png',

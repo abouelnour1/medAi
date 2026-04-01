@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
-import GoogleIcon from '../icons/GoogleIcon';
 
 interface RegisterViewProps {
   onSwitchToLogin: () => void;
@@ -15,8 +14,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState<'google' | null>(null);
-  const { register, loginWithGoogle } = useAuth();
+  const { register } = useAuth();
 
   const ar = t('language') === 'ar';
   const inputStyle = "mt-1 block w-full px-3 py-2.5 bg-slate-50 dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-sm font-bold placeholder-slate-400 focus:outline-none focus:border-teal-500 transition-all";
@@ -48,21 +46,6 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
     }
   };
 
-  const handleGoogleRegister = async () => {
-    setError('');
-    setIsSocialLoading('google');
-    try {
-      await loginWithGoogle();
-      onRegisterSuccess();
-    } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(ar ? 'فشل التسجيل بجوجل' : 'Google sign-up failed');
-      }
-    } finally {
-      setIsSocialLoading(null);
-    }
-  };
-
 
 
   return (
@@ -82,30 +65,6 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
 
 
 
-        {/* Social Sign-Up */}
-        <div className="space-y-3 mb-5">
-          <button
-            onClick={handleGoogleRegister}
-            disabled={!!isSocialLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-black text-sm text-slate-700 dark:text-slate-200 active:scale-95 transition-all hover:border-slate-200 disabled:opacity-50 shadow-sm"
-          >
-            {isSocialLoading === 'google'
-              ? <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-              : <div className="w-5 h-5"><GoogleIcon /></div>
-            }
-            {ar ? 'التسجيل بـ Google' : 'Sign up with Google'}
-          </button>
-
-          
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700" />
-          <span className="text-[10px] font-black text-slate-300 uppercase">{ar ? 'أو بالبريد' : 'or with email'}</span>
-          <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700" />
-        </div>
-
         {/* Email/Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -123,6 +82,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
             {isLoading ? '...' : t('register')}
           </button>
         </form>
+
 
         <div className="mt-6 text-center border-t border-slate-50 dark:border-slate-800 pt-5">
           <p className="text-xs text-slate-400 font-bold">
