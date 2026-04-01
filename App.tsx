@@ -901,6 +901,65 @@ const App: React.FC = () => {
 
   const alternatives = useMemo(() => {
     if (!selectedMedicine) return { direct: [], therapeutic: [] };
+
+    // ── منطق خاص للـ Food ─────────────────────────────────────────────────
+    if (selectedMedicine['Product type'] === 'Food') {
+      // استخراج مكونات منتج غذائي من الاسم العلمي
+      const extractIngredients = (sciName: string): string[] =>
+        sciName
+          .split(/[,،+&\/|;]+/)
+          .map(s =>
+            s.toLowerCase()
+              .replace(/[-_]/g, ' ')
+              .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit)?/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim()
+          )
+          .filter(s => s.length > 2);
+
+      const countShared = (a: string[], b: string[]): number => {
+        const setB = new Set(b);
+        return a.filter(x => setB.has(x)).length;
+      };
+
+      const myIngredients = extractIngredients(String(selectedMedicine['Scientific Name'] || ''));
+      if (myIngredients.length === 0) return { direct: [], therapeutic: [] };
+
+      const candidates = medicines.filter(m =>
+        m.RegisterNumber !== selectedMedicine.RegisterNumber &&
+        m['Product type'] === 'Food' &&
+        String(m['Scientific Name'] || '').length > 2
+      );
+
+      const directList:      { m: Medicine; shared: number }[] = [];
+      const therapeuticList: { m: Medicine; shared: number }[] = [];
+      const directIds = new Set<string>();
+
+      for (const m of candidates) {
+        const theirIngredients = extractIngredients(String(m['Scientific Name'] || ''));
+        if (theirIngredients.length === 0) continue;
+        const shared = countShared(myIngredients, theirIngredients);
+        // بديل مباشر: كل مكونات المنتج الأصغر موجودة في الأكبر
+        const minCount = Math.min(myIngredients.length, theirIngredients.length);
+        if (shared >= minCount && shared > 0) {
+          directList.push({ m, shared });
+          directIds.add(m.RegisterNumber);
+        } else if (shared >= 2 && !directIds.has(m.RegisterNumber)) {
+          // بديل علاجي: مكونان مشتركان على الأقل
+          therapeuticList.push({ m, shared });
+        }
+      }
+
+      directList.sort((a, b) => b.shared - a.shared);
+      therapeuticList.sort((a, b) => b.shared - a.shared);
+
+      return {
+        direct:      directList.slice(0, 20).map(x => x.m),
+        therapeutic: therapeuticList.slice(0, 20).map(x => x.m),
+      };
+    }
+
+    // ── الأدوية والمكملات (المنطق الأصلي) ──────────────────────────────────
     const sciName = String(selectedMedicine['Scientific Name']).toLowerCase();
     const strength = String(selectedMedicine.Strength).toLowerCase();
     const form = selectedMedicine.PharmaceuticalForm;

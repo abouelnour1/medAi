@@ -187,15 +187,40 @@ export function useSearch(
       return [...searchContextMedicines].sort(sortFnAlpha);
 
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
-      const field = textSearchMode === 'scientificName' ? 'Scientific Name' : 'Trade Name';
+      const isSci   = textSearchMode === 'scientificName';
+      const isTrade = textSearchMode === 'tradeName';
       const qn = queryWords.join('');
-      const results = searchContextMedicines.filter(m => {
-        const t = norm(String(m[field] || ''));
-        if (hasWildcard) return matchesWildcard(t, raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw) || matchesWildcard(norm(String(m['Trade Name'] || '')), raw);
-        return t.startsWith(qn) || t.includes(' ' + qn);
-      });
-      const t1 = results.filter(m =>  norm(String(m[field] || '')).startsWith(qn)).sort(sortFnAlpha);
-      const t2 = results.filter(m => !norm(String(m[field] || '')).startsWith(qn)).sort(sortFnAlpha);
+      if (!qn) return [];
+
+      // دالة مساعدة: هل النص فيه الـ term؟
+      const fieldContains = (m: Medicine): boolean => {
+        const tradNorm = norm(String(m['Trade Name'] || ''));
+        const sciNorm  = norm(String(m['Scientific Name'] || ''));
+        if (hasWildcard) {
+          // wildcard يشتغل على التجاري والعلمي دايماً
+          return matchesWildcard(tradNorm, raw) || matchesWildcard(sciNorm, raw);
+        }
+        if (isSci)   return sciNorm.includes(qn);
+        if (isTrade) return tradNorm.includes(qn);
+        // all: يشوف الاتنين
+        return tradNorm.includes(qn) || sciNorm.includes(qn);
+      };
+
+      // دالة مساعدة: هل الاسم بيبدأ بالـ term؟
+      const fieldStartsWith = (m: Medicine): boolean => {
+        const tradNorm = norm(String(m['Trade Name'] || ''));
+        const sciNorm  = norm(String(m['Scientific Name'] || ''));
+        if (hasWildcard) return false; // wildcard مش بيعتمد على startsWith
+        if (isSci)   return sciNorm.startsWith(qn);
+        if (isTrade) return tradNorm.startsWith(qn);
+        return tradNorm.startsWith(qn) || sciNorm.startsWith(qn);
+      };
+
+      const results = searchContextMedicines.filter(fieldContains);
+
+      // ترتيب: اللي بيبدأ بالـ term أولاً، بعدين الباقي (وسط أو آخر)
+      const t1 = results.filter(fieldStartsWith).sort(sortFnAlpha);
+      const t2 = results.filter(m => !fieldStartsWith(m)).sort(sortFnAlpha);
       return isAdmin ? [...t1, ...t2] : [...t1, ...t2].slice(0, SEARCH_RESULT_LIMIT);
     }
 

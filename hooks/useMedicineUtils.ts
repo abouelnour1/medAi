@@ -1,17 +1,25 @@
 import { useMemo } from 'react';
 import { Medicine } from '../types';
 
-// ── Helper: استخراج مكونات الغذاء من الاسم العلمي ───────────────────────────
-// بينقّي الأرقام والتركيزات ويجيب اسم المادة الفعلية بس
+// ── Helper: تنظيف اسم مكون واحد ─────────────────────────────────────────────
+function normalizeIngredient(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')                                                          // hyphen -> space  (Omega-3 = Omega 3)
+    .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit)?/gi, '') // شيل الأرقام والوحدات
+    .replace(/\s+/g, ' ')                                                           // collapse spaces
+    .trim();
+}
+
+// ── Helper: استخراج مكونات منتج غذائي من الاسم العلمي ───────────────────────
 function extractFoodIngredients(scientificName: string): string[] {
   return scientificName
-    .toLowerCase()
-    .split(/[,،+&\/]+/)
-    .map(s => s.replace(/\d+(\.\d+)?\s*(mg|g|mcg|iu|%|ml|µg)?/gi, '').trim())
+    .split(/[,،+&\/|;]+/)
+    .map(normalizeIngredient)
     .filter(s => s.length > 2);
 }
 
-// ── Helper: عدد المكونات المشتركة بين منتجين (بغض النظر عن التركيز) ─────────
+// ── Helper: عدد المكونات المشتركة ────────────────────────────────────────────
 function countShared(a: string[], b: string[]): number {
   const setB = new Set(b);
   return a.filter(x => setB.has(x)).length;
@@ -31,7 +39,7 @@ export function useAlternatives(selectedMedicine: Medicine | null, medicines: Me
       const candidates = medicines.filter(m =>
         m.RegisterNumber !== selectedMedicine.RegisterNumber &&
         m['Product type'] === 'Food' &&
-        String(m['Scientific Name'] || '').length > 3
+        String(m['Scientific Name'] || '').length > 2
       );
 
       const directList:     { m: Medicine; shared: number }[] = [];
@@ -43,18 +51,34 @@ export function useAlternatives(selectedMedicine: Medicine | null, medicines: Me
         if (theirIngredients.length === 0) continue;
         const shared = countShared(myIngredients, theirIngredients);
 
-        // Direct: مادتين مشتركتين أو أكثر — بغض النظر عن التركيز
-        if (shared >= 2) {
+        /**
+         * منطق البدائل المباشرة للـ Food:
+         *
+         * القاعدة: لو المادة الفعالة في المنتجين واحدة (أو أكتر) وكل
+         *          مكونات المنتج الأصغر موجودة في المنتج التاني
+         *
+         * مثال 1: A=[omega3]  + B=[omega3]         → shared=1, min=1 → direct ✓
+         * مثال 2: A=[vit-c, zinc] + B=[vit-c, zinc] → shared=2, min=2 → direct ✓
+         * مثال 3: A=[vit-c, zinc] + B=[vit-c]       → shared=1, min(2,1)=1 → direct ✓
+         *         (لأن B جزء من A أو العكس)
+         * مثال 4: A=[vit-c, zinc, mg] + B=[vit-c, zinc, mg, vit-d] → shared=3, min=3 → direct ✓
+         * مثال 5: A=[vit-c] + B=[zinc]              → shared=0 → لا
+         * مثال 6: A=[vit-c, zinc] + B=[zinc, mg]    → shared=1 < min(2,2)=2 → therapeutic
+         *
+         * الشرط: shared >= min(myCount, theirCount)
+         *        يضمن إن المنتج الأصغر مكوناته كلها موجودة في الأكبر
+         */
+        const minCount = Math.min(myIngredients.length, theirIngredients.length);
+
+        if (shared >= minCount && shared > 0) {
           directList.push({ m, shared });
           directIds.add(m.RegisterNumber);
-        }
-        // Therapeutic: 3 مواد مشتركة أو أكثر (ومش موجود في direct)
-        else if (shared >= 3 && !directIds.has(m.RegisterNumber)) {
+        } else if (shared >= 2 && !directIds.has(m.RegisterNumber)) {
+          // Therapeutic: مكونان مشتركان على الأقل لكن مش كل مكونات الأصغر
           therapeuticList.push({ m, shared });
         }
       }
 
-      // رتب بعدد المشتركات تنازلياً
       directList.sort((a, b) => b.shared - a.shared);
       therapeuticList.sort((a, b) => b.shared - a.shared);
 
