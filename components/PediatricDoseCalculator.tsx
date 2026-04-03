@@ -90,6 +90,15 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     [drugs, selectedActive]
   );
 
+  // لو التركيز واحد بس → يتحدد تلقائي، لو أكتر → صفّر الاختيار
+  useEffect(() => {
+    if (concentrations.length === 1) {
+      setSelectedDrugIdx(drugs.indexOf(concentrations[0]));
+    } else if (concentrations.length > 1) {
+      setSelectedDrugIdx(null);
+    }
+  }, [concentrations]);
+
   // الدواء المختار
   const drug = selectedDrugIdx !== null ? drugs[selectedDrugIdx] : null;
 

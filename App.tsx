@@ -881,8 +881,6 @@ const App: React.FC = () => {
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
     medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, fuzzyEnabled, user?.role === 'admin'
   );
-
-  // نحتفظ بآخر نتائج حقيقية عشان منعمليش flicker أثناء الـ debounce
   const lastResultsRef = React.useRef<typeof finalFilteredMedicines>([]);
   if (searchTerm === debouncedSearchTerm) {
     lastResultsRef.current = finalFilteredMedicines;

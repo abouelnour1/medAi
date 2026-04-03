@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SortByOption, TFunction } from '../types';
 
@@ -8,31 +7,43 @@ interface SortControlsProps {
   t: TFunction;
 }
 
+const SORT_OPTIONS: { value: SortByOption; labelAr: string; labelEn: string }[] = [
+  { value: 'alphabetical',   labelAr: 'أ-ي',      labelEn: 'A-Z'     },
+  { value: 'scientificName', labelAr: 'العلمي',   labelEn: 'Sci'     },
+  { value: 'priceAsc',       labelAr: 'سعر ↑',    labelEn: 'Price ↑' },
+  { value: 'priceDesc',      labelAr: 'سعر ↓',    labelEn: 'Price ↓' },
+  { value: 'strengthAsc',    labelAr: 'تركيز ↑',  labelEn: 'Str ↑'   },
+  { value: 'strengthDesc',   labelAr: 'تركيز ↓',  labelEn: 'Str ↓'   },
+];
+
 const SortControls: React.FC<SortControlsProps> = ({ sortBy, setSortBy, t }) => {
+  const isAr = (t('language') as string) === 'ar';
+
+  const handleToggle = (value: SortByOption) => {
+    // ضغطة على نفس الاختيار → يشيله ويرجع للـ relevance
+    setSortBy(sortBy === value ? 'relevance' : value);
+  };
+
   return (
-    <div className="flex items-center justify-end">
-      <div className="relative">
-        <select
-          id="sort-by"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortByOption)}
-          className="h-9 px-3 py-1.5 ltr:pr-8 rtl:pl-8 text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-primary dark:focus:border-primary rounded-lg outline-none transition-colors appearance-none cursor-pointer"
-          aria-label={t('sortBy')}
-        >
-          <option value="relevance">{t('language') === 'ar' ? 'الأكثر تطابقاً' : 'Best Match'}</option>
-          <option value="alphabetical">{t('alphabetical')}</option>
-          <option value="scientificName">{t('scientificNameSort')}</option>
-          <option value="strengthDesc">{t('strengthDesc')}</option>
-          <option value="strengthAsc">{t('strengthAsc')}</option>
-          <option value="priceAsc">{t('priceAsc')}</option>
-          <option value="priceDesc">{t('priceDesc')}</option>
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 ltr:right-0 rtl:left-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
-            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-        </div>
-      </div>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {SORT_OPTIONS.map(opt => {
+        const active = sortBy === opt.value;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => handleToggle(opt.value)}
+            className={`
+              px-2.5 py-1 rounded-lg text-[11px] font-black transition-all active:scale-90
+              ${active
+                ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                : 'bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+              }
+            `}
+          >
+            {isAr ? opt.labelAr : opt.labelEn}
+          </button>
+        );
+      })}
     </div>
   );
 };

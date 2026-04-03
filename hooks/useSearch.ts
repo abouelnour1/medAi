@@ -186,6 +186,10 @@ export function useSearch(
     if (rawNoSpaces.length < 1 && hasActiveFilters)
       return [...searchContextMedicines].sort(sortFnAlpha);
 
+    // البحث النصي: 100 نتيجة فقط — لو في فلاتر نشطة أو Admin: بدون حد
+    const applyLimit = (arr: Medicine[]) =>
+      (isAdmin || hasActiveFilters) ? arr : arr.slice(0, 100);
+
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const isSci   = textSearchMode === 'scientificName';
       const isTrade = textSearchMode === 'tradeName';
@@ -221,7 +225,7 @@ export function useSearch(
       // ترتيب: اللي بيبدأ بالـ term أولاً، بعدين الباقي (وسط أو آخر)
       const t1 = results.filter(fieldStartsWith).sort(sortFnAlpha);
       const t2 = results.filter(m => !fieldStartsWith(m)).sort(sortFnAlpha);
-      return isAdmin ? [...t1, ...t2] : [...t1, ...t2].slice(0, SEARCH_RESULT_LIMIT);
+      return applyLimit([...t1, ...t2]);
     }
 
     type Bucket = {
@@ -315,7 +319,7 @@ export function useSearch(
       return 0;
     });
 
-    return isAdmin ? buckets.map(b => b.m) : buckets.slice(0, SEARCH_RESULT_LIMIT).map(b => b.m);
+    return isAdmin ? buckets.map(b => b.m) : applyLimit(buckets.map(b => b.m));
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy, fuzzyEnabled]);
 
   return { finalFilteredMedicines, searchContextMedicines, searchTextResults };
