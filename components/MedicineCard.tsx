@@ -56,6 +56,8 @@ interface MedicineCardProps {
   onFindAlternative: (medicine: Medicine) => void;
   isFavorite: boolean;
   onToggleFavorite: (medicineId: string) => void;
+  onToggleCompare?: (medicine: Medicine) => void;
+  isInCompare?: boolean;
   t: TFunction;
   language: Language;
   imageRight?: boolean;
@@ -63,7 +65,7 @@ interface MedicineCardProps {
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, t, language, imageRight = false
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, t, language, imageRight = false
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,6 +182,16 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
 
           {/* أزرار البديل والمفضلة */}
           <div className="flex items-center gap-0.5">
+            {onToggleCompare && (
+              <button
+                onClick={e => { e.stopPropagation(); onToggleCompare(medicine); }}
+                className={`p-2.5 rounded-xl transition-colors active:scale-90 ${isInCompare ? 'text-primary bg-primary/10' : 'text-slate-300 dark:text-slate-600 hover:text-primary'}`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </button>
+            )}
             <button
               onClick={e => { e.stopPropagation(); onFindAlternative(medicine); }}
               className="p-2.5 text-slate-300 dark:text-slate-600 hover:text-primary dark:hover:text-primary rounded-xl transition-colors active:scale-90"

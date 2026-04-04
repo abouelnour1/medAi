@@ -9,6 +9,8 @@ interface ResultsListProps {
   onFindAlternative: (medicine: Medicine) => void;
   favorites: string[];
   onToggleFavorite: (medicineId: string) => void;
+  onToggleCompare?: (medicine: Medicine) => void;
+  compareList?: string[];
   t: TFunction;
   language: Language;
   resultsState: 'loading' | 'loaded' | 'empty';
@@ -19,6 +21,7 @@ interface ResultsListProps {
 const ResultsList: React.FC<ResultsListProps> = ({
   medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative,
   t, language, resultsState, favorites, onToggleFavorite,
+  onToggleCompare, compareList = [],
   maxResults
 }) => {
 
@@ -53,6 +56,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
               onFindAlternative={onFindAlternative}
               isFavorite={favorites.includes(med.RegisterNumber)}
               onToggleFavorite={onToggleFavorite}
+              onToggleCompare={onToggleCompare}
+              isInCompare={compareList.includes(med.RegisterNumber)}
               t={t}
               language={language}
             />

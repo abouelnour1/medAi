@@ -220,7 +220,15 @@ const App: React.FC = () => {
       return v || 'search';
     } catch { return 'search'; }
   });
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  // ── Navigation Direction System ─────────────────────────────────────────
+  const [navDir, setNavDir] = React.useState<'push'|'pop'|'tab'>('tab');
+
+  const navigateTo = React.useCallback((newView: View, dir: 'push'|'pop'|'tab' = 'tab') => {
+    setNavDir(dir);
+    setView(newView);
+  }, []);
+
+    const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [indications, setIndications] = useState<Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }>>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -356,11 +364,11 @@ const App: React.FC = () => {
             const medicine = medicines.find(m => m.RegisterNumber === medId);
             if (medicine) {
               setSelectedMedicineWithSave(medicine);
-              setView('details');
+              navigateTo('details', 'push');
               return;
             }
           }
-          setView('notifications');
+          navigateTo('notifications', 'tab');
         }
       );
     } else {
@@ -593,14 +601,14 @@ const App: React.FC = () => {
       } else if (view === 'alternatives') {
           if (previousView === 'details') {
               // جاي من صفحة التفاصيل → ارجع للتفاصيل بدون sheet
-              setView('details');
+              navigateTo('details', 'push');
               restoreScroll('details');
           } else if (previousView === 'favorites') {
-              setView('favorites');
+              navigateTo('favorites', 'tab');
               restoreScroll('favorites');
           } else {
               // جاي من نتائج البحث → ارجع للنتائج وافتح الكارت
-              setView('results');
+              navigateTo('results', 'pop');
               restoreScroll('results');
           }
       } else if (view === 'details') {
@@ -608,7 +616,7 @@ const App: React.FC = () => {
           // لو راجع لـ alternatives نمسح الـ scroll المحفوظ عشان يبدأ من فوق
           if (target === 'alternatives') { scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView(target); } else { setView(target); restoreScroll(target); }
       } else if (view === 'insuranceDetails') {
-          setView('insuranceSearch');
+          navigateTo('insuranceSearch', 'tab');
           restoreScroll('insuranceSearch');
       } else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) {
           const target = activeTab === 'search' 
@@ -617,17 +625,17 @@ const App: React.FC = () => {
           setView(target);
           restoreScroll(target);
       } else if (view === 'results') {
-          setView('search');
+          navigateTo('search', 'pop');
           setSearchTerm('');
           restoreScroll('search');
       } else if (view === 'insuranceSearch') {
           // رجوع من التأمين → البحث الرئيسي
           setActiveTab('search');
-          setView('search');
+          navigateTo('search', 'pop');
           setInsuranceSearchTerm('');
           restoreScroll('search');
       } else { 
-          setView('search'); 
+          navigateTo('search', 'pop'); 
           setActiveTab('search'); 
           restoreScroll('search');
       }
@@ -1102,7 +1110,7 @@ const App: React.FC = () => {
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
     setSelectedIndication(null);
-    setView('search');
+    navigateTo('search', 'pop');
     setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''});
   }, []);
 
@@ -1147,9 +1155,9 @@ const App: React.FC = () => {
       }
       if (activeTab === tab) {
           // لو ضغط على نفس الـ tab، يرجع للأول ويعمل scroll to top
-          if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
-          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
-          if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
+          if (tab === 'search') { navigateTo('search', 'pop'); scrollPositions.current.delete('search'); }
+          if (tab === 'insurance') { navigateTo('insuranceSearch', 'tab'); scrollPositions.current.delete('insuranceSearch'); }
+          if (tab === 'settings') { navigateTo('settings', 'tab'); scrollPositions.current.delete('settings'); }
           logTabSwitch(tab);
           // scroll to top دايماً لما يضغط على نفس الـ tab
           requestAnimationFrame(() => {
@@ -1159,15 +1167,15 @@ const App: React.FC = () => {
           setActiveTab(tab);
           // استعادة position الـ tab الجديد لو موجود
           const targetView = tab === 'insurance' ? 'insuranceSearch' : tab === 'settings' ? 'settings' : 'search';
-          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) { setView('insuranceSearch'); restoreScroll('insuranceSearch'); }
-          else if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) { setView('settings'); restoreScroll('settings'); }
-          else if (tab === 'search' && !['search', 'results', 'details', 'alternatives'].includes(view)) { setView('search'); restoreScroll('search'); }
+          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) { navigateTo('insuranceSearch', 'tab'); restoreScroll('insuranceSearch'); }
+          else if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) { navigateTo('settings', 'tab'); restoreScroll('settings'); }
+          else if (tab === 'search' && !['search', 'results', 'details', 'alternatives'].includes(view)) { navigateTo('search', 'pop'); restoreScroll('search'); }
       }
   };
 
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { const prev = previousView || 'search'; setView(prev as View); restoreScroll(prev); }} />;
-      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
+      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => navigateTo('login', 'tab')} onRegisterSuccess={() => navigateTo('login', 'tab')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
         const filtered = medicines.filter(m => 
           type === 'medicine' ? m['Product type'] === 'Human' :
@@ -1279,15 +1287,19 @@ const App: React.FC = () => {
           const medicine = medicines.find(m => m.RegisterNumber === medicineId);
           if (medicine) {
             setSelectedMedicine(medicine);
-            setView('details');
+            navigateTo('details', 'push');
           }
         }}
       />;
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      // stock و order يشتغلوا من أي tab — لازم يكونوا قبل كل شروط activeTab
+      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => navigateTo('search', 'pop')} isAdmin={user?.role === 'admin'} />;
+      if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
+
+      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); navigateTo('imageView', 'push'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -1305,7 +1317,7 @@ const App: React.FC = () => {
                         const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
                         const noResults = (hasSearch || activeFiltersCount > 0) && !isDebouncing && displayedMedicines.length === 0;
                         if (hasResults) return (
-                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} maxResults={textSearchMode === 'tradeName' || textSearchMode === 'scientificName' ? 100 : undefined} />
+                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} maxResults={textSearchMode === 'tradeName' || textSearchMode === 'scientificName' ? 100 : undefined} onToggleCompare={toggleCompare} compareList={compareList.map(m => m.RegisterNumber)} />
                         );
                         if (noResults) return (
                           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
@@ -1367,7 +1379,7 @@ const App: React.FC = () => {
                             shadow: 'shadow-amber-200 dark:shadow-amber-900/40',
                             bg: 'bg-amber-50 dark:bg-amber-900/20',
                             text: 'text-amber-600 dark:text-amber-400',
-                            onClick: () => setView('favorites'),
+                            onClick: () => navigateTo('favorites', 'tab'),
                           },
                           {
                             id: 'order',
@@ -1383,7 +1395,7 @@ const App: React.FC = () => {
                             shadow: 'shadow-sky-200 dark:shadow-sky-900/40',
                             bg: 'bg-sky-50 dark:bg-sky-900/20',
                             text: 'text-sky-600 dark:text-sky-400',
-                            onClick: () => { refreshOrderCount(); setView('orderList'); },
+                            onClick: () => { refreshOrderCount(); navigateTo('orderList', 'push'); },
                           },
                           {
                             id: 'stock',
@@ -1400,7 +1412,7 @@ const App: React.FC = () => {
                             shadow: 'shadow-emerald-200 dark:shadow-emerald-900/40',
                             bg: 'bg-emerald-50 dark:bg-emerald-900/20',
                             text: 'text-emerald-600 dark:text-emerald-400',
-                            onClick: () => setView('stockTracker'),
+                            onClick: () => navigateTo('stockTracker', 'push'),
                           },
                           {
                             id: 'insurance',
@@ -1415,7 +1427,7 @@ const App: React.FC = () => {
                             shadow: 'shadow-rose-200 dark:shadow-rose-900/40',
                             bg: 'bg-rose-50 dark:bg-rose-900/20',
                             text: 'text-rose-600 dark:text-rose-400',
-                            onClick: () => { setActiveTab('insurance'); setView('insuranceSearch'); },
+                            onClick: () => { setActiveTab('insurance'); navigateTo('insuranceSearch', 'tab'); },
                           },
                         ];
                         return (
@@ -1485,13 +1497,11 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); navigateTo('insuranceDetails', 'push'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
-          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
-          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
@@ -1535,7 +1545,7 @@ const App: React.FC = () => {
                             </div>
                           )}
 
-                          <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          <button onClick={() => navigateTo('favorites', 'tab')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           </button>
@@ -1652,8 +1662,8 @@ const App: React.FC = () => {
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
         {specialtyModalEl}
       {view === 'register'
-          ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); }} />
+          ? <RegisterView t={t} onSwitchToLogin={() => navigateTo('login', 'tab')} onRegisterSuccess={() => navigateTo('login', 'tab')} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { navigateTo('search', 'pop'); }} />
         }
       </div>
     );
@@ -1671,11 +1681,11 @@ const App: React.FC = () => {
         showBack={view !== 'search' || activeTab === 'insurance'}
         onBack={handleBack}
         t={t}
-        onLoginClick={() => { setPreviousView(view); setView('login'); }}
-        onAdminClick={()=>setView('admin')}
+        onLoginClick={() => { setPreviousView(view); navigateTo('login', 'tab'); }}
+        onAdminClick={()=>navigateTo('admin', 'push')}
         onPediatricCalcClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-        onNotificationsClick={() => setView('notifications')}
-        onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { setView('stockTracker'); } else if (target === 'orderList') { refreshOrderCount(); setView('orderList'); } else { setView('settings'); restoreScroll('settings'); } }}
+        onNotificationsClick={() => navigateTo('notifications', 'tab')}
+        onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { navigateTo('stockTracker', 'push'); } else if (target === 'orderList') { refreshOrderCount(); navigateTo('orderList', 'push'); } else { navigateTo('settings', 'tab'); restoreScroll('settings'); } }}
         view={view}
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
@@ -1700,7 +1710,7 @@ const App: React.FC = () => {
               }}
               isSearchActive={searchTerm.length > 0}
 onClearSearch={handleClearSearch}
-              onForceSearch={() => { setView('results'); }}
+              onForceSearch={() => { navigateTo('results', 'pop'); }}
               onBarcodeScanClick={()=>{}}
               fuzzyEnabled={fuzzyEnabled}
               onToggleFuzzy={() => setFuzzyEnabled(v => !v)}
@@ -1710,13 +1720,13 @@ onClearSearch={handleClearSearch}
               sortBy={sortBy}
               setSortBy={setSortBy}
               language={language}
-              onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
+              onInsuranceClick={() => { setActiveTab('insurance'); navigateTo('insuranceSearch', 'tab'); }}
               isSearching={false}
               indications={indications}
               onIndicationSelect={(ind) => {
                 setSearchTerm(ind);
                 setSelectedIndication(ind);
-                setView('results');
+                navigateTo('results', 'pop');
               }}
             />
           </div>
@@ -1727,7 +1737,11 @@ onClearSearch={handleClearSearch}
           <div
               key={view}
               style={{
-                animation: 'viewSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both',
+                animation: navDir === 'push'
+                  ? 'viewPushIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both'
+                  : navDir === 'pop'
+                  ? 'viewPopIn  0.3s cubic-bezier(0.22, 1, 0.36, 1) both'
+                  : 'viewFadeIn 0.2s ease both',
               }}
             >
               {renderContent()}
@@ -1750,7 +1764,7 @@ onClearSearch={handleClearSearch}
         <CompareBar 
           compareList={compareList} 
           onRemove={(m) => setCompareList(prev => prev.filter(x => x.RegisterNumber !== m.RegisterNumber))}
-          onCompare={() => setShowCompare(true)}
+          onCompare={() => { setPedCalcOpen(false); setDrugTestOpen(false); setShowCompare(true); }}
           onClose={() => setCompareList([])}
           language={language}
         />
@@ -1778,8 +1792,8 @@ onClearSearch={handleClearSearch}
             onOpenAssistant={undefined}
             onOpenInteractions={undefined}
             onOpenDoseCalc={() => { setPedCalcDrug(sheetMedicine?.['Scientific Name'] as string || sheetMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }}
-            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
-            onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }}
+            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); navigateTo('imageView', 'push'); }}
+            onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }}
             onShare={handleShareMedicine}
             onAskGemini={handleAskGemini}
             onToggleCompare={toggleCompare}
@@ -1843,7 +1857,7 @@ onClearSearch={handleClearSearch}
           allMedicines={medicines}
           onMedicineSelect={(m) => {
             setSelectedMedicine(m);
-            setView('details');
+            navigateTo('details', 'push');
           }}
         />
       )}
@@ -1888,7 +1902,7 @@ onClearSearch={handleClearSearch}
           user={user}
           view={view}
           onPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-          onFavoritesClick={() => { setView('favorites'); }}
+          onFavoritesClick={() => { navigateTo('favorites', 'tab'); }}
           onDrugTestCheck={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
         />
       )}
