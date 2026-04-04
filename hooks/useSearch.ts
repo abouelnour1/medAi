@@ -138,24 +138,30 @@ export function useSearch(
   const termNorm    = queryWords.join('');
 
   const searchTextResults = useMemo(() => {
-    if (!medicines.length || rawNoSpaces.length < 1) return medicines;
+    if (!medicines.length) return [];
+    if (rawNoSpaces.length < 1) return textSearchMode === 'indication' ? [] : medicines;
 
     // بحث بالمرض — نجيب الـ scientific names من الـ indications ونفلتر
     if (textSearchMode === 'indication') {
       const termLower = raw.trim().toLowerCase();
-      if (!termLower) return [];
-      // نجيب كل الـ indications اللي فيها الـ term
-      const matchedSciNames = new Set<string>();
-      Object.entries(indications).forEach(([indication, data]) => {
-        if (indication.toLowerCase().includes(termLower) ||
-            data.icd10Code?.toLowerCase().includes(termLower)) {
-          data.drugs.forEach(d => matchedSciNames.add(d.s.toLowerCase()));
-        }
-      });
-      if (matchedSciNames.size === 0) return [];
-      return medicines.filter(m =>
-        matchedSciNames.has(String(m['Scientific Name'] || '').toLowerCase())
-      );
+      if (!termLower || Object.keys(indications).length === 0) return [];
+      try {
+        const matchedSciNames = new Set<string>();
+        Object.entries(indications).forEach(([indication, data]) => {
+          if (!data) return;
+          if (indication.toLowerCase().includes(termLower) ||
+              (data.icd10Code || '').toLowerCase().includes(termLower)) {
+            (data.drugs || []).forEach(d => { if (d?.s) matchedSciNames.add(d.s.toLowerCase()); });
+          }
+        });
+        if (matchedSciNames.size === 0) return [];
+        return medicines.filter(m =>
+          matchedSciNames.has(String(m['Scientific Name'] || '').toLowerCase())
+        );
+      } catch (e) {
+        console.warn('[indication search] error:', e);
+        return [];
+      }
     }
 
     return medicines.filter(m => {
@@ -209,6 +215,11 @@ export function useSearch(
     // البحث النصي: 100 نتيجة للكل — Admin بدون حد
     const applyLimit = (arr: Medicine[]) =>
       isAdmin ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
+
+    // indication mode — النتايج جاهزة من searchTextResults مباشرة
+    if (textSearchMode === 'indication') {
+      return applyLimit([...searchTextResults].sort(sortFnAlpha));
+    }
 
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const isSci   = textSearchMode === 'scientificName';

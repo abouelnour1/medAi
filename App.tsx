@@ -713,18 +713,24 @@ const App: React.FC = () => {
         try {
           const cached = localStorage.getItem(IND_CACHE_KEY);
           if (cached) {
-            setIndications(JSON.parse(cached));
+            const parsed = JSON.parse(cached);
+            // تأكد إن الـ structure صح
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              setIndications(parsed);
+            } else {
+              localStorage.removeItem(IND_CACHE_KEY);
+            }
           } else {
             fetch('https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/indications.json')
               .then(r => r.ok ? r.json() : null)
               .then(data => {
-                if (data) {
+                if (data && typeof data === 'object' && !Array.isArray(data)) {
                   setIndications(data);
                   try { localStorage.setItem(IND_CACHE_KEY, JSON.stringify(data)); } catch {}
                 }
               }).catch(() => {});
           }
-        } catch {}
+        } catch { localStorage.removeItem('pharma_indications_v1'); }
 
         // ── خطوة 1: جيب من IndexedDB أولاً — فوري بدون نت ──────
         const { getItem } = await import('./utils/storage');
@@ -1291,8 +1297,9 @@ const App: React.FC = () => {
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
                         const hasSearch = searchTerm.replace(/\s/g,"").length >= minLen;
+                        const isDebouncing = searchTerm !== debouncedSearchTerm;
                         const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
-                        const noResults = (hasSearch || activeFiltersCount > 0) && searchTerm === debouncedSearchTerm && displayedMedicines.length === 0;
+                        const noResults = (hasSearch || activeFiltersCount > 0) && !isDebouncing && displayedMedicines.length === 0;
                         if (hasResults) return (
                           <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                         );
@@ -1306,8 +1313,8 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* Recent searches - بيظهر لما مفيش بحث */}
-                      {searchTerm.replace(/\s/g,"").length === 0 && activeFiltersCount === 0 && recentSearches.length > 0 && (
+                      {/* Recent searches - بيظهر لما مفيش بحث أو أثناء الـ debounce */}
+                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
                         <div className="animate-fade-in">
                           <div className="flex justify-between items-center mb-3 px-1">
                             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
