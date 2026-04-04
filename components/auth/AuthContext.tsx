@@ -178,6 +178,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userData) {
         setUser(userData);
         setCachedUser(userData);
+        // لو فيه specialty من Firestore، احفظه في localStorage عشان متطلبش تاني في أي متصفح
+        if ((userData as any).specialty) {
+          localStorage.setItem('user_specialty_fallback_' + firebaseUser.uid, (userData as any).specialty);
+        }
         activeUid.current = firebaseUser.uid;
         localStorage.setItem(`last_user_sync_${firebaseUser.uid}`, String(Date.now()));
       }

@@ -373,24 +373,29 @@ const App: React.FC = () => {
   // التخصص — يظهر مرة واحدة فقط
   useEffect(() => {
     if (!user) return;
-    if (authLoading) return; // استنى حتى يخلص التحميل من Firestore
-    if ((user as any).specialty) return; // محفوظ في Firestore → تمام
-    // نشيك على localStorage كـ fallback (لو Firestore تأخر في التحميل)
+    if (authLoading) return;
+    if ((user as any).specialty) return; // موجود في Firestore → تمام
     const localSpecialty = localStorage.getItem('user_specialty_fallback_' + user.id);
-    if (localSpecialty) return; // محفوظ في localStorage → مش نعيد السؤال
-    const t = setTimeout(() => setShowSpecialtyModal(true), 600);
+    if (localSpecialty) return; // موجود في localStorage → تمام
+    // نستنى شوية عشان Firestore يخلص يجيب البيانات كاملة قبل ما نطلب التخصص
+    const t = setTimeout(() => {
+      // نشيك تاني بعد الـ delay — لو اتحمل في النص مش هنطلبه
+      if ((user as any).specialty) return;
+      if (localStorage.getItem('user_specialty_fallback_' + user.id)) return;
+      setShowSpecialtyModal(true);
+    }, 2000);
     return () => clearTimeout(t);
   }, [user?.id, (user as any)?.specialty, authLoading]);
 
   const handleSpecialtyComplete = async (specialty: UserSpecialty, subSpecialty?: PhysicianSubSpecialty) => {
     setShowSpecialtyModal(false);
     if (user && updateUser) {
+      // دايماً احفظ في localStorage عشان متطلبش تاني في أي متصفح
+      localStorage.setItem('user_specialty_fallback_' + user.id, specialty);
       try {
-        // حفظ في Firestore مباشرة — دي الطريقة الوحيدة
         await updateUser({ ...user, specialty, subSpecialty } as any);
       } catch (e) {
-        // fallback: حفظ في localStorage لو Firestore فشل
-        localStorage.setItem('user_specialty_fallback_' + user.id, specialty);
+        // Firestore فشل — مش مشكلة، الـ localStorage كافي
       }
     }
   };
@@ -971,15 +976,25 @@ const App: React.FC = () => {
         areSameRouteGroup(m.PharmaceuticalForm, form)
     );
 
+    // نفس المادة + تركيز مختلف + نفس مجموعة الشكل
+    const diffStrength = medicines.filter(m =>
+        m.RegisterNumber !== selectedMedicine.RegisterNumber &&
+        String(m['Scientific Name']).toLowerCase() === sciName &&
+        String(m.Strength).toLowerCase() !== strength &&
+        areSameRouteGroup(m.PharmaceuticalForm, form) &&
+        !direct.some(d => d.RegisterNumber === m.RegisterNumber)
+    );
+
     // البدائل العلاجية: نفس الـ ATC + نفس مجموعة الشكل
     const therapeutic = (atc && atc.length >= 4) ? medicines.filter(m =>
         m.RegisterNumber !== selectedMedicine.RegisterNumber &&
         String(m.AtcCode1 || '').startsWith(atc) &&
         areSameRouteGroup(m.PharmaceuticalForm, form) &&
-        !direct.some(d => d.RegisterNumber === m.RegisterNumber)
+        !direct.some(d => d.RegisterNumber === m.RegisterNumber) &&
+        !diffStrength.some(d => d.RegisterNumber === m.RegisterNumber)
     ) : [];
 
-    return { direct, therapeutic };
+    return { direct, diffStrength, therapeutic };
   }, [selectedMedicine, medicines]);
 
   const activeFiltersCount = useMemo(() => {
