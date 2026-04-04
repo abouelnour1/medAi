@@ -278,6 +278,7 @@ const App: React.FC = () => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
+  const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
   const [sortBy, setSortBy] = useState<SortByOption>('relevance');
@@ -1100,6 +1101,7 @@ const App: React.FC = () => {
 
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
+    setSelectedIndication(null);
     setView('search');
     setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''});
   }, []);
@@ -1296,12 +1298,14 @@ const App: React.FC = () => {
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
-                        const hasSearch = searchTerm.replace(/\s/g,"").length >= minLen;
+                        const hasSearch = textSearchMode === 'indication'
+                          ? selectedIndication !== null  // indication: بس لما يختار مرض من الـ dropdown
+                          : searchTerm.replace(/\s/g,"").length >= minLen;
                         const isDebouncing = searchTerm !== debouncedSearchTerm;
                         const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
                         const noResults = (hasSearch || activeFiltersCount > 0) && !isDebouncing && displayedMedicines.length === 0;
                         if (hasResults) return (
-                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} maxResults={textSearchMode === 'tradeName' || textSearchMode === 'scientificName' ? 100 : undefined} />
                         );
                         if (noResults) return (
                           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
@@ -1313,35 +1317,157 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* Recent searches - بيظهر لما مفيش بحث أو أثناء الـ debounce */}
-                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
-                        <div className="animate-fade-in">
-                          <div className="flex justify-between items-center mb-3 px-1">
-                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                              {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
-                            </h3>
-                            <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
-                              className="text-[10px] font-black text-rose-400 hover:text-rose-600">
-                              {language === 'ar' ? 'مسح الكل' : 'Clear All'}
-                            </button>
-                          </div>
-                          <div className="space-y-2">
-                            {recentSearches.map(med => (
-                              <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
-                                className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
-                                {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
-                                <div className="flex-grow min-w-0">
-                                  <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
-                                  <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
+                      {/* ── Home Tools Grid — بيظهر لما مفيش بحث ── */}
+                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && (() => {
+                        const ar2 = language === 'ar';
+                        const tools = [
+                          {
+                            id: 'dose',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M9 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V9l-7-7z"/>
+                                <polyline points="14 2 14 9 21 9"/>
+                                <line x1="12" y1="13" x2="12" y2="17"/>
+                                <line x1="10" y1="15" x2="14" y2="15"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'جرعات' : 'Dosing',
+                            color: 'from-teal-400 to-cyan-500',
+                            shadow: 'shadow-teal-200 dark:shadow-teal-900/40',
+                            bg: 'bg-teal-50 dark:bg-teal-900/20',
+                            text: 'text-teal-600 dark:text-teal-400',
+                            onClick: () => { setPedCalcDrug(undefined); setPedCalcOpen(true); },
+                          },
+                          {
+                            id: 'drugtest',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <circle cx="10" cy="14" r="2"/>
+                                <path d="M14 14h2M14 17h2"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'تحليل مخدرات' : 'Drug Test',
+                            color: 'from-violet-400 to-purple-500',
+                            shadow: 'shadow-violet-200 dark:shadow-violet-900/40',
+                            bg: 'bg-violet-50 dark:bg-violet-900/20',
+                            text: 'text-violet-600 dark:text-violet-400',
+                            onClick: () => { setDrugTestInitial(undefined); setDrugTestOpen(true); },
+                          },
+                          {
+                            id: 'favorites',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'المفضلة' : 'Favorites',
+                            color: 'from-amber-400 to-orange-500',
+                            shadow: 'shadow-amber-200 dark:shadow-amber-900/40',
+                            bg: 'bg-amber-50 dark:bg-amber-900/20',
+                            text: 'text-amber-600 dark:text-amber-400',
+                            onClick: () => setView('favorites'),
+                          },
+                          {
+                            id: 'order',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <path d="M16 10a4 4 0 01-8 0"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'الطلبات' : 'Orders',
+                            color: 'from-sky-400 to-blue-500',
+                            shadow: 'shadow-sky-200 dark:shadow-sky-900/40',
+                            bg: 'bg-sky-50 dark:bg-sky-900/20',
+                            text: 'text-sky-600 dark:text-sky-400',
+                            onClick: () => { refreshOrderCount(); setView('orderList'); },
+                          },
+                          {
+                            id: 'stock',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
+                                <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+                                <line x1="12" y1="12" x2="12" y2="16"/>
+                                <line x1="10" y1="14" x2="14" y2="14"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'المخزون' : 'Stock',
+                            color: 'from-emerald-400 to-green-500',
+                            shadow: 'shadow-emerald-200 dark:shadow-emerald-900/40',
+                            bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+                            text: 'text-emerald-600 dark:text-emerald-400',
+                            onClick: () => setView('stockTracker'),
+                          },
+                          {
+                            id: 'insurance',
+                            icon: (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 11 14 15 10"/>
+                              </svg>
+                            ),
+                            label: ar2 ? 'التأمين' : 'Insurance',
+                            color: 'from-rose-400 to-pink-500',
+                            shadow: 'shadow-rose-200 dark:shadow-rose-900/40',
+                            bg: 'bg-rose-50 dark:bg-rose-900/20',
+                            text: 'text-rose-600 dark:text-rose-400',
+                            onClick: () => { setActiveTab('insurance'); setView('insuranceSearch'); },
+                          },
+                        ];
+                        return (
+                          <div className="animate-fade-in">
+                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1 mb-3">
+                              {ar2 ? 'الأدوات' : 'Quick Tools'}
+                            </p>
+                            <div className="grid grid-cols-3 gap-3">
+                              {tools.map(tool => (
+                                <button
+                                  key={tool.id}
+                                  onClick={tool.onClick}
+                                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl ${tool.bg} active:scale-95 transition-all duration-150`}
+                                >
+                                  <div className={tool.text}>{tool.icon}</div>
+                                  <span className={`text-[11px] font-black ${tool.text}`}>{tool.label}</span>
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Recent searches تحت الأدوات */}
+                            {recentSearches.length > 0 && (
+                              <div className="mt-5">
+                                <div className="flex justify-between items-center mb-3 px-1">
+                                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                                    {ar2 ? '🕒 آخر المشاهدات' : '🕒 Recently Viewed'}
+                                  </h3>
+                                  <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
+                                    className="text-[10px] font-black text-rose-400 hover:text-rose-600">
+                                    {ar2 ? 'مسح' : 'Clear'}
+                                  </button>
                                 </div>
-                                <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (language === 'ar' ? ' ر.س' : ' SAR') : ''}
-                                </span>
-                              </button>
-                            ))}
+                                <div className="space-y-2">
+                                  {recentSearches.map(med => (
+                                    <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
+                                      className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
+                                      {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
+                                      <div className="flex-grow min-w-0">
+                                        <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
+                                        <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
+                                      </div>
+                                      <span className="text-[11px] font-black text-primary whitespace-nowrap">
+                                        {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (ar2 ? ' ر.س' : ' SAR') : ''}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                   </div>
 
                   {/* ── علامة تحميل في آخر الكارت ── */}
@@ -1567,7 +1693,11 @@ const App: React.FC = () => {
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               textSearchMode={textSearchMode}
-              setTextSearchMode={setTextSearchMode}
+              setTextSearchMode={(mode) => {
+                setTextSearchMode(mode);
+                if (mode !== 'indication') setSelectedIndication(null);
+                else setSelectedIndication(null); // reset on re-enter indication mode too
+              }}
               isSearchActive={searchTerm.length > 0}
 onClearSearch={handleClearSearch}
               onForceSearch={() => { setView('results'); }}
@@ -1582,6 +1712,12 @@ onClearSearch={handleClearSearch}
               language={language}
               onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
               isSearching={false}
+              indications={indications}
+              onIndicationSelect={(ind) => {
+                setSearchTerm(ind);
+                setSelectedIndication(ind);
+                setView('results');
+              }}
             />
           </div>
         </div>

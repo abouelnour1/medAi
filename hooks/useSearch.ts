@@ -213,12 +213,18 @@ export function useSearch(
       return [...searchContextMedicines].sort(sortFnAlpha);
 
     // البحث النصي: 100 نتيجة للكل — Admin بدون حد
-    const applyLimit = (arr: Medicine[]) =>
-      isAdmin ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
+    const applyLimit = (arr: Medicine[]) => arr.slice(0, SEARCH_RESULT_LIMIT);
 
-    // indication mode — النتايج جاهزة من searchTextResults مباشرة
+    // indication mode — مرتبة بالاسم العلمي عشان نفس المادة تيجي مع بعض، ثم محدودة بـ 100
     if (textSearchMode === 'indication') {
-      return applyLimit([...searchTextResults].sort(sortFnAlpha));
+      const sorted = [...searchTextResults].sort((a, b) => {
+        // أولاً: رتّب بالاسم العلمي عشان نفس المادة تتجمع
+        const sciCmp = String(a['Scientific Name'] || '').localeCompare(String(b['Scientific Name'] || ''));
+        if (sciCmp !== 0) return sciCmp;
+        // ثانياً: داخل نفس المادة رتّب بالتركيز تصاعدياً
+        return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
+      });
+      return sorted;
     }
 
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
@@ -350,7 +356,7 @@ export function useSearch(
       return 0;
     });
 
-    return isAdmin ? buckets.map(b => b.m) : applyLimit(buckets.map(b => b.m));
+    return applyLimit(buckets.map(b => b.m));
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy, fuzzyEnabled]);
 
   return { finalFilteredMedicines, searchContextMedicines, searchTextResults };

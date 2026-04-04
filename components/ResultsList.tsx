@@ -13,13 +13,13 @@ interface ResultsListProps {
   language: Language;
   resultsState: 'loading' | 'loaded' | 'empty';
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
+  maxResults?: number;
 }
-
-const MAX_RESULTS = 100;
 
 const ResultsList: React.FC<ResultsListProps> = ({
   medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative,
-  t, language, resultsState, favorites, onToggleFavorite
+  t, language, resultsState, favorites, onToggleFavorite,
+  maxResults
 }) => {
 
   if (resultsState === 'empty') {
@@ -31,7 +31,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
     );
   }
 
-  const visibleMeds = medicines.slice(0, MAX_RESULTS);
+  // maxResults غير موجود = بدون حد
+  const visibleMeds = maxResults != null ? medicines.slice(0, maxResults) : medicines;
   const displayCount = visibleMeds.length;
 
   return (
