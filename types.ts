@@ -125,7 +125,7 @@ export interface Cosmetic {
 
 export type View = 'search' | 'addData' | 'details' | 'results' | 'alternatives' | 'settings' | 'chatHistory' | 'insuranceSearch' | 'addInsuranceData' | 'prescriptions' | 'insuranceDetails' | 'login' | 'register' | 'admin' | 'favorites' | 'verifyEmail' | 'aiHistory' | 'notifications' | 'imageView' | 'generalSettings' | 'orderList' | 'stockTracker';
 
-export type TextSearchMode = 'tradeName' | 'scientificName' | 'all';
+export type TextSearchMode = 'tradeName' | 'scientificName' | 'all' | 'indication';
 
 export type InsuranceSearchMode = 'scientificName' | 'tradeName' | 'indication' | 'icd10Code';
 

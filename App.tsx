@@ -222,6 +222,7 @@ const App: React.FC = () => {
   });
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
+  const [indications, setIndications] = useState<Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }>>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   // نشوف IndexedDB مباشرة — لو في داتا محلية مش نعرض loading
   // نشوف IndexedDB فوراً — لو في cache مش محتاجين loading
@@ -707,6 +708,24 @@ const App: React.FC = () => {
         setInsuranceData(INITIAL_INSURANCE_DATA as any);
         setIsDataLoaded(true);
 
+        // تحميل الـ indications من R2 في الخلفية مع cache
+        const IND_CACHE_KEY = 'pharma_indications_v1';
+        try {
+          const cached = localStorage.getItem(IND_CACHE_KEY);
+          if (cached) {
+            setIndications(JSON.parse(cached));
+          } else {
+            fetch('https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/indications.json')
+              .then(r => r.ok ? r.json() : null)
+              .then(data => {
+                if (data) {
+                  setIndications(data);
+                  try { localStorage.setItem(IND_CACHE_KEY, JSON.stringify(data)); } catch {}
+                }
+              }).catch(() => {});
+          }
+        } catch {}
+
         // ── خطوة 1: جيب من IndexedDB أولاً — فوري بدون نت ──────
         const { getItem } = await import('./utils/storage');
         const cachedMeds = await getItem<any[]>('pharma_medicines');
@@ -884,7 +903,7 @@ const App: React.FC = () => {
   };
 
   const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
-    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, fuzzyEnabled, user?.role === 'admin'
+    medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, fuzzyEnabled, user?.role === 'admin', indications
   );
   const lastResultsRef = React.useRef<typeof finalFilteredMedicines>([]);
   if (searchTerm === debouncedSearchTerm) {
@@ -1268,14 +1287,27 @@ const App: React.FC = () => {
 
 
                   <div className="mt-2">
-                      {/* نعرض النتائج لو: في بحث (2+ حروف) أو في فلاتر نشطة */}
-                      {(searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && displayedMedicines.length > 0 ? (
-                        <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
-                      ) : (searchTerm.replace(/\s/g,"").length >= 3 || activeFiltersCount > 0) && searchTerm === debouncedSearchTerm && displayedMedicines.length === 0 ? (
-                        <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
-                          <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
-                        </div>
-                      ) : recentSearches.length > 0 ? (
+                      {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
+                      {(() => {
+                        const minLen = textSearchMode === 'indication' ? 1 : 3;
+                        const hasSearch = searchTerm.replace(/\s/g,"").length >= minLen;
+                        const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
+                        const noResults = (hasSearch || activeFiltersCount > 0) && searchTerm === debouncedSearchTerm && displayedMedicines.length === 0;
+                        if (hasResults) return (
+                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                        );
+                        if (noResults) return (
+                          <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
+                            {textSearchMode === 'indication' && Object.keys(indications).length === 0
+                              ? <p className="text-slate-400 font-black">{language === 'ar' ? 'جاري تحميل بيانات الأمراض...' : 'Loading disease data...'}</p>
+                              : <p className="text-slate-400 font-black">{t('noResultsTitle')}</p>
+                            }
+                          </div>
+                        );
+                        return null;
+                      })()}
+                      {/* Recent searches - بيظهر لما مفيش بحث */}
+                      {searchTerm.replace(/\s/g,"").length === 0 && activeFiltersCount === 0 && recentSearches.length > 0 && (
                         <div className="animate-fade-in">
                           <div className="flex justify-between items-center mb-3 px-1">
                             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
@@ -1302,7 +1334,7 @@ const App: React.FC = () => {
                             ))}
                           </div>
                         </div>
-                      ) : null}
+                      )}
                   </div>
 
                   {/* ── علامة تحميل في آخر الكارت ── */}

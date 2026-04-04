@@ -107,6 +107,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
             placeholder={
               textSearchMode === 'tradeName'
                 ? (ar ? 'ابحث بالاسم التجاري...' : 'Search by trade name...')
+                : textSearchMode === 'indication'
+                ? (ar ? 'اكتب اسم المرض...' : 'e.g. Hypertension, Diabetes...')
                 : (ar ? 'ابحث بالاسم العلمي...'  : 'Search by scientific name...')
             }
             autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
@@ -150,6 +152,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 {[
                   { val: 'tradeName',     labelAr: 'الاسم التجاري', labelEn: 'Trade Name' },
                   { val: 'scientificName',labelAr: 'الاسم العلمي',  labelEn: 'Scientific' },
+                  { val: 'indication',    labelAr: '🔍 المرض',       labelEn: '🔍 Disease' },
                 ].map(opt => (
                   <button key={opt.val}
                     onClick={() => { setTextSearchMode(opt.val as TextSearchMode); setShowSettings(false); }}

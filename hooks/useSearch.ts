@@ -126,7 +126,8 @@ export function useSearch(
   filters: Filters,
   sortBy: SortByOption,
   fuzzyEnabled: boolean = false,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  indications: Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }> = {}
 ) {
   const rawFull     = debouncedSearchTerm.toLowerCase().trim();
   const rawNoSpaces = rawFull.replace(/\s/g, '');
@@ -138,11 +139,30 @@ export function useSearch(
 
   const searchTextResults = useMemo(() => {
     if (!medicines.length || rawNoSpaces.length < 1) return medicines;
+
+    // بحث بالمرض — نجيب الـ scientific names من الـ indications ونفلتر
+    if (textSearchMode === 'indication') {
+      const termLower = raw.trim().toLowerCase();
+      if (!termLower) return [];
+      // نجيب كل الـ indications اللي فيها الـ term
+      const matchedSciNames = new Set<string>();
+      Object.entries(indications).forEach(([indication, data]) => {
+        if (indication.toLowerCase().includes(termLower) ||
+            data.icd10Code?.toLowerCase().includes(termLower)) {
+          data.drugs.forEach(d => matchedSciNames.add(d.s.toLowerCase()));
+        }
+      });
+      if (matchedSciNames.size === 0) return [];
+      return medicines.filter(m =>
+        matchedSciNames.has(String(m['Scientific Name'] || '').toLowerCase())
+      );
+    }
+
     return medicines.filter(m => {
       if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw);
       return scoreQuery(String(m['Trade Name'] || ''), String(m['Scientific Name'] || ''), queryWords, textSearchMode === 'tradeName') !== null;
     });
-  }, [medicines, raw, debouncedSearchTerm]);
+  }, [medicines, raw, debouncedSearchTerm, textSearchMode, indications]);
 
   const searchContextMedicines = useMemo(() => {
     if (!medicines.length) return [];
@@ -186,9 +206,9 @@ export function useSearch(
     if (rawNoSpaces.length < 1 && hasActiveFilters)
       return [...searchContextMedicines].sort(sortFnAlpha);
 
-    // البحث النصي: 100 نتيجة فقط — لو في فلاتر نشطة أو Admin: بدون حد
+    // البحث النصي: 100 نتيجة للكل — Admin بدون حد
     const applyLimit = (arr: Medicine[]) =>
-      (isAdmin || hasActiveFilters) ? arr : arr.slice(0, 100);
+      isAdmin ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
 
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const isSci   = textSearchMode === 'scientificName';
