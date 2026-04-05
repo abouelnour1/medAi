@@ -8,6 +8,7 @@ import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import MedicineCard from './components/MedicineCard';
+import IndicationSearch from './components/IndicationSearch';
 import MedicineDetail from './components/MedicineDetail';
 import BottomSheet from './components/BottomSheet';
 import GeminiPromptModal from './components/GeminiPromptModal';
@@ -610,7 +611,7 @@ const App: React.FC = () => {
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
           restoreScroll('insuranceSearch');
-      } else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) {
+      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch'].includes(view)) {
           const target = activeTab === 'search' 
               ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
@@ -1283,6 +1284,7 @@ const App: React.FC = () => {
         }}
       />;
       if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
@@ -1316,7 +1318,14 @@ const App: React.FC = () => {
                           </svg>
                           <span className="text-[10px] font-black text-purple-600">{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
                         </button>
-                        {/* Favorites */}
+                        {/* Disease Search */}
+                        <button onClick={() => setView('indicationSearch')}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-cyan-50 dark:bg-cyan-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-cyan-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-cyan-600">{language === 'ar' ? 'بحث بالمرض' : 'By Disease'}</span>
+                        </button>
                         <button onClick={() => setView('favorites')}
                           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 active:scale-95 transition-all">
                           <svg className="w-7 h-7 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
