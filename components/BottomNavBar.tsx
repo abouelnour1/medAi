@@ -110,12 +110,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
     <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
 
-      {/* Backdrop خفيف لما القايمة مفتوحة */}
-      {open && (
-        <div className="absolute inset-0 pointer-events-auto" style={{ bottom: 0, top: '-100vh' }} />
-      )}
-
-      {/* القايمة المنبثقة — 5 أزرار أفقية */}
+      {/* القايمة المنبثقة */}
       <div className={`absolute left-1/2 -translate-x-1/2 transition-all duration-200 pointer-events-auto
         ${open ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
@@ -141,32 +136,37 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
         </div>
       </div>
 
-      {/* الزر الرئيسي */}
-      <div className="flex justify-end pr-6 pointer-events-auto">
-        <button
-          onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200 active:scale-90
-            ${open
-              ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 rotate-45'
-              : activeItem
-                ? activeItem.color === 'amber'
-                  ? 'bg-amber-500 text-white shadow-amber-300/40'
-                  : 'bg-primary text-white shadow-primary/40'
-                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500'
-            }`}
-        >
-          {open ? (
+      {/* شريط التنقل الأساسي */}
+      <div className="pointer-events-auto mx-4">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700 shadow-xl rounded-[1.5rem] px-2 py-1.5 flex items-center justify-around">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              onClick={item.onClick}
+              className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl transition-all active:scale-90
+                ${item.active
+                  ? 'text-teal-600 dark:text-teal-400'
+                  : 'text-slate-400'
+                }`}
+            >
+              {item.icon}
+              <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{item.label}</span>
+            </button>
+          ))}
+          {/* زر القايمة */}
+          <button
+            onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+            className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl transition-all active:scale-90 ${open ? 'text-primary' : 'text-slate-400'}`}
+          >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              {open
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 6h14M5 18h14"/>
+              }
             </svg>
-          ) : activeItem ? (
-            activeItem.icon
-          ) : (
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-          )}
-        </button>
+            <span className="text-[8px] font-black uppercase tracking-wider mt-0.5">{ar ? 'المزيد' : 'More'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

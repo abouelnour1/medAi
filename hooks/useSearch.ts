@@ -213,20 +213,13 @@ export function useSearch(
       return [...searchContextMedicines].sort(sortFnAlpha);
 
     // البحث النصي: 100 نتيجة للكل — Admin بدون حد
-    const applyLimit = (arr: Medicine[]) => arr.slice(0, SEARCH_RESULT_LIMIT);
+    const applyLimit = (arr: Medicine[]) =>
+      isAdmin ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
 
-    // indication mode — مرتبة بالاسم العلمي عشان نفس المادة تيجي مع بعض، ثم محدودة بـ 100
+    // indication mode — النتايج جاهزة من searchTextResults مباشرة
     if (textSearchMode === 'indication') {
-      const sorted = [...searchTextResults].sort((a, b) => {
-        // أولاً: رتّب بالاسم العلمي عشان نفس المادة تتجمع
-        const sciCmp = String(a['Scientific Name'] || '').localeCompare(String(b['Scientific Name'] || ''));
-        if (sciCmp !== 0) return sciCmp;
-        // ثانياً: داخل نفس المادة رتّب بالتركيز تصاعدياً
-        return (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0);
-      });
-      return sorted;
+      return applyLimit([...searchTextResults].sort(sortFnAlpha));
     }
-
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const isSci   = textSearchMode === 'scientificName';
       const isTrade = textSearchMode === 'tradeName';
@@ -356,8 +349,22 @@ export function useSearch(
       return 0;
     });
 
-    return applyLimit(buckets.map(b => b.m));
+    return isAdmin ? buckets.map(b => b.m) : applyLimit(buckets.map(b => b.m));
   }, [searchContextMedicines, debouncedSearchTerm, textSearchMode, sortBy, fuzzyEnabled]);
 
-  return { finalFilteredMedicines, searchContextMedicines, searchTextResults };
+  // indication groups — مجموعات المادة الفعالة للعرض المقسم
+  const indicationGroups = useMemo(() => {
+    if (textSearchMode !== 'indication' || finalFilteredMedicines.length === 0) return [];
+    const map = new Map<string, Medicine[]>();
+    finalFilteredMedicines.forEach(m => {
+      const key = String(m['Scientific Name'] || 'Other').trim();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(m);
+    });
+    return Array.from(map.entries())
+      .map(([sciName, meds]) => ({ sciName, medicines: meds }))
+      .sort((a, b) => a.sciName.localeCompare(b.sciName));
+  }, [finalFilteredMedicines, textSearchMode]);
+
+  return { finalFilteredMedicines, searchContextMedicines, searchTextResults, indicationGroups };
 }

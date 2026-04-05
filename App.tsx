@@ -7,6 +7,7 @@ import {
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
+import MedicineCard from './components/MedicineCard';
 import MedicineDetail from './components/MedicineDetail';
 import BottomSheet from './components/BottomSheet';
 import GeminiPromptModal from './components/GeminiPromptModal';
@@ -202,7 +203,7 @@ const PushNotificationToggle: React.FC<{ userId: string; language: string }> = (
 
 const FAVORITES_STORAGE_KEY = 'saudi_drug_directory_favorites';
 const RECENT_SEARCHES_KEY = 'pharma_recent_searches_v2'; // v2 = IDs only
-const MAX_RECENT = 8;
+const MAX_RECENT = 5;
 
 const WHATSAPP_NUMBER = '966550806894'; // +966 Saudi Arabia
 
@@ -220,15 +221,7 @@ const App: React.FC = () => {
       return v || 'search';
     } catch { return 'search'; }
   });
-  // ── Navigation Direction System ─────────────────────────────────────────
-  const [navDir, setNavDir] = React.useState<'push'|'pop'|'tab'>('tab');
-
-  const navigateTo = React.useCallback((newView: View, dir: 'push'|'pop'|'tab' = 'tab') => {
-    setNavDir(dir);
-    setView(newView);
-  }, []);
-
-    const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
   const [indications, setIndications] = useState<Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }>>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -286,7 +279,6 @@ const App: React.FC = () => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
-  const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
   const [sortBy, setSortBy] = useState<SortByOption>('relevance');
@@ -364,11 +356,11 @@ const App: React.FC = () => {
             const medicine = medicines.find(m => m.RegisterNumber === medId);
             if (medicine) {
               setSelectedMedicineWithSave(medicine);
-              navigateTo('details', 'push');
+              setView('details');
               return;
             }
           }
-          navigateTo('notifications', 'tab');
+          setView('notifications');
         }
       );
     } else {
@@ -601,14 +593,14 @@ const App: React.FC = () => {
       } else if (view === 'alternatives') {
           if (previousView === 'details') {
               // جاي من صفحة التفاصيل → ارجع للتفاصيل بدون sheet
-              navigateTo('details', 'push');
+              setView('details');
               restoreScroll('details');
           } else if (previousView === 'favorites') {
-              navigateTo('favorites', 'tab');
+              setView('favorites');
               restoreScroll('favorites');
           } else {
               // جاي من نتائج البحث → ارجع للنتائج وافتح الكارت
-              navigateTo('results', 'pop');
+              setView('results');
               restoreScroll('results');
           }
       } else if (view === 'details') {
@@ -616,7 +608,7 @@ const App: React.FC = () => {
           // لو راجع لـ alternatives نمسح الـ scroll المحفوظ عشان يبدأ من فوق
           if (target === 'alternatives') { scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView(target); } else { setView(target); restoreScroll(target); }
       } else if (view === 'insuranceDetails') {
-          navigateTo('insuranceSearch', 'tab');
+          setView('insuranceSearch');
           restoreScroll('insuranceSearch');
       } else if (['login', 'register', 'admin', 'notifications', 'favorites'].includes(view)) {
           const target = activeTab === 'search' 
@@ -625,17 +617,17 @@ const App: React.FC = () => {
           setView(target);
           restoreScroll(target);
       } else if (view === 'results') {
-          navigateTo('search', 'pop');
+          setView('search');
           setSearchTerm('');
           restoreScroll('search');
       } else if (view === 'insuranceSearch') {
           // رجوع من التأمين → البحث الرئيسي
           setActiveTab('search');
-          navigateTo('search', 'pop');
+          setView('search');
           setInsuranceSearchTerm('');
           restoreScroll('search');
       } else { 
-          navigateTo('search', 'pop'); 
+          setView('search'); 
           setActiveTab('search'); 
           restoreScroll('search');
       }
@@ -917,7 +909,7 @@ const App: React.FC = () => {
     return 1;
   };
 
-  const { finalFilteredMedicines, searchContextMedicines, searchTextResults } = useSearch(
+  const { finalFilteredMedicines, searchContextMedicines, searchTextResults, indicationGroups } = useSearch(
     medicines, debouncedSearchTerm, textSearchMode, filters, sortBy, fuzzyEnabled, user?.role === 'admin', indications
   );
   const lastResultsRef = React.useRef<typeof finalFilteredMedicines>([]);
@@ -1109,8 +1101,7 @@ const App: React.FC = () => {
 
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
-    setSelectedIndication(null);
-    navigateTo('search', 'pop');
+    setView('search');
     setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''});
   }, []);
 
@@ -1155,9 +1146,9 @@ const App: React.FC = () => {
       }
       if (activeTab === tab) {
           // لو ضغط على نفس الـ tab، يرجع للأول ويعمل scroll to top
-          if (tab === 'search') { navigateTo('search', 'pop'); scrollPositions.current.delete('search'); }
-          if (tab === 'insurance') { navigateTo('insuranceSearch', 'tab'); scrollPositions.current.delete('insuranceSearch'); }
-          if (tab === 'settings') { navigateTo('settings', 'tab'); scrollPositions.current.delete('settings'); }
+          if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
+          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
+          if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
           logTabSwitch(tab);
           // scroll to top دايماً لما يضغط على نفس الـ tab
           requestAnimationFrame(() => {
@@ -1167,15 +1158,15 @@ const App: React.FC = () => {
           setActiveTab(tab);
           // استعادة position الـ tab الجديد لو موجود
           const targetView = tab === 'insurance' ? 'insuranceSearch' : tab === 'settings' ? 'settings' : 'search';
-          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) { navigateTo('insuranceSearch', 'tab'); restoreScroll('insuranceSearch'); }
-          else if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) { navigateTo('settings', 'tab'); restoreScroll('settings'); }
-          else if (tab === 'search' && !['search', 'results', 'details', 'alternatives'].includes(view)) { navigateTo('search', 'pop'); restoreScroll('search'); }
+          if (tab === 'insurance' && !['insuranceSearch', 'insuranceDetails'].includes(view)) { setView('insuranceSearch'); restoreScroll('insuranceSearch'); }
+          else if (tab === 'settings' && !['settings', 'favorites', 'notifications', 'aiHistory'].includes(view)) { setView('settings'); restoreScroll('settings'); }
+          else if (tab === 'search' && !['search', 'results', 'details', 'alternatives'].includes(view)) { setView('search'); restoreScroll('search'); }
       }
   };
 
   const renderContent = () => {
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { const prev = previousView || 'search'; setView(prev as View); restoreScroll(prev); }} />;
-      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => navigateTo('login', 'tab')} onRegisterSuccess={() => navigateTo('login', 'tab')} />;
+      if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
         const filtered = medicines.filter(m => 
           type === 'medicine' ? m['Product type'] === 'Human' :
@@ -1287,37 +1278,115 @@ const App: React.FC = () => {
           const medicine = medicines.find(m => m.RegisterNumber === medicineId);
           if (medicine) {
             setSelectedMedicine(medicine);
-            navigateTo('details', 'push');
+            setView('details');
           }
         }}
       />;
-      // stock و order يشتغلوا من أي tab — لازم يكونوا قبل كل شروط activeTab
-      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => navigateTo('search', 'pop')} isAdmin={user?.role === 'admin'} />;
-      if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
-
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); navigateTo('imageView', 'push'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
+          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
               <div className="animate-fade-in pt-2">
 
-
-                  <div className="mt-2">
+                  {/* ── Quick Tools ── */}
+                  {searchTerm.length === 0 && activeFiltersCount === 0 && (
+                    <div className="mb-6">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
+                        {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Dosing */}
+                        <button onClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                            <path d="M12 12h.01M12 16h.01M16 12h.01"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-teal-600">{language === 'ar' ? 'الجرعات' : 'Dosing'}</span>
+                        </button>
+                        {/* Drug Test */}
+                        <button onClick={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 3v11a3 3 0 006 0V3"/><path d="M6 3h12"/><path d="M7 15a5 5 0 0010 0"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-purple-600">{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
+                        </button>
+                        {/* Favorites */}
+                        <button onClick={() => setView('favorites')}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-amber-500">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
+                        </button>
+                        {/* Orders */}
+                        <button onClick={() => { refreshOrderCount(); setActiveTab('settings'); setView('orderList'); }}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-blue-600">{language === 'ar' ? 'الطلبات' : 'Orders'}</span>
+                        </button>
+                        {/* Stock */}
+                        <button onClick={() => { setActiveTab('settings'); setView('stockTracker'); }}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/><path d="M12 12v4m-2-2h4"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-green-600">{language === 'ar' ? 'المخزون' : 'Stock'}</span>
+                        </button>
+                        {/* Insurance */}
+                        <button onClick={() => setActiveTab('insurance')}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-rose-500">{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}                  <div className="mt-2">
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
-                        const hasSearch = textSearchMode === 'indication'
-                          ? selectedIndication !== null  // indication: بس لما يختار مرض من الـ dropdown
-                          : searchTerm.replace(/\s/g,"").length >= minLen;
+                        const hasSearch = searchTerm.replace(/\s/g,"").length >= minLen;
                         const isDebouncing = searchTerm !== debouncedSearchTerm;
                         const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
                         const noResults = (hasSearch || activeFiltersCount > 0) && !isDebouncing && displayedMedicines.length === 0;
+
+                        // indication mode — عرض مقسم بالمادة الفعالة
+                        if (hasResults && textSearchMode === 'indication' && indicationGroups.length > 0) return (
+                          <div className="space-y-5 animate-fade-in">
+                            {indicationGroups.map(({ sciName, medicines: groupMeds }) => (
+                              <div key={sciName}>
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400">{sciName}</span>
+                                  <span className="text-[9px] font-black bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-full">{groupMeds.length}</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {groupMeds.map(med => (
+                                    <MedicineCard key={med.RegisterNumber} medicine={med}
+                                      onShortPress={() => handleMedicineSelect(med)}
+                                      onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }}
+                                      onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }}
+                                      isFavorite={favorites.includes(med.RegisterNumber)}
+                                      onToggleFavorite={toggleFavorite}
+                                      t={t} language={language}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+
                         if (hasResults) return (
-                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} maxResults={textSearchMode === 'tradeName' || textSearchMode === 'scientificName' ? 100 : undefined} onToggleCompare={toggleCompare} compareList={compareList.map(m => m.RegisterNumber)} />
+                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
                         );
                         if (noResults) return (
                           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
@@ -1329,157 +1398,35 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* ── Home Tools Grid — بيظهر لما مفيش بحث ── */}
-                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && (() => {
-                        const ar2 = language === 'ar';
-                        const tools = [
-                          {
-                            id: 'dose',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <path d="M9 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V9l-7-7z"/>
-                                <polyline points="14 2 14 9 21 9"/>
-                                <line x1="12" y1="13" x2="12" y2="17"/>
-                                <line x1="10" y1="15" x2="14" y2="15"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'جرعات' : 'Dosing',
-                            color: 'from-teal-400 to-cyan-500',
-                            shadow: 'shadow-teal-200 dark:shadow-teal-900/40',
-                            bg: 'bg-teal-50 dark:bg-teal-900/20',
-                            text: 'text-teal-600 dark:text-teal-400',
-                            onClick: () => { setPedCalcDrug(undefined); setPedCalcOpen(true); },
-                          },
-                          {
-                            id: 'drugtest',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <circle cx="10" cy="14" r="2"/>
-                                <path d="M14 14h2M14 17h2"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'تحليل مخدرات' : 'Drug Test',
-                            color: 'from-violet-400 to-purple-500',
-                            shadow: 'shadow-violet-200 dark:shadow-violet-900/40',
-                            bg: 'bg-violet-50 dark:bg-violet-900/20',
-                            text: 'text-violet-600 dark:text-violet-400',
-                            onClick: () => { setDrugTestInitial(undefined); setDrugTestOpen(true); },
-                          },
-                          {
-                            id: 'favorites',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'المفضلة' : 'Favorites',
-                            color: 'from-amber-400 to-orange-500',
-                            shadow: 'shadow-amber-200 dark:shadow-amber-900/40',
-                            bg: 'bg-amber-50 dark:bg-amber-900/20',
-                            text: 'text-amber-600 dark:text-amber-400',
-                            onClick: () => navigateTo('favorites', 'tab'),
-                          },
-                          {
-                            id: 'order',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                                <line x1="3" y1="6" x2="21" y2="6"/>
-                                <path d="M16 10a4 4 0 01-8 0"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'الطلبات' : 'Orders',
-                            color: 'from-sky-400 to-blue-500',
-                            shadow: 'shadow-sky-200 dark:shadow-sky-900/40',
-                            bg: 'bg-sky-50 dark:bg-sky-900/20',
-                            text: 'text-sky-600 dark:text-sky-400',
-                            onClick: () => { refreshOrderCount(); navigateTo('orderList', 'push'); },
-                          },
-                          {
-                            id: 'stock',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
-                                <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
-                                <line x1="12" y1="12" x2="12" y2="16"/>
-                                <line x1="10" y1="14" x2="14" y2="14"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'المخزون' : 'Stock',
-                            color: 'from-emerald-400 to-green-500',
-                            shadow: 'shadow-emerald-200 dark:shadow-emerald-900/40',
-                            bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-                            text: 'text-emerald-600 dark:text-emerald-400',
-                            onClick: () => navigateTo('stockTracker', 'push'),
-                          },
-                          {
-                            id: 'insurance',
-                            icon: (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                <polyline points="9 12 11 14 15 10"/>
-                              </svg>
-                            ),
-                            label: ar2 ? 'التأمين' : 'Insurance',
-                            color: 'from-rose-400 to-pink-500',
-                            shadow: 'shadow-rose-200 dark:shadow-rose-900/40',
-                            bg: 'bg-rose-50 dark:bg-rose-900/20',
-                            text: 'text-rose-600 dark:text-rose-400',
-                            onClick: () => { setActiveTab('insurance'); navigateTo('insuranceSearch', 'tab'); },
-                          },
-                        ];
-                        return (
-                          <div className="animate-fade-in">
-                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1 mb-3">
-                              {ar2 ? 'الأدوات' : 'Quick Tools'}
-                            </p>
-                            <div className="grid grid-cols-3 gap-3">
-                              {tools.map(tool => (
-                                <button
-                                  key={tool.id}
-                                  onClick={tool.onClick}
-                                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl ${tool.bg} active:scale-95 transition-all duration-150`}
-                                >
-                                  <div className={tool.text}>{tool.icon}</div>
-                                  <span className={`text-[11px] font-black ${tool.text}`}>{tool.label}</span>
-                                </button>
-                              ))}
-                            </div>
-
-                            {/* Recent searches تحت الأدوات */}
-                            {recentSearches.length > 0 && (
-                              <div className="mt-5">
-                                <div className="flex justify-between items-center mb-3 px-1">
-                                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                                    {ar2 ? '🕒 آخر المشاهدات' : '🕒 Recently Viewed'}
-                                  </h3>
-                                  <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
-                                    className="text-[10px] font-black text-rose-400 hover:text-rose-600">
-                                    {ar2 ? 'مسح' : 'Clear'}
-                                  </button>
-                                </div>
-                                <div className="space-y-2">
-                                  {recentSearches.map(med => (
-                                    <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
-                                      className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
-                                      {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
-                                      <div className="flex-grow min-w-0">
-                                        <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
-                                        <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
-                                      </div>
-                                      <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                        {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (ar2 ? ' ر.س' : ' SAR') : ''}
-                                      </span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                      {/* Recent searches - بيظهر لما مفيش بحث أو أثناء الـ debounce */}
+                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
+                        <div className="animate-fade-in">
+                          <div className="flex justify-between items-center mb-3 px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                              {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
+                            </h3>
+                            <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
+                              className="text-[10px] font-black text-rose-400 hover:text-rose-600">
+                              {language === 'ar' ? 'مسح الكل' : 'Clear All'}
+                            </button>
                           </div>
-                        );
-                      })()}
+                          <div className="space-y-2">
+                            {recentSearches.map(med => (
+                              <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
+                                className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
+                                {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
+                                <div className="flex-grow min-w-0">
+                                  <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
+                                </div>
+                                <span className="text-[11px] font-black text-primary whitespace-nowrap">
+                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (language === 'ar' ? ' ر.س' : ' SAR') : ''}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   {/* ── علامة تحميل في آخر الكارت ── */}
@@ -1497,11 +1444,13 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); navigateTo('insuranceDetails', 'push'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
+          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
@@ -1545,7 +1494,7 @@ const App: React.FC = () => {
                             </div>
                           )}
 
-                          <button onClick={() => navigateTo('favorites', 'tab')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                          <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                               <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                               <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           </button>
@@ -1662,8 +1611,8 @@ const App: React.FC = () => {
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
         {specialtyModalEl}
       {view === 'register'
-          ? <RegisterView t={t} onSwitchToLogin={() => navigateTo('login', 'tab')} onRegisterSuccess={() => navigateTo('login', 'tab')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { navigateTo('search', 'pop'); }} />
+          ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); }} />
         }
       </div>
     );
@@ -1681,11 +1630,11 @@ const App: React.FC = () => {
         showBack={view !== 'search' || activeTab === 'insurance'}
         onBack={handleBack}
         t={t}
-        onLoginClick={() => { setPreviousView(view); navigateTo('login', 'tab'); }}
-        onAdminClick={()=>navigateTo('admin', 'push')}
+        onLoginClick={() => { setPreviousView(view); setView('login'); }}
+        onAdminClick={()=>setView('admin')}
         onPediatricCalcClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-        onNotificationsClick={() => navigateTo('notifications', 'tab')}
-        onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { navigateTo('stockTracker', 'push'); } else if (target === 'orderList') { refreshOrderCount(); navigateTo('orderList', 'push'); } else { navigateTo('settings', 'tab'); restoreScroll('settings'); } }}
+        onNotificationsClick={() => setView('notifications')}
+        onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { setView('stockTracker'); } else if (target === 'orderList') { refreshOrderCount(); setView('orderList'); } else { setView('settings'); restoreScroll('settings'); } }}
         view={view}
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
@@ -1703,14 +1652,10 @@ const App: React.FC = () => {
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               textSearchMode={textSearchMode}
-              setTextSearchMode={(mode) => {
-                setTextSearchMode(mode);
-                if (mode !== 'indication') setSelectedIndication(null);
-                else setSelectedIndication(null); // reset on re-enter indication mode too
-              }}
+              setTextSearchMode={setTextSearchMode}
               isSearchActive={searchTerm.length > 0}
 onClearSearch={handleClearSearch}
-              onForceSearch={() => { navigateTo('results', 'pop'); }}
+              onForceSearch={() => { setView('results'); }}
               onBarcodeScanClick={()=>{}}
               fuzzyEnabled={fuzzyEnabled}
               onToggleFuzzy={() => setFuzzyEnabled(v => !v)}
@@ -1720,30 +1665,15 @@ onClearSearch={handleClearSearch}
               sortBy={sortBy}
               setSortBy={setSortBy}
               language={language}
-              onInsuranceClick={() => { setActiveTab('insurance'); navigateTo('insuranceSearch', 'tab'); }}
+              onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
               isSearching={false}
-              indications={indications}
-              onIndicationSelect={(ind) => {
-                setSearchTerm(ind);
-                setSelectedIndication(ind);
-                navigateTo('results', 'pop');
-              }}
             />
           </div>
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(180px + env(safe-area-inset-bottom))' : 'calc(90px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          <div
-              key={view}
-              style={{
-                animation: navDir === 'push'
-                  ? 'viewPushIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both'
-                  : navDir === 'pop'
-                  ? 'viewPopIn  0.3s cubic-bezier(0.22, 1, 0.36, 1) both'
-                  : 'viewFadeIn 0.2s ease both',
-              }}
-            >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+          <div key={view}>
               {renderContent()}
             </div>
       </main>
@@ -1764,7 +1694,7 @@ onClearSearch={handleClearSearch}
         <CompareBar 
           compareList={compareList} 
           onRemove={(m) => setCompareList(prev => prev.filter(x => x.RegisterNumber !== m.RegisterNumber))}
-          onCompare={() => { setPedCalcOpen(false); setDrugTestOpen(false); setShowCompare(true); }}
+          onCompare={() => setShowCompare(true)}
           onClose={() => setCompareList([])}
           language={language}
         />
@@ -1792,8 +1722,8 @@ onClearSearch={handleClearSearch}
             onOpenAssistant={undefined}
             onOpenInteractions={undefined}
             onOpenDoseCalc={() => { setPedCalcDrug(sheetMedicine?.['Scientific Name'] as string || sheetMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }}
-            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); navigateTo('imageView', 'push'); }}
-            onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; navigateTo('alternatives', 'push'); }}
+            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
+            onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }}
             onShare={handleShareMedicine}
             onAskGemini={handleAskGemini}
             onToggleCompare={toggleCompare}
@@ -1857,7 +1787,7 @@ onClearSearch={handleClearSearch}
           allMedicines={medicines}
           onMedicineSelect={(m) => {
             setSelectedMedicine(m);
-            navigateTo('details', 'push');
+            setView('details');
           }}
         />
       )}
@@ -1892,20 +1822,6 @@ onClearSearch={handleClearSearch}
       )}
 
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>{ setIsEditModalOpen(false); if(selectedMedicine) openSheet(selectedMedicine, true); }} medicine={selectedMedicine} onSave={async (m) => { await handleSaveMedicine(m); setIsEditModalOpen(false); openSheet(m, true); }} t={t} />}
-
-      {/* ── Bottom Nav Bar ── */}
-      {!['login', 'register', 'imageView'].includes(view) && (
-        <BottomNavBar
-          activeTab={activeTab}
-          setActiveTab={handleTabClick}
-          t={t}
-          user={user}
-          view={view}
-          onPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-          onFavoritesClick={() => { navigateTo('favorites', 'tab'); }}
-          onDrugTestCheck={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-        />
-      )}
     </div>
   );
 };

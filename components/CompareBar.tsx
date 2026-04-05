@@ -91,11 +91,12 @@ const CompareBar: React.FC<CompareBarProps> = ({ compareList, onRemove, onCompar
 
           {compareList.length === 2 && (
             <button
-              onClick={onCompare}
-              className="w-full bg-white text-primary font-black text-sm py-2.5 rounded-2xl active:scale-95 transition-all shadow-lg"
+              onPointerDown={e => { e.stopPropagation(); onCompare(); }}
+              className="w-full bg-white text-primary font-black text-sm py-3 rounded-2xl transition-all shadow-lg select-none"
               style={{
                 animation: 'compareCardIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards',
                 opacity: 0,
+                touchAction: 'manipulation',
               }}
             >
               {language === 'ar' ? '🔍 عرض المقارنة' : '🔍 Show Comparison'}

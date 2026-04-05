@@ -23,8 +23,6 @@ interface SearchBarProps {
   onInsuranceClick?: () => void;
   isSearching?: boolean;
   language?: string;
-  indications?: Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }>;
-  onIndicationSelect?: (indication: string) => void;
 }
 
 const SORT_OPTIONS = [
@@ -53,27 +51,11 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   setSortBy,
   onInsuranceClick,
   language = 'en',
-  indications = {},
-  onIndicationSelect,
 }) => {
   const [isFocused, setIsFocused]           = useState(false);
   const [isTyping, setIsTyping]             = useState(false);
   const [showSettings, setShowSettings]     = useState(false);
   const [showSort, setShowSort]             = useState(false);
-  const [showIndicationDrop, setShowIndicationDrop] = useState(false);
-
-  // مطابقة الأمراض لما يكتب في وضع الـ indication
-  const indicationSuggestions = React.useMemo(() => {
-    if (textSearchMode !== 'indication' || !searchTerm.trim() || Object.keys(indications).length === 0) return [];
-    const term = searchTerm.trim().toLowerCase();
-    return Object.entries(indications)
-      .filter(([name, data]) =>
-        name.toLowerCase().includes(term) ||
-        (data?.icd10Code || '').toLowerCase().includes(term)
-      )
-      .slice(0, 12)
-      .map(([name, data]) => ({ name, icd10Code: data?.icd10Code || '', count: (data?.drugs || []).length }));
-  }, [searchTerm, textSearchMode, indications]);
 
   const inputRef    = useRef<HTMLInputElement>(null);
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,13 +74,12 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setIsTyping(true);
-    if (textSearchMode === 'indication') setShowIndicationDrop(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setSearchTerm(val);
       setIsTyping(false);
     }, DELAY);
-  }, [setSearchTerm, DELAY, textSearchMode]);
+  }, [setSearchTerm, DELAY]);
 
   const ar = language === 'ar';
 
@@ -138,36 +119,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
               <div className="w-5 h-5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-full"><ClearIcon /></div>
             </button>
           )}
-
-          {/* Indication Dropdown */}
-          {textSearchMode === 'indication' && showIndicationDrop && indicationSuggestions.length > 0 && (
-            <>
-              <div className="fixed inset-0 z-[110]" onClick={() => setShowIndicationDrop(false)} />
-              <div className="absolute top-full left-0 right-0 mt-1 z-[111] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-64 overflow-y-auto">
-                {indicationSuggestions.map(({ name, icd10Code, count }) => (
-                  <button
-                    key={name}
-                    onMouseDown={e => {
-                      e.preventDefault();
-                      if (inputRef.current) inputRef.current.value = name;
-                      setSearchTerm(name);
-                      setShowIndicationDrop(false);
-                      onIndicationSelect?.(name);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-primary/5 active:bg-primary/10 transition-colors text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                  >
-                    <div>
-                      <p className="text-sm font-black text-slate-700 dark:text-slate-200">{name}</p>
-                      {icd10Code && <p className="text-[10px] text-slate-400 font-bold">{icd10Code}</p>}
-                    </div>
-                    <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0 ml-2">
-                      {count} {ar ? 'دواء' : 'drugs'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </div>
 
         {/* Settings button — يختفي لما focused */}
@@ -201,7 +152,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 {[
                   { val: 'tradeName',     labelAr: 'الاسم التجاري', labelEn: 'Trade Name' },
                   { val: 'scientificName',labelAr: 'الاسم العلمي',  labelEn: 'Scientific' },
-                  { val: 'indication',    labelAr: 'المرض',          labelEn: 'Disease' },
+                  { val: 'indication',    labelAr: '🔍 المرض',       labelEn: '🔍 Disease' },
                 ].map(opt => (
                   <button key={opt.val}
                     onClick={() => { setTextSearchMode(opt.val as TextSearchMode); setShowSettings(false); }}
@@ -297,17 +248,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
           </div>
         )}
 
-        {/* Insurance */}
-        {onInsuranceClick && (
-          <button onClick={onInsuranceClick}
-            className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-black bg-teal-500 text-white shadow-sm transition-all active:scale-90 active:bg-teal-600 flex-shrink-0 ml-auto"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            {ar ? 'التأمين' : 'Insurance'}
-          </button>
-        )}
       </div>
     </div>
   );

@@ -9,20 +9,17 @@ interface ResultsListProps {
   onFindAlternative: (medicine: Medicine) => void;
   favorites: string[];
   onToggleFavorite: (medicineId: string) => void;
-  onToggleCompare?: (medicine: Medicine) => void;
-  compareList?: string[];
   t: TFunction;
   language: Language;
   resultsState: 'loading' | 'loaded' | 'empty';
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
-  maxResults?: number;
 }
+
+const MAX_RESULTS = 100;
 
 const ResultsList: React.FC<ResultsListProps> = ({
   medicines, onMedicineSelect, onMedicineLongPress, onFindAlternative,
-  t, language, resultsState, favorites, onToggleFavorite,
-  onToggleCompare, compareList = [],
-  maxResults
+  t, language, resultsState, favorites, onToggleFavorite
 }) => {
 
   if (resultsState === 'empty') {
@@ -34,8 +31,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
     );
   }
 
-  // maxResults غير موجود = بدون حد
-  const visibleMeds = maxResults != null ? medicines.slice(0, maxResults) : medicines;
+  const visibleMeds = medicines.slice(0, MAX_RESULTS);
   const displayCount = visibleMeds.length;
 
   return (
@@ -56,8 +52,6 @@ const ResultsList: React.FC<ResultsListProps> = ({
               onFindAlternative={onFindAlternative}
               isFavorite={favorites.includes(med.RegisterNumber)}
               onToggleFavorite={onToggleFavorite}
-              onToggleCompare={onToggleCompare}
-              isInCompare={compareList.includes(med.RegisterNumber)}
               t={t}
               language={language}
             />

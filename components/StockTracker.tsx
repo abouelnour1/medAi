@@ -355,15 +355,6 @@ const StockTracker: React.FC<{ allMedicines: Medicine[]; t: TFunction; language:
     <div className="space-y-4 animate-fade-in pb-8">
       {showAdd && active && <AddSheet allMedicines={allMedicines} existingIds={new Set(stockList.map(s=>s.medicineId))} onAdd={addStock} onClose={() => setShowAdd(false)} />}
       {editEntry && <EditSheet entry={editEntry} onSave={(q,m,n) => { updateStock(editEntry.medicineId,q,m,n); setEditEntry(null); }} onRemove={() => { removeStock(editEntry.medicineId); setEditEntry(null); }} onClose={() => setEditEntry(null)} />}
-      {/* Back button */}
-      {onBack && (
-        <button onClick={onBack} className="flex items-center gap-2 text-primary font-black text-sm mb-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          Settings
-        </button>
-      )}
 
       {/* Notice */}
       <div className="flex items-center gap-2.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/15 rounded-2xl border border-amber-200/40">
