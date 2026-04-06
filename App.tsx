@@ -1358,6 +1358,17 @@ const App: React.FC = () => {
                           </svg>
                           <span className="text-[10px] font-black text-rose-500">{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
                         </button>
+                        {/* Prescription */}
+                        <button onClick={() => { setActiveTab('settings'); setView('prescription'); }}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 active:scale-95 transition-all">
+                          <svg className="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                            <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2"/>
+                            <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            <path d="M9 12h6M9 16h4"/>
+                          </svg>
+                          <span className="text-[10px] font-black text-indigo-600">{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
+                        </button>
                       </div>
                     </div>
                   )}                  <div className="mt-2">
