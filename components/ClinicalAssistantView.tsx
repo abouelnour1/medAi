@@ -313,15 +313,25 @@ ${conditionList || 'Saudi MOH standard protocols'}`;
         {/* Quick chips */}
         {showChips && aiAvailable && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {chips.map((chip, i) => (
-              <button
-                key={i}
-                onClick={() => handleSend(chip.prompt)}
-                className="text-[11px] font-bold bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 px-3 py-2 rounded-2xl active:scale-95 transition-all hover:border-primary hover:text-primary shadow-sm"
-              >
-                {chip.label}
-              </button>
-            ))}
+            {chips.map((chip, i) => {
+              const emojiMatch = chip.label.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u);
+              const emoji = emojiMatch ? emojiMatch[0].trim() : '';
+              const text = emoji ? chip.label.replace(emojiMatch[0], '') : chip.label;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleSend(chip.prompt)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 px-3 py-2 rounded-2xl active:scale-95 transition-all hover:border-primary hover:text-primary shadow-sm"
+                >
+                  {emoji && (
+                    <span style={{ fontFamily: 'Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif', fontSize: '14px', lineHeight: 1 }}>
+                      {emoji}
+                    </span>
+                  )}
+                  <span>{text}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
