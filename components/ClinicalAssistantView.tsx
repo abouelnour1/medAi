@@ -22,7 +22,75 @@ const Type = {
 import { Medicine, TFunction, Language, ChatMessage, PrescriptionData, InsuranceDrug, SerializablePart } from '../types';
 import StethoscopeIcon from './icons/StethoscopeIcon';
 import MarkdownRenderer from './MarkdownRenderer';
-import PrescriptionView from './PrescriptionView';
+
+// ── Inline Prescription Card (displayed inside chat) ──────────────────────────
+const InlinePrescriptionCard: React.FC<{ content: string; t: TFunction }> = ({ content, t }) => {
+  const match = content.match(/---PRESCRIPTION_START---\s*```json\s*([\s\S]*?)\s*```\s*---PRESCRIPTION_END---/);
+  if (!match) {
+    return (
+      <div className="bg-white dark:bg-dark-card rounded-3xl rounded-bl-sm px-4 py-3 shadow-sm border border-slate-100 dark:border-dark-border text-sm leading-relaxed">
+        <MarkdownRenderer content={content} />
+      </div>
+    );
+  }
+  let data: any = null;
+  try { data = JSON.parse(match[1]); } catch { return null; }
+
+  const drugs: any[] = data.drugs || [];
+  const ar = (data.language || 'ar') === 'ar';
+
+  return (
+    <div className="w-full bg-white dark:bg-dark-card rounded-2xl border border-primary/20 shadow-md overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-primary to-teal-600 px-4 py-3">
+        <p className="text-white font-black text-sm">
+          {ar ? '🩺 وصفة طبية' : '🩺 Prescription'}
+        </p>
+        {data.patientName && (
+          <p className="text-white/80 text-xs mt-0.5">
+            {ar ? 'المريض: ' : 'Patient: '}{data.patientName}
+          </p>
+        )}
+      </div>
+
+      {/* Drugs list */}
+      <div className="divide-y divide-slate-100 dark:divide-dark-border">
+        {drugs.map((drug: any, i: number) => (
+          <div key={i} className="px-4 py-3">
+            <p className="font-black text-slate-800 dark:text-slate-100 text-sm">{drug.name}</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {drug.dose && (
+                <span className="text-[11px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
+                  {drug.dose}
+                </span>
+              )}
+              {drug.frequency && (
+                <span className="text-[11px] bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-bold px-2 py-0.5 rounded-full">
+                  {drug.frequency}
+                </span>
+              )}
+              {drug.duration && (
+                <span className="text-[11px] bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full">
+                  {drug.duration}
+                </span>
+              )}
+            </div>
+            {drug.notes && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{drug.notes}</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      {data.notes && (
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-800">
+          <p className="text-[11px] text-amber-700 dark:text-amber-300">{data.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+};
 import { runAIChat, isAIAvailable, sanitizeParts } from '../geminiService';
 
 interface ClinicalAssistantViewProps {
@@ -232,7 +300,7 @@ ${conditionList || 'Saudi MOH standard protocols'}`;
                   : 'bg-white dark:bg-dark-card rounded-3xl rounded-bl-sm px-4 py-3 shadow-sm border border-slate-100 dark:border-dark-border'
               }`}>
                 {isPrescription
-                  ? <PrescriptionView content={textContent!} t={t} />
+                  ? <InlinePrescriptionCard content={textContent!} t={t} />
                   : <div className="text-sm leading-relaxed">
                       <MarkdownRenderer content={textContent || ''} />
                     </div>
