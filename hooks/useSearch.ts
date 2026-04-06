@@ -165,7 +165,7 @@ export function useSearch(
     }
 
     return medicines.filter(m => {
-      if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw);
+      if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw); // تجاري فقط
       return scoreQuery(String(m['Trade Name'] || ''), String(m['Scientific Name'] || ''), queryWords, textSearchMode === 'tradeName') !== null;
     });
   }, [medicines, raw, debouncedSearchTerm, textSearchMode, indications]);
@@ -231,8 +231,8 @@ export function useSearch(
         const tradNorm = norm(String(m['Trade Name'] || ''));
         const sciNorm  = norm(String(m['Scientific Name'] || ''));
         if (hasWildcard) {
-          // wildcard يشتغل على التجاري والعلمي دايماً
-          return matchesWildcard(tradNorm, raw) || matchesWildcard(sciNorm, raw);
+          // wildcard — الاسم التجاري فقط
+          return matchesWildcard(tradNorm, raw);
         }
         if (isSci)   return sciNorm.includes(qn);
         if (isTrade) return tradNorm.includes(qn);
@@ -273,7 +273,7 @@ export function useSearch(
       const trade = String(m['Trade Name'] || '');
       const sci   = String(m['Scientific Name'] || '');
       if (hasWildcard) {
-        if (matchesWildcard(norm(trade), raw) || matchesWildcard(norm(sci), raw))
+        if (matchesWildcard(norm(trade), raw))
           buckets.push({ m, tier: 3, matchLen: 0, restFoundAll: false, tradeName: norm(trade) });
         continue;
       }
