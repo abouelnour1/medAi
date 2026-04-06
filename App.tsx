@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   InsuranceDrug, SelectedInsuranceData, InsuranceSearchMode, Notification as AppNotification
@@ -27,7 +27,7 @@ import { useSearch } from './hooks/useSearch';
 import { useAlternatives } from './hooks/useMedicineUtils';
 import DrugToolsModal from './components/DrugToolsModal';
 import PediatricDoseCalculator from './components/PediatricDoseCalculator';
-import DrugTestChecker from './components/DrugTestChecker';
+const DrugTestChecker = lazy(() => import('./components/DrugTestChecker'));
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
@@ -1651,7 +1651,7 @@ const App: React.FC = () => {
       />
 
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
-      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view) && (
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view) && (
         <div
           className="fixed left-0 right-0 z-[59] px-3"
           style={{ top: headerHeight }}
@@ -1681,7 +1681,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={view}>
               {renderContent()}
             </div>
@@ -1789,16 +1789,18 @@ onClearSearch={handleClearSearch}
       )}
 
       {drugTestOpen && (
-        <DrugTestChecker
-          onClose={() => setDrugTestOpen(false)}
-          initialDrugName={drugTestInitial}
-          language={language}
-          allMedicines={medicines}
-          onMedicineSelect={(m) => {
-            setSelectedMedicine(m);
-            setView('details');
-          }}
-        />
+        <Suspense fallback={null}>
+          <DrugTestChecker
+            onClose={() => setDrugTestOpen(false)}
+            initialDrugName={drugTestInitial}
+            language={language}
+            allMedicines={medicines}
+            onMedicineSelect={(m) => {
+              setSelectedMedicine(m);
+              setView('details');
+            }}
+          />
+        </Suspense>
       )}
 
       {false && drugToolsModal.open && (

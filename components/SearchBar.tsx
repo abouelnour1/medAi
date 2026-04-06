@@ -152,7 +152,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 {[
                   { val: 'tradeName',     labelAr: 'الاسم التجاري', labelEn: 'Trade Name' },
                   { val: 'scientificName',labelAr: 'الاسم العلمي',  labelEn: 'Scientific' },
-                  { val: 'indication',    labelAr: '🔍 المرض',       labelEn: '🔍 Disease' },
                 ].map(opt => (
                   <button key={opt.val}
                     onClick={() => { setTextSearchMode(opt.val as TextSearchMode); setShowSettings(false); }}

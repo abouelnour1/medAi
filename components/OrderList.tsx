@@ -123,7 +123,7 @@ const AddMedicineModal: React.FC<{
             />
           </div>
         </div>
-        <div className="overflow-y-auto no-scrollbar px-4 pb-6 flex-grow">
+        <div className="overflow-y-auto no-scrollbar px-4 pb-6" style={{ height: '50vh' }}>
           {results.length === 0 && search.trim().length >= 2 && (
             <p className="text-center text-sm text-slate-400 py-8">No results</p>
           )}

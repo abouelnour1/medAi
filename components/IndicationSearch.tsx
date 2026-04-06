@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Medicine, Language, TFunction } from '../types';
 import MedicineCard from './MedicineCard';
 
+type SortMode = 'alpha' | 'priceAsc' | 'priceDesc';
+
 interface Props {
   indications: Record<string, { icd10Code: string; drugs: { s: string; a?: string; c?: string; m?: string; n?: string }[] }>;
   medicines: Medicine[];
@@ -23,8 +25,8 @@ const IndicationSearch: React.FC<Props> = ({
   const [query, setQuery] = useState('');
   const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   const [selectedSciName, setSelectedSciName] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('alpha');
 
-  // Step 1: قائمة الأمراض المطابقة
   const matchedIndications = useMemo(() => {
     if (!query.trim() || Object.keys(indications).length === 0) return [];
     const q = query.toLowerCase();
@@ -37,12 +39,10 @@ const IndicationSearch: React.FC<Props> = ({
       .map(([name, data]) => ({ name, icd10Code: data.icd10Code, drugCount: (data.drugs || []).length }));
   }, [query, indications]);
 
-  // Step 2: المواد الفعالة للمرض المختار
   const activeIngredients = useMemo(() => {
     if (!selectedIndication) return [];
     const data = indications[selectedIndication];
     if (!data) return [];
-    // group by scientific name
     const map = new Map<string, { atcCode: string; drugClass: string; mdd: string; notes: string; medCount: number }>();
     (data.drugs || []).forEach(d => {
       const sci = (d.s || '').trim();
@@ -59,13 +59,15 @@ const IndicationSearch: React.FC<Props> = ({
       .sort((a, b) => b.medCount - a.medCount);
   }, [selectedIndication, indications, medicines]);
 
-  // Step 3: الأدوية للمادة الفعالة المختارة
   const selectedMedicines = useMemo(() => {
     if (!selectedSciName) return [];
-    return medicines.filter(m =>
+    const meds = medicines.filter(m =>
       String(m['Scientific Name'] || '').toLowerCase() === selectedSciName.toLowerCase()
     );
-  }, [selectedSciName, medicines]);
+    if (sortMode === 'priceAsc') return [...meds].sort((a, b) => (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0));
+    if (sortMode === 'priceDesc') return [...meds].sort((a, b) => (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0));
+    return [...meds].sort((a, b) => String(a['Trade Name']).localeCompare(String(b['Trade Name'])));
+  }, [selectedSciName, medicines, sortMode]);
 
   const handleBack = () => {
     if (selectedSciName) { setSelectedSciName(null); return; }
@@ -89,13 +91,8 @@ const IndicationSearch: React.FC<Props> = ({
         )}
         <input
           type="text"
-          value={selectedIndication
-            ? (selectedSciName || selectedIndication)
-            : query}
-          onChange={e => {
-            if (selectedIndication) return;
-            setQuery(e.target.value);
-          }}
+          value={selectedIndication ? (selectedSciName || selectedIndication) : query}
+          onChange={e => { if (selectedIndication) return; setQuery(e.target.value); }}
           readOnly={!!selectedIndication}
           placeholder={ar ? 'ابحث عن مرض... مثال: Hypertension' : 'Search disease... e.g. Hypertension'}
           className={`w-full h-12 ${showBack ? 'pl-10' : 'pl-4'} pr-10 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-2xl text-sm font-semibold text-slate-700 dark:text-white outline-none focus:border-primary/40 transition-colors placeholder-slate-300`}
@@ -170,12 +167,32 @@ const IndicationSearch: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Step 3: Medicines */}
+      {/* Step 3: Medicines with sort */}
       {selectedSciName && (
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
-            {selectedMedicines.length} {ar ? 'دواء' : 'medicines'}
-          </p>
+          {/* Sort bar */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              {selectedMedicines.length} {ar ? 'دواء' : 'medicines'}
+            </p>
+            <div className="flex gap-1">
+              {([
+                { val: 'alpha' as SortMode,    labelAr: 'أ-ي',   labelEn: 'A-Z' },
+                { val: 'priceAsc' as SortMode,  labelAr: 'أقل سعر', labelEn: 'Lowest' },
+                { val: 'priceDesc' as SortMode, labelAr: 'أعلى سعر', labelEn: 'Highest' },
+              ] as const).map(s => (
+                <button key={s.val} onClick={() => setSortMode(s.val)}
+                  className={`px-2.5 py-1 rounded-xl text-[9px] font-black transition-all ${
+                    sortMode === s.val
+                      ? 'bg-primary text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}>
+                  {ar ? s.labelAr : s.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {selectedMedicines.length === 0 ? (
             <div className="text-center py-12 text-slate-400 font-black text-sm">
               {ar ? 'لا توجد أدوية مسجلة' : 'No registered medicines found'}
