@@ -73,7 +73,7 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const addDrug = () => setDrugs(prev => [...prev, { id: generateId(), name: '', dose: '', frequency: '', duration: '', notes: '' }]);
   const removeDrug = (id: string) => setDrugs(prev => prev.filter(d => d.id !== id));
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const printContent = printRef.current?.innerHTML;
     if (!printContent) return;
 
@@ -100,42 +100,65 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
       .rx-stamp { border: 2px solid #0d9488; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 700; color: #0d9488; }
       .rx-sig { text-align: center; } .rx-sig .line { border-top: 1px solid #111; width: 140px; margin: 0 auto 4px; }
       .rx-date { font-size: 11px; color: #555; }
-      @media print {
-        body > *:not(#rx-print-frame) { display: none !important; }
-        #rx-print-frame { display: block !important; position: fixed; inset: 0; z-index: 99999; background: white; }
-      }
+      @media print { @page { margin: 10mm; } }
     `;
 
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <title>${ar ? 'وصفة طبية' : 'Prescription'}</title>
+      <style>${css}</style>
+      </head><body>
+      <div class="rx-print">${printContent}</div>
+      ${isAndroid ? `<script>
+        window.onload = function() {
+          setTimeout(function(){ window.print(); }, 300);
+        };
+      <\/script>` : ''}
+      </body></html>`;
+
     if (isAndroid) {
-      // على الأندرويد: نحقن iframe مخفي في نفس الصفحة ونطبع منه مباشرة
-      // بدون window.open عشان ما يفتحش متصفح خارجي
-      const existing = document.getElementById('rx-print-frame');
-      if (existing) existing.remove();
+      try {
+        // نحفظ الـ HTML في Filesystem ثم نفتحه عبر Capacitor Browser
+        const { Filesystem, Directory } = await import('@capacitor/filesystem');
+        const { Browser } = await import('@capacitor/browser');
 
-      const iframe = document.createElement('iframe');
-      iframe.id = 'rx-print-frame';
-      iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:-1;opacity:0;';
-      document.body.appendChild(iframe);
+        const fileName = 'prescription_' + Date.now() + '.html';
+        await Filesystem.writeFile({
+          path: fileName,
+          data: btoa(unescape(encodeURIComponent(fullHtml))),
+          directory: Directory.Cache,
+          encoding: 'base64' as any,
+        });
 
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc) return;
+        const result = await Filesystem.getUri({
+          path: fileName,
+          directory: Directory.Cache,
+        });
 
-      doc.open();
-      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>${css}</style></head><body><div class="rx-print">${printContent}</div></body></html>`);
-      doc.close();
-
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => iframe.remove(), 2000);
-      }, 500);
-      return;
+        await Browser.open({
+          url: result.uri,
+          presentationStyle: 'popover',
+        });
+        return;
+      } catch (err) {
+        console.error('Android print error:', err);
+        // fallback: share as text
+        try {
+          const { Share } = await import('@capacitor/share');
+          await Share.share({
+            title: ar ? 'وصفة طبية' : 'Prescription',
+            text: printRef.current?.innerText || '',
+            dialogTitle: ar ? 'مشاركة الوصفة' : 'Share Prescription',
+          });
+        } catch {}
+        return;
+      }
     }
 
-    // ويب / iOS
+    // ويب / iOS — نفتح نافذة جديدة
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>${css}</style></head><body><div class="rx-print">${printContent}</div></body></html>`);
+    w.document.write(fullHtml);
     w.document.close();
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };
