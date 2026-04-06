@@ -1,396 +1,429 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { Medicine, Language, User } from '../types';
 
-import React, { useMemo, useState, useRef } from 'react';
-import { TFunction, PrescriptionData } from '../types';
-import ClearIcon from './icons/ClearIcon';
+interface PrescriptionDrug {
+  id: string;
+  name: string;
+  dose: string;
+  frequency: string;
+  duration: string;
+  notes: string;
+}
 
-const parsePrescription = (content: string): Omit<PrescriptionData, 'id'> | null => {
-    const markerMatch = content.match(/---PRESCRIPTION_START---([\s\S]*?)---PRESCRIPTION_END---/);
-    let potentialJson = markerMatch ? markerMatch[1] : content;
-    potentialJson = potentialJson.replace(/```(?:json)?/g, '').replace(/```/g, '');
-    const firstBrace = potentialJson.indexOf('{');
-    const lastBrace = potentialJson.lastIndexOf('}');
+interface PrescriptionViewProps {
+  language: Language;
+  user: User | null;
+  allMedicines: Medicine[];
+  onBack: () => void;
+}
 
-    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
-        return null;
-    }
+const FREQUENCIES_AR = ['مرة يومياً', 'مرتين يومياً', 'ثلاث مرات يومياً', 'كل 8 ساعات', 'كل 12 ساعة', 'عند الحاجة', 'قبل النوم'];
+const FREQUENCIES_EN = ['Once daily', 'Twice daily', 'Three times daily', 'Every 8 hours', 'Every 12 hours', 'As needed', 'At bedtime'];
 
-    const jsonString = potentialJson.substring(firstBrace, lastBrace + 1);
+const generateId = () => Math.random().toString(36).slice(2, 9);
 
-    try {
-        return JSON.parse(jsonString);
-    } catch (e) {
-        console.error("Failed to parse prescription JSON", e);
-        return null;
-    }
-};
+const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, allMedicines, onBack }) => {
+  const ar = language === 'ar';
+  const [tab, setTab] = useState<'manual' | 'online'>('manual');
 
-const PrescriptionView: React.FC<{ content?: string; prescriptionData?: PrescriptionData; t: TFunction }> = ({ content, prescriptionData, t }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    
-    const data = useMemo(() => {
-        let parsedData = null;
-        if (prescriptionData) parsedData = prescriptionData;
-        else if (content) {
-            const parsed = parsePrescription(content);
-            if (parsed) parsedData = { ...parsed, id: `p-${Date.now()}` };
-        }
-        
-        if (parsedData) {
-            if (!parsedData.insuranceCompany || parsedData.insuranceCompany === '...') {
-                parsedData.insuranceCompany = 'Self-Pay (Cash)';
-            }
-            if (!parsedData.date) {
-                parsedData.date = new Date().toLocaleDateString('en-GB');
-            }
-            if (!parsedData.hospitalName) parsedData.hospitalName = "PHARMASOURCE MEDICAL CENTER";
-            if (!parsedData.hospitalAddress) parsedData.hospitalAddress = "Riyadh, Kingdom of Saudi Arabia";
-        }
-        return parsedData;
-    }, [content, prescriptionData]);
+  // ── Doctor / Clinic Info ────────────────────────────────────────────────
+  const [doctorName,    setDoctorName]    = useState((user as any)?.username || '');
+  const [specialty,     setSpecialty]     = useState((user as any)?.specialty || (user as any)?.subSpecialty || '');
+  const [institution,   setInstitution]   = useState('');
+  const [licenseNo,     setLicenseNo]     = useState('');
 
-    const handlePrint = () => {
-        if (!iframeRef.current || !data) return;
-        
-        const iframe = iframeRef.current;
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        
-        if (!doc) return;
+  // ── Patient Info ───────────────────────────────────────────────────────
+  const [patientName,   setPatientName]   = useState('');
+  const [patientId,     setPatientId]     = useState('');
+  const [patientAge,    setPatientAge]    = useState('');
+  const [patientGender, setPatientGender] = useState<'M'|'F'|''>('');
+  const [patientWeight, setPatientWeight] = useState('');
+  const [diagnosis,     setDiagnosis]     = useState('');
 
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html dir="ltr">
-            <head>
-                <title>Prescription - ${data.patientName || 'Patient'}</title>
-                <style>
-                    /* خط محلي - fonts.css */
-                    body { 
-                        font-family: 'Poppins', 'Cairo', sans-serif; 
-                        margin: 0; padding: 10mm; background: #fff; color: #000;
-                        line-height: 1.2;
-                    }
-                    .rx-page {
-                        width: 100%; min-height: 270mm; position: relative;
-                        display: flex; flex-direction: column;
-                        border: 1px solid #eee;
-                        padding: 5mm;
-                    }
-                    .header {
-                        display: flex; justify-content: space-between; align-items: center;
-                        border-bottom: 2px solid #111; padding-bottom: 3mm; margin-bottom: 5mm;
-                    }
-                    .hospital-info h1 { margin: 0; font-size: 16pt; font-weight: 900; letter-spacing: -0.5px; color: #0f766e; }
-                    .hospital-info p { margin: 1px 0; font-size: 8pt; color: #666; }
-                    
-                    .meta-info { text-align: right; font-size: 8pt; }
-                    .meta-info b { color: #000; }
+  // ── Drugs ──────────────────────────────────────────────────────────────
+  const [drugs, setDrugs] = useState<PrescriptionDrug[]>([
+    { id: generateId(), name: '', dose: '', frequency: '', duration: '', notes: '' }
+  ]);
+  const [drugSearch, setDrugSearch]   = useState<Record<string, string>>({});
+  const [drugDropdown, setDrugDropdown] = useState<string | null>(null);
 
-                    .patient-box {
-                        display: grid; grid-template-columns: 1fr 1fr; gap: 3mm;
-                        background: #f8fafc; padding: 3mm; border-radius: 1mm;
-                        border: 1px solid #e2e8f0; margin-bottom: 5mm;
-                    }
-                    .info-group { font-size: 9pt; }
-                    .label { font-size: 7pt; color: #64748b; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 1px; }
-                    .value { font-weight: 700; color: #1e293b; }
+  // ── Stamp ──────────────────────────────────────────────────────────────
+  const [stampText, setStampText] = useState('');
 
-                    .diagnosis-section { margin-bottom: 5mm; padding-left: 3mm; border-left: 3px solid #0f766e; }
-                    .diagnosis-section p { margin: 0; font-size: 10pt; font-style: italic; font-weight: 600; color: #334155; }
+  // ── Print ref ─────────────────────────────────────────────────────────
+  const printRef = useRef<HTMLDivElement>(null);
 
-                    .rx-container { display: flex; align-items: center; gap: 3mm; margin-bottom: 3mm; }
-                    .rx-symbol { font-size: 24pt; font-weight: 900; color: #111; line-height: 1; }
-                    .rx-label { font-size: 10pt; font-weight: 900; border-bottom: 2px solid #111; padding-bottom: 1px; }
+  const today = new Date().toLocaleDateString(ar ? 'ar-SA' : 'en-GB', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
 
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 10mm; flex-grow: 1; }
-                    th { text-align: left; border-bottom: 1.5px solid #111; padding: 2mm 0; font-size: 8pt; text-transform: uppercase; color: #475569; }
-                    td { padding: 3mm 0; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-                    
-                    .med-name { font-size: 11pt; font-weight: 800; display: block; color: #000; }
-                    .med-generic { font-size: 8pt; color: #64748b; font-style: italic; }
-                    .med-instruction { font-size: 9pt; margin-top: 1mm; font-weight: 600; color: #1e293b; }
-                    .med-instruction-ar { font-family: 'Cairo'; font-size: 10pt; margin-top: 1mm; text-align: right; font-weight: 700; color: #0f766e; }
-                    .qty { font-size: 11pt; font-weight: 900; text-align: center; color: #111; }
+  // Drug search suggestions
+  const getDrugSuggestions = useCallback((query: string) => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    return allMedicines
+      .filter(m => m['Trade Name']?.toLowerCase().includes(q) || m['Scientific Name']?.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [allMedicines]);
 
-                    .footer {
-                        display: flex; justify-content: space-between; align-items: flex-end; padding-top: 5mm;
-                        border-top: 1px solid #eee;
-                    }
-                    .signature-line { width: 50mm; border-top: 1px solid #000; text-align: center; font-size: 8pt; padding-top: 1mm; font-weight: bold; }
-                    
-                    .stamp {
-                        border: 2px double #1a4a9c; color: #1a4a9c; width: 40mm; height: 22mm;
-                        display: flex; flex-direction: column; align-items: center; justify-content: center;
-                        transform: rotate(-2deg); border-radius: 1mm; background: rgba(26, 74, 156, 0.02);
-                        font-family: monospace; font-weight: bold; text-align: center;
-                    }
-                    .stamp-top { border-bottom: 1px solid #1a4a9c; width: 100%; font-size: 6pt; padding-bottom: 0.5mm; margin-bottom: 0.5mm; }
-                    .stamp-name { font-size: 8pt; text-transform: uppercase; }
-                    .stamp-date { font-size: 6pt; margin-top: 0.5mm; }
+  const updateDrug = (id: string, field: keyof PrescriptionDrug, value: string) => {
+    setDrugs(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
+  };
 
-                    @media print {
-                        @page { size: A4; margin: 0; }
-                        body { padding: 10mm; }
-                        button { display: none; }
-                        .rx-page { border: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="rx-page">
-                    <div class="header">
-                        <div class="hospital-info">
-                            <h1>${data.hospitalName}</h1>
-                            <p>${data.hospitalAddress}</p>
-                        </div>
-                        <div class="meta-info">
-                            <div>Date: <b>${data.date}</b></div>
-                            <div>Ref: <b>${data.fileNumber || 'RX-' + Math.floor(Math.random()*90000)}</b></div>
-                        </div>
-                    </div>
+  const addDrug = () => setDrugs(prev => [...prev, { id: generateId(), name: '', dose: '', frequency: '', duration: '', notes: '' }]);
+  const removeDrug = (id: string) => setDrugs(prev => prev.filter(d => d.id !== id));
 
-                    <div class="patient-box">
-                        <div class="info-group">
-                            <span class="label">Patient Name</span>
-                            <span class="value">${data.patientName || 'N/A'}</span>
-                        </div>
-                        <div class="info-group">
-                            <span class="label">National ID / Medical File</span>
-                            <span class="value">${data.patientId || data.fileNumber || 'N/A'}</span>
-                        </div>
-                        <div class="info-group">
-                            <span class="label">Insurance Provider</span>
-                            <span class="value">${data.insuranceCompany}</span>
-                        </div>
-                        <div class="info-group">
-                            <span class="label">Ordering Physician</span>
-                            <span class="value">Dr. ${data.doctorName || 'Consultant'}</span>
-                        </div>
-                    </div>
+  const handlePrint = () => {
+    const printContent = printRef.current?.innerHTML;
+    if (!printContent) return;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>${ar ? 'وصفة طبية' : 'Prescription'}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #111; background: white; direction: ${ar ? 'rtl' : 'ltr'}; }
+        .rx-print { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .rx-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #0d9488; margin-bottom: 16px; }
+        .rx-logo { font-size: 28px; font-weight: 900; color: #0d9488; }
+        .rx-doc-info h2 { font-size: 16px; font-weight: 700; color: #111; }
+        .rx-doc-info p { font-size: 11px; color: #555; margin-top: 2px; }
+        .rx-patient { background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+        .rx-patient-field { font-size: 11px; } .rx-patient-field span { font-weight: 700; }
+        .rx-diagnosis { background: #fff7ed; border-left: 3px solid #f59e0b; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 11px; }
+        .rx-symbol { font-size: 42px; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 10px; }
+        .rx-drug { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
+        .rx-drug:nth-child(even) { background: #f9fafb; }
+        .rx-drug-header { font-weight: 700; background: #f0fdf9 !important; border-radius: 4px; }
+        .rx-drug-name { font-weight: 700; color: #0d9488; font-size: 12px; }
+        .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #ccc; }
+        .rx-stamp { border: 2px solid #0d9488; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 700; color: #0d9488; }
+        .rx-sig { text-align: center; } .rx-sig .line { border-top: 1px solid #111; width: 140px; margin: 0 auto 4px; }
+        .rx-date { font-size: 11px; color: #555; }
+        @media print { body { font-size: 11px; } }
+      </style></head><body>${printContent}</body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 400);
+  };
 
-                    <div class="diagnosis-section">
-                        <span class="label">Clinical Impression</span>
-                        <p>${data.diagnosisDescription || 'Routine Medical Checkup'}</p>
-                    </div>
+  const inputCls = `w-full px-3 py-2.5 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 outline-none transition-all`;
+  const labelCls = `block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1`;
 
-                    <div class="rx-container">
-                        <div class="rx-symbol">℞</div>
-                        <div class="rx-label">PRESCRIPTION</div>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 85%">Medication Description & Dosage Schedule</th>
-                                <th style="width: 15%; text-align: center">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.drugs?.map(drug => `
-                                <tr>
-                                    <td>
-                                        <span class="med-name">${drug.tradeName}</span>
-                                        <span class="med-generic">${drug.genericName}</span>
-                                        <div class="med-instruction">${drug.dosage} - ${drug.usageMethod}</div>
-                                        ${drug.usageMethodAr ? `<div class="med-instruction-ar" dir="rtl">${drug.usageMethodAr}</div>` : ''}
-                                    </td>
-                                    <td class="qty">x${drug.quantity}</td>
-                                </tr>
-                            `).join('') || ''}
-                        </tbody>
-                    </table>
-
-                    <div class="footer">
-                        <div class="signature-line">Patient Signature</div>
-                        <div class="stamp">
-                            <div class="stamp-top">CERTIFIED MEDICAL RECORD</div>
-                            <div class="stamp-name">${data.doctorNameAr || data.doctorName || 'Verified'}</div>
-                            <div class="stamp-date">${data.date}</div>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-
-        setTimeout(() => {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-        }, 500);
-    };
-
-    if (!data) return null;
-    
-    return (
-        <div className="w-full animate-fade-in my-2">
-             <iframe ref={iframeRef} className="hidden" />
-             
-             {/* Chat Preview Card */}
-             <div 
-                className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-100 dark:border-slate-700 overflow-hidden shadow-lg hover:shadow-xl transition-all cursor-pointer group"
-                onClick={() => setIsExpanded(true)}
-             >
-                <div className="p-3 bg-slate-900 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center text-primary font-bold text-sm">℞</div>
-                        <span className="text-white font-black text-[10px] tracking-widest uppercase">Prescription</span>
-                    </div>
-                    <span className="text-[9px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-bold">{data.date}</span>
-                </div>
-                
-                <div className="p-4">
-                    <div className="mb-2">
-                        <p className="text-[8px] text-slate-400 font-bold uppercase mb-0.5">Patient Name</p>
-                        <p className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate">{data.patientName || 'Unnamed Patient'}</p>
-                    </div>
-                    
-                    <div className="space-y-1 border-t border-slate-50 dark:border-slate-700 pt-2">
-                         {data.drugs?.slice(0, 1).map((drug, i) => (
-                             <div key={i} className="flex justify-between items-center text-[10px]">
-                                 <span className="font-bold text-primary truncate">{drug.tradeName}</span>
-                                 <span className="text-slate-400">x{drug.quantity}</span>
-                             </div>
-                         ))}
-                         {(data.drugs?.length || 0) > 1 && (
-                             <p className="text-[9px] text-slate-400 italic">+{data.drugs!.length - 1} more items...</p>
-                         )}
-                    </div>
-
-                    <div className="mt-3 flex justify-center">
-                        <div className="px-4 py-1.5 bg-primary text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-md group-hover:scale-105 transition-transform">
-                             فتح للطباعة
-                        </div>
-                    </div>
-                </div>
-             </div>
-
-             {/* Full Modal Preview */}
-             {isExpanded && (
-                 <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 animate-fade-in" onClick={() => setIsExpanded(false)}>
-                     <div 
-                        className="bg-white dark:bg-slate-900 w-full max-w-4xl h-full max-h-[98vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-                        onClick={e => e.stopPropagation()}
-                     >
-                         <div className="p-3 border-b dark:border-slate-800 flex justify-between items-center sticky top-0 z-10 bg-white dark:bg-slate-900">
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setIsExpanded(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"><ClearIcon /></button>
-                                <h3 className="font-black text-xs text-slate-800 dark:text-white uppercase tracking-widest">معاينة الوصفة الطبية</h3>
-                            </div>
-                            <button 
-                                onClick={handlePrint}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-lg transition-all active:scale-95 flex items-center gap-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                طباعة (A4)
-                            </button>
-                         </div>
-                         
-                         <div className="flex-grow overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-100 dark:bg-slate-950">
-                             {/* The actual A4 Paper simulation */}
-                             <div className="bg-white shadow-xl p-8 sm:p-12 text-black font-sans relative flex flex-col w-full max-w-[210mm] min-h-[297mm] rounded-sm origin-top scale-[0.85] sm:scale-100">
-                                 
-                                 {/* Header */}
-                                 <div className="flex justify-between items-center border-b-2 border-slate-900 pb-4 mb-6">
-                                     <div>
-                                         <h1 className="text-xl font-black uppercase text-teal-800 tracking-tighter mb-0.5">{data.hospitalName}</h1>
-                                         <p className="text-[8pt] font-bold text-slate-500 uppercase tracking-widest">{data.hospitalAddress}</p>
-                                     </div>
-                                     <div className="text-right">
-                                         <div className="bg-slate-900 text-white px-2 py-0.5 text-[7pt] font-black rounded mb-1 inline-block">OFFICIAL MEDICAL DOCUMENT</div>
-                                         <p className="text-[8pt] font-bold">DATE: <span className="font-medium text-slate-600">${data.date}</span></p>
-                                     </div>
-                                 </div>
-
-                                 {/* Patient Info */}
-                                 <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded border border-slate-100">
-                                     <div className="space-y-1.5">
-                                         <div>
-                                             <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest block">Patient Name</span>
-                                             <span className="text-xs font-bold text-slate-900">${data.patientName}</span>
-                                         </div>
-                                         <div>
-                                             <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest block">ID Number / File</span>
-                                             <span className="text-xs font-bold text-slate-700">${data.patientId || data.fileNumber || '---'}</span>
-                                         </div>
-                                     </div>
-                                     <div className="space-y-1.5 text-right">
-                                         <div>
-                                             <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest block">Consultant</span>
-                                             <span className="text-xs font-bold text-slate-900">Dr. ${data.doctorName}</span>
-                                         </div>
-                                         <div>
-                                             <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest block">Insurance Plan</span>
-                                             <span className="text-xs font-bold text-teal-700">${data.insuranceCompany}</span>
-                                         </div>
-                                     </div>
-                                 </div>
-
-                                 {/* Rx Symbol & Diagnosis */}
-                                 <div className="flex items-center gap-3 mb-4">
-                                     <div className="text-3xl font-black leading-none">℞</div>
-                                     <div className="flex-grow">
-                                         <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest block">Clinical Impression</span>
-                                         <p className="text-xs font-bold italic text-slate-700 border-l-2 border-teal-600 pl-2">${data.diagnosisDescription}</p>
-                                     </div>
-                                 </div>
-
-                                 {/* Drugs Table */}
-                                 <div className="flex-grow">
-                                     <table className="w-full text-left">
-                                         <thead className="border-b border-slate-900">
-                                             <tr>
-                                                 <th className="py-2 text-[7pt] font-black uppercase tracking-widest">Medication & Schedule</th>
-                                                 <th className="py-2 text-[7pt] font-black uppercase tracking-widest text-center">Qty</th>
-                                             </tr>
-                                         </thead>
-                                         <tbody className="divide-y divide-slate-100">
-                                             {data.drugs?.map((drug, i) => (
-                                                 <tr key={i}>
-                                                     <td className="py-4">
-                                                         <p className="font-bold text-sm text-slate-900 mb-0.5">${drug.tradeName}</p>
-                                                         <p className="text-[7pt] text-slate-400 font-bold italic mb-2">${drug.genericName}</p>
-                                                         <div className="bg-slate-50 inline-block px-2 py-1 rounded font-bold text-[8pt] text-slate-700 border border-slate-100">
-                                                             ${drug.dosage} — ${drug.usageMethod}
-                                                         </div>
-                                                         {drug.usageMethodAr && (
-                                                             <p className="text-right font-bold text-teal-800 mt-2 text-[10pt]" style={{fontFamily:'Cairo'}}>
-                                                                 ${drug.usageMethodAr}
-                                                             </p>
-                                                         )}
-                                                     </td>
-                                                     <td className="py-4 text-center font-black text-sm text-slate-300">x${drug.quantity}</td>
-                                                 </tr>
-                                             ))}
-                                         </tbody>
-                                     </table>
-                                 </div>
-
-                                 {/* Footer & Stamp */}
-                                 <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-end">
-                                     <div className="w-48 text-center">
-                                         <div className="h-10 mb-2 border-b border-slate-200"></div>
-                                         <span className="text-[7pt] font-black text-slate-400 uppercase tracking-widest">Patient / Guardian Signature</span>
-                                     </div>
-                                     
-                                     <div className="relative">
-                                         <div className="border-[2px] border-double border-blue-800 text-blue-800 w-44 h-24 rotate-[-1deg] flex flex-col items-center justify-center p-2 font-mono bg-white/50 shadow-sm">
-                                             <p className="text-[6pt] border-b border-blue-800 w-full text-center pb-0.5 mb-1 font-black">CERTIFIED CLINICIAN STAMP</p>
-                                             <p className="text-[9pt] font-black tracking-tight">${data.doctorNameAr || data.doctorName}</p>
-                                             <p className="text-[7pt] font-bold mt-0.5">S.C.H.S REG NO: ${Math.floor(Math.random()*8000)+2000}</p>
-                                             <p className="text-[6pt] mt-1 font-sans opacity-60">${data.date}</p>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             )}
+  return (
+    <div className="min-h-full pb-20" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-dark-bg border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+        <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d={ar ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2 flex-1">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center">
+            <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-sm font-black text-slate-800 dark:text-white">{ar ? 'الوصفة الطبية' : 'Prescription'}</h1>
+            <p className="text-[10px] text-slate-400">{ar ? 'إنشاء وطباعة وصفة طبية' : 'Create & print prescriptions'}</p>
+          </div>
         </div>
-    );
+        <button onClick={handlePrint}
+          className="flex items-center gap-1.5 px-4 py-2 bg-teal-500 text-white rounded-xl text-xs font-black active:scale-95 transition-all shadow-sm shadow-teal-200">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          {ar ? 'طباعة' : 'Print'}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+          {[
+            { id: 'manual', labelAr: '✏️ وصفة يدوية', labelEn: '✏️ Manual Rx' },
+            { id: 'online', labelAr: '👨‍⚕️ طلب من دكتور', labelEn: '👨‍⚕️ Request from Doctor' },
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id as any)}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${tab === t.id ? 'bg-white dark:bg-slate-900 text-teal-600 shadow-sm' : 'text-slate-400'}`}>
+              {ar ? t.labelAr : t.labelEn}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'online' ? (
+        <div className="px-4 py-8 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-10 h-10 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 className="text-base font-black text-slate-700 dark:text-slate-200 mb-2">{ar ? 'التطبيب عن بُعد' : 'Telemedicine'}</h3>
+          <p className="text-sm text-slate-400 font-medium mb-6">{ar ? 'خدمة الاستشارة مع دكتور أونلاين قيد التطوير' : 'Online doctor consultation coming soon'}</p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 text-xs font-black rounded-xl border border-amber-200 dark:border-amber-800">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {ar ? 'قريباً' : 'Coming Soon'}
+          </div>
+        </div>
+      ) : (
+        <div className="px-4 space-y-4 pt-2">
+
+          {/* Doctor Info */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              </div>
+              <h2 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ar ? 'بيانات الطبيب' : 'Doctor Info'}</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>{ar ? 'اسم الطبيب' : 'Doctor Name'}</label>
+                <input value={doctorName} onChange={e => setDoctorName(e.target.value)} className={inputCls} placeholder={ar ? 'د. محمد أحمد' : 'Dr. John Smith'} />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'رقم الترخيص' : 'License No.'}</label>
+                <input value={licenseNo} onChange={e => setLicenseNo(e.target.value)} className={inputCls} placeholder="SA-12345" />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'التخصص' : 'Specialty'}</label>
+                <input value={specialty} onChange={e => setSpecialty(e.target.value)} className={inputCls} placeholder={ar ? 'طب عام' : 'General Practice'} />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'المؤسسة' : 'Institution'}</label>
+                <input value={institution} onChange={e => setInstitution(e.target.value)} className={inputCls} placeholder={ar ? 'مستشفى / عيادة' : 'Hospital / Clinic'} />
+              </div>
+            </div>
+          </div>
+
+          {/* Patient Info */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <h2 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ar ? 'بيانات المريض' : 'Patient Info'}</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={labelCls}>{ar ? 'اسم المريض' : 'Patient Name'}</label>
+                <input value={patientName} onChange={e => setPatientName(e.target.value)} className={inputCls} placeholder={ar ? 'الاسم الكامل' : 'Full name'} />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'رقم الهوية' : 'ID Number'}</label>
+                <input value={patientId} onChange={e => setPatientId(e.target.value)} className={inputCls} placeholder="1234567890" />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'العمر' : 'Age'}</label>
+                <input value={patientAge} onChange={e => setPatientAge(e.target.value)} className={inputCls} placeholder={ar ? 'مثال: 35' : 'e.g. 35'} type="number" />
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'الجنس' : 'Gender'}</label>
+                <select value={patientGender} onChange={e => setPatientGender(e.target.value as any)} className={inputCls}>
+                  <option value="">{ar ? 'اختر' : 'Select'}</option>
+                  <option value="M">{ar ? 'ذكر' : 'Male'}</option>
+                  <option value="F">{ar ? 'أنثى' : 'Female'}</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>{ar ? 'الوزن (كجم)' : 'Weight (kg)'}</label>
+                <input value={patientWeight} onChange={e => setPatientWeight(e.target.value)} className={inputCls} placeholder="70" type="number" />
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>{ar ? 'التشخيص / السبب' : 'Diagnosis / Reason'}</label>
+                <input value={diagnosis} onChange={e => setDiagnosis(e.target.value)} className={inputCls} placeholder={ar ? 'مثال: التهاب الحلق الحاد' : 'e.g. Acute pharyngitis'} />
+              </div>
+            </div>
+          </div>
+
+          {/* Drugs */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                </div>
+                <h2 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ar ? 'الأدوية والجرعات' : 'Medications & Doses'}</h2>
+              </div>
+              <span className="text-[10px] font-black text-teal-500 bg-teal-50 dark:bg-teal-900/20 px-2 py-0.5 rounded-full">{drugs.length} {ar ? 'دواء' : 'drugs'}</span>
+            </div>
+
+            <div className="space-y-4">
+              {drugs.map((drug, idx) => (
+                <div key={drug.id} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">{ar ? `دواء ${idx + 1}` : `Drug ${idx + 1}`}</span>
+                    {drugs.length > 1 && (
+                      <button onClick={() => removeDrug(drug.id)} className="w-5 h-5 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center active:scale-90 transition-all">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Drug name with autocomplete */}
+                  <div className="relative mb-2">
+                    <label className={labelCls}>{ar ? 'اسم الدواء' : 'Drug Name'}</label>
+                    <input
+                      value={drugSearch[drug.id] ?? drug.name}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setDrugSearch(prev => ({ ...prev, [drug.id]: v }));
+                        updateDrug(drug.id, 'name', v);
+                        setDrugDropdown(v.length >= 2 ? drug.id : null);
+                      }}
+                      onFocus={() => { if ((drugSearch[drug.id] ?? drug.name).length >= 2) setDrugDropdown(drug.id); }}
+                      onBlur={() => setTimeout(() => setDrugDropdown(null), 200)}
+                      className={inputCls}
+                      placeholder={ar ? 'ابحث أو اكتب اسم الدواء' : 'Search or type drug name'}
+                    />
+                    {drugDropdown === drug.id && getDrugSuggestions(drugSearch[drug.id] ?? drug.name).length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-44 overflow-y-auto">
+                        {getDrugSuggestions(drugSearch[drug.id] ?? drug.name).map(m => (
+                          <button key={m.RegisterNumber} onMouseDown={() => {
+                            const name = `${m['Trade Name']} ${m.Strength}${m.StrengthUnit}`;
+                            updateDrug(drug.id, 'name', name);
+                            setDrugSearch(prev => ({ ...prev, [drug.id]: name }));
+                            setDrugDropdown(null);
+                          }} className="w-full text-left px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0">
+                            <p className="text-xs font-black text-teal-700 dark:text-teal-300">{m['Trade Name']}</p>
+                            <p className="text-[10px] text-slate-400">{m['Scientific Name']} · {m.Strength}{m.StrengthUnit}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div>
+                      <label className={labelCls}>{ar ? 'الجرعة' : 'Dose'}</label>
+                      <input value={drug.dose} onChange={e => updateDrug(drug.id, 'dose', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: قرص 500mg' : 'e.g. 1 tab 500mg'} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>{ar ? 'التكرار' : 'Frequency'}</label>
+                      <select value={drug.frequency} onChange={e => updateDrug(drug.id, 'frequency', e.target.value)} className={inputCls}>
+                        <option value="">{ar ? 'اختر' : 'Select'}</option>
+                        {(ar ? FREQUENCIES_AR : FREQUENCIES_EN).map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>{ar ? 'المدة' : 'Duration'}</label>
+                      <input value={drug.duration} onChange={e => updateDrug(drug.id, 'duration', e.target.value)} className={inputCls} placeholder={ar ? 'مثال: 7 أيام' : 'e.g. 7 days'} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelCls}>{ar ? 'ملاحظات' : 'Notes'}</label>
+                    <input value={drug.notes} onChange={e => updateDrug(drug.id, 'notes', e.target.value)} className={inputCls} placeholder={ar ? 'مع الأكل، بعد الأكل...' : 'With food, after meals...'} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={addDrug} className="w-full mt-3 py-3 rounded-xl border-2 border-dashed border-teal-200 dark:border-teal-800 text-teal-500 text-xs font-black active:scale-95 transition-all hover:bg-teal-50 dark:hover:bg-teal-900/10 flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+              {ar ? 'إضافة دواء آخر' : 'Add Another Drug'}
+            </button>
+          </div>
+
+          {/* Stamp */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4"/></svg>
+              </div>
+              <h2 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ar ? 'ختم الطبيب' : "Doctor's Stamp"}</h2>
+            </div>
+            <label className={labelCls}>{ar ? 'نص الختم (سيظهر في دائرة)' : 'Stamp Text (shown in circle)'}</label>
+            <input value={stampText} onChange={e => setStampText(e.target.value)} className={inputCls}
+              placeholder={ar ? 'د. محمد / طب عام / جدة' : 'Dr. Smith / GP / Riyadh'} />
+          </div>
+
+          {/* Preview */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ar ? 'معاينة الوصفة' : 'Prescription Preview'}</p>
+            </div>
+
+            {/* Printable prescription */}
+            <div ref={printRef} className="rx-print p-5" style={{ fontFamily: 'Arial, sans-serif', direction: ar ? 'rtl' : 'ltr', fontSize: '12px', color: '#111', background: 'white' }}>
+
+              {/* RX Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '12px', borderBottom: '2.5px solid #0d9488', marginBottom: '14px' }}>
+                <div>
+                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#0d9488', lineHeight: 1 }}>℞</div>
+                  {doctorName && <div style={{ fontWeight: 700, fontSize: '15px', marginTop: '4px' }}>{ar ? 'د. ' : 'Dr. '}{doctorName}</div>}
+                  {specialty && <div style={{ fontSize: '11px', color: '#555' }}>{specialty}</div>}
+                  {licenseNo && <div style={{ fontSize: '10px', color: '#888' }}>{ar ? 'رقم الترخيص: ' : 'Lic. No.: '}{licenseNo}</div>}
+                </div>
+                <div style={{ textAlign: ar ? 'left' : 'right' }}>
+                  {institution && <div style={{ fontWeight: 700, fontSize: '13px' }}>{institution}</div>}
+                  <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>{today}</div>
+                </div>
+              </div>
+
+              {/* Patient */}
+              {(patientName || patientId || patientAge) && (
+                <div style={{ background: '#f0fdf9', border: '1px solid #99f6e4', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+                  {patientName && <span style={{ fontSize: '11px' }}><strong>{ar ? 'المريض: ' : 'Patient: '}</strong>{patientName}</span>}
+                  {patientId   && <span style={{ fontSize: '11px' }}><strong>{ar ? 'الهوية: ' : 'ID: '}</strong>{patientId}</span>}
+                  {patientAge  && <span style={{ fontSize: '11px' }}><strong>{ar ? 'العمر: ' : 'Age: '}</strong>{patientAge} {ar ? 'سنة' : 'yrs'}</span>}
+                  {patientGender && <span style={{ fontSize: '11px' }}><strong>{ar ? 'الجنس: ' : 'Gender: '}</strong>{patientGender === 'M' ? (ar ? 'ذكر' : 'Male') : (ar ? 'أنثى' : 'Female')}</span>}
+                  {patientWeight && <span style={{ fontSize: '11px' }}><strong>{ar ? 'الوزن: ' : 'Weight: '}</strong>{patientWeight} kg</span>}
+                </div>
+              )}
+
+              {/* Diagnosis */}
+              {diagnosis && (
+                <div style={{ background: '#fff7ed', borderLeft: ar ? 'none' : '3px solid #f59e0b', borderRight: ar ? '3px solid #f59e0b' : 'none', padding: '8px 12px', borderRadius: '4px', marginBottom: '14px', fontSize: '11px' }}>
+                  <strong>{ar ? 'التشخيص: ' : 'Diagnosis: '}</strong>{diagnosis}
+                </div>
+              )}
+
+              {/* Drugs Table */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.2fr', gap: '6px', padding: '7px 10px', background: '#f0fdf9', borderRadius: '6px', marginBottom: '4px' }}>
+                  {[ar ? 'الدواء' : 'Medication', ar ? 'الجرعة' : 'Dose', ar ? 'التكرار' : 'Frequency', ar ? 'المدة' : 'Duration'].map(h => (
+                    <span key={h} style={{ fontSize: '10px', fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</span>
+                  ))}
+                </div>
+                {drugs.filter(d => d.name).map((drug, i) => (
+                  <div key={drug.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.2fr', gap: '6px', padding: '8px 10px', background: i % 2 === 0 ? '#fafafa' : 'white', borderBottom: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: '12px', color: '#0d9488' }}>{drug.name}</span>
+                      {drug.notes && <div style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>{drug.notes}</div>}
+                    </div>
+                    <span style={{ fontSize: '11px' }}>{drug.dose}</span>
+                    <span style={{ fontSize: '11px' }}>{drug.frequency}</span>
+                    <span style={{ fontSize: '11px' }}>{drug.duration}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer: stamp + signature */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '14px', borderTop: '1px dashed #ccc' }}>
+                {stampText ? (
+                  <div style={{ width: '80px', height: '80px', border: '2.5px solid #0d9488', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#0d9488', padding: '8px', lineHeight: '1.3' }}>
+                    {stampText}
+                  </div>
+                ) : (
+                  <div style={{ width: '80px', height: '80px', border: '2px dashed #ccc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#aaa' }}>
+                    {ar ? 'الختم' : 'Stamp'}
+                  </div>
+                )}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ borderTop: '1px solid #111', width: '140px', marginBottom: '4px' }} />
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#555' }}>{ar ? 'توقيع الطبيب' : "Doctor's Signature"}</div>
+                  {doctorName && <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>{ar ? 'د. ' : 'Dr. '}{doctorName}</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default PrescriptionView;

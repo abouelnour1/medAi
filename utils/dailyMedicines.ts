@@ -176,11 +176,20 @@ export async function saveClinicalData(
 }
 
 // جيب الـ Clinical Data المحفوظة لدواء
+// ── In-memory cache — يمنع Firestore call لكل فتح ──────────────────────────
+const _clinicalCache = new Map<string, ClinicalData | null>();
+
 export async function getClinicalData(registerNumber: string): Promise<ClinicalData | null> {
+  // لو موجود في الـ cache — ارجع فوراً بدون network
+  if (_clinicalCache.has(registerNumber)) return _clinicalCache.get(registerNumber) ?? null;
   try {
-    const ref = doc(db, 'clinicalData', registerNumber);
+    const ref  = doc(db, 'clinicalData', registerNumber);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data() as ClinicalData;
+    const data = snap.exists() ? (snap.data() as ClinicalData) : null;
+    _clinicalCache.set(registerNumber, data);
+    return data;
+  } catch {
+    _clinicalCache.set(registerNumber, null); // cache الـ miss عشان منعيدش المحاولة
     return null;
-  } catch { return null; }
+  }
 }

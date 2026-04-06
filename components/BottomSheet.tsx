@@ -34,14 +34,12 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     if (isOpen) {
       setHeight(minH);
       setVisible(true);
-      if (skipOpenAnimation) {
-        setAnimate(true); // فوراً بدون animation
-      } else {
-        requestAnimationFrame(() => setAnimate(true));
-      }
+      // فتح فوري — بدون أي delay عشان الـ sheet تظهر في أسرع وقت
+      setAnimate(true);
     } else {
       setAnimate(false);
-      const t = setTimeout(() => setVisible(false), 180);
+      // انتظر نهاية الـ close animation بس
+      const t = setTimeout(() => setVisible(false), 200);
       return () => clearTimeout(t);
     }
   }, [isOpen, minH, skipOpenAnimation]);

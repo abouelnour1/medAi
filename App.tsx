@@ -9,7 +9,8 @@ import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import MedicineCard from './components/MedicineCard';
 import IndicationSearch from './components/IndicationSearch';
-import MedicineDetail from './components/MedicineDetail';
+const MedicineDetail = React.lazy(() => import('./components/MedicineDetail'));
+import PrescriptionView from './components/PrescriptionView';
 import BottomSheet from './components/BottomSheet';
 import GeminiPromptModal from './components/GeminiPromptModal';
 import FilterModal from './components/FilterModal';
@@ -1288,7 +1289,7 @@ const App: React.FC = () => {
       if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} />;
+          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -1458,7 +1459,8 @@ const App: React.FC = () => {
 
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
-          if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+          if (view === 'prescription') return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => setView('search')} />;
+      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-6 animate-fade-in">
@@ -1718,10 +1720,11 @@ onClearSearch={handleClearSearch}
         onClose={() => setSheetMedicine(null)}
       >
         {sheetMedicine && (
+          <React.Suspense fallback={null}>
           <MedicineDetail
             medicine={sheetMedicine}
             insuranceData={insuranceData}
-            allMedicines={medicines}
+            allMedicines={undefined}
             t={t}
             language={language}
             isFavorite={favorites.includes(sheetMedicine.RegisterNumber)}
@@ -1739,6 +1742,7 @@ onClearSearch={handleClearSearch}
             isInCompare={compareList.some(m => m.RegisterNumber === sheetMedicine.RegisterNumber)}
             onOpenClinical={() => setClinicalModal({ open: true, medicine: sheetMedicine })}
           />
+          </React.Suspense>
         )}
       </BottomSheet>
 
