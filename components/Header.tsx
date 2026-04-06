@@ -59,120 +59,98 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   }, [menuRef]);
 
   return (
-    <header 
-        ref={ref} 
-        className={`fixed top-0 left-0 right-0 z-[60] px-3 pb-2 transition-all ${Capacitor.getPlatform() === 'android' ? 'pt-[28px]' : 'pt-[calc(env(safe-area-inset-top)+4px)]'}`}
-        style={{ background: 'inherit' }}
+    <header
+      ref={ref}
+      className={`fixed top-0 left-0 right-0 z-[60] px-4 ${Capacitor.getPlatform() === 'android' ? 'pt-[30px]' : 'pt-[calc(env(safe-area-inset-top)+6px)]'} pb-3`}
+      style={{ background: 'inherit' }}
     >
-      {/* Safe area shield — يمنع أي محتوى يعدي من وراء الهيدر */}
+      {/* Background shield */}
       <div className="absolute inset-0 bg-light-bg dark:bg-dark-bg" style={{ zIndex: -1 }} />
-      <div className="bg-white dark:bg-dark-card border border-slate-100 dark:border-dark-border shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] rounded-[1.5rem] px-3 h-11 flex justify-between items-center max-w-7xl mx-auto">
-        
-        <div className="flex-1 flex justify-start items-center gap-2">
+
+      {/* ── صف واحد: اسم التطبيق في المنتصف + notification + avatar ── */}
+      <div className="flex items-center justify-between">
+
+        {/* يسار: Back أو Notifications */}
+        <div className="flex items-center gap-2 w-16">
           {showBack ? (
-            <button
-              onClick={onBack}
-              className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform"
-            >
-              <div className="w-5 h-5 ltr:rotate-0 rtl:rotate-180"><BackIcon /></div>
+            <button onClick={onBack}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-transform">
+              <div className="w-5 h-5 text-slate-600 dark:text-slate-200 ltr:rotate-0 rtl:rotate-180"><BackIcon /></div>
             </button>
           ) : (
-             <button 
-                onClick={onNotificationsClick}
-                className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-full active:scale-90 transition-transform relative"
-              >
-                  <BellIcon unreadCount={unreadCount} />
-              </button>
+            <button onClick={onNotificationsClick}
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border active:scale-90 transition-transform relative">
+              <BellIcon unreadCount={unreadCount} />
+            </button>
           )}
         </div>
-        
-        <div className="flex-[2] flex justify-center items-center gap-2"> 
-            <h1 className="text-base font-black text-slate-800 dark:text-white font-poppins tracking-tight">
-              Easy<span className="text-primary">Drug</span>
-            </h1>
-            {isLoading && (
-              <div className="w-3.5 h-3.5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin flex-shrink-0" title="Loading data..." />
-            )}
+
+        {/* وسط: اسم التطبيق */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-[17px] font-black text-slate-800 dark:text-white tracking-tight">
+            Easy<span className="text-primary">Drug</span>
+          </h1>
+          {isLoading && (
+            <div className="w-3.5 h-3.5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
+          )}
+          <OnlineIndicator />
         </div>
 
-        <div className="flex-1 flex justify-end items-center gap-2">
-          <OnlineIndicator />
+        {/* يمين: Avatar أو Login */}
+        <div className="flex items-center gap-2 w-16 justify-end">
           {user ? (
             <div className="relative" ref={menuRef}>
-                {/* Avatar — يفتح mini menu */}
-                <button
-                  onClick={() => setIsMenuOpen(v => !v)}
-                  className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-full active:scale-95 transition-all"
-                >
-                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-[9px] font-black">
-                    {user.username.charAt(0).toUpperCase()}
-                  </div>
-                </button>
+              <button onClick={() => setIsMenuOpen(v => !v)}
+                className="w-9 h-9 bg-primary rounded-2xl flex items-center justify-center text-white text-[11px] font-black shadow-sm active:scale-90 transition-transform">
+                {user.username.charAt(0).toUpperCase()}
+              </button>
 
-                {/* Mini popup menu */}
-                <div className={`fixed right-3 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-[9990] overflow-hidden
-                      transition-all duration-200 ease-out origin-top-right
-                      ${isMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}
-                  style={{ top: (ref as any)?.current?.getBoundingClientRect?.()?.bottom + 8 || 80 }}>
-                  
-                  {/* User info */}
-                  <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                    <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
-                    <p className="text-[10px] font-bold text-primary uppercase">{t(`${user.role}Role` as any)}</p>
-                  </div>
-
-                  {/* Settings */}
-                  <button onClick={() => { onSettingsClick?.(); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    {t('navSettings')}
-                  </button>
-
-                  {/* Stock Tracker */}
-                  <button onClick={() => { (onSettingsClick as any)?.('stockTracker'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    Stock Tracker
-                  </button>
-
-                  {/* Order List */}
-                  <button onClick={() => { (onSettingsClick as any)?.('orderList'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    Order List
-                  </button>
-
-                  {/* Pedia Dose Calc */}
-                  <button onClick={() => { onPediatricCalcClick?.(); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
-                    Pedia Dose Calc
-                  </button>
-
-                  {/* Admin */}
-                  {user.role === 'admin' && (
-                    <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                      {t('adminDashboard')}
-                    </button>
-                  )}
-
-                  {/* Divider */}
-                  <div className="h-px bg-slate-100 dark:bg-slate-800 mx-3" />
-
-                  {/* Logout */}
-                  <button onClick={logout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-                    {t('logout')}
-                  </button>
+              {/* Dropdown menu */}
+              <div className={`fixed right-4 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-[9990] overflow-hidden
+                    origin-top-right
+                    ${isMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}
+                style={{ top: (ref as any)?.current?.getBoundingClientRect?.()?.bottom + 6 || 80 }}>
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                  <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
+                  <p className="text-[10px] font-bold text-primary uppercase">{t(`${user.role}Role` as any)}</p>
                 </div>
+                <button onClick={() => { onSettingsClick?.(); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  {t('navSettings')}
+                </button>
+                <button onClick={() => { (onSettingsClick as any)?.('stockTracker'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Stock Tracker
+                </button>
+                <button onClick={() => { (onSettingsClick as any)?.('orderList'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Order List
+                </button>
+                <button onClick={() => { onPediatricCalcClick?.(); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                  Pedia Dose Calc
+                </button>
+                {user.role === 'admin' && (
+                  <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    {t('adminDashboard')}
+                  </button>
+                )}
+                <div className="h-px bg-slate-100 dark:bg-slate-800 mx-3" />
+                <button onClick={logout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                  {t('logout')}
+                </button>
+              </div>
             </div>
           ) : (
-            <button onClick={onLoginClick} className="bg-primary text-white px-5 py-2 rounded-full text-xs font-black shadow-lg shadow-primary/30 active:scale-95 transition-all">
-                {t('login')}
+            <button onClick={onLoginClick}
+              className="bg-primary text-white px-4 py-2 rounded-2xl text-xs font-black shadow-sm active:scale-95 transition-all">
+              {t('login')}
             </button>
           )}
         </div>
       </div>
-
-      {/* SearchBar slot — يظهر جوّا الهيدر لما يكون في search/results */}
-
     </header>
   );
 });

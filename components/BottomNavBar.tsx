@@ -111,7 +111,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
 
       {/* القايمة المنبثقة */}
-      <div className={`absolute left-1/2 -translate-x-1/2 transition-all duration-200 pointer-events-auto
+      <div className={`absolute left-1/2 -translate-x-1/2 pointer-events-auto
         ${open ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
         onClick={e => e.stopPropagation()}
@@ -121,7 +121,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <button
               key={item.label}
               onClick={item.onClick}
-              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all active:scale-90
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl active:scale-90
                 ${item.active
                   ? item.color === 'amber'
                     ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-500'
@@ -143,7 +143,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
             <button
               key={item.label}
               onClick={item.onClick}
-              className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl transition-all active:scale-90
+              className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl active:scale-90
                 ${item.active
                   ? 'text-teal-600 dark:text-teal-400'
                   : 'text-slate-400'
@@ -156,7 +156,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({
           {/* زر القايمة */}
           <button
             onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
-            className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl transition-all active:scale-90 ${open ? 'text-primary' : 'text-slate-400'}`}
+            className={`flex flex-col items-center justify-center flex-1 py-2 rounded-xl active:scale-90 ${open ? 'text-primary' : 'text-slate-400'}`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               {open

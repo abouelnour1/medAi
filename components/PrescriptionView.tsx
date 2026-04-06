@@ -76,32 +76,66 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const handlePrint = () => {
     const printContent = printRef.current?.innerHTML;
     if (!printContent) return;
+
+    const isAndroid = typeof (window as any).Capacitor !== 'undefined'
+      && (window as any).Capacitor.getPlatform() === 'android';
+
+    const css = `
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; background: white; direction: ${ar ? 'rtl' : 'ltr'}; }
+      .rx-print { max-width: 800px; margin: 0 auto; padding: 20px; }
+      .rx-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #0d9488; margin-bottom: 16px; }
+      .rx-logo { font-size: 28px; font-weight: 900; color: #0d9488; }
+      .rx-doc-info h2 { font-size: 16px; font-weight: 700; color: #111; }
+      .rx-doc-info p { font-size: 11px; color: #555; margin-top: 2px; }
+      .rx-patient { background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+      .rx-patient-field { font-size: 11px; } .rx-patient-field span { font-weight: 700; }
+      .rx-diagnosis { background: #fff7ed; border-left: 3px solid #f59e0b; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 11px; }
+      .rx-symbol { font-size: 42px; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 10px; }
+      .rx-drug { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
+      .rx-drug:nth-child(even) { background: #f9fafb; }
+      .rx-drug-header { font-weight: 700; background: #f0fdf9 !important; border-radius: 4px; }
+      .rx-drug-name { font-weight: 700; color: #0d9488; font-size: 12px; }
+      .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #ccc; }
+      .rx-stamp { border: 2px solid #0d9488; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 700; color: #0d9488; }
+      .rx-sig { text-align: center; } .rx-sig .line { border-top: 1px solid #111; width: 140px; margin: 0 auto 4px; }
+      .rx-date { font-size: 11px; color: #555; }
+      @media print {
+        body > *:not(#rx-print-frame) { display: none !important; }
+        #rx-print-frame { display: block !important; position: fixed; inset: 0; z-index: 99999; background: white; }
+      }
+    `;
+
+    if (isAndroid) {
+      // على الأندرويد: نحقن iframe مخفي في نفس الصفحة ونطبع منه مباشرة
+      // بدون window.open عشان ما يفتحش متصفح خارجي
+      const existing = document.getElementById('rx-print-frame');
+      if (existing) existing.remove();
+
+      const iframe = document.createElement('iframe');
+      iframe.id = 'rx-print-frame';
+      iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:-1;opacity:0;';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>${css}</style></head><body><div class="rx-print">${printContent}</div></body></html>`);
+      doc.close();
+
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 2000);
+      }, 500);
+      return;
+    }
+
+    // ويب / iOS
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head>
-      <title>${ar ? 'وصفة طبية' : 'Prescription'}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #111; background: white; direction: ${ar ? 'rtl' : 'ltr'}; }
-        .rx-print { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .rx-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #0d9488; margin-bottom: 16px; }
-        .rx-logo { font-size: 28px; font-weight: 900; color: #0d9488; }
-        .rx-doc-info h2 { font-size: 16px; font-weight: 700; color: #111; }
-        .rx-doc-info p { font-size: 11px; color: #555; margin-top: 2px; }
-        .rx-patient { background: #f0fdf9; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
-        .rx-patient-field { font-size: 11px; } .rx-patient-field span { font-weight: 700; }
-        .rx-diagnosis { background: #fff7ed; border-left: 3px solid #f59e0b; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 11px; }
-        .rx-symbol { font-size: 42px; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 10px; }
-        .rx-drug { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-        .rx-drug:nth-child(even) { background: #f9fafb; }
-        .rx-drug-header { font-weight: 700; background: #f0fdf9 !important; border-radius: 4px; }
-        .rx-drug-name { font-weight: 700; color: #0d9488; font-size: 12px; }
-        .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 16px; border-top: 1px dashed #ccc; }
-        .rx-stamp { border: 2px solid #0d9488; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: 700; color: #0d9488; }
-        .rx-sig { text-align: center; } .rx-sig .line { border-top: 1px solid #111; width: 140px; margin: 0 auto 4px; }
-        .rx-date { font-size: 11px; color: #555; }
-        @media print { body { font-size: 11px; } }
-      </style></head><body>${printContent}</body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>${css}</style></head><body><div class="rx-print">${printContent}</div></body></html>`);
     w.document.close();
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };

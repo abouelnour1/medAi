@@ -1293,7 +1293,7 @@ const App: React.FC = () => {
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
-              <div className="animate-fade-in pt-2">
+              <div className="pt-2">
 
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
@@ -1382,7 +1382,7 @@ const App: React.FC = () => {
 
                         // indication mode — عرض مقسم بالمادة الفعالة
                         if (hasResults && textSearchMode === 'indication' && indicationGroups.length > 0) return (
-                          <div className="space-y-5 animate-fade-in">
+                          <div className="space-y-5">
                             {indicationGroups.map(({ sciName, medicines: groupMeds }) => (
                               <div key={sciName}>
                                 <div className="flex items-center gap-2 mb-2 px-1">
@@ -1421,7 +1421,7 @@ const App: React.FC = () => {
                       })()}
                       {/* Recent searches - بيظهر لما مفيش بحث أو أثناء الـ debounce */}
                       {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
-                        <div className="animate-fade-in">
+                        <div className="">
                           <div className="flex justify-between items-center mb-3 px-1">
                             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                               {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
@@ -1470,7 +1470,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
-          if (view === 'prescription') return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => setView('search')} />;
+          if (view === 'prescription') return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
       if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
@@ -1695,7 +1695,7 @@ onClearSearch={handleClearSearch}
       )}
 
       <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          <div key={view} style={{animation: 'viewSlideIn 0.15s ease both'}}>
+          <div key={view}>
               {renderContent()}
             </div>
       </main>

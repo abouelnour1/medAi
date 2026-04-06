@@ -47,20 +47,24 @@ const DrugTestChecker: React.FC<Props> = ({
 }) => {
   const ar = language === 'ar';
   const [query, setQuery] = useState(initialDrugName || '');
+  const [debouncedQuery, setDebouncedQuery] = useState(initialDrugName || '');
   const [selectedActive, setSelectedActive] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('home');
   const [visible, setVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Animation: slide up on mount ─────────────────────────────────────────
-  useEffect(() => {
-    const t = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(t);
-  }, []);
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 150);
+  };
+
+  useEffect(() => { setVisible(true); }, []);
 
   const handleClose = () => {
     setVisible(false);
-    setTimeout(onClose, 220);
+    onClose();
   };
 
   // الرجوع = أغلق الـ modal
@@ -69,7 +73,7 @@ const DrugTestChecker: React.FC<Props> = ({
   };
 
   const tradeSearchResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     if (q.length < 2) return [];
     const matched = new Set<string>();
     DRUG_TEST_DATA.forEach(d => {
@@ -85,7 +89,7 @@ const DrugTestChecker: React.FC<Props> = ({
       }
     });
     return Array.from(matched).sort();
-  }, [query, allMedicines]);
+  }, [debouncedQuery, allMedicines]);
 
   const medicinesForActive = useMemo(() => {
     if (!selectedActive) return [];
@@ -100,10 +104,10 @@ const DrugTestChecker: React.FC<Props> = ({
   );
 
   const filteredActives = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     if (q.length < 2) return ALL_ACTIVES;
     return ALL_ACTIVES.filter(a => a.toLowerCase().includes(q));
-  }, [query]);
+  }, [debouncedQuery]);
 
   const handleSelectActive = (active: string) => {
     setSelectedActive(active);
@@ -232,8 +236,8 @@ const DrugTestChecker: React.FC<Props> = ({
                 <input
                   ref={inputRef}
                   type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
+                  defaultValue={query}
+                  onChange={e => handleQueryChange(e.target.value)}
                   placeholder={ar ? 'ابحث باسم الدواء أو المادة الفعالة...' : 'Search drug or active name...'}
                   className="w-full pl-10 pr-9 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-violet-400 transition-colors"
                 />

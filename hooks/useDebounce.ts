@@ -5,7 +5,7 @@ const isAndroid = typeof (window as any).Capacitor !== 'undefined'
   ? (window as any).Capacitor.getPlatform() === 'android'
   : /Android/i.test(navigator.userAgent);
 
-const ANDROID_MULTIPLIER = 3.5; // 80ms → 280ms, 200ms → 700ms
+const ANDROID_MULTIPLIER = 1.5; // تخفيض التأخير على الأندرويد — 80ms → 120ms, 200ms → 300ms
 
 export function useDebounce<T>(value: T, delay: number = 300): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);

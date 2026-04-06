@@ -62,7 +62,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   const isAndroid   = typeof (window as any).Capacitor !== 'undefined'
     ? (window as any).Capacitor.getPlatform() === 'android'
     : /Android/i.test(navigator.userAgent);
-  const DELAY = isAndroid ? 350 : 120;
+  const DELAY = isAndroid ? 150 : 80;
 
   // sync لما يتغير من برا (clear مثلاً)
   useEffect(() => {

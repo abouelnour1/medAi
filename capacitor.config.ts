@@ -8,12 +8,12 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
+    hostname: 'app.easydrug.ksa',   // hostname ثابت يمنع فتح روابط خارجية داخل الـ WebView
     cleartext: false,
-    // لا تسمح بالـ navigation لروابط خارجية — تفتح في المتصفح الخارجي
-    // هذا يمنع إعادة تحميل التطبيق عند الرجوع من Gemini
+    // الروابط الخارجية (Google OAuth وغيرها) تُفتح في المتصفح الخارجي تلقائياً
   },
   ios: {
-    contentInset: 'automatic',   // يحسب safe area تلقائياً
+    contentInset: 'automatic',
     scrollEnabled: true,
     backgroundColor: '#ffffff',
     preferredContentMode: 'mobile',
@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: false, // false في production
+    webContentsDebuggingEnabled: false,
   },
   plugins: {
     Keyboard: {
