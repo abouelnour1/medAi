@@ -121,11 +121,30 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
           )}
         </div>
 
-        {/* Settings button — يختفي لما focused */}
+        {/* Filters button */}
+        {!isFocused && onOpenFilters && (
+          <button onClick={onOpenFilters}
+            className={`h-12 px-3 rounded-2xl flex items-center gap-1.5 flex-shrink-0 border text-xs font-black active:scale-95 ${
+              activeFiltersCount > 0
+                ? 'bg-primary text-white border-primary'
+                : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2" />
+            </svg>
+            {ar ? 'فلاتر' : 'Filters'}
+            {activeFiltersCount > 0 && (
+              <span className="bg-white/30 text-white text-[9px] font-black px-1 rounded-full">{activeFiltersCount}</span>
+            )}
+          </button>
+        )}
+
+        {/* Settings button */}
         {!isFocused && (
           <button
             onClick={() => { setShowSettings(v => !v); setShowSort(false); }}
-            className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all active:scale-90 ${
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border active:scale-90 ${
               showSettings || fuzzyEnabled || textSearchMode !== 'tradeName'
                 ? 'bg-primary text-white border-primary'
                 : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -183,71 +202,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
         </>
       )}
 
-      {/* ── Row 2: Filters + Sort + Insurance ── */}
-      <div className="flex items-center gap-2 mt-2">
 
-        {/* Filter */}
-        {onOpenFilters && (
-          <button onClick={onOpenFilters}
-            className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-black border transition-all active:scale-95 flex-shrink-0 ${
-              activeFiltersCount > 0
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2" />
-            </svg>
-            {ar ? 'فلاتر' : 'Filters'}
-            {activeFiltersCount > 0 && (
-              <span className="bg-white/30 text-white text-[9px] font-black px-1 rounded-full">{activeFiltersCount}</span>
-            )}
-          </button>
-        )}
-
-        {/* Sort — بسيطة جداً، تفتح تحتها مباشرة */}
-        {setSortBy && sortBy && (
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => { setShowSort(v => !v); setShowSettings(false); }}
-              className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-black border transition-all active:scale-95 ${
-                showSort ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M6 12h12M10 18h4" />
-              </svg>
-              {ar ? (currentSortLabel?.labelAr ?? 'ترتيب') : (currentSortLabel?.labelEn ?? 'Sort')}
-              <svg className={`w-2.5 h-2.5 transition-transform ${showSort ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* Sort dropdown — relative, تحت الزرار مباشرة */}
-            {showSort && (
-              <>
-                <div className="fixed inset-0 z-[100]" onClick={() => setShowSort(false)} />
-                <div className="absolute top-full left-0 mt-1 z-[101] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden min-w-[160px]">
-                  {SORT_OPTIONS.map(opt => (
-                    <button key={opt.value}
-                      onClick={() => { setSortBy(opt.value); setShowSort(false); }}
-                      className={`w-full flex items-center gap-2 px-4 py-3 text-xs font-black transition-colors ${
-                        sortBy === opt.value
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className="w-3">{sortBy === opt.value ? '✓' : ''}</span>
-                      {ar ? opt.labelAr : opt.labelEn}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-      </div>
     </div>
   );
 });
