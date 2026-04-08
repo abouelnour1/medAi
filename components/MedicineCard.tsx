@@ -102,7 +102,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.99] transition-transform duration-100 cursor-pointer overflow-hidden"
+      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm cursor-pointer overflow-hidden"
     >
       <div className="flex gap-2.5 p-3">
 

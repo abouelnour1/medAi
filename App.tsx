@@ -1315,7 +1315,9 @@ const App: React.FC = () => {
                         <button onClick={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
                           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
                           <svg className="w-7 h-7 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 3v11a3 3 0 006 0V3"/><path d="M6 3h12"/><path d="M7 15a5 5 0 0010 0"/>
+                            <path d="M6 2l.001 6.5L2 15c-.667 1.333.333 3 2 3h16c1.667 0 2.667-1.667 2-3l-4-6.5V2"/>
+                            <line x1="6" y1="7" x2="18" y2="7"/>
+                            <path d="M10 16a2 2 0 004 0"/>
                           </svg>
                           <span className="text-[10px] font-black text-purple-600">{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
                         </button>
@@ -1669,7 +1671,7 @@ const App: React.FC = () => {
           className="fixed left-0 right-0 z-[59] px-3"
           style={{ top: headerHeight }}
         >
-          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1" style={{boxShadow: "0 4px 12px -2px rgba(0,0,0,0.06)"}}>
+          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1" style={{}}>
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}

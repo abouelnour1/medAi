@@ -52,12 +52,9 @@ const DrugTestChecker: React.FC<Props> = ({
   const [currentView, setCurrentView] = useState<View>('home');
   const [visible, setVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleQueryChange = (val: string) => {
     setQuery(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 150);
+    setDebouncedQuery(val); // بدون debounce — فوري
   };
 
   useEffect(() => { setVisible(true); }, []);

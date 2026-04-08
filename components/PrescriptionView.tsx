@@ -73,29 +73,143 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const addDrug = () => setDrugs(prev => [...prev, { id: generateId(), name: '', dose: '', frequency: '', duration: '', notes: '' }]);
   const removeDrug = (id: string) => setDrugs(prev => prev.filter(d => d.id !== id));
 
-  const handlePrint = () => {
-        // ── ويب / iOS ──
+  const handlePrint = async () => {
     const printContent = printRef.current?.innerHTML;
     if (!printContent) return;
-    const css = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:white;direction:${ar?'rtl':'ltr'}}.rx-print{max-width:800px;margin:0 auto;padding:20px}.rx-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:2px solid #0d9488;margin-bottom:16px}.rx-logo{font-size:28px;font-weight:900;color:#0d9488}.rx-doc-info h2{font-size:16px;font-weight:700;color:#111}.rx-doc-info p{font-size:11px;color:#555;margin-top:2px}.rx-patient{background:#f0fdf9;border:1px solid #99f6e4;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 24px}.rx-patient-field{font-size:11px}.rx-patient-field span{font-weight:700}.rx-diagnosis{background:#fff7ed;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:4px;margin-bottom:14px;font-size:11px}.rx-symbol{font-size:42px;font-weight:900;color:#0d9488;line-height:1;margin-bottom:10px}.rx-drug{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:8px;padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:11px}.rx-drug:nth-child(even){background:#f9fafb}.rx-drug-header{font-weight:700;background:#f0fdf9!important;border-radius:4px}.rx-drug-name{font-weight:700;color:#0d9488;font-size:12px}.rx-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:32px;padding-top:16px;border-top:1px dashed #ccc}.rx-stamp{border:2px solid #0d9488;border-radius:50%;width:80px;height:80px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;font-weight:700;color:#0d9488}.rx-sig{text-align:center}.rx-sig .line{border-top:1px solid #111;width:140px;margin:0 auto 4px}.rx-date{font-size:11px;color:#555}`;
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
-      ${css}
-      .no-print { display:flex; gap:12px; padding:12px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10; }
-      .btn-back { background:#f1f5f9; color:#475569; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
-      .btn-print { background:#0d9488; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
-      @media print { .no-print { display:none !important; } }
-    </style></head><body>
-    <div class="no-print">
-      <button class="btn-back" onclick="window.close()">&#8592; ${ar ? 'رجوع' : 'Back'}</button>
-      <button class="btn-print" onclick="window.print()">&#128438; ${ar ? 'طباعة' : 'Print'}</button>
-    </div>
-    <div class="rx-print">${printContent}</div></body></html>`);
-    w.document.close();
-    setTimeout(() => { w.focus(); }, 300);
-  };
+    const isNative = typeof (window as any).Capacitor !== 'undefined'
+      && (window as any).Capacitor.isNativePlatform?.();
+    const css = `
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:white;direction:${ar?'rtl':'ltr'}}
+      @page{size:A4;margin:18mm 14mm}
+      .no-print{display:flex;gap:12px;padding:12px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:10;align-items:center}
+      .btn-back{background:#f1f5f9;color:#475569;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+      .btn-print{background:#0d9488;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+      @media print{.no-print{display:none!important}body{font-size:11px}}
+    `;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${ar?'وصفة طبية':'Prescription'}</title><style>${css}</style></head><body>
+      <div class="no-print">
+        <button class="btn-back" onclick="window.close()">&#8592; ${ar?'رجوع':'Back'}</button>
+        <button class="btn-print" onclick="window.print()">&#128438; ${ar?'طباعة / PDF':'Print / Save PDF'}</button>
+        <span style="font-size:11px;color:#94a3b8;margin-left:8px">${ar?'للحفظ كـ PDF: اختر «حفظ كـ PDF» من خيارات الطباعة':'To save as PDF: choose «Save as PDF» in print options'}</span>
+      </div>
+      <div style="max-width:800px;margin:0 auto;padding:20px">${printContent}</div>
+    </body></html>`;
 
+    if (isNative) {
+      // Android — PDF عبر jsPDF
+      try {
+        const { jsPDF } = await import('jspdf');
+        const { Filesystem, Directory } = await import('@capacitor/filesystem');
+        const { Share } = await import('@capacitor/share');
+
+        const PAD = 14; const PW = 210;
+        const PRIMARY = '#0d9488'; const GRAY = '#64748b'; const DARK = '#0f172a'; const LIGHT = '#f0fdf9';
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        let y = 0;
+
+        pdf.setFillColor(13, 148, 136); pdf.rect(0, 0, PW, 4, 'F'); y = 13;
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(22); pdf.setTextColor(13, 148, 136);
+        pdf.text('Easy', PAD, y);
+        pdf.setTextColor(15, 23, 42); pdf.text('Drug', PAD + pdf.getTextWidth('Easy'), y);
+        pdf.setFontSize(11); pdf.setTextColor(15, 23, 42);
+        if (doctorName) pdf.text('Dr. ' + doctorName, PW - PAD, y - 4, { align: 'right' });
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(100, 116, 139);
+        if (specialty)   pdf.text(specialty,   PW - PAD, y + 3,  { align: 'right' });
+        if (institution) pdf.text(institution, PW - PAD, y + 8,  { align: 'right' });
+        if (licenseNo)   pdf.text('Lic: ' + licenseNo, PW - PAD, y + 13, { align: 'right' });
+        y += 10;
+        pdf.setDrawColor(13, 148, 136); pdf.setLineWidth(0.5); pdf.line(PAD, y, PW - PAD, y); y += 7;
+
+        if (patientName || patientAge || diagnosis) {
+          pdf.setFillColor(240, 253, 249); pdf.roundedRect(PAD, y, PW - PAD * 2, 24, 2, 2, 'F');
+          pdf.setDrawColor(153, 246, 228); pdf.setLineWidth(0.3); pdf.roundedRect(PAD, y, PW - PAD * 2, 24, 2, 2, 'S');
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(100, 116, 139);
+          pdf.text('Patient', PAD + 4, y + 7);
+          pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
+          if (patientName) pdf.text(patientName, PAD + 4, y + 15);
+          if (patientAge)  pdf.text(patientAge + ' yrs', PAD + 4, y + 21);
+          if (diagnosis) {
+            pdf.setFillColor(255, 247, 237); pdf.rect(PW/2, y + 4, PW/2 - PAD - 2, 16, 'F');
+            pdf.setDrawColor(245, 158, 11); pdf.setLineWidth(1); pdf.line(PW/2, y + 4, PW/2, y + 20);
+            pdf.setLineWidth(0.3); pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(100, 116, 139);
+            pdf.text('Diagnosis', PW/2 + 4, y + 10);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
+            pdf.text(diagnosis.slice(0, 30), PW/2 + 4, y + 18);
+          }
+          y += 30;
+        }
+
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(28); pdf.setTextColor(13, 148, 136);
+        pdf.text('Rx', PAD, y + 10); y += 16;
+
+        pdf.setFillColor(240, 253, 249); pdf.rect(PAD, y, PW - PAD * 2, 8, 'F');
+        pdf.setDrawColor(153, 246, 228); pdf.setLineWidth(0.3); pdf.rect(PAD, y, PW - PAD * 2, 8, 'S');
+        const C = { drug: PAD + 3, dose: PAD + 75, freq: PAD + 115, dur: PAD + 155 };
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(100, 116, 139);
+        pdf.text('MEDICATION', C.drug, y + 5.5); pdf.text('DOSE', C.dose, y + 5.5);
+        pdf.text('FREQUENCY', C.freq, y + 5.5); pdf.text('DURATION', C.dur, y + 5.5); y += 9;
+
+        const validDrugs = drugs.filter((d: any) => d.name);
+        validDrugs.forEach((drug: any, i: number) => {
+          const rh = 14;
+          if (i % 2 === 1) { pdf.setFillColor(248, 250, 252); pdf.rect(PAD, y, PW - PAD * 2, rh, 'F'); }
+          pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10); pdf.setTextColor(13, 148, 136);
+          pdf.text(drug.name.slice(0, 32), C.drug, y + 6);
+          pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(15, 23, 42);
+          if (drug.dose)      pdf.text(drug.dose.slice(0,15),      C.dose, y + 9);
+          if (drug.frequency) pdf.text(drug.frequency.slice(0,18), C.freq, y + 9);
+          if (drug.duration)  pdf.text(drug.duration.slice(0,15),  C.dur,  y + 9);
+          pdf.setDrawColor(226, 232, 240); pdf.setLineWidth(0.2); pdf.line(PAD, y + rh, PW - PAD, y + rh);
+          y += rh;
+        });
+
+        y += 10;
+        pdf.setDrawColor(203, 213, 225); pdf.setLineWidth(0.3);
+        pdf.setLineDashPattern([2, 2], 0); pdf.line(PAD, y, PW - PAD, y); pdf.setLineDashPattern([], 0); y += 8;
+
+        const sCX = PAD + 18, sCY = y + 18;
+        pdf.setDrawColor(13, 148, 136); pdf.setLineWidth(0.8); pdf.circle(sCX, sCY, 16, 'S');
+        pdf.setLineWidth(0.3); pdf.circle(sCX, sCY, 14, 'S');
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6.5); pdf.setTextColor(13, 148, 136);
+        if (stampText) {
+          const words = stampText.split('/').map((s: string) => s.trim()).filter(Boolean);
+          const sy = sCY - ((words.length - 1) * 4) / 2;
+          words.forEach((w: string, i: number) => pdf.text(w, sCX, sy + i * 4, { align: 'center' }));
+        } else {
+          pdf.setTextColor(203, 213, 225); pdf.text('Stamp', sCX, sCY + 2, { align: 'center' });
+        }
+
+        const sigX = PW - PAD - 48;
+        pdf.setDrawColor(15, 23, 42); pdf.setLineWidth(0.4); pdf.line(sigX, y + 34, sigX + 48, y + 34);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(100, 116, 139);
+        pdf.text('Doctor Signature', sigX + 24, y + 39, { align: 'center' });
+
+        pdf.setFontSize(8); pdf.setTextColor(100, 116, 139);
+        pdf.text(new Date().toLocaleDateString('en-US'), PW - PAD, 288, { align: 'right' });
+        pdf.setFillColor(13, 148, 136); pdf.rect(0, 291, PW, 4, 'F');
+
+        const pdfB64 = pdf.output('datauristring').split(',')[1];
+        const fileName = 'rx_' + Date.now() + '.pdf';
+        await Filesystem.writeFile({ path: fileName, data: pdfB64, directory: Directory.Cache });
+        const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+        await Share.share({
+          title: ar ? 'وصفة طبية - EasyDrug' : 'Prescription - EasyDrug',
+          url: uri,
+          dialogTitle: ar ? 'مشاركة / طباعة الوصفة' : 'Share / Print Prescription',
+        });
+      } catch (err) {
+        console.error('PDF error:', err);
+        alert(ar ? 'تعذّر إنشاء PDF' : 'Could not generate PDF');
+      }
+    } else {
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => w.focus(), 200);
+    }
+  };
   const inputCls = `w-full px-3 py-2.5 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 outline-none transition-all`;
   const labelCls = `block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1`;
 
