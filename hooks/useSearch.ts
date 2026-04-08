@@ -165,7 +165,7 @@ export function useSearch(
     }
 
     return medicines.filter(m => {
-      if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw); // تجاري فقط
+      if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw);
       return scoreQuery(String(m['Trade Name'] || ''), String(m['Scientific Name'] || ''), queryWords, textSearchMode === 'tradeName') !== null;
     });
   }, [medicines, raw, debouncedSearchTerm, textSearchMode, indications]);
@@ -212,9 +212,9 @@ export function useSearch(
     if (rawNoSpaces.length < 1 && hasActiveFilters)
       return [...searchContextMedicines].sort(sortFnAlpha);
 
-    // البحث النصي: 100 نتيجة للكل — Admin بدون حد
+    // البحث النصي: 100 نتيجة — لكن لو في فلاتر نشطة نرجع كل النتائج
     const applyLimit = (arr: Medicine[]) =>
-      isAdmin ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
+      (isAdmin || hasActiveFilters) ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
 
     // indication mode — النتايج جاهزة من searchTextResults مباشرة
     if (textSearchMode === 'indication') {
@@ -232,7 +232,7 @@ export function useSearch(
         const sciNorm  = norm(String(m['Scientific Name'] || ''));
         if (hasWildcard) {
           // wildcard — الاسم التجاري فقط
-          return matchesWildcard(tradNorm, raw);
+          return matchesWildcard(tradNorm, raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw);
         }
         if (isSci)   return sciNorm.includes(qn);
         if (isTrade) return tradNorm.includes(qn);
@@ -273,7 +273,7 @@ export function useSearch(
       const trade = String(m['Trade Name'] || '');
       const sci   = String(m['Scientific Name'] || '');
       if (hasWildcard) {
-        if (matchesWildcard(norm(trade), raw))
+        if (matchesWildcard(norm(trade), raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw))
           buckets.push({ m, tier: 3, matchLen: 0, restFoundAll: false, tradeName: norm(trade) });
         continue;
       }

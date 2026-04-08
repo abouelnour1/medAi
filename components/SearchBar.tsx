@@ -112,7 +112,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 : (ar ? 'ابحث بالاسم العلمي...'  : 'Search by scientific name...')
             }
             autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
-            className="w-full bg-white dark:bg-dark-card h-12 pl-10 pr-10 rounded-2xl text-sm font-semibold shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] border border-slate-100 dark:border-slate-700 focus:border-primary/40 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
+            className="w-full bg-white dark:bg-dark-card h-12 pl-11 pr-11 rounded-2xl text-sm font-semibold border border-slate-100 dark:border-slate-700 focus:border-primary/40 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
           />
           {isSearchActive && (
             <button onClick={onClearSearch} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-rose-500 transition-colors">
@@ -124,13 +124,13 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
         {/* Filters button */}
         {!isFocused && onOpenFilters && (
           <button onClick={onOpenFilters}
-            className={`h-12 px-3 rounded-2xl flex items-center gap-1.5 flex-shrink-0 border text-xs font-black active:scale-95 ${
+            className={`h-12 px-3 rounded-2xl flex items-center gap-1 flex-shrink-0 border text-[11px] font-black active:scale-95 ${
               activeFiltersCount > 0
                 ? 'bg-primary text-white border-primary'
                 : 'bg-white dark:bg-dark-card text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 10h10M11 16h2" />
             </svg>
             {ar ? 'فلاتر' : 'Filters'}

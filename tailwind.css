@@ -200,21 +200,12 @@ body {
    ============================================================ */
 
 @keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 1; transform: none; }
+  to   { opacity: 1; transform: none; }
 }
 
-/* Apply to list items — JS sets --i for stagger */
 .stagger-item {
-  opacity: 0;
-  animation: cardEntrance var(--dur-med) var(--ease-spring) forwards;
-  animation-delay: calc(var(--i, 0) * 40ms);
+  opacity: 1;
 }
 
 /* Cap stagger at 8 items to avoid long waits */

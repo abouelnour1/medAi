@@ -28,7 +28,7 @@ import { useSearch } from './hooks/useSearch';
 import { useAlternatives } from './hooks/useMedicineUtils';
 import DrugToolsModal from './components/DrugToolsModal';
 import PediatricDoseCalculator from './components/PediatricDoseCalculator';
-const DrugTestChecker = lazy(() => import('./components/DrugTestChecker'));
+import DrugTestChecker from './components/DrugTestChecker';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
 import { SkeletonList } from './components/SkeletonCard';
@@ -432,6 +432,7 @@ const App: React.FC = () => {
   const [pedCalcDrug, setPedCalcDrug] = useState<string | undefined>(undefined);
   const [activeImageViewer, setActiveImageViewer] = useState<{ images: string[], index: number, title: string, flags: boolean[] } | null>(null);
   const [sheetMedicine, setSheetMedicine] = useState<Medicine | null>(null);
+  const prevSheetMedicine = React.useRef<Medicine | null>(null);
   const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
   const [clinicalModal, setClinicalModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
@@ -583,13 +584,7 @@ const App: React.FC = () => {
       if (scrollContainerRef.current) {
           scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
       }
-      if (view === 'imageView') {
-          // لو جيت من details نرجع لها، لو من حته تانية كمان
-          const backTarget: View = (previousView === 'alternatives' ? 'details' : (previousView || 'details')) as View;
-          setActiveImageViewer(null);
-          setView(backTarget);
-          restoreScroll(backTarget);
-      } else if (sheetMedicine) {
+      if (sheetMedicine) {
           setSheetMedicine(null);
           return;  // فوري بدون delay
       } else if (view === 'alternatives') {
@@ -1286,18 +1281,17 @@ const App: React.FC = () => {
       />;
       if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
-      if (view === 'imageView' && activeImageViewer) return null; // rendered as overlay
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); setView('imageView'); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
+          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
-              <div className="pt-2">
+              <div className="pt-1">
 
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
-                    <div className="mb-6">
+                    <div className="mb-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
@@ -1315,9 +1309,8 @@ const App: React.FC = () => {
                         <button onClick={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
                           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
                           <svg className="w-7 h-7 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M6 2l.001 6.5L2 15c-.667 1.333.333 3 2 3h16c1.667 0 2.667-1.667 2-3l-4-6.5V2"/>
-                            <line x1="6" y1="7" x2="18" y2="7"/>
-                            <path d="M10 16a2 2 0 004 0"/>
+                            <path d="M8 3h8M9 3v6l-5 7a2 2 0 001.66 3h12.68A2 2 0 0020 19l-5-7V3"/>
+                            <line x1="9" y1="9" x2="15" y2="9"/>
                           </svg>
                           <span className="text-[10px] font-black text-purple-600">{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
                         </button>
@@ -1409,7 +1402,7 @@ const App: React.FC = () => {
                         );
 
                         if (hasResults) return (
-                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} />
+                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} />
                         );
                         if (noResults) return (
                           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
@@ -1671,7 +1664,7 @@ const App: React.FC = () => {
           className="fixed left-0 right-0 z-[59] px-3"
           style={{ top: headerHeight }}
         >
-          <div className="bg-light-bg dark:bg-dark-bg pb-2 pt-1" style={{}}>
+          <div className="bg-light-bg dark:bg-dark-bg pb-1 pt-1" style={{}}>
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -1696,7 +1689,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 104 : headerHeight + 16, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow mx-auto px-4 overflow-y-auto w-full max-w-5xl no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={view}>
               {renderContent()}
             </div>
@@ -1747,7 +1740,7 @@ onClearSearch={handleClearSearch}
             onOpenAssistant={undefined}
             onOpenInteractions={undefined}
             onOpenDoseCalc={() => { setPedCalcDrug(sheetMedicine?.['Scientific Name'] as string || sheetMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }}
-            onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); setView('imageView'); }}
+            onImageZoom={(imgs, idx, title, flags) => { prevSheetMedicine.current = sheetMedicine; setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); }}
             onFindAlternative={(m) => { setSheetMedicine(null); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }}
             onShare={handleShareMedicine}
             onAskGemini={handleAskGemini}
@@ -1806,7 +1799,6 @@ onClearSearch={handleClearSearch}
       )}
 
       {drugTestOpen && (
-        <Suspense fallback={null}>
           <DrugTestChecker
             onClose={() => setDrugTestOpen(false)}
             initialDrugName={drugTestInitial}
@@ -1817,7 +1809,6 @@ onClearSearch={handleClearSearch}
               setView('details');
             }}
           />
-        </Suspense>
       )}
 
       {false && drugToolsModal.open && (
@@ -1843,9 +1834,16 @@ onClearSearch={handleClearSearch}
       )}
       <FilterModal isOpen={isFilterModalOpen} onClose={()=>setIsFilterModalOpen(false)} filters={filters} onApply={setFilters} onClearFilters={()=>setFilters({productType:'all',priceMin:'',priceMax:'',pharmaceuticalForm:'',manufactureName:[],marketingCompany:[],mainAgent:[],legalStatus:''})} allMedicines={searchTextResults.length > 0 ? searchTextResults : medicines} t={t} headerBottom={headerHeight} isAdmin={user?.role === 'admin'} />
       {/* ── Image Viewer Overlay — فوق كل حاجة ── */}
-      {view === 'imageView' && activeImageViewer && (
+      {activeImageViewer && (
         <div className="fixed inset-0 z-[9999]">
-          <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={handleBack} />
+          <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={() => {
+            setActiveImageViewer(null);
+            if (prevSheetMedicine.current) {
+              setSheetMedicine(prevSheetMedicine.current);
+              prevSheetMedicine.current = null;
+            }
+            setView((previousView || 'details') as View);
+          }} />
         </div>
       )}
 

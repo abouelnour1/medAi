@@ -56,6 +56,8 @@ interface MedicineCardProps {
   onFindAlternative: (medicine: Medicine) => void;
   isFavorite: boolean;
   onToggleFavorite: (medicineId: string) => void;
+  onToggleCompare?: (medicine: Medicine) => void;
+  isInCompare?: boolean;
   t: TFunction;
   language: Language;
   imageRight?: boolean;
@@ -63,7 +65,7 @@ interface MedicineCardProps {
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, t, language, imageRight = false
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, t, language, imageRight = false
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);

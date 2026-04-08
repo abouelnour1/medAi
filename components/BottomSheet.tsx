@@ -35,7 +35,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       setHeight(minH);
       setVisible(true);
       // فتح فوري — بدون أي delay عشان الـ sheet تظهر في أسرع وقت
-      setAnimate(true);
+      requestAnimationFrame(() => setAnimate(true));
     } else {
       setAnimate(false);
       // انتظر نهاية الـ close animation بس
@@ -114,7 +114,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           height,
           borderRadius: isExpanded ? '1.5rem 1.5rem 0 0' : '2rem 2rem 0 0',
           transform: animate ? 'translateY(0)' : 'translateY(100%)',
-          transition: isDragging.current ? 'none' : 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.18s ease, height 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: isDragging.current ? 'none' : 'transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), height 0.15s cubic-bezier(0.22, 1, 0.36, 1)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
         contain: 'layout style',
@@ -122,20 +122,20 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       >
         {/* Handle */}
         <div
-          className="flex-shrink-0 flex flex-col items-center pt-3 pb-1 cursor-grab active:cursor-grabbing select-none"
+          className="flex-shrink-0 flex flex-col items-center pt-2 pb-0 cursor-grab active:cursor-grabbing select-none"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           onMouseDown={onMouseDown}
         >
-          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" style={{background: "linear-gradient(90deg, #14b8a6, #0ea5e9)"}} />
+          <div className="w-10 h-1 rounded-full" style={{background: "linear-gradient(90deg, #14b8a6, #0ea5e9)"}} />
           <div className="w-full flex justify-between items-center px-4 pt-1.5">
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-slate-400 active:scale-90 transition-transform rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="w-8 h-8 flex items-center justify-center text-slate-400 active:scale-90 transition-transform rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? "M19 15l-7-7-7 7" : "M5 15l7-7 7 7"} />
               </svg>

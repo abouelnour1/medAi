@@ -58,11 +58,7 @@ const DrugTestChecker: React.FC<Props> = ({
   };
 
   useEffect(() => { setVisible(true); }, []);
-
-  const handleClose = () => {
-    setVisible(false);
-    onClose();
-  };
+  const handleClose = () => { setVisible(false); onClose(); };
 
   // الرجوع = أغلق الـ modal
   const handleBack = () => {
@@ -119,11 +115,7 @@ const DrugTestChecker: React.FC<Props> = ({
     >
       <div
         className="w-full max-w-lg bg-white dark:bg-dark-card rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
-        style={{
-          height: '82vh',          /* ارتفاع ثابت دايماً */
-          transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 220ms cubic-bezier(0.32,0.72,0,1)',
-        }}
+        style={{ display: visible ? "flex" : "none" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
