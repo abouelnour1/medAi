@@ -702,8 +702,37 @@ const App: React.FC = () => {
 
     const loadData = async () => {
       try {
-        const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
-        setInsuranceData(INITIAL_INSURANCE_DATA as any);
+        // تحميل بيانات التأمين من R2 مع cache محلي
+        try {
+          const INS_CACHE_KEY = 'pharma_insurance_v2';
+          const INS_CACHE_TS  = 'pharma_insurance_ts';
+          const INS_TTL       = 24 * 60 * 60 * 1000; // 24 ساعة
+          const cacheAge      = Date.now() - parseInt(localStorage.getItem(INS_CACHE_TS) || '0');
+
+          // حاول تحمل من الـ cache الأول
+          const { getItem: getIDB, setItem: setIDB } = await import('./utils/storage');
+          const cachedIns = await getIDB<any[]>(INS_CACHE_KEY);
+          if (cachedIns && cachedIns.length > 0) {
+            setInsuranceData(cachedIns as any);
+          }
+
+          // لو الـ cache منتهي أو مفيش — جيب من R2
+          if (!cachedIns || cacheAge > INS_TTL) {
+            const res  = await fetch('https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/chi_insurance.json');
+            if (res.ok) {
+              const fresh = await res.json();
+              setInsuranceData(fresh);
+              await setIDB(INS_CACHE_KEY, fresh);
+              localStorage.setItem(INS_CACHE_TS, String(Date.now()));
+            }
+          }
+        } catch {
+          // fallback للداتا القديمة لو فيه مشكلة
+          try {
+            const { INITIAL_INSURANCE_DATA } = await import('./data/insurance-data');
+            setInsuranceData(INITIAL_INSURANCE_DATA as any);
+          } catch {}
+        }
         setIsDataLoaded(true);
 
         // تحميل الـ indications من R2 في الخلفية مع cache
