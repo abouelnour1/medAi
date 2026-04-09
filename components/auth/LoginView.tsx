@@ -98,20 +98,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
         {/* Logo */}
         <div className="mb-10 text-center">
           <div className="relative inline-flex mb-5">
-            <img
-              src="/logo.png"
-              alt="Easy Drug"
-              className="w-20 h-20 rounded-[1.5rem] object-cover shadow-xl shadow-teal-500/30"
-              onError={(e) => {
-                // fallback لو الصورة مش موجودة
-                const t = e.currentTarget as HTMLImageElement;
-                t.style.display = 'none';
-                (t.nextElementSibling as HTMLElement).style.display = 'flex';
-              }}
-            />
-            <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-cyan-600 items-center justify-center shadow-xl shadow-teal-500/30 hidden">
-              <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-xl shadow-teal-500/30">
+              <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                <path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/>
+                <path d="m18 15-2-2"/>
+                <path d="m15 18-2-2"/>
               </svg>
             </div>
             <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-cyan-600 blur-xl opacity-25 -z-10" />

@@ -98,6 +98,18 @@ const DrugTestChecker: React.FC<Props> = ({
     [selectedActive]
   );
 
+  // حساب dbCount مرة واحدة بس — مش في كل render
+  const dbCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    ALL_ACTIVES.forEach(active => {
+      const count = allMedicines.filter(m =>
+        activeMatchesSci(active, String(m['Scientific Name'] || ''))
+      ).length;
+      map.set(active, count);
+    });
+    return map;
+  }, [allMedicines]);
+
   const filteredActives = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
     if (q.length < 2) return ALL_ACTIVES;
@@ -290,9 +302,7 @@ const DrugTestChecker: React.FC<Props> = ({
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredActives.map(active => {
                   const entries = DRUG_TEST_DATA.filter(d => d.active === active);
-                  const dbCount = allMedicines.filter(m =>
-                    activeMatchesSci(active, String(m['Scientific Name'] || ''))
-                  ).length;
+                  const dbCount = dbCountMap.get(active) ?? 0;
                   return (
                     <button
                       key={active}
