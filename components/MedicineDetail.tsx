@@ -16,7 +16,8 @@ import ShieldIcon from './icons/ShieldIcon';
 import CameraIcon from './icons/CameraIcon';
 import PillIcon from './icons/PillIcon';
 import { getIngredientsList } from './MedicineCard';
-import { getClinicalData, ClinicalData } from '../utils/dailyMedicines';
+import { getClinicalData, ClinicalData, getClinicalReference, ClinicalReference } from '../utils/dailyMedicines';
+import ClinicalReferencePage from './ClinicalReferencePage';
 import ClinicalDataPage from './ClinicalDataPage';
 
 const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; accent?: string }> = ({ title, icon, children }) => (
@@ -68,6 +69,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
   }, [medicine.RegisterNumber]);
 
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
+  const [clinicalRef, setClinicalRef]   = useState<ClinicalReference | null>(null);
+  const [showClinicalRef, setShowClinicalRef] = useState(false);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
   // ── Order List helpers ────────────────────────────────────────────────
@@ -102,6 +105,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
     if (medicine?.RegisterNumber && medicine.RegisterNumber !== prevRegNumRef.current) {
       prevRegNumRef.current = medicine.RegisterNumber;
       getClinicalData(medicine.RegisterNumber).then(setClinicalData);
+      getClinicalReference(String(medicine['Scientific Name'] || '')).then(setClinicalRef);
     }
   }, [medicine?.RegisterNumber]);
 
@@ -333,7 +337,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <p className="text-teal-100 text-[9px] font-black uppercase tracking-widest mb-1">
                 {language === 'ar' ? 'الاستخدام' : 'Indication'}
               </p>
-              <p className="text-white text-[11px] font-bold leading-relaxed line-clamp-3">
+              <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
                 {clinicalData.indication}
               </p>
             </div>
@@ -345,7 +349,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                   <p className="text-amber-200 text-[9px] font-black uppercase tracking-widest mb-1">
                     {language === 'ar' ? 'ملاحظة الصيدلاني' : 'Pharmacist Note'}
                   </p>
-                  <p className="text-white text-[11px] font-bold leading-relaxed line-clamp-3">
+                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
                     {clinicalData.pharmacistNote}
                   </p>
                 </>
@@ -354,7 +358,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                   <p className="text-amber-200 text-[9px] font-black uppercase tracking-widest mb-1">
                     {language === 'ar' ? 'نقاط مميزة' : 'Key Points'}
                   </p>
-                  <p className="text-white text-[11px] font-bold leading-relaxed line-clamp-3">
+                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
                     {clinicalData.keyPoints}
                   </p>
                 </>
@@ -363,7 +367,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
                   <p className="text-blue-200 text-[9px] font-black uppercase tracking-widest mb-1">
                     {language === 'ar' ? 'الجرعة' : 'Dosage'}
                   </p>
-                  <p className="text-white text-[11px] font-bold leading-relaxed line-clamp-3">
+                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
                     {clinicalData.dosage}
                   </p>
                 </>
@@ -372,7 +376,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           </div>
 
           {/* Bottom chips */}
-          <div className="relative flex items-center gap-2 px-5 pb-4">
+          <div className="relative flex items-center gap-2 px-5 pb-4 flex-wrap">
+
             {clinicalData.dosage && (
               <span className="flex items-center gap-1 bg-white/15 text-white text-[9px] font-black px-2.5 py-1 rounded-full">
                 💊 {language === 'ar' ? 'جرعة' : 'Dosage'}
@@ -392,6 +397,40 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
         </div>
       )}
 
+
+      {/* ── Clinical Reference Card (from R2) ── */}
+      {clinicalRef && (
+        <button
+          onClick={() => setShowClinicalRef(true)}
+          className="w-full flex items-center gap-4 p-4 rounded-2xl active:scale-[0.98] transition-all text-left"
+          style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
+        >
+          {/* Icon */}
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl">📖</span>
+          </div>
+          {/* Text */}
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-white text-sm">
+              {language === 'ar' ? 'المرجع السريري الكامل' : 'Full Clinical Reference'}
+            </p>
+            <p className="text-white/50 text-[10px] mt-0.5">
+              {language === 'ar'
+                ? 'جرعات · تفاعلات · موانع · حمل · كلى · كبد'
+                : 'Doses · Interactions · Contraindications · Pregnancy · Renal · Hepatic'}
+            </p>
+          </div>
+          {/* Sections count badge */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-teal-500/30 text-teal-300">
+              Micromedex
+            </span>
+            <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d={language === 'ar' ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
+            </svg>
+          </div>
+        </button>
+      )}
 
       <InfoCard title={`${t('quickActionIngredient')}${medicine.StrengthUnit ? ` (${medicine.StrengthUnit})` : ''}`} icon={<PillBottleIcon />}>
           <div className="grid grid-cols-1 gap-1.5">
@@ -531,6 +570,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
 
 
 
+
+      {/* Clinical Reference Full Page — from R2 */}
+      {showClinicalRef && clinicalRef && (
+        <ClinicalReferencePage
+          scientificName={String(medicine['Scientific Name'] || '')}
+          tradeName={String(medicine['Trade Name'] || '')}
+          language={language}
+          onClose={() => setShowClinicalRef(false)}
+        />
+      )}
 
       {/* Clinical Data Full Page */}
       {showClinicalPage && (

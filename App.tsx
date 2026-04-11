@@ -31,6 +31,7 @@ import PediatricDoseCalculator from './components/PediatricDoseCalculator';
 import DrugTestChecker from './components/DrugTestChecker';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
+import { prefetchClinicalRef } from './utils/dailyMedicines';
 import { SkeletonList } from './components/SkeletonCard';
 import ErrorBoundary from './components/ErrorBoundary';
 import PullToRefresh from './components/PullToRefresh';
@@ -775,6 +776,7 @@ const App: React.FC = () => {
 
         // ── جيب sync + overrides مع بعض ثم setMedicines مرة واحدة بس ──────
         // ده بيمنع الـ re-render المتعدد اللي بيبطّئ الفتح والقفل
+        prefetchClinicalRef(); // pre-load clinical reference in background
         const syncResult = await syncData();
         const baseMap = new Map<string, Medicine>();
         [...syncResult.medicines, ...syncResult.supplements, ...syncResult.food]

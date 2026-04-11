@@ -193,3 +193,100 @@ export async function getClinicalData(registerNumber: string): Promise<ClinicalD
     return null;
   }
 }
+
+// ── Clinical Reference Data (from R2) ────────────────────────────────────────
+export interface ClinicalReference {
+  scientificName: string;
+  drugName: string;
+  source: string;
+  indications: string;
+  mechanism: string;
+  adultDose: string;
+  pediatricDose: string;
+  contraindications: string;
+  interactions: string;
+  pregnancy: string;
+  lactation: string;
+  renalDosing: string;
+  hepaticDosing: string;
+  g6pd: string;
+  // Full (untruncated) text versions — populated from Full Text sheet
+  indications_full?: string;
+  mechanism_full?: string;
+  adultDose_full?: string;
+  pediatricDose_full?: string;
+  contraindications_full?: string;
+  interactions_full?: string;
+  pregnancy_full?: string;
+  lactation_full?: string;
+  renalDosing_full?: string;
+  hepaticDosing_full?: string;
+  g6pd_full?: string;
+}
+
+const R2_CLINICAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
+const CLINICAL_CACHE_KEY = 'easydrug_clinical_ref_v2';
+const CLINICAL_CACHE_TS  = 'easydrug_clinical_ref_ts';
+const CLINICAL_TTL       = 7 * 24 * 60 * 60 * 1000; // أسبوع
+
+let _clinicalRefMap: Record<string, ClinicalReference> | null = null;
+
+async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
+  if (_clinicalRefMap) return _clinicalRefMap;
+  try {
+    // محاول تحمل من localStorage
+    const cacheAge = Date.now() - parseInt(localStorage.getItem(CLINICAL_CACHE_TS) || '0');
+    const cached   = localStorage.getItem(CLINICAL_CACHE_KEY);
+    if (cached && cacheAge < CLINICAL_TTL) {
+      _clinicalRefMap = JSON.parse(cached);
+      return _clinicalRefMap!;
+    }
+    // جيب من R2
+    const res = await fetch(R2_CLINICAL_URL);
+    if (res.ok) {
+      const data = await res.json();
+      _clinicalRefMap = data;
+      try {
+        localStorage.setItem(CLINICAL_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CLINICAL_CACHE_TS, String(Date.now()));
+      } catch {}
+      return _clinicalRefMap!;
+    }
+  } catch {}
+  return {};
+}
+
+// Normalize new JSON format (with _summary/_full) into ClinicalReference shape
+function normalizeRef(raw: any): ClinicalReference {
+  const FIELDS = ['indications','mechanism','adultDose','pediatricDose','contraindications','interactions','pregnancy','lactation','renalDosing','hepaticDosing','g6pd'] as const;
+  const out: any = {
+    scientificName: raw.drugName || '',
+    drugName: raw.drugName || '',
+    source: raw.source || '',
+  };
+  for (const f of FIELDS) {
+    // Support both old format (plain field) and new format (_summary/_full)
+    out[f] = raw[`${f}_summary`] ?? raw[f] ?? '';
+    out[`${f}_full`] = raw[`${f}_full`] ?? raw[f] ?? '';
+  }
+  return out as ClinicalReference;
+}
+
+export async function getClinicalReference(scientificName: string): Promise<ClinicalReference | null> {
+  const map = await getClinicalRefMap();
+  if (!map || Object.keys(map).length === 0) return null;
+  const key = scientificName.toLowerCase().trim();
+  // بحث مباشر
+  if (map[key]) return normalizeRef(map[key]);
+  // بحث بالكلمة الأولى (مثلاً "amoxicillin" من "amoxicillin/clavulanic acid")
+  const first = key.split(/[\/\s,+]+/)[0];
+  if (first && map[first]) return normalizeRef(map[first]);
+  // بحث جزئي
+  const found = Object.keys(map).find(k => k.includes(first) || first.includes(k));
+  return found ? normalizeRef(map[found]) : null;
+}
+
+// Pre-load in background
+export function prefetchClinicalRef() {
+  getClinicalRefMap().catch(() => {});
+}

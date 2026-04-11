@@ -170,7 +170,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
                   f.key === 'sideEffects' ? 'text-red-400' : 'text-slate-400'}`}>
                   {f.emoji} {ar ? f.labelAr : f.labelEn}
                 </p>
-                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{data[f.key]}</p>
+                <p className="text-[13.5px] leading-[1.8] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-normal tracking-[0.01em]">{data[f.key]}</p>
               </div>
             ))}
             <p className="text-[9px] text-slate-300 dark:text-slate-600 text-center pt-2">
