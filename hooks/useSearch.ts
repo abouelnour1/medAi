@@ -209,12 +209,14 @@ export function useSearch(
       return String(a['Trade Name']).localeCompare(String(b['Trade Name']));
     };
 
-    if (rawNoSpaces.length < 1 && hasActiveFilters)
-      return [...searchContextMedicines].sort(sortFnAlpha);
+    if (rawNoSpaces.length < 1 && hasActiveFilters) {
+      const sorted = [...searchContextMedicines].sort(sortFnAlpha);
+      return isAdmin ? sorted : sorted;
+    }
 
-    // البحث النصي: 100 نتيجة — لكن لو في فلاتر نشطة نرجع كل النتائج
+    // البحث النصي: 100 نتيجة للعاديين، 200 للأدمن (pagination يتحكم في البقية)
     const applyLimit = (arr: Medicine[]) =>
-      (isAdmin || hasActiveFilters) ? arr : arr.slice(0, SEARCH_RESULT_LIMIT);
+      hasActiveFilters ? arr : arr.slice(0, isAdmin ? 200 : SEARCH_RESULT_LIMIT);
 
     // indication mode — النتايج جاهزة من searchTextResults مباشرة
     if (textSearchMode === 'indication') {

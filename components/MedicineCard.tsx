@@ -58,6 +58,7 @@ interface MedicineCardProps {
   onToggleFavorite: (medicineId: string) => void;
   onToggleCompare?: (medicine: Medicine) => void;
   isInCompare?: boolean;
+  onImageClick?: () => void;
   t: TFunction;
   language: Language;
   imageRight?: boolean;
@@ -65,7 +66,7 @@ interface MedicineCardProps {
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, t, language, imageRight = false
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language, imageRight = false
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +111,10 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
 
         {/* ── صورة العلبة ── */}
         {medicine.imgBox ? (
-          <div className="flex-shrink-0 w-[58px] h-[58px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start ml-auto">
+          <div
+            className={`flex-shrink-0 w-[58px] h-[58px] bg-slate-50 dark:bg-slate-800/60 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/40 p-1 self-start ml-auto${onImageClick ? ' cursor-zoom-in active:scale-95 transition-transform' : ''}`}
+            onClick={onImageClick ? (e) => { e.stopPropagation(); onImageClick(); } : undefined}
+          >
             <img src={medicine.imgBox} alt="" className="w-full h-full object-contain" />
           </div>
         ) : (

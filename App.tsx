@@ -419,6 +419,8 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('pharma_fuzzy_search');
     return saved !== null ? saved === 'true' : false; // default = false = exact
   });
+  const [adminResultsPage, setAdminResultsPage] = useState(1);
+  const ADMIN_PAGE_SIZE = 100;
 
   useEffect(() => {
     localStorage.setItem('pharma_fuzzy_search', String(fuzzyEnabled));
@@ -947,6 +949,7 @@ const App: React.FC = () => {
   // Analytics: log search
   const prevSearchTerm = React.useRef('');
   useEffect(() => {
+    setAdminResultsPage(1); // reset pagination on new search
     if (!debouncedSearchTerm || debouncedSearchTerm === prevSearchTerm.current) return;
     if (debouncedSearchTerm.length < 3) return;
     prevSearchTerm.current = debouncedSearchTerm;
@@ -1430,9 +1433,29 @@ const App: React.FC = () => {
                           </div>
                         );
 
-                        if (hasResults) return (
-                          <ResultsList medicines={displayedMedicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} />
-                        );
+                        if (hasResults) {
+                          const isAdmin = user?.role === 'admin';
+                          const pagedMeds = isAdmin
+                            ? displayedMedicines.slice(0, adminResultsPage * ADMIN_PAGE_SIZE)
+                            : displayedMedicines;
+                          const hasMore = isAdmin && pagedMeds.length < displayedMedicines.length;
+                          return (
+                            <>
+                              {isAdmin && displayedMedicines.length > ADMIN_PAGE_SIZE && (
+                                <p className="text-[10px] font-black text-slate-400 px-1 mb-2">
+                                  {pagedMeds.length} / {displayedMedicines.length} نتيجة
+                                </p>
+                              )}
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); setView('imageView'); } }} />
+                              {hasMore && (
+                                <button onClick={() => setAdminResultsPage(p => p + 1)}
+                                  className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
+                                  تحميل المزيد ({displayedMedicines.length - pagedMeds.length} باقي)
+                                </button>
+                              )}
+                            </>
+                          );
+                        }
                         if (noResults) return (
                           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
                             {textSearchMode === 'indication' && Object.keys(indications).length === 0

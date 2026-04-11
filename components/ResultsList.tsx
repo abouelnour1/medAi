@@ -27,6 +27,7 @@ interface ResultsListProps {
   onToggleCompare?: (medicine: Medicine) => void;
   compareList?: string[];
   maxResults?: number;
+  onImageClick?: (medicine: Medicine) => void;
 }
 
 const MAX_RESULTS = 100;
@@ -75,7 +76,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   t, language, resultsState, favorites, onToggleFavorite,
   sortBy, setSortBy,
   onToggleCompare, compareList = [],
-  maxResults
+  maxResults, onImageClick
 }) => {
 
   if (resultsState === 'empty') {
@@ -111,6 +112,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
               onToggleFavorite={onToggleFavorite}
               onToggleCompare={onToggleCompare}
               isInCompare={compareList.includes(med.RegisterNumber)}
+              onImageClick={onImageClick ? () => onImageClick(med) : undefined}
               t={t}
               language={language}
             />

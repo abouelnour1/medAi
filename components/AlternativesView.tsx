@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
+
+type AltSort = 'alpha' | 'strengthAsc' | 'strengthDesc' | 'priceAsc' | 'priceDesc';
 
 interface AlternativesViewProps {
     sourceMedicine: Medicine;
@@ -83,9 +85,39 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
     const price = parseFloat(sourceMedicine['Public price']);
     const ar = language === 'ar';
     const diffStrength = alternatives.diffStrength || [];
+    const [altSort, setAltSort] = useState<AltSort>('alpha');
+
+    const sortMeds = (meds: Medicine[]) => {
+        const copy = [...meds];
+        if (altSort === 'priceAsc')      return copy.sort((a,b) => (parseFloat(a['Public price'])||0) - (parseFloat(b['Public price'])||0));
+        if (altSort === 'priceDesc')     return copy.sort((a,b) => (parseFloat(b['Public price'])||0) - (parseFloat(a['Public price'])||0));
+        if (altSort === 'strengthAsc')   return copy.sort((a,b) => (parseFloat(a.Strength)||0) - (parseFloat(b.Strength)||0));
+        if (altSort === 'strengthDesc')  return copy.sort((a,b) => (parseFloat(b.Strength)||0) - (parseFloat(a.Strength)||0));
+        return copy.sort((a,b) => String(a['Trade Name']).localeCompare(String(b['Trade Name'])));
+    };
+
+    const sortOptions: { val: AltSort; labelAr: string; labelEn: string }[] = [
+        { val: 'alpha',        labelAr: 'أ-ي',       labelEn: 'A-Z' },
+        { val: 'strengthAsc',  labelAr: 'تركيز ↑',   labelEn: 'Str ↑' },
+        { val: 'strengthDesc', labelAr: 'تركيز ↓',   labelEn: 'Str ↓' },
+        { val: 'priceAsc',     labelAr: 'سعر ↑',     labelEn: 'Price ↑' },
+        { val: 'priceDesc',    labelAr: 'سعر ↓',     labelEn: 'Price ↓' },
+    ];
 
     return (
-        <div className="animate-fade-in space-y-8 px-4">
+        <div className="animate-fade-in space-y-6 px-4">
+            {/* Sort bar */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex-shrink-0">{ar ? 'ترتيب' : 'Sort'}</span>
+                {sortOptions.map(s => (
+                    <button key={s.val} onClick={() => setAltSort(s.val)}
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all active:scale-95 ${
+                            altSort === s.val ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}>
+                        {ar ? s.labelAr : s.labelEn}
+                    </button>
+                ))}
+            </div>
             <div>
                 <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-muted px-2">{t('originalDrug')}</h3>
                 <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-md p-5 mt-2 border-l-4 border-primary dark:border-primary-light">
@@ -110,7 +142,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 title={t('directAlternatives')}
                 badge={alternatives.direct.length > 0 ? String(alternatives.direct.length) : undefined}
                 badgeColor="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                medicines={alternatives.direct}
+                medicines={sortMeds(alternatives.direct)}
                 emptyMessage={t('noDirectAlternatives')}
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}
@@ -131,7 +163,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                     }
                     badge={String(diffStrength.length)}
                     badgeColor="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    medicines={diffStrength}
+                    medicines={sortMeds(diffStrength)}
                     emptyMessage=""
                     onMedicineSelect={onMedicineSelect}
                     onMedicineLongPress={onMedicineLongPress}
@@ -147,7 +179,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 title={t('therapeuticAlternatives')}
                 badge={alternatives.therapeutic.length > 0 ? String(alternatives.therapeutic.length) : undefined}
                 badgeColor="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                medicines={alternatives.therapeutic}
+                medicines={sortMeds(alternatives.therapeutic)}
                 emptyMessage={t('noTherapeuticAlternatives')}
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}

@@ -39,12 +39,15 @@ async function fetchPediatricData(): Promise<{ drugs: DrugEntry[]; weightChart: 
 // Static set للـ MedicineDetail matching — مش محتاج fetch
 export const PEDIATRIC_DRUG_NAMES = new Set([
   'paracetamol','ibuprofen','amoxicillin','amoxicillin/clavulanate','amoxicillin/clavulanate (es)',
+  'amoxicillin,clavulanate','amoxicillin, clavulanate','amoxicillin,clavulanic acid',
   'azithromycin','cefdinir','cefixime','cephalexin','clarithromycin','metronidazole',
-  'trimethoprim/sulfamethoxazole','cetirizine','loratadine','desloratadine','fexofenadine',
-  'diphenhydramine','salbutamol','prednisolone','dexamethasone','domperidone','ondansetron',
-  'simethicone','iron polymaltose','ferrous sulfate (drops)','vitamin d3 (drops)','zinc',
+  'trimethoprim/sulfamethoxazole','trimethoprim,sulfamethoxazole','cetirizine','loratadine',
+  'desloratadine','fexofenadine','diphenhydramine','salbutamol','prednisolone','dexamethasone',
+  'domperidone','ondansetron','simethicone','iron polymaltose','ferrous sulfate','ferrous sulfate (drops)',
+  'vitamin d3','vitamin d3 (drops)','cholecalciferol','zinc',
   'ambroxol','guaifenesin','chlorpheniramine','nifuroxazide','furazolidone','albendazole',
-  'mebendazole','nitazoxanide','ketotifen','hydroxyzine','cefadroxil','spironolactone','furosemide','diclofenac (rofinac) supp','diclofenac'
+  'mebendazole','nitazoxanide','ketotifen','hydroxyzine','cefadroxil',
+  'spironolactone','furosemide','diclofenac (rofinac) supp','diclofenac',
 ]);
 
 interface Props {
@@ -70,9 +73,15 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
 
   useEffect(() => {
     if (!initialDrugName || !drugs.length || selectedActive) return;
-    const lower = initialDrugName.toLowerCase();
+    const lower = initialDrugName.toLowerCase()
+      .replace(/,\s*/g, ',')           // normalize spaces after comma
+      .replace('clavulanic acid', 'clavulanate')  // normalize clavulanic acid
+      .replace('cholecalciferol', 'vitamin d3');  // normalize vitamin d
     const match = Array.from(new Set(drugs.map(d => d.active)))
-      .find(a => a.toLowerCase().includes(lower) || lower.includes(a.toLowerCase()));
+      .find(a => {
+        const aNorm = a.toLowerCase().replace(/,\s*/g, ',').replace('clavulanic acid', 'clavulanate');
+        return aNorm.includes(lower) || lower.includes(aNorm);
+      });
     if (match) setSelectedActive(match);
   }, [drugs, initialDrugName]);
 
