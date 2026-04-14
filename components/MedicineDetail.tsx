@@ -31,6 +31,80 @@ const CLINICAL_FIELDS = [
 ];
 const PREVIEW_LEN = 140;
 
+// ── Safety Badges ────────────────────────────────────────────────────────────
+const SAFETY_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  'Safe':           { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  'Generally Safe': { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-400' },
+  'Monitor':        { bg: 'bg-amber-50 dark:bg-amber-900/20',   text: 'text-amber-700 dark:text-amber-400',   dot: 'bg-amber-500' },
+  'Caution':        { bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-500' },
+  'Avoid':          { bg: 'bg-red-50 dark:bg-red-900/20',       text: 'text-red-700 dark:text-red-400',       dot: 'bg-red-500' },
+  'X':              { bg: 'bg-red-50 dark:bg-red-900/20',       text: 'text-red-700 dark:text-red-400',       dot: 'bg-red-600' },
+  'Unknown':        { bg: 'bg-slate-100 dark:bg-slate-800',     text: 'text-slate-500 dark:text-slate-400',   dot: 'bg-slate-400' },
+};
+function getSafetyStyle(val: string | undefined) {
+  if (!val) return { bg: 'bg-slate-50 dark:bg-slate-800/50', text: 'text-slate-400', dot: 'bg-slate-300' };
+  return SAFETY_STYLES[val] || { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', dot: 'bg-slate-400' };
+}
+
+const AR_SAFETY_LABELS: Record<string, string> = {
+  'Safe': 'آمن', 'Generally Safe': 'آمن عموماً', 'Monitor': 'مراقبة',
+  'Caution': 'حذر', 'Avoid': 'تجنب', 'Unknown': 'غير محدد', 'X': 'ممنوع',
+};
+
+interface SafetyBadgeConfig { key: string; labelAr: string; labelEn: string; icon: string; value: string | undefined; }
+
+const SafetyBadgeItem: React.FC<{ cfg: SafetyBadgeConfig; language: Language; onPress: () => void }> = ({ cfg, language, onPress }) => {
+  const val = cfg.value || '';
+  const s = getSafetyStyle(val);
+  const ar = language === 'ar';
+  const dispVal = ar ? (AR_SAFETY_LABELS[val] || val) : val;
+  return (
+    <button onClick={onPress} className={`flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl active:scale-95 transition-all min-w-[58px] ${s.bg}`}>
+      <span className="text-base leading-none">{cfg.icon}</span>
+      <span className={`text-[8.5px] font-black uppercase tracking-wide text-center leading-tight ${s.text}`}>{ar ? cfg.labelAr : cfg.labelEn}</span>
+      {val ? (
+        <div className="flex items-center gap-0.5">
+          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+          <span className={`text-[7.5px] font-black ${s.text}`}>{dispVal}</span>
+        </div>
+      ) : (
+        <span className="text-[8px] text-slate-300 dark:text-slate-600">—</span>
+      )}
+    </button>
+  );
+};
+
+const SafetyBadgesCard: React.FC<{
+  clinicalRef: import('../utils/dailyMedicines').ClinicalReference;
+  language: Language;
+  onOpenRef: () => void;
+}> = ({ clinicalRef, language, onOpenRef }) => {
+  const ar = language === 'ar';
+  const badges: SafetyBadgeConfig[] = [
+    { key: 'pregnancy',    labelAr: 'حمل',        labelEn: 'Pregnancy',    icon: '🤰', value: clinicalRef.pregnancyStatus },
+    { key: 'lactation',    labelAr: 'رضاعة',      labelEn: 'Lactation',    icon: '🍼', value: clinicalRef.lactationStatus },
+    { key: 'diabetes',     labelAr: 'سكري',       labelEn: 'Diabetes',     icon: '🩸', value: clinicalRef.diabetesEffect },
+    { key: 'hypertension', labelAr: 'ضغط',        labelEn: 'Hypertension', icon: '💓', value: clinicalRef.hypertensionEffect },
+    { key: 'g6pd',         labelAr: 'أنيميا/فول', labelEn: 'G6PD/Anemia',  icon: '🧬', value: clinicalRef.g6pdRisk },
+  ];
+  if (!badges.some(b => b.value && b.value !== '')) return null;
+  return (
+    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100/80 dark:border-dark-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60">
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+          {ar ? 'السلامة السريرية' : 'Clinical Safety'}
+        </span>
+        <button onClick={onOpenRef} className="text-[9px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+          {ar ? 'التفاصيل' : 'Details'}
+        </button>
+      </div>
+      <div className="px-3 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+        {badges.map(b => <SafetyBadgeItem key={b.key} cfg={b} language={language} onPress={onOpenRef} />)}
+      </div>
+    </div>
+  );
+};
+
 const ClinicalAccordion: React.FC<{ clinicalData: ClinicalData; language: Language; onViewAll: () => void }> = ({ clinicalData, language, onViewAll }) => {
   const ar = language === 'ar';
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -346,42 +420,16 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
       </div>
 
       {/* ── Clinical Data — Accordion sections ── */}
+      {clinicalRef && (
+        <SafetyBadgesCard
+          clinicalRef={clinicalRef}
+          language={language}
+          onOpenRef={() => setShowClinicalRef(true)}
+        />
+      )}
+
       {clinicalData && <ClinicalAccordion clinicalData={clinicalData} language={language} onViewAll={() => { if (onOpenClinical) onOpenClinical(); else setShowClinicalPage(true); }} />}
 
-
-      {/* ── Clinical Reference Card (from R2) ── */}
-      {clinicalRef && (
-        <button
-          onClick={() => setShowClinicalRef(true)}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl active:scale-[0.98] transition-all text-left"
-          style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
-        >
-          {/* Icon */}
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl">📖</span>
-          </div>
-          {/* Text */}
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-white text-sm">
-              {language === 'ar' ? 'المرجع السريري الكامل' : 'Full Clinical Reference'}
-            </p>
-            <p className="text-white/50 text-[10px] mt-0.5">
-              {language === 'ar'
-                ? 'جرعات · تفاعلات · موانع · حمل · كلى · كبد'
-                : 'Doses · Interactions · Contraindications · Pregnancy · Renal · Hepatic'}
-            </p>
-          </div>
-          {/* Sections count badge */}
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-teal-500/30 text-teal-300">
-              Micromedex
-            </span>
-            <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d={language === 'ar' ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
-            </svg>
-          </div>
-        </button>
-      )}
 
       <InfoCard title={`${t('quickActionIngredient')}${medicine.StrengthUnit ? ` (${medicine.StrengthUnit})` : ''}`} icon={<PillBottleIcon />}>
           <div className="grid grid-cols-1 gap-1.5">

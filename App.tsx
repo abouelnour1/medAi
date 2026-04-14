@@ -604,7 +604,7 @@ const App: React.FC = () => {
               restoreScroll('results');
           }
       } else if (view === 'details') {
-          const target = previousView === 'alternatives' ? 'alternatives' : 'results';
+          const target = previousView === 'alternatives' ? 'alternatives' : previousView === 'search' ? 'search' : 'results';
           // لو راجع لـ alternatives نمسح الـ scroll المحفوظ عشان يبدأ من فوق
           if (target === 'alternatives') { scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView(target); } else { setView(target); restoreScroll(target); }
       } else if (view === 'insuranceDetails') {
