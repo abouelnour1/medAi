@@ -59,23 +59,23 @@
         color: #f8fafc;
       }
       #root { 
-        height: 100dvh;
-        height: -webkit-fill-available;
+        height: 100%;
         display: flex; 
         flex-direction: column;
         overflow: hidden;
+        min-height: 0;
       }
       html { 
-        height: -webkit-fill-available;
+        height: 100%;
         overscroll-behavior: none;
       }
       body { 
-        height: 100dvh;
-        height: -webkit-fill-available;
+        height: 100%;
         overflow: hidden;
         width: 100%;
         overscroll-behavior: none;
         -webkit-overflow-scrolling: touch;
+        /* Android keyboard fix — لا نستخدم dvh عشان بيتغير مع الكيبورد */
       }
       ::-webkit-scrollbar { width: 0px; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

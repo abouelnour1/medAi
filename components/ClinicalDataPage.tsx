@@ -156,28 +156,43 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
               </button>
             </div>
           </div>
-        ) : data && (
+        ) : data && (() => {
+          const PREVIEW = 150;
+          return (
           <div className="space-y-3">
-            {fields.filter(f => data[f.key]).map(f => (
+            {fields.filter(f => data[f.key]).map(f => {
+              const text = data[f.key] as string;
+              const [open, setOpen] = React.useState(false);
+              const isLong = text.length > PREVIEW;
+              const displayed = open || !isLong ? text : text.slice(0, PREVIEW) + '…';
+              return (
               <div key={f.key} className={`rounded-2xl p-4 ${
               f.key === 'keyPoints' ? 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 border border-amber-200 dark:border-amber-700/50' :
               f.key === 'pharmacistNote' ? 'bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800' :
               f.key === 'sideEffects' ? 'bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30' :
               'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}>
-                <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${
                   f.key === 'keyPoints' ? 'text-amber-600' :
                   f.key === 'pharmacistNote' ? 'text-amber-500' :
                   f.key === 'sideEffects' ? 'text-red-400' : 'text-slate-400'}`}>
                   {f.emoji} {ar ? f.labelAr : f.labelEn}
                 </p>
-                <p className="text-[13.5px] leading-[1.8] text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-normal tracking-[0.01em]">{data[f.key]}</p>
+                <p className="text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{displayed}</p>
+                {isLong && (
+                  <button onClick={() => setOpen(v => !v)}
+                    className="mt-2 text-[11px] font-black text-primary active:scale-95 transition-all">
+                    {open ? (ar ? '▲ عرض أقل' : '▲ Show less') : (ar ? '▼ عرض النص الكامل' : '▼ See full text')}
+                  </button>
+                )}
               </div>
-            ))}
+            );
+            })}
             <p className="text-[9px] text-slate-300 dark:text-slate-600 text-center pt-2">
               {ar ? 'آخر تحديث: ' : 'Last updated: '}{new Date(data.generatedAt).toLocaleDateString()}
             </p>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

@@ -30,14 +30,14 @@ const ScientificInfo: React.FC<{ group: ScientificGroupData, t: TFunction, onCli
         >
              <div className="min-w-0">
                 {hasMatchingTradeNames && (
-                    <p className="font-black text-sm text-slate-800 dark:text-white mb-1 break-words">
+                    <p className="font-black text-sm text-slate-800 dark:text-white mb-1 " style={{wordBreak:"break-word",overflowWrap:"break-word"}}>
                         {group.matchingTradeNames!.join(' / ')}
                     </p>
                 )}
                 <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight break-words`}>
                     {group.scientificName}
                 </p>
-                <p className="text-[10px] text-slate-400 dark:text-dark-muted mt-1 font-medium break-words">{commonPolicy.drugClass}</p>
+                <p className="text-[10px] text-slate-400 dark:text-dark-muted mt-1 font-medium " style={{wordBreak:"break-word",overflowWrap:"break-word"}}>{commonPolicy.drugClass}</p>
              </div>
              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-300 group-hover:text-primary ltr:rotate-0 rtl:rotate-180 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
         </button>
@@ -51,7 +51,7 @@ const IndicationCard: React.FC<IndicationCardProps> = ({ group, t, onSelectInsur
                 <div className="flex items-start gap-3">
                     <div className="w-6 h-6 text-secondary shrink-0 mt-0.5"><HealthInsuranceIcon /></div>
                     <div className="flex-grow min-w-0">
-                        <h2 className="text-base font-black text-secondary leading-tight break-words">{group.indication}</h2>
+                        <h2 className="text-base font-black text-secondary leading-tight " style={{wordBreak:"break-word",overflowWrap:"break-word"}}>{group.indication}</h2>
                         {group.icd10Codes.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                                 {group.icd10Codes.slice(0, 5).map(code => (

@@ -20,6 +20,63 @@ import { getClinicalData, ClinicalData, getClinicalReference, ClinicalReference 
 import ClinicalReferencePage from './ClinicalReferencePage';
 import ClinicalDataPage from './ClinicalDataPage';
 
+// ── ClinicalAccordion ────────────────────────────────────────────────────────
+const CLINICAL_FIELDS = [
+  { key: 'indication'     as const, icon: '🩺', labelAr: 'الاستخدامات',        labelEn: 'Indications',      bg: 'bg-teal-50 dark:bg-teal-900/20',   border: 'border-teal-100 dark:border-teal-800',   label: 'text-teal-600 dark:text-teal-400'   },
+  { key: 'dosage'         as const, icon: '💊', labelAr: 'الجرعة',              labelEn: 'Dosage',           bg: 'bg-blue-50 dark:bg-blue-900/20',   border: 'border-blue-100 dark:border-blue-800',   label: 'text-blue-600 dark:text-blue-400'   },
+  { key: 'sideEffects'    as const, icon: '⚠️', labelAr: 'الآثار الجانبية',    labelEn: 'Side Effects',     bg: 'bg-red-50 dark:bg-red-900/10',     border: 'border-red-100 dark:border-red-900/30',  label: 'text-red-500 dark:text-red-400'     },
+  { key: 'pharmacistNote' as const, icon: '👨‍⚕️', labelAr: 'تنبيه الصيدلاني',  labelEn: 'Pharmacist Note',  bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-100 dark:border-amber-800', label: 'text-amber-600 dark:text-amber-400' },
+  { key: 'mechanism'      as const, icon: '🔬', labelAr: 'آلية العمل',          labelEn: 'Mechanism',        bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-100 dark:border-violet-800', label: 'text-violet-600 dark:text-violet-400' },
+  { key: 'keyPoints'      as const, icon: '⭐', labelAr: 'نقاط مميزة',          labelEn: 'Key Points',       bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-200 dark:border-amber-700', label: 'text-amber-500 dark:text-amber-400' },
+];
+const PREVIEW_LEN = 140;
+
+const ClinicalAccordion: React.FC<{ clinicalData: ClinicalData; language: Language; onViewAll: () => void }> = ({ clinicalData, language, onViewAll }) => {
+  const ar = language === 'ar';
+  const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+  const toggle = (k: string) => setExpanded(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const visible = CLINICAL_FIELDS.filter(f => (clinicalData as any)[f.key]);
+  if (!visible.length) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 px-1 mb-1">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          {ar ? '📋 معلومات سريرية' : '📋 Clinical Information'}
+        </span>
+        <button onClick={onViewAll} className="ml-auto text-[9px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+          {ar ? 'عرض الكل' : 'View All'}
+        </button>
+      </div>
+      {visible.map(f => {
+        const text = (clinicalData as any)[f.key] as string;
+        const isLong = text.length > PREVIEW_LEN;
+        const isOpen = expanded.has(f.key);
+        const displayed = isOpen || !isLong ? text : text.slice(0, PREVIEW_LEN) + '…';
+        return (
+          <div key={f.key} className={`rounded-2xl border overflow-hidden ${f.bg} ${f.border}`}>
+            <div className="px-4 py-3">
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${f.label}`}>
+                {f.icon} {ar ? f.labelAr : f.labelEn}
+              </p>
+              <p className="text-[13.5px] leading-relaxed font-medium text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                {displayed}
+              </p>
+              {isLong && (
+                <button onClick={() => toggle(f.key)}
+                  className={`mt-2 text-[11px] font-black active:scale-95 transition-all ${f.label}`}>
+                  {isOpen
+                    ? (ar ? '▲ عرض أقل' : '▲ Show less')
+                    : (ar ? '▼ عرض النص الكامل' : '▼ See full text')}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const InfoCard: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; accent?: string }> = ({ title, icon, children }) => (
     <div className="bg-white dark:bg-dark-card rounded-2xl overflow-hidden shadow-sm border border-slate-100/80 dark:border-dark-border animate-fade-in">
         <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60">
@@ -288,114 +345,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
           })()}
       </div>
 
-      {/* ── Clinical Data Card ── */}
-      {clinicalData && (
-        <div
-          onClick={() => { if (onOpenClinical) onOpenClinical(); else setShowClinicalPage(true); }}
-          className="relative overflow-hidden rounded-[1.75rem] cursor-pointer active:scale-[0.98] transition-all duration-200 shadow-xl"
-          style={{
-            background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 100%)',
-            isolation: 'isolate',  // منع bleed من الخلفية
-          }}
-        >
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)',
-            backgroundSize: '30px 30px'
-          }} />
-
-          {/* Top row — title + arrow */}
-          <div className="relative flex items-center justify-between px-5 pt-4 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white/20 rounded-2xl flex items-center justify-center">
-                <span className="text-lg">🩺</span>
-              </div>
-              <div>
-                <p className="text-white font-black text-sm tracking-tight">
-                  {language === 'ar' ? 'المعلومات السريرية' : 'Clinical Information'}
-                </p>
-                <p className="text-teal-100 text-[10px] font-bold opacity-80">
-                  {language === 'ar' ? 'اضغط لعرض التفاصيل الكاملة' : 'Tap for full details'}
-                </p>
-              </div>
-            </div>
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="mx-5 h-px bg-white/20" />
-
-          {/* Sections preview */}
-          <div className="relative px-5 py-4 grid grid-cols-2 gap-3">
-
-            {/* Indication */}
-            <div className="bg-white/20 rounded-2xl p-3 backdrop-blur-none">
-              <p className="text-teal-100 text-[9px] font-black uppercase tracking-widest mb-1">
-                {language === 'ar' ? 'الاستخدام' : 'Indication'}
-              </p>
-              <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
-                {clinicalData.indication}
-              </p>
-            </div>
-
-            {/* Pharmacist Note OR Key Points */}
-            <div className="bg-white/20 rounded-2xl p-3 backdrop-blur-none">
-              {clinicalData.pharmacistNote ? (
-                <>
-                  <p className="text-amber-200 text-[9px] font-black uppercase tracking-widest mb-1">
-                    {language === 'ar' ? 'ملاحظة الصيدلاني' : 'Pharmacist Note'}
-                  </p>
-                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
-                    {clinicalData.pharmacistNote}
-                  </p>
-                </>
-              ) : clinicalData.keyPoints ? (
-                <>
-                  <p className="text-amber-200 text-[9px] font-black uppercase tracking-widest mb-1">
-                    {language === 'ar' ? 'نقاط مميزة' : 'Key Points'}
-                  </p>
-                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
-                    {clinicalData.keyPoints}
-                  </p>
-                </>
-              ) : clinicalData.dosage ? (
-                <>
-                  <p className="text-blue-200 text-[9px] font-black uppercase tracking-widest mb-1">
-                    {language === 'ar' ? 'الجرعة' : 'Dosage'}
-                  </p>
-                  <p className="text-white text-[13px] font-medium leading-relaxed line-clamp-3">
-                    {clinicalData.dosage}
-                  </p>
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Bottom chips */}
-          <div className="relative flex items-center gap-2 px-5 pb-4 flex-wrap">
-
-            {clinicalData.dosage && (
-              <span className="flex items-center gap-1 bg-white/15 text-white text-[9px] font-black px-2.5 py-1 rounded-full">
-                💊 {language === 'ar' ? 'جرعة' : 'Dosage'}
-              </span>
-            )}
-            {clinicalData.sideEffects && (
-              <span className="flex items-center gap-1 bg-white/15 text-white text-[9px] font-black px-2.5 py-1 rounded-full">
-                ⚠️ {language === 'ar' ? 'أعراض' : 'Side Effects'}
-              </span>
-            )}
-            {clinicalData.mechanism && (
-              <span className="flex items-center gap-1 bg-white/15 text-white text-[9px] font-black px-2.5 py-1 rounded-full">
-                🔬 {language === 'ar' ? 'آلية العمل' : 'Mechanism'}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── Clinical Data — Accordion sections ── */}
+      {clinicalData && <ClinicalAccordion clinicalData={clinicalData} language={language} onViewAll={() => { if (onOpenClinical) onOpenClinical(); else setShowClinicalPage(true); }} />}
 
 
       {/* ── Clinical Reference Card (from R2) ── */}

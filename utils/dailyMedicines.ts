@@ -195,6 +195,7 @@ export async function getClinicalData(registerNumber: string): Promise<ClinicalD
 }
 
 // ── Clinical Reference Data (from R2) ────────────────────────────────────────
+import CLINICAL_REF_FALLBACK from '../data/clinical-ref-fallback.json';
 export interface ClinicalReference {
   scientificName: string;
   drugName: string;
@@ -210,18 +211,6 @@ export interface ClinicalReference {
   renalDosing: string;
   hepaticDosing: string;
   g6pd: string;
-  // Full (untruncated) text versions — populated from Full Text sheet
-  indications_full?: string;
-  mechanism_full?: string;
-  adultDose_full?: string;
-  pediatricDose_full?: string;
-  contraindications_full?: string;
-  interactions_full?: string;
-  pregnancy_full?: string;
-  lactation_full?: string;
-  renalDosing_full?: string;
-  hepaticDosing_full?: string;
-  g6pd_full?: string;
 }
 
 const R2_CLINICAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
@@ -233,43 +222,31 @@ let _clinicalRefMap: Record<string, ClinicalReference> | null = null;
 
 async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
   if (_clinicalRefMap) return _clinicalRefMap;
+
+  // استخدم الـ fallback المدمج فوراً بدون network
+  _clinicalRefMap = { ...CLINICAL_REF_FALLBACK };
+
+  // في الخلفية: حاول تحميل النسخة الكاملة من R2 أو localStorage
   try {
-    // محاول تحمل من localStorage
     const cacheAge = Date.now() - parseInt(localStorage.getItem(CLINICAL_CACHE_TS) || '0');
     const cached   = localStorage.getItem(CLINICAL_CACHE_KEY);
     if (cached && cacheAge < CLINICAL_TTL) {
       _clinicalRefMap = JSON.parse(cached);
       return _clinicalRefMap!;
     }
-    // جيب من R2
-    const res = await fetch(R2_CLINICAL_URL);
-    if (res.ok) {
-      const data = await res.json();
-      _clinicalRefMap = data;
-      try {
-        localStorage.setItem(CLINICAL_CACHE_KEY, JSON.stringify(data));
-        localStorage.setItem(CLINICAL_CACHE_TS, String(Date.now()));
-      } catch {}
-      return _clinicalRefMap!;
-    }
+    // جيب النسخة الكاملة من R2 في الخلفية
+    fetch(R2_CLINICAL_URL).then(res => {
+      if (res.ok) res.json().then(data => {
+        _clinicalRefMap = data;
+        try {
+          localStorage.setItem(CLINICAL_CACHE_KEY, JSON.stringify(data));
+          localStorage.setItem(CLINICAL_CACHE_TS, String(Date.now()));
+        } catch {}
+      });
+    }).catch(() => {});
   } catch {}
-  return {};
-}
 
-// Normalize new JSON format (with _summary/_full) into ClinicalReference shape
-function normalizeRef(raw: any): ClinicalReference {
-  const FIELDS = ['indications','mechanism','adultDose','pediatricDose','contraindications','interactions','pregnancy','lactation','renalDosing','hepaticDosing','g6pd'] as const;
-  const out: any = {
-    scientificName: raw.drugName || '',
-    drugName: raw.drugName || '',
-    source: raw.source || '',
-  };
-  for (const f of FIELDS) {
-    // Support both old format (plain field) and new format (_summary/_full)
-    out[f] = raw[`${f}_summary`] ?? raw[f] ?? '';
-    out[`${f}_full`] = raw[`${f}_full`] ?? raw[f] ?? '';
-  }
-  return out as ClinicalReference;
+  return _clinicalRefMap!;
 }
 
 export async function getClinicalReference(scientificName: string): Promise<ClinicalReference | null> {
@@ -277,13 +254,13 @@ export async function getClinicalReference(scientificName: string): Promise<Clin
   if (!map || Object.keys(map).length === 0) return null;
   const key = scientificName.toLowerCase().trim();
   // بحث مباشر
-  if (map[key]) return normalizeRef(map[key]);
+  if (map[key]) return map[key];
   // بحث بالكلمة الأولى (مثلاً "amoxicillin" من "amoxicillin/clavulanic acid")
   const first = key.split(/[\/\s,+]+/)[0];
-  if (first && map[first]) return normalizeRef(map[first]);
+  if (first && map[first]) return map[first];
   // بحث جزئي
   const found = Object.keys(map).find(k => k.includes(first) || first.includes(k));
-  return found ? normalizeRef(map[found]) : null;
+  return found ? map[found] : null;
 }
 
 // Pre-load in background
