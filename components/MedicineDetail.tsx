@@ -60,7 +60,6 @@ const SafetyBadgeItem: React.FC<{ cfg: SafetyBadgeConfig; language: Language; on
   const dispVal = ar ? (AR_SAFETY_LABELS[val] || val) : val;
   return (
     <button onClick={onPress} className={`flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl active:scale-95 transition-all min-w-[58px] ${s.bg}`}>
-      <span className="text-base leading-none">{cfg.icon}</span>
       <span className={`text-[8.5px] font-black uppercase tracking-wide text-center leading-tight ${s.text}`}>{ar ? cfg.labelAr : cfg.labelEn}</span>
       {val ? (
         <div className="flex items-center gap-0.5">

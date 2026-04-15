@@ -50,6 +50,10 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   // ── Stamp ──────────────────────────────────────────────────────────────
   const [stampText, setStampText] = useState('');
 
+  // ── Disclaimer Modal ──────────────────────────────────────────────────
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [disclaimerLicense, setDisclaimerLicense] = useState('');
+
   // ── Print ref ─────────────────────────────────────────────────────────
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +77,7 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const addDrug = () => setDrugs(prev => [...prev, { id: generateId(), name: '', dose: '', frequency: '', duration: '', notes: '' }]);
   const removeDrug = (id: string) => setDrugs(prev => prev.filter(d => d.id !== id));
 
-  const handlePrint = async () => {
+  const doPrint = async () => {
     const printContent = printRef.current?.innerHTML;
     if (!printContent) return;
     const isNative = typeof (window as any).Capacitor !== 'undefined'
@@ -210,11 +214,70 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
       setTimeout(() => w.focus(), 200);
     }
   };
+
+  const handlePrint = () => {
+    const isAdmin = (user as any)?.role === 'admin';
+    if (isAdmin) {
+      doPrint();
+    } else {
+      setDisclaimerLicense(licenseNo);
+      setShowDisclaimer(true);
+    }
+  };
   const inputCls = `w-full px-3 py-2.5 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 outline-none transition-all`;
   const labelCls = `block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1`;
 
   return (
     <div className="min-h-full pb-20" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+
+      {/* Disclaimer Modal */}
+      {showDisclaimer && (
+        <div className="fixed inset-0 z-[600] bg-black/50 flex items-end justify-center p-4">
+          <div className="bg-white dark:bg-dark-card rounded-2xl w-full max-w-md p-5 shadow-2xl" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">⚠️</span>
+              <h3 className="font-black text-sm text-slate-800 dark:text-white">
+                {ar ? 'إقرار مسؤولية المستخدم' : 'User Responsibility Disclaimer'}
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              {ar
+                ? 'بإنشاء هذه الوصفة الطبية، أقر بأنني طبيب أو مختص صحي مرخص، وأن هذه الوصفة صادرة بموجب صلاحياتي المهنية. أتحمل المسؤولية الكاملة عن المحتوى الطبي لهذه الوصفة. هذه الأداة للمساعدة فقط ولا تعوض التقييم السريري.'
+                : 'By generating this prescription, I confirm that I am a licensed physician or healthcare professional, and this prescription is issued under my professional authority. I take full responsibility for the medical content of this prescription. This tool is for assistance only and does not replace clinical judgment.'
+              }
+            </p>
+            <div className="mb-4">
+              <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                {ar ? 'رقم الترخيص المهني *' : 'Professional License No. *'}
+              </label>
+              <input
+                value={disclaimerLicense}
+                onChange={e => setDisclaimerLicense(e.target.value)}
+                placeholder={ar ? 'أدخل رقم الترخيص' : 'Enter license number'}
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-teal-400 outline-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDisclaimer(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black text-slate-500 bg-slate-100 dark:bg-slate-800 active:scale-95 transition-all">
+                {ar ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                disabled={!disclaimerLicense.trim()}
+                onClick={() => {
+                  setLicenseNo(disclaimerLicense);
+                  setShowDisclaimer(false);
+                  setTimeout(() => doPrint(), 100);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black text-white bg-teal-500 disabled:opacity-40 active:scale-95 transition-all">
+                {ar ? 'تأكيد والطباعة' : 'Confirm & Print'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-dark-bg border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
         <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
