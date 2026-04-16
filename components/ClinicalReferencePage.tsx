@@ -48,12 +48,24 @@ let _clinCache: Record<string, any> | null = null;
 // ── Drug name normalization for matching ────────────────────────────────────
 const SALT_SUFFIXES = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
 
+// Synonyms: alternate INN/brand/generic names that map to the data key
+const DRUG_SYNONYMS: Record<string, string> = {
+  'hyoscine': 'scopolamine',
+  'salbutamol': 'albuterol',
+  'paracetamol': 'acetaminophen',
+  'acetaminophen': 'paracetamol',
+  'albuterol': 'salbutamol',
+  'miconazole': 'clotrimazole',
+  'folic acid': 'folate',
+  'vitamin c': 'ascorbic acid',
+};
+
 function normalizeDrug(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/-/g, '/')           // amoxicillin-clavulanate → amoxicillin/clavulanate
-    .replace(SALT_SUFFIXES, '')   // strip salts
+    .replace(/-/g, '/')
+    .replace(SALT_SUFFIXES, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -64,7 +76,11 @@ function drugLookupKeys(raw: string): string[] {
   const orig = raw.toLowerCase().trim();
   const firstWord = norm.split(/[\s\/,+]+/)[0];
   const parts = norm.split(/[\/,+]+/).map((p: string) => p.trim()).filter(Boolean);
-  return [...new Set([norm, orig, firstWord, ...parts].filter(Boolean))];
+  const candidates = [norm, orig, firstWord, ...parts].filter(Boolean);
+  // Add synonym if exists
+  if (DRUG_SYNONYMS[norm]) candidates.push(DRUG_SYNONYMS[norm]);
+  if (DRUG_SYNONYMS[firstWord]) candidates.push(DRUG_SYNONYMS[firstWord]);
+  return [...new Set(candidates)];
 }
 
 function findInMap<T>(map: Record<string, T>, ...raws: string[]): T | undefined {

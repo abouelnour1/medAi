@@ -258,6 +258,16 @@ async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
 // ── Drug name normalization (same logic as ClinicalReferencePage) ────────────
 const _SALT_RE = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
 
+const _SYNONYMS: Record<string, string> = {
+  'hyoscine': 'scopolamine',
+  'salbutamol': 'albuterol',
+  'paracetamol': 'acetaminophen',
+  'acetaminophen': 'paracetamol',
+  'albuterol': 'salbutamol',
+  // miconazole → clotrimazole (same azole antifungal class, similar clinical data)
+  'miconazole': 'clotrimazole',
+};
+
 function _normDrug(name: string): string {
   return name.toLowerCase().trim().replace(/-/g, '/').replace(_SALT_RE, '').replace(/\s+/g, ' ').trim();
 }
@@ -267,7 +277,10 @@ function _drugKeys(raw: string): string[] {
   const orig = raw.toLowerCase().trim();
   const firstWord = norm.split(/[\s\/,+]+/)[0];
   const parts = norm.split(/[\/,+]+/).map((p: string) => p.trim()).filter(Boolean);
-  return [...new Set([norm, orig, firstWord, ...parts].filter(Boolean))];
+  const candidates = [norm, orig, firstWord, ...parts].filter(Boolean);
+  if (_SYNONYMS[norm]) candidates.push(_SYNONYMS[norm]);
+  if (_SYNONYMS[firstWord]) candidates.push(_SYNONYMS[firstWord]);
+  return [...new Set(candidates)];
 }
 
 export async function getClinicalReference(scientificName: string, tradeName?: string): Promise<ClinicalReference | null> {
