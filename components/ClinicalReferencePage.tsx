@@ -46,7 +46,6 @@ let _ixCache: Record<string, StructuredInteraction[]> | null = null;
 let _clinCache: Record<string, any> | null = null;
 
 // ── Drug name normalization for matching ────────────────────────────────────
-// Strips salts/forms that don't change the drug identity
 const SALT_SUFFIXES = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
 
 function normalizeDrug(name: string): string {
@@ -62,51 +61,48 @@ function normalizeDrug(name: string): string {
 // Returns candidate keys to try, in priority order
 function drugLookupKeys(raw: string): string[] {
   const norm = normalizeDrug(raw);
-  const keys: string[] = [];
-
-  // 1. normalized full name
-  keys.push(norm);
-
-  // 2. original lowercase
   const orig = raw.toLowerCase().trim();
-  if (orig !== norm) keys.push(orig);
-
-  // 3. first word (handles "diclofenac sodium" → "diclofenac")
   const firstWord = norm.split(/[\s\/,+]+/)[0];
-  if (firstWord && firstWord !== norm) keys.push(firstWord);
-
-  // 4. for combination drugs like "amoxicillin/clavulanate" → try both parts
-  const parts = norm.split(/[\/,+]+/).map(p => p.trim()).filter(Boolean);
-  if (parts.length > 1) {
-    // Try "drug1/drug2" style keys that exist
-    for (const p of parts) keys.push(p);
-  }
-
-  return [...new Set(keys)]; // deduplicate
+  const parts = norm.split(/[\/,+]+/).map((p: string) => p.trim()).filter(Boolean);
+  return [...new Set([norm, orig, firstWord, ...parts].filter(Boolean))];
 }
 
-function findInMap<T>(map: Record<string, T>, raw: string): T | undefined {
-  const candidates = drugLookupKeys(raw);
+function findInMap<T>(map: Record<string, T>, ...raws: string[]): T | undefined {
+  // Pre-normalize all map keys once per call (map is cached so this is fast)
+  const normMap: Record<string, string> = {};
+  const mapKeys = Object.keys(map);
+  for (const k of mapKeys) normMap[k] = normalizeDrug(k);
 
-  // 1. Try exact candidates first
-  for (const c of candidates) {
-    if (map[c]) return map[c];
+  for (const raw of raws) {
+    if (!raw) continue;
+    const candidates = drugLookupKeys(raw);
+
+    // 1. Exact candidate match against original keys
+    for (const c of candidates) {
+      if (map[c]) return map[c];
+    }
+
+    // 2. Exact candidate match against normalized keys
+    for (const c of candidates) {
+      const found = mapKeys.find(k => normMap[k] === c);
+      if (found) return map[found];
+    }
+
+    // 3. Fuzzy: first word prefix match
+    const firstWord = candidates[candidates.length - 1];
+    if (firstWord && firstWord.length >= 4) {
+      const found = mapKeys.find(k => {
+        const nk = normMap[k];
+        const nkFirst = nk.split(/[\s\/,+]+/)[0];
+        return nk.startsWith(firstWord) || firstWord.startsWith(nkFirst);
+      });
+      if (found) return map[found];
+    }
   }
-
-  // 2. Fuzzy: map key starts with first candidate word OR candidate starts with key
-  const firstWord = candidates[candidates.length - 1]; // last = shortest (first word)
-  if (firstWord && firstWord.length >= 4) {
-    const found = Object.keys(map).find(k => {
-      const nk = normalizeDrug(k);
-      return nk.startsWith(firstWord) || firstWord.startsWith(nk.split(/[\s\/,+]+/)[0]);
-    });
-    if (found) return map[found];
-  }
-
   return undefined;
 }
 
-async function fetchInteractions(drugKey: string): Promise<StructuredInteraction[]> {
+async function fetchInteractions(scientificName: string, tradeName?: string): Promise<StructuredInteraction[]> {
   if (!_ixCache) {
     try {
       const res = await fetch(R2_INTERACTIONS_URL);
@@ -114,10 +110,10 @@ async function fetchInteractions(drugKey: string): Promise<StructuredInteraction
       else _ixCache = {};
     } catch { _ixCache = {}; }
   }
-  return findInMap(_ixCache!, drugKey) ?? [];
+  return findInMap(_ixCache!, scientificName, tradeName ?? '') ?? [];
 }
 
-async function fetchFullClinical(drugKey: string): Promise<any | null> {
+async function fetchFullClinical(scientificName: string, tradeName?: string): Promise<any | null> {
   if (!_clinCache) {
     try {
       const res = await fetch(R2_CLINICAL_FULL_URL);
@@ -125,7 +121,7 @@ async function fetchFullClinical(drugKey: string): Promise<any | null> {
       else _clinCache = {};
     } catch { _clinCache = {}; }
   }
-  return findInMap(_clinCache!, drugKey) ?? null;
+  return findInMap(_clinCache!, scientificName, tradeName ?? '') ?? null;
 }
 
 // ── Interaction Card ─────────────────────────────────────────────────────────
@@ -163,8 +159,9 @@ function IxCard({ ix }: { ix: StructuredInteraction }) {
 }
 
 // ── Interactions View ────────────────────────────────────────────────────────
-function InteractionsView({ scientificName, fallbackText, language }: {
+function InteractionsView({ scientificName, tradeName, fallbackText, language }: {
   scientificName: string;
+  tradeName: string;
   fallbackText: string;
   language: Language;
 }) {
@@ -175,11 +172,11 @@ function InteractionsView({ scientificName, fallbackText, language }: {
   const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
-    fetchInteractions(scientificName).then(data => {
+    fetchInteractions(scientificName, tradeName).then(data => {
       setItems(data);
       setLoading(false);
     });
-  }, [scientificName]);
+  }, [scientificName, tradeName]);
 
   if (loading) return (
     <div className="flex items-center gap-2 py-3">
@@ -306,14 +303,12 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // fetch local fallback first
-    getClinicalReference(scientificName)
+    getClinicalReference(scientificName, tradeName)
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-    // fetch full R2 data
-    fetchFullClinical(scientificName.toLowerCase().trim())
+    fetchFullClinical(scientificName, tradeName)
       .then(d => { if (d) setFullData(d); });
-  }, [scientificName]);
+  }, [scientificName, tradeName]);
 
   const toggle = (key: string) => {
     setExpanded(prev => {
@@ -334,8 +329,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
     <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" style={{ direction: ar ? 'rtl' : 'ltr' }}>
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0"
-           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
         <button onClick={onClose}
           className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-90 transition-transform">
           <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -418,7 +412,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
                 <div style={{ overflow: 'hidden' }}>
                   <div className="px-4 pb-4 pt-1 border-t border-slate-50 dark:border-slate-800">
                     {sec.key === 'interactions' ? (
-                      <InteractionsView scientificName={scientificName} fallbackText={text} language={language} />
+                      <InteractionsView scientificName={scientificName} tradeName={tradeName} fallbackText={text} language={language} />
                     ) : (
                       <p className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
                          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>

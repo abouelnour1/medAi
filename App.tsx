@@ -440,6 +440,7 @@ const App: React.FC = () => {
   const [clinicalModal, setClinicalModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
   const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
+  const [skipNextViewKey, setSkipNextViewKey] = useState(false);
   
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasLoadedBefore, setHasLoadedBefore] = useState(() => localStorage.getItem('app_has_loaded') === 'true');
@@ -1448,7 +1449,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); setView('imageView'); } }} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
@@ -1744,7 +1745,7 @@ onClearSearch={handleClearSearch}
       )}
 
       <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          <div key={view}>
+          <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
       </main>
@@ -1893,19 +1894,33 @@ onClearSearch={handleClearSearch}
           <ImageViewer images={activeImageViewer.images} initialIndex={activeImageViewer.index} title={activeImageViewer.title} t={t} indexFlags={activeImageViewer.flags} onBack={() => {
             setActiveImageViewer(null);
             if (prevSheetMedicine.current) {
-              setSheetSkipAnim(true);  // رجعنا من الصورة — ظهر بدون animation
+              setSheetSkipAnim(true);
               setSheetMedicine(prevSheetMedicine.current);
               prevSheetMedicine.current = null;
             }
             const targetView = (previousView || 'details') as View;
-            setView(targetView);
-            // Restore scroll position after view change
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              const savedPos = scrollPositions.current.get(targetView);
-              if (scrollContainerRef.current && savedPos !== undefined) {
-                scrollContainerRef.current.scrollTop = savedPos;
-              }
-            }));
+            // لو رجعنا لـ list view (results/search/alternatives/favorites) منع الـ remount animation
+            const isListView = ['results', 'search', 'alternatives', 'favorites'].includes(targetView);
+            if (isListView) {
+              setSkipNextViewKey(true);
+              setView(targetView);
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                setSkipNextViewKey(false);
+                const savedPos = scrollPositions.current.get(targetView);
+                if (scrollContainerRef.current && savedPos !== undefined) {
+                  scrollContainerRef.current.scrollTop = savedPos;
+                }
+              }));
+            } else {
+              setSkipNextViewKey(false);
+              setView(targetView);
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                const savedPos = scrollPositions.current.get(targetView);
+                if (scrollContainerRef.current && savedPos !== undefined) {
+                  scrollContainerRef.current.scrollTop = savedPos;
+                }
+              }));
+            }
           }} />
         </div>
       )}

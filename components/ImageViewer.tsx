@@ -121,7 +121,7 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      style={{ touchAction: scale > 1 ? 'none' : 'pan-y' }}
+      style={{ touchAction: scale > 1 ? 'none' : 'pan-x' }}
     >
       <img
         ref={imgRef}

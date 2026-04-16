@@ -270,25 +270,35 @@ function _drugKeys(raw: string): string[] {
   return [...new Set([norm, orig, firstWord, ...parts].filter(Boolean))];
 }
 
-export async function getClinicalReference(scientificName: string): Promise<ClinicalReference | null> {
+export async function getClinicalReference(scientificName: string, tradeName?: string): Promise<ClinicalReference | null> {
   const map = await getClinicalRefMap();
   if (!map || Object.keys(map).length === 0) return null;
 
-  const candidates = _drugKeys(scientificName);
+  const mapKeys = Object.keys(map);
+  const normMap: Record<string, string> = {};
+  for (const k of mapKeys) normMap[k] = _normDrug(k);
 
-  // 1. exact candidate match
-  for (const c of candidates) {
-    if (map[c]) return map[c];
-  }
+  for (const raw of [scientificName, tradeName ?? ''].filter(Boolean)) {
+    const candidates = _drugKeys(raw);
 
-  // 2. fuzzy: normalized map key starts with / matches first word
-  const firstWord = candidates[candidates.length - 1];
-  if (firstWord && firstWord.length >= 4) {
-    const found = Object.keys(map).find(k => {
-      const nk = _normDrug(k);
-      return nk.startsWith(firstWord) || firstWord.startsWith(nk.split(/[\s\/,+]+/)[0]);
-    });
-    if (found) return map[found];
+    // 1. exact match on original keys
+    for (const c of candidates) {
+      if (map[c]) return map[c];
+    }
+    // 2. exact match on normalized keys
+    for (const c of candidates) {
+      const found = mapKeys.find(k => normMap[k] === c);
+      if (found) return map[found];
+    }
+    // 3. fuzzy prefix match
+    const firstWord = candidates[candidates.length - 1];
+    if (firstWord && firstWord.length >= 4) {
+      const found = mapKeys.find(k => {
+        const nk = normMap[k];
+        return nk.startsWith(firstWord) || firstWord.startsWith(nk.split(/[\s\/,+]+/)[0]);
+      });
+      if (found) return map[found];
+    }
   }
 
   return null;
