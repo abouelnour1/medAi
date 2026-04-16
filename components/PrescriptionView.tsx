@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useAuth } from './auth/AuthContext';
 import { Medicine, Language, User } from '../types';
 
 interface PrescriptionDrug {
@@ -26,11 +27,24 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const ar = language === 'ar';
   const [tab, setTab] = useState<'manual' | 'online'>('manual');
 
+  // ── Auth context for saving profile ──────────────────────────────────────
+  const { updateUser } = useAuth();
+
   // ── Doctor / Clinic Info ────────────────────────────────────────────────
-  const [doctorName,    setDoctorName]    = useState((user as any)?.username || '');
+  const [doctorName,    setDoctorName]    = useState((user as any)?.username || (user as any)?.displayName || '');
   const [specialty,     setSpecialty]     = useState((user as any)?.specialty || (user as any)?.subSpecialty || '');
-  const [institution,   setInstitution]   = useState('');
-  const [licenseNo,     setLicenseNo]     = useState('');
+  const [institution,   setInstitution]   = useState((user as any)?.institution || '');
+  const [licenseNo,     setLicenseNo]     = useState((user as any)?.licenseNo || '');
+
+  // Save institution + licenseNo to Firebase when changed
+  const saveProfileDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveProfile = (inst: string, lic: string) => {
+    if (!user) return;
+    if (saveProfileDebounce.current) clearTimeout(saveProfileDebounce.current);
+    saveProfileDebounce.current = setTimeout(() => {
+      updateUser({ ...user, institution: inst, licenseNo: lic });
+    }, 1500);
+  };
 
   // ── Patient Info ───────────────────────────────────────────────────────
   const [patientName,   setPatientName]   = useState('');
@@ -39,6 +53,39 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   const [patientGender, setPatientGender] = useState<'M'|'F'|''>('');
   const [patientWeight, setPatientWeight] = useState('');
   const [diagnosis,     setDiagnosis]     = useState('');
+
+  // ── Diagnosis suggestions from indications ───────────────────────────────
+  const [diagSuggestions, setDiagSuggestions] = useState<string[]>([]);
+  const [showDiagSuggest, setShowDiagSuggest] = useState(false);
+
+  const getDiagSuggestions = useCallback((query: string) => {
+    if (!query || query.length < 2) { setDiagSuggestions([]); return; }
+    const q = query.toLowerCase();
+    // extract indications from drugs' clinical data via allMedicines scientific names
+    const matches: string[] = [];
+    const seenNames = new Set<string>();
+    allMedicines.forEach(m => {
+      const sci = m['Scientific Name']?.toLowerCase() || '';
+      const trade = m['Trade Name']?.toLowerCase() || '';
+      if (sci.includes(q) || trade.includes(q)) {
+        const indication = `${m['Trade Name']} — ${m['Scientific Name']}`;
+        if (!seenNames.has(indication)) {
+          seenNames.add(indication);
+          matches.push(indication);
+        }
+      }
+    });
+    // Also common diagnosis terms
+    const commonTerms = [
+      'Hypertension', 'Diabetes mellitus type 2', 'Upper respiratory tract infection',
+      'Urinary tract infection', 'Acute pharyngitis', 'Allergic rhinitis',
+      'Gastroesophageal reflux disease', 'Dyspepsia', 'Acute otitis media',
+      'Community acquired pneumonia', 'Anxiety disorder', 'Depression',
+      'Asthma', 'COPD exacerbation', 'Heart failure', 'Atrial fibrillation',
+      'Hyperlipidemia', 'Hypothyroidism', 'Gout', 'Osteoporosis',
+    ].filter(t => t.toLowerCase().includes(q));
+    setDiagSuggestions([...commonTerms, ...matches.slice(0, 5)].slice(0, 8));
+  }, [allMedicines]);
 
   // ── Drugs ──────────────────────────────────────────────────────────────
   const [drugs, setDrugs] = useState<PrescriptionDrug[]>([
@@ -67,7 +114,17 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
     const q = query.toLowerCase();
     return allMedicines
       .filter(m => m['Trade Name']?.toLowerCase().includes(q) || m['Scientific Name']?.toLowerCase().includes(q))
-      .slice(0, 8);
+      .sort((a, b) => {
+        // trade name match first
+        const aTrade = a['Trade Name']?.toLowerCase().startsWith(q) ? 0 : 1;
+        const bTrade = b['Trade Name']?.toLowerCase().startsWith(q) ? 0 : 1;
+        if (aTrade !== bTrade) return aTrade - bTrade;
+        // then scientific name match
+        const aSci = a['Scientific Name']?.toLowerCase().startsWith(q) ? 0 : 1;
+        const bSci = b['Scientific Name']?.toLowerCase().startsWith(q) ? 0 : 1;
+        return aSci - bSci;
+      })
+      .slice(0, 10);
   }, [allMedicines]);
 
   const updateDrug = (id: string, field: keyof PrescriptionDrug, value: string) => {
@@ -226,9 +283,19 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
   };
   const inputCls = `w-full px-3 py-2.5 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30 outline-none transition-all`;
   const labelCls = `block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1`;
+  const scrollOnFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  };
 
   return (
-    <div className="min-h-full pb-20" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+    <div className="min-h-full pb-20" style={{ direction: ar ? 'rtl' : 'ltr' }}
+      onFocus={e => {
+        const el = e.target as HTMLElement;
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+        }
+      }}
+    >
 
       {/* Disclaimer Modal */}
       {showDisclaimer && (
@@ -352,7 +419,7 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
               </div>
               <div>
                 <label className={labelCls}>{ar ? 'رقم الترخيص' : 'License No.'}</label>
-                <input value={licenseNo} onChange={e => setLicenseNo(e.target.value)} className={inputCls} placeholder="SA-12345" />
+                <input value={licenseNo} onChange={e => { setLicenseNo(e.target.value); saveProfile(institution, e.target.value); }} className={inputCls} placeholder="SA-12345" />
               </div>
               <div>
                 <label className={labelCls}>{ar ? 'التخصص' : 'Specialty'}</label>
@@ -360,7 +427,7 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
               </div>
               <div>
                 <label className={labelCls}>{ar ? 'المؤسسة' : 'Institution'}</label>
-                <input value={institution} onChange={e => setInstitution(e.target.value)} className={inputCls} placeholder={ar ? 'مستشفى / عيادة' : 'Hospital / Clinic'} />
+                <input value={institution} onChange={e => { setInstitution(e.target.value); saveProfile(e.target.value, licenseNo); }} className={inputCls} placeholder={ar ? 'مستشفى / عيادة' : 'Hospital / Clinic'} />
               </div>
             </div>
           </div>
@@ -376,7 +443,7 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelCls}>{ar ? 'اسم المريض' : 'Patient Name'}</label>
-                <input value={patientName} onChange={e => setPatientName(e.target.value)} className={inputCls} placeholder={ar ? 'الاسم الكامل' : 'Full name'} />
+                <input value={patientName} onChange={e => setPatientName(e.target.value)} className={inputCls} placeholder={ar ? 'الاسم الكامل' : 'Full name'} onFocus={e => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} />
               </div>
               <div>
                 <label className={labelCls}>{ar ? 'رقم الهوية' : 'ID Number'}</label>
@@ -400,7 +467,26 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
               </div>
               <div className="col-span-2">
                 <label className={labelCls}>{ar ? 'التشخيص / السبب' : 'Diagnosis / Reason'}</label>
-                <input value={diagnosis} onChange={e => setDiagnosis(e.target.value)} className={inputCls} placeholder={ar ? 'مثال: التهاب الحلق الحاد' : 'e.g. Acute pharyngitis'} />
+                <div className="relative">
+                  <input
+                    value={diagnosis}
+                    onChange={e => { setDiagnosis(e.target.value); getDiagSuggestions(e.target.value); setShowDiagSuggest(true); }}
+                    onFocus={e => { setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); if (diagnosis.length >= 2) { getDiagSuggestions(diagnosis); setShowDiagSuggest(true); } }}
+                    onBlur={() => setTimeout(() => setShowDiagSuggest(false), 200)}
+                    className={inputCls}
+                    placeholder={ar ? 'مثال: التهاب الحلق الحاد' : 'e.g. Acute pharyngitis'}
+                  />
+                  {showDiagSuggest && diagSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-44 overflow-y-auto">
+                      {diagSuggestions.map((s, i) => (
+                        <button key={i} onMouseDown={() => { setDiagnosis(s); setShowDiagSuggest(false); }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-xs font-semibold text-slate-700 dark:text-slate-200 border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors">
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -448,15 +534,26 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
                     {drugDropdown === drug.id && getDrugSuggestions(drugSearch[drug.id] ?? drug.name).length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-44 overflow-y-auto">
                         {getDrugSuggestions(drugSearch[drug.id] ?? drug.name).map(m => (
-                          <button key={m.RegisterNumber} onMouseDown={() => {
-                            const name = `${m['Trade Name']} ${m.Strength}${m.StrengthUnit}`;
-                            updateDrug(drug.id, 'name', name);
-                            setDrugSearch(prev => ({ ...prev, [drug.id]: name }));
-                            setDrugDropdown(null);
-                          }} className="w-full text-left px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0">
-                            <p className="text-xs font-black text-teal-700 dark:text-teal-300">{m['Trade Name']}</p>
-                            <p className="text-[10px] text-slate-400">{m['Scientific Name']} · {m.Strength}{m.StrengthUnit}</p>
-                          </button>
+                          <React.Fragment key={m.RegisterNumber}>
+                            <button onMouseDown={() => {
+                              const name = `${m['Trade Name']} ${m.Strength}${m.StrengthUnit || ''}`.trim();
+                              updateDrug(drug.id, 'name', name);
+                              setDrugSearch(prev => ({ ...prev, [drug.id]: name }));
+                              setDrugDropdown(null);
+                            }} className="w-full text-left px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0">
+                              <p className="text-xs font-black text-teal-700 dark:text-teal-300">{m['Trade Name']}</p>
+                              <p className="text-[10px] text-slate-400">{m['Scientific Name']} · {m.Strength}{m.StrengthUnit || ''}</p>
+                            </button>
+                            <button onMouseDown={() => {
+                              const name = `${m['Scientific Name']} ${m.Strength}${m.StrengthUnit || ''}`.trim();
+                              updateDrug(drug.id, 'name', name);
+                              setDrugSearch(prev => ({ ...prev, [drug.id]: name }));
+                              setDrugDropdown(null);
+                            }} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 bg-slate-50/50 dark:bg-slate-800/30">
+                              <p className="text-[10px] font-black text-slate-500 dark:text-slate-300 italic">{m['Scientific Name']} {m.Strength}{m.StrengthUnit || ''}</p>
+                              <p className="text-[9px] text-slate-300">{ar ? 'المادة الفعالة' : 'Generic name'}</p>
+                            </button>
+                          </React.Fragment>
                         ))}
                       </div>
                     )}

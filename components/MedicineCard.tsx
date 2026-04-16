@@ -166,12 +166,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
         </div>
 
         {/* ── العمود اليمين: السعر + الأزرار ── */}
-        <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1">
+        <div className="flex flex-col items-end justify-between flex-shrink-0 self-stretch ml-1" style={{ width: 68, minWidth: 68 }}>
 
           {/* السعر */}
           {hasPrice ? (
-            <div className="bg-primary/8 dark:bg-primary/15 px-2.5 py-2 rounded-xl text-center min-w-[56px]">
-              <span className="text-[15px] font-black text-primary dark:text-primary-light block leading-none">
+            <div className="bg-primary/8 dark:bg-primary/15 px-2 py-2 rounded-xl text-center w-16">
+              <span className="text-[13px] font-black text-primary dark:text-primary-light block leading-none whitespace-nowrap">
                 {price.toFixed(2)}
               </span>
               <span className="text-[9px] font-semibold text-primary/60 dark:text-primary-light/60 block mt-0.5">
@@ -179,7 +179,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
               </span>
             </div>
           ) : (
-            <div className="px-3 py-2.5 rounded-xl min-w-[64px] text-center">
+            <div className="px-3 py-2.5 rounded-xl w-16 text-center">
               <span className="text-[11px] text-slate-300 dark:text-slate-600">—</span>
             </div>
           )}

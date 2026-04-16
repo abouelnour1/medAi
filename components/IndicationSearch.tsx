@@ -75,37 +75,52 @@ const IndicationSearch: React.FC<Props> = ({
     setQuery('');
   };
 
-  const showBack = selectedIndication !== null;
-
   return (
     <div className="animate-fade-in">
-      {/* Search input */}
-      <div className="relative mb-4">
-        {showBack && (
+
+      {/* Breadcrumb / Back bar — shows when a disease or ingredient is selected */}
+      {selectedIndication && (
+        <div className="flex items-center gap-2 mb-3">
           <button onClick={handleBack}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-primary z-10">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-dark-card border border-slate-100 dark:border-slate-800 shadow-sm active:scale-95 transition-all text-sm font-black text-primary">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
+            {ar ? 'رجوع' : 'Back'}
           </button>
-        )}
-        <input
-          type="text"
-          value={selectedIndication ? (selectedSciName || selectedIndication) : query}
-          onChange={e => { if (selectedIndication) return; setQuery(e.target.value); }}
-          readOnly={!!selectedIndication}
-          placeholder={ar ? 'ابحث عن مرض... مثال: Hypertension' : 'Search disease... e.g. Hypertension'}
-          className={`w-full h-12 ${showBack ? 'pl-10' : 'pl-4'} pr-10 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-2xl text-sm font-semibold text-slate-700 dark:text-white outline-none focus:border-primary/40 transition-colors placeholder-slate-300`}
-        />
-        {(query || selectedIndication) && (
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-slate-700 dark:text-slate-200 truncate">{selectedIndication}</p>
+            {selectedSciName && <p className="text-[10px] text-primary font-bold truncate">{selectedSciName}</p>}
+          </div>
           <button onClick={() => { setQuery(''); setSelectedIndication(null); setSelectedSciName(null); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-rose-400">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 active:scale-90">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Search input — only show when no disease selected */}
+      {!selectedIndication && (
+        <div className="relative mb-4">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={ar ? 'ابحث عن مرض... مثال: Hypertension' : 'Search disease... e.g. Hypertension'}
+            className="w-full h-12 pl-4 pr-10 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-2xl text-sm font-semibold text-slate-700 dark:text-white outline-none focus:border-primary/40 transition-colors placeholder-slate-300"
+          />
+          {query && (
+            <button onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-rose-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Step 1: Disease list */}
       {!selectedIndication && query.trim().length > 0 && (

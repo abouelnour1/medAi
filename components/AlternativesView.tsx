@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Medicine, TFunction, Language } from '../types';
 import MedicineCard from './MedicineCard';
 
@@ -10,6 +10,7 @@ interface AlternativesViewProps {
     onMedicineSelect: (medicine: Medicine) => void;
     onMedicineLongPress: (medicine: Medicine) => void;
     onFindAlternative: (medicine: Medicine) => void;
+    onImageClick?: (m: Medicine) => void;
     favorites: string[];
     onToggleFavorite: (medicineId: string) => void;
     t: TFunction;
@@ -17,20 +18,21 @@ interface AlternativesViewProps {
 }
 
 const Section: React.FC<{
-    title: string,
-    subtitle?: string,
-    badge?: string,
-    badgeColor?: string,
-    medicines: Medicine[],
-    emptyMessage: string,
-    onMedicineSelect: (medicine: Medicine) => void,
-    onMedicineLongPress: (medicine: Medicine) => void,
-    onFindAlternative: (medicine: Medicine) => void,
-    favorites: string[],
-    onToggleFavorite: (medicineId: string) => void,
-    t: TFunction,
-    language: Language
-}> = ({ title, subtitle, badge, badgeColor = 'bg-primary/10 text-primary', medicines, emptyMessage, onMedicineSelect, onMedicineLongPress, onFindAlternative, t, language, favorites, onToggleFavorite }) => {
+    title: string;
+    subtitle?: string;
+    badge?: string;
+    badgeColor?: string;
+    medicines: Medicine[];
+    emptyMessage: string;
+    onMedicineSelect: (medicine: Medicine) => void;
+    onMedicineLongPress: (medicine: Medicine) => void;
+    onFindAlternative: (medicine: Medicine) => void;
+    onImageClick?: (m: Medicine) => void;
+    favorites: string[];
+    onToggleFavorite: (medicineId: string) => void;
+    t: TFunction;
+    language: Language;
+}> = ({ title, subtitle, badge, badgeColor = 'bg-primary/10 text-primary', medicines, emptyMessage, onMedicineSelect, onMedicineLongPress, onFindAlternative, onImageClick, t, language, favorites, onToggleFavorite }) => {
     return (
         <div>
             <div className="flex items-center gap-2 mb-4 px-2">
@@ -58,6 +60,7 @@ const Section: React.FC<{
                             t={t}
                             language={language}
                             imageRight={true}
+                            onImageClick={onImageClick && med.imgBox ? () => onImageClick(med) : undefined}
                         />
                     ))}
                 </div>
@@ -77,6 +80,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
     onMedicineSelect,
     onMedicineLongPress,
     onFindAlternative,
+    onImageClick,
     favorites,
     onToggleFavorite,
     t,
@@ -118,21 +122,41 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                     </button>
                 ))}
             </div>
+
+            {/* Reference drug card — fixed layout */}
             <div>
-                <h3 className="text-lg font-semibold text-light-text-secondary dark:text-dark-muted px-2">{t('originalDrug')}</h3>
-                <div className="bg-light-card dark:bg-dark-card rounded-xl shadow-md p-5 mt-2 border-l-4 border-primary dark:border-primary-light">
-                    <div className="flex items-start justify-between gap-4">
-                         <div className="flex-grow">
-                            <h2 className="text-xl font-bold text-light-text dark:text-dark-text">{sourceMedicine['Trade Name']}</h2>
-                            <p className="text-sm text-light-text-secondary dark:text-dark-muted">{sourceMedicine['Scientific Name']}</p>
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1 mb-2">{t('originalDrug')}</h3>
+                <div className="bg-light-card dark:bg-dark-card rounded-2xl shadow-sm p-4 border-l-4 border-primary dark:border-primary-light">
+                    <div className="flex items-start gap-3">
+                        {sourceMedicine.imgBox && (
+                            <img src={sourceMedicine.imgBox}
+                                className="w-14 h-14 object-contain rounded-xl bg-white p-1 flex-shrink-0 border border-slate-100"
+                                alt=""
+                                onClick={onImageClick ? () => onImageClick(sourceMedicine) : undefined}
+                                style={onImageClick ? { cursor: 'zoom-in' } : undefined}
+                            />
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-base font-black text-light-text dark:text-dark-text leading-tight truncate">
+                                {sourceMedicine['Trade Name']}
+                            </h2>
+                            <p className="text-xs text-light-text-secondary dark:text-dark-muted truncate mt-0.5">
+                                {sourceMedicine['Scientific Name']}
+                            </p>
                             {sourceMedicine.Strength && (
-                                <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                <span className="inline-block mt-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                                     {sourceMedicine.Strength} {sourceMedicine.StrengthUnit || ''}
                                 </span>
                             )}
                         </div>
-                        <div className="flex-shrink-0 text-accent text-xl font-bold whitespace-nowrap">
-                            {isNaN(price) ? 'N/A' : `${price.toFixed(2)} ${ar ? 'ر.س' : 'SAR'}`}
+                        {/* Price — always on its own line to avoid overflow */}
+                        <div className="flex-shrink-0 text-right">
+                            <span className="text-base font-black text-accent">
+                                {isNaN(price) ? 'N/A' : price.toFixed(2)}
+                            </span>
+                            <span className="block text-[9px] font-bold text-slate-400">
+                                {ar ? 'ر.س' : 'SAR'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -147,13 +171,13 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}
                 onFindAlternative={onFindAlternative}
+                onImageClick={onImageClick}
                 favorites={favorites}
                 onToggleFavorite={onToggleFavorite}
                 t={t}
                 language={language}
             />
 
-            {/* بدائل نفس المادة بتركيزات مختلفة */}
             {diffStrength.length > 0 && (
                 <Section
                     title={ar ? 'نفس المادة — تركيز مختلف' : 'Same Ingredient — Different Strength'}
@@ -168,6 +192,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                     onMedicineSelect={onMedicineSelect}
                     onMedicineLongPress={onMedicineLongPress}
                     onFindAlternative={onFindAlternative}
+                    onImageClick={onImageClick}
                     favorites={favorites}
                     onToggleFavorite={onToggleFavorite}
                     t={t}
@@ -184,12 +209,12 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
                 onMedicineSelect={onMedicineSelect}
                 onMedicineLongPress={onMedicineLongPress}
                 onFindAlternative={onFindAlternative}
+                onImageClick={onImageClick}
                 favorites={favorites}
                 onToggleFavorite={onToggleFavorite}
                 t={t}
                 language={language}
             />
-
         </div>
     );
 };

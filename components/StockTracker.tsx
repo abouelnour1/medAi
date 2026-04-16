@@ -48,11 +48,14 @@ const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: b
       onClick={onClose}
       onTouchMove={e => e.preventDefault()}
     >
-      <div style={{ width:'100%', maxWidth:520, maxHeight: tall ? '92vh' : '85vh', borderRadius:'2rem 2rem 0 0', display:'flex', flexDirection:'column', animation:'sheetUp .32s cubic-bezier(.22,1,.36,1)', paddingBottom:'env(safe-area-inset-bottom)' }}
+      <div style={{ width:'100%', maxWidth:520, height: tall ? '92vh' : '85vh', borderRadius:'2rem 2rem 0 0', display:'flex', flexDirection:'column', animation:'sheetUp .32s cubic-bezier(.22,1,.36,1)', paddingBottom:'env(safe-area-inset-bottom)' }}
         className="bg-white dark:bg-slate-900" onClick={e => e.stopPropagation()}>
         <style>{`@keyframes sheetUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-        <div style={{ display:'flex', justifyContent:'center', padding:'12px 0 8px' }}>
-          <div style={{ width:40, height:4, borderRadius:9 }} className="bg-slate-200 dark:bg-slate-700" />
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px 8px', flexShrink:0 }}>
+          <div style={{ width:40, height:4, borderRadius:9, margin:'0 auto' }} className="bg-slate-200 dark:bg-slate-700" />
+          <button onClick={onClose} style={{ position:'absolute', right:16, top:12, width:32, height:32, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.06)', border:'none', cursor:'pointer' }}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
         {children}
       </div>

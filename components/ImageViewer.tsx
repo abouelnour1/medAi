@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TFunction } from '../types';
 import BackIcon from './icons/BackIcon';
 import GlobeIcon from './icons/GlobeIcon';
@@ -12,19 +12,146 @@ interface Props {
   onBack: () => void;
 }
 
+// ── Single zoomable image ──────────────────────────────────────────────────
+const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [scale, setScale]   = useState(1);
+  const [origin, setOrigin] = useState({ x: 50, y: 50 });
+  const [pan, setPan]       = useState({ x: 0, y: 0 });
+
+  const lastDist   = useRef(0);
+  const lastScale  = useRef(1);
+  const lastPan    = useRef({ x: 0, y: 0 });
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const imgRef     = useRef<HTMLImageElement>(null);
+  const lastTap    = useRef(0);
+
+  const reset = useCallback(() => {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+    setOrigin({ x: 50, y: 50 });
+    lastScale.current = 1;
+    lastPan.current   = { x: 0, y: 0 };
+  }, []);
+
+  const clampPan = (s: number, px: number, py: number) => {
+    if (s <= 1) return { x: 0, y: 0 };
+    const el = imgRef.current;
+    if (!el) return { x: px, y: py };
+    const maxX = (el.offsetWidth  * (s - 1)) / 2;
+    const maxY = (el.offsetHeight * (s - 1)) / 2;
+    return {
+      x: Math.min(maxX, Math.max(-maxX, px)),
+      y: Math.min(maxY, Math.max(-maxY, py)),
+    };
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      lastDist.current = Math.hypot(dx, dy);
+      const rect = imgRef.current?.getBoundingClientRect();
+      if (rect) {
+        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        setOrigin({
+          x: ((mx - rect.left) / rect.width)  * 100,
+          y: ((my - rect.top)  / rect.height) * 100,
+        });
+      }
+    } else if (e.touches.length === 1) {
+      touchStart.current = {
+        x: e.touches[0].clientX - lastPan.current.x,
+        y: e.touches[0].clientY - lastPan.current.y,
+      };
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      const dist   = Math.hypot(dx, dy);
+      const ratio  = dist / (lastDist.current || dist);
+      const newScale = Math.min(5, Math.max(1, lastScale.current * ratio));
+      setScale(newScale);
+    } else if (e.touches.length === 1 && lastScale.current > 1 && touchStart.current) {
+      const nx = e.touches[0].clientX - touchStart.current.x;
+      const ny = e.touches[0].clientY - touchStart.current.y;
+      setPan(clampPan(lastScale.current, nx, ny));
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      lastScale.current = scale < 1.05 ? 1 : scale;
+      if (scale < 1.05) reset();
+      else lastPan.current = pan;
+    }
+    if (e.touches.length === 0) touchStart.current = null;
+
+    // double-tap zoom
+    const now = Date.now();
+    if (now - lastTap.current < 280 && e.changedTouches.length === 1) {
+      if (scale > 1.5) {
+        reset();
+      } else {
+        const rect = imgRef.current?.getBoundingClientRect();
+        if (rect) {
+          const t = e.changedTouches[0];
+          setOrigin({
+            x: ((t.clientX - rect.left) / rect.width)  * 100,
+            y: ((t.clientY - rect.top)  / rect.height) * 100,
+          });
+        }
+        const ns = 2.5;
+        setScale(ns);
+        lastScale.current = ns;
+        lastPan.current   = { x: 0, y: 0 };
+        setPan({ x: 0, y: 0 });
+      }
+    }
+    lastTap.current = now;
+  };
+
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center overflow-hidden bg-black select-none"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{ touchAction: scale > 1 ? 'none' : 'pan-y' }}
+    >
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        draggable={false}
+        className="max-w-full max-h-full object-contain"
+        style={{
+          transform: `scale(${scale}) translate(${pan.x / scale}px, ${pan.y / scale}px)`,
+          transformOrigin: `${origin.x}% ${origin.y}%`,
+          transition: lastDist.current > 0 ? 'none' : 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+          userSelect: 'none',
+          WebkitUserDrag: 'none',
+        } as any}
+      />
+    </div>
+  );
+};
+
+// ── Main viewer ────────────────────────────────────────────────────────────
 const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags, onBack }) => {
   const [current, setCurrent] = useState(initialIndex);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isScrolling = useRef(false);
 
-  // Scroll to initial index on mount
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollLeft = initialIndex * el.clientWidth;
   }, []);
 
-  // Track current page via scroll
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -76,7 +203,7 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
         </div>
       </div>
 
-      {/* Images — native CSS scroll snap */}
+      {/* Scrollable pages */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -92,16 +219,10 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
         {images.map((img, i) => (
           <div
             key={i}
-            className="flex-shrink-0 w-full h-full flex items-center justify-center bg-black"
+            className="flex-shrink-0 w-full h-full"
             style={{ scrollSnapAlign: 'center', scrollSnapStop: 'always' }}
           >
-            <img
-              src={img}
-              alt={title}
-              className="max-w-full max-h-full object-contain"
-              style={{ userSelect: 'none', WebkitUserDrag: 'none' } as any}
-              draggable={false}
-            />
+            <ZoomableImage src={img} alt={title} />
           </div>
         ))}
       </div>

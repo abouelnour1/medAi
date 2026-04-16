@@ -201,6 +201,9 @@ export interface User {
   emailVerified: boolean; 
   email?: string;
   prescriptionPrivilege?: boolean;
+  institution?: string;
+  licenseNo?: string;
+  displayName?: string;
 }
 
 export interface AppSettings {

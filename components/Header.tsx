@@ -118,18 +118,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
                   className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   {t('navSettings')}
                 </button>
-                <button onClick={() => { (onSettingsClick as any)?.('stockTracker'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  Stock Tracker
-                </button>
-                <button onClick={() => { (onSettingsClick as any)?.('orderList'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  Order List
-                </button>
-                <button onClick={() => { onPediatricCalcClick?.(); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
-                  Pedia Dose Calc
-                </button>
+
                 {user.role === 'admin' && (
                   <button onClick={() => { onAdminClick(); setIsMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">

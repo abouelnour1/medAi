@@ -33,13 +33,25 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   useEffect(() => {
     if (isOpen) {
       setHeight(minH);
-      setAnimate(false);   // ابدأ مترجمة لتحت
-      setVisible(true);
-      // في الـ frame التاني ابدأ الـ animation
-      const id = requestAnimationFrame(() =>
-        requestAnimationFrame(() => setAnimate(true))
-      );
-      return () => cancelAnimationFrame(id);
+      if (skipOpenAnimation) {
+        // رجعنا من الصورة — ظهر فوراً في مكانه بدون أي حركة
+        setVisible(true);
+        setAnimate(true);
+        // نمنع أي transition لحظياً
+        if (sheetRef.current) {
+          sheetRef.current.style.transition = 'none';
+          requestAnimationFrame(() => {
+            if (sheetRef.current) sheetRef.current.style.transition = '';
+          });
+        }
+      } else {
+        setAnimate(false);
+        setVisible(true);
+        const id = requestAnimationFrame(() =>
+          requestAnimationFrame(() => setAnimate(true))
+        );
+        return () => cancelAnimationFrame(id);
+      }
     } else {
       setAnimate(false);
       const t = setTimeout(() => setVisible(false), 200);
@@ -117,7 +129,8 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           height,
           borderRadius: isExpanded ? '1.5rem 1.5rem 0 0' : '2rem 2rem 0 0',
           transform: animate ? 'translateY(0)' : 'translateY(100%)',
-          transition: isDragging.current ? 'none' : 'transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), height 0.15s cubic-bezier(0.22, 1, 0.36, 1)',
+          opacity: animate ? 1 : 0,
+          transition: isDragging.current ? 'none' : 'transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), height 0.15s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.12s ease',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
         contain: 'layout style',
