@@ -255,18 +255,43 @@ async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
   return _clinicalRefMap!;
 }
 
+// ── Drug name normalization (same logic as ClinicalReferencePage) ────────────
+const _SALT_RE = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
+
+function _normDrug(name: string): string {
+  return name.toLowerCase().trim().replace(/-/g, '/').replace(_SALT_RE, '').replace(/\s+/g, ' ').trim();
+}
+
+function _drugKeys(raw: string): string[] {
+  const norm = _normDrug(raw);
+  const orig = raw.toLowerCase().trim();
+  const firstWord = norm.split(/[\s\/,+]+/)[0];
+  const parts = norm.split(/[\/,+]+/).map((p: string) => p.trim()).filter(Boolean);
+  return [...new Set([norm, orig, firstWord, ...parts].filter(Boolean))];
+}
+
 export async function getClinicalReference(scientificName: string): Promise<ClinicalReference | null> {
   const map = await getClinicalRefMap();
   if (!map || Object.keys(map).length === 0) return null;
-  const key = scientificName.toLowerCase().trim();
-  // بحث مباشر
-  if (map[key]) return map[key];
-  // بحث بالكلمة الأولى (مثلاً "amoxicillin" من "amoxicillin/clavulanic acid")
-  const first = key.split(/[\/\s,+]+/)[0];
-  if (first && map[first]) return map[first];
-  // بحث جزئي
-  const found = Object.keys(map).find(k => k.includes(first) || first.includes(k));
-  return found ? map[found] : null;
+
+  const candidates = _drugKeys(scientificName);
+
+  // 1. exact candidate match
+  for (const c of candidates) {
+    if (map[c]) return map[c];
+  }
+
+  // 2. fuzzy: normalized map key starts with / matches first word
+  const firstWord = candidates[candidates.length - 1];
+  if (firstWord && firstWord.length >= 4) {
+    const found = Object.keys(map).find(k => {
+      const nk = _normDrug(k);
+      return nk.startsWith(firstWord) || firstWord.startsWith(nk.split(/[\s\/,+]+/)[0]);
+    });
+    if (found) return map[found];
+  }
+
+  return null;
 }
 
 // Pre-load in background

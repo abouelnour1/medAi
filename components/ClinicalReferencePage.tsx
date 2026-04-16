@@ -45,6 +45,67 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
 let _ixCache: Record<string, StructuredInteraction[]> | null = null;
 let _clinCache: Record<string, any> | null = null;
 
+// ── Drug name normalization for matching ────────────────────────────────────
+// Strips salts/forms that don't change the drug identity
+const SALT_SUFFIXES = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
+
+function normalizeDrug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/-/g, '/')           // amoxicillin-clavulanate → amoxicillin/clavulanate
+    .replace(SALT_SUFFIXES, '')   // strip salts
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Returns candidate keys to try, in priority order
+function drugLookupKeys(raw: string): string[] {
+  const norm = normalizeDrug(raw);
+  const keys: string[] = [];
+
+  // 1. normalized full name
+  keys.push(norm);
+
+  // 2. original lowercase
+  const orig = raw.toLowerCase().trim();
+  if (orig !== norm) keys.push(orig);
+
+  // 3. first word (handles "diclofenac sodium" → "diclofenac")
+  const firstWord = norm.split(/[\s\/,+]+/)[0];
+  if (firstWord && firstWord !== norm) keys.push(firstWord);
+
+  // 4. for combination drugs like "amoxicillin/clavulanate" → try both parts
+  const parts = norm.split(/[\/,+]+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    // Try "drug1/drug2" style keys that exist
+    for (const p of parts) keys.push(p);
+  }
+
+  return [...new Set(keys)]; // deduplicate
+}
+
+function findInMap<T>(map: Record<string, T>, raw: string): T | undefined {
+  const candidates = drugLookupKeys(raw);
+
+  // 1. Try exact candidates first
+  for (const c of candidates) {
+    if (map[c]) return map[c];
+  }
+
+  // 2. Fuzzy: map key starts with first candidate word OR candidate starts with key
+  const firstWord = candidates[candidates.length - 1]; // last = shortest (first word)
+  if (firstWord && firstWord.length >= 4) {
+    const found = Object.keys(map).find(k => {
+      const nk = normalizeDrug(k);
+      return nk.startsWith(firstWord) || firstWord.startsWith(nk.split(/[\s\/,+]+/)[0]);
+    });
+    if (found) return map[found];
+  }
+
+  return undefined;
+}
+
 async function fetchInteractions(drugKey: string): Promise<StructuredInteraction[]> {
   if (!_ixCache) {
     try {
@@ -53,13 +114,7 @@ async function fetchInteractions(drugKey: string): Promise<StructuredInteraction
       else _ixCache = {};
     } catch { _ixCache = {}; }
   }
-  const nk = drugKey.toLowerCase().trim();
-  if (_ixCache![nk]) return _ixCache![nk];
-  // first word — e.g. "diclofenac sodium" → "diclofenac"
-  const first = nk.split(/[\s,\/+]+/)[0];
-  if (first && _ixCache![first]) return _ixCache![first];
-  const found = Object.keys(_ixCache!).find(k => k.startsWith(first) || first.startsWith(k));
-  return found ? _ixCache![found] : [];
+  return findInMap(_ixCache!, drugKey) ?? [];
 }
 
 async function fetchFullClinical(drugKey: string): Promise<any | null> {
@@ -70,15 +125,7 @@ async function fetchFullClinical(drugKey: string): Promise<any | null> {
       else _clinCache = {};
     } catch { _clinCache = {}; }
   }
-  const nk = drugKey.toLowerCase().trim();
-  // exact match
-  if (_clinCache![nk]) return _clinCache![nk];
-  // first word match — e.g. "diclofenac sodium" → "diclofenac"
-  const first = nk.split(/[\s,\/+]+/)[0];
-  if (first && _clinCache![first]) return _clinCache![first];
-  // partial — key contains first word
-  const found = Object.keys(_clinCache!).find(k => k.startsWith(first) || first.startsWith(k));
-  return found ? _clinCache![found] : null;
+  return findInMap(_clinCache!, drugKey) ?? null;
 }
 
 // ── Interaction Card ─────────────────────────────────────────────────────────
