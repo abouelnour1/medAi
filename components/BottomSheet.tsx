@@ -133,7 +133,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           transition: isDragging.current ? 'none' : 'transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), height 0.15s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.12s ease',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
           willChange: 'transform, height',
-        contain: 'layout style',
+          contain: 'layout style',
         }}
       >
         {/* Handle */}
@@ -162,8 +162,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {/* Content */}
         <div
           ref={contentRef}
-          className="flex-grow overflow-y-auto no-scrollbar overscroll-none px-4 pb-8"
-          style={{ direction: 'ltr', willChange: 'transform', touchAction: 'pan-y' }}
+          className="flex-grow overflow-y-auto no-scrollbar px-4 pb-safe bg-white dark:bg-dark-card"
+          style={{ 
+            direction: 'ltr', 
+            willChange: 'transform', 
+            touchAction: 'pan-y', 
+            overscrollBehavior: 'none',
+            paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+          }}
           onTouchStart={(e) => {
             const el = contentRef.current;
             if (el && el.scrollTop === 0) {

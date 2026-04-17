@@ -211,10 +211,19 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
           ← {ar ? 'عرض منظم' : 'Structured'}
         </button>
       )}
-      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed"
-         style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {fallbackText || (ar ? 'لا توجد بيانات' : 'No data')}
-      </p>
+      {fallbackText ? (
+        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed"
+           style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {fallbackText}
+        </p>
+      ) : (
+        <div className="flex items-center gap-2 py-2 text-slate-400">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span className="text-[11px]">{ar ? 'لا توجد تفاعلات مسجلة' : 'No interactions on record'}</span>
+        </div>
+      )}
     </div>
   );
 
@@ -354,7 +363,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-black text-sm text-slate-800 dark:text-white truncate">{tradeName}</h1>
-          <p className="text-[10px] text-slate-400 truncate">{scientificName}</p>
+          <p className="text-[10px] text-slate-400 leading-snug" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{scientificName}</p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
           <span className="text-[10px] font-black text-teal-600 dark:text-teal-400">
@@ -373,7 +382,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 overscroll-none"
            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
 
         {loading && (
@@ -394,7 +403,11 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
 
         {!loading && (data || fullData) && SECTIONS.map(sec => {
           const text = getText(sec.key);
-          if (!text || text === '—' || text.trim() === '' || text === 'nan') return null;
+          // Interactions section always shows (it fetches from R2 independently)
+          const hasContent = sec.key === 'interactions'
+            ? true
+            : (text && text !== '—' && text.trim() !== '' && text !== 'nan');
+          if (!hasContent) return null;
           const isOpen = expanded.has(sec.key);
 
           return (
