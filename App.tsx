@@ -60,6 +60,7 @@ import SpecialtyModal from './components/SpecialtyModal';
 import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
 import BottomNavBar from './components/BottomNavBar';
+const IOSPreviewScreen = React.lazy(() => import('./components/IOSPreviewScreen'));
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -298,6 +299,7 @@ const App: React.FC = () => {
   }, []);
   const [previousView, setPreviousView] = useState<View>('results'); // للرجوع الصح
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showIOSPreview, setShowIOSPreview] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
@@ -1197,6 +1199,13 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+      if (showIOSPreview) {
+        return (
+          <React.Suspense fallback={null}>
+            <IOSPreviewScreen onExit={() => setShowIOSPreview(false)} />
+          </React.Suspense>
+        );
+      }
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { const prev = previousView || 'search'; setView(prev as View); restoreScroll(prev); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
@@ -1327,6 +1336,32 @@ const App: React.FC = () => {
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
                     <div className="mb-3">
+                      {/* iOS redesign preview banner */}
+                      <button
+                        onClick={() => setShowIOSPreview(true)}
+                        className="w-full mb-4 p-4 rounded-2xl active:scale-[0.98] transition-all flex items-center gap-3 text-left"
+                        style={{
+                          background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
+                          boxShadow: '0 4px 16px rgba(0,122,255,0.3)',
+                        }}
+                      >
+                        <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                          <svg width="22" height="22" viewBox="0 0 20 20" fill="#fff">
+                            <path d="M10 1l1.8 5.2L17 8l-5.2 1.8L10 15l-1.8-5.2L3 8l5.2-1.8L10 1zM15 13l.9 1.8L17.8 16l-1.9.9L15 18.7 14.1 16.8 12.2 16l1.9-.9z"/>
+                          </svg>
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <div className="text-white font-bold text-[15px] leading-tight">
+                            {language === 'ar' ? '✨ التصميم الجديد' : '✨ New iOS Design'}
+                          </div>
+                          <div className="text-white/85 text-[12px] mt-0.5">
+                            {language === 'ar' ? 'معاينة التصميم القادم — اضغط للتجربة' : 'Preview the upcoming redesign'}
+                          </div>
+                        </div>
+                        <svg width="8" height="13" viewBox="0 0 8 13" fill="none">
+                          <path d="M1 1l6 5.5L1 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
