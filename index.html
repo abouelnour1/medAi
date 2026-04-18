@@ -114,6 +114,67 @@
         border-color: rgba(255, 255, 255, 0.05);
       }
 
+      /* ═══ iOS style overrides for modals (DrugTest, Pediatric, Prescription, OrderList) ═══ */
+      /* Make modals match iOS design tokens */
+      .bg-white, [class*="bg-white"]:not([class*="bg-white/"]) {
+        background-color: var(--ios-bg2) !important;
+      }
+      .dark .dark\\:bg-dark-card, .dark .dark\\:bg-dark-bg {
+        background-color: var(--ios-bg2) !important;
+      }
+      .dark .dark\\:bg-slate-800, .dark .dark\\:bg-slate-900, .dark .dark\\:bg-slate-700 {
+        background-color: var(--ios-bg2) !important;
+      }
+      /* Text colors in dark mode - force readable text everywhere */
+      .dark .dark\\:text-white, .dark .dark\\:text-dark-text {
+        color: var(--ios-label) !important;
+      }
+      .dark .dark\\:text-slate-300, .dark .dark\\:text-slate-400 {
+        color: var(--ios-label2) !important;
+      }
+      /* Badges with white/light bg + dark text - fix in dark mode */
+      .dark .bg-white.text-slate-700, .dark .bg-white.text-slate-800,
+      .dark .bg-slate-100.text-slate-700, .dark .bg-slate-100.text-slate-800 {
+        background-color: rgba(120, 120, 128, 0.24) !important;
+        color: var(--ios-label) !important;
+      }
+      /* Generic: any text-slate-700/800/900 in dark, make readable */
+      .dark .text-slate-700, .dark .text-slate-800, .dark .text-slate-900 {
+        color: var(--ios-label) !important;
+      }
+      /* Borders */
+      .dark .dark\\:border-dark-border, .dark .dark\\:border-slate-700, .dark .dark\\:border-slate-800 {
+        border-color: var(--ios-sepCell) !important;
+      }
+      .dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300 {
+        border-color: var(--ios-sepCell) !important;
+      }
+      /* Light backgrounds in dark mode */
+      .dark .bg-light-bg, .dark .bg-slate-50, .dark .bg-slate-100 {
+        background-color: var(--ios-bg) !important;
+      }
+      /* Inputs in dark mode */
+      .dark input, .dark textarea, .dark select {
+        color: var(--ios-label) !important;
+        background-color: var(--ios-bg2) !important;
+      }
+      .dark input::placeholder, .dark textarea::placeholder {
+        color: var(--ios-label2) !important;
+      }
+      /* Make primary teal in light AND dark match brand */
+      .text-primary, .text-teal-500, .text-teal-600, .text-teal-700 {
+        color: #006a60 !important;
+      }
+      .dark .text-primary, .dark .text-teal-300, .dark .text-teal-400, .dark .text-teal-500 {
+        color: #00a896 !important;
+      }
+      .bg-primary { background-color: #006a60 !important; }
+      .dark .bg-primary { background-color: #00a896 !important; }
+      /* Remove sharp shadows on dark mode cards */
+      .dark .shadow, .dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl {
+        box-shadow: 0 0 0 0.5px var(--ios-sepCell) !important;
+      }
+
       /* الحجم ثابت على كل الشاشات — مش بيتغير بحجم الموبايل */
       @media (min-width: 390px)  { :root { font-size: 14px !important; } }
       @media (min-width: 768px)  { :root { font-size: 15px !important; } }

@@ -102,7 +102,7 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
   const activeSegment = Math.max(0, segmentValues.indexOf(textSearchMode));
 
   return (
-    <div style={{ direction: dir, paddingBottom: 24 }}>
+    <div style={{ direction: dir, paddingBottom: 24, paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)' }}>
       {/* Brand lockup */}
       <div
         style={{
@@ -130,8 +130,16 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
         </div>
       </div>
 
-      {/* Search field */}
-      <div style={{ padding: '0 16px 10px' }}>
+      {/* Search field - sticky */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          padding: '8px 16px 10px',
+          background: 'var(--ios-bg)',
+        }}
+      >
         <SearchField
           dir={dir}
           value={searchTerm}

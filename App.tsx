@@ -69,6 +69,7 @@ const IOSFavoritesScreen = React.lazy(() => import('./components/IOSFavoritesScr
 const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
 const IOSAlternativesScreen = React.lazy(() => import('./components/IOSAlternativesScreen'));
 const IOSIndicationSearch = React.lazy(() => import('./components/IOSIndicationSearch'));
+const IOSPharmacistQuickView = React.lazy(() => import('./components/IOSPharmacistQuickView'));
 import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -660,7 +661,12 @@ const App: React.FC = () => {
     trackMedicineView(m['Trade Name'], m.RegisterNumber);
     setPreviousView(view);
     setSelectedMedicine(m);
-    setSheetMedicine(m);  // افتح الـ BottomSheet
+    // In iOS mode go to full detail view; classic opens BottomSheet
+    if (useIOSDesign) {
+      setView('details');
+    } else {
+      setSheetMedicine(m);
+    }
   };
 
   // ── Android back button ──────────────────────────────────────────────────
@@ -1368,7 +1374,21 @@ const App: React.FC = () => {
                 onOpenPrescription={() => { setActiveTab('settings'); setView('prescription'); }}
                 onDisableIOSDesign={() => toggleIOSDesign(false)}
               />
-              {hasSearch && (
+              {hasSearch && textSearchMode === 'indication' ? (
+                <IOSIndicationSearch
+                  indications={indications}
+                  medicines={medicines}
+                  language={language}
+                  t={t}
+                  onMedicineSelect={handleMedicineSelect}
+                  onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
+                  favorites={favorites}
+                  onToggleFavorite={toggleFavorite}
+                  onBack={() => {}}
+                  initialQuery={searchTerm}
+                  hideHeader
+                />
+              ) : hasSearch && (
                 <IOSResultsList
                   medicines={displayedMedicines}
                   language={language}
@@ -2042,7 +2062,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"} style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4px)', paddingBottom: 'calc(83px + env(safe-area-inset-bottom))', background: 'var(--ios-bg)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any : { paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"} style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? { paddingTop: 0, paddingBottom: 'calc(83px + env(safe-area-inset-bottom))', background: 'var(--ios-bg)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any : { paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               <ScreenTransition viewKey={view + '-' + activeTab}>
                 {renderContent()}
@@ -2079,15 +2099,29 @@ onClearSearch={handleClearSearch}
 
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (
-        <PharmacistQuickView
-          medicine={quickViewMedicine}
-          language={language}
-          t={t}
-          onClose={() => setQuickViewMedicine(null)}
-          onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
-          isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
-          onToggleFavorite={(id) => { toggleFavorite(id); }}
-        />
+        useIOSDesign ? (
+          <React.Suspense fallback={null}>
+            <IOSPharmacistQuickView
+              medicine={quickViewMedicine}
+              language={language}
+              t={t}
+              onClose={() => setQuickViewMedicine(null)}
+              onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
+              isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
+              onToggleFavorite={(id) => { toggleFavorite(id); }}
+            />
+          </React.Suspense>
+        ) : (
+          <PharmacistQuickView
+            medicine={quickViewMedicine}
+            language={language}
+            t={t}
+            onClose={() => setQuickViewMedicine(null)}
+            onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
+            isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
+            onToggleFavorite={(id) => { toggleFavorite(id); }}
+          />
+        )
       )}
 
       {compareList.length > 0 && !showCompare && (

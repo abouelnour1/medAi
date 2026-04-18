@@ -28,6 +28,8 @@ interface Props {
   favorites: string[];
   onToggleFavorite: (id: string) => void;
   onBack: () => void;
+  initialQuery?: string;
+  hideHeader?: boolean;
 }
 
 function tintFor(regNo: string): string {
@@ -54,13 +56,20 @@ export default function IOSIndicationSearch({
   language,
   onMedicineSelect,
   onBack,
+  initialQuery,
+  hideHeader,
 }: Props) {
   const dir: Dir = language === 'ar' ? 'rtl' : 'ltr';
   const tr = (ar: string, en: string) => langPick(language, ar, en);
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery || '');
   const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   const [selectedSciName, setSelectedSciName] = useState<string | null>(null);
+
+  // Sync external query changes
+  React.useEffect(() => {
+    if (initialQuery !== undefined) setQuery(initialQuery);
+  }, [initialQuery]);
 
   const matchedIndications = useMemo(() => {
     if (!query.trim()) {
@@ -277,22 +286,26 @@ export default function IOSIndicationSearch({
   // === Level 1: Diseases list ===
   return (
     <div style={{ direction: dir, paddingBottom: 24 }}>
-      <div style={{ paddingTop: 4 }}>
-        <LargeTitle
-          dir={dir}
-          title={tr('بحث بالمرض', 'By Disease')}
-          subtitle={tr('ابحث بـ ICD-10 أو اسم الحالة', 'Search by ICD-10 or condition name')}
-        />
-      </div>
+      {!hideHeader && (
+        <>
+          <div style={{ paddingTop: 4 }}>
+            <LargeTitle
+              dir={dir}
+              title={tr('بحث بالمرض', 'By Disease')}
+              subtitle={tr('ابحث بـ ICD-10 أو اسم الحالة', 'Search by ICD-10 or condition name')}
+            />
+          </div>
 
-      <div style={{ padding: '0 16px 14px' }}>
-        <SearchField
-          dir={dir}
-          value={query}
-          onChange={setQuery}
-          placeholder={tr('اكتب اسم مرض أو كود ICD-10', 'Disease name or ICD-10 code')}
-        />
-      </div>
+          <div style={{ padding: '0 16px 14px' }}>
+            <SearchField
+              dir={dir}
+              value={query}
+              onChange={setQuery}
+              placeholder={tr('اكتب اسم مرض أو كود ICD-10', 'Disease name or ICD-10 code')}
+            />
+          </div>
+        </>
+      )}
 
       <div style={{ padding: '0 32px 6px' }}>
         <span style={{ fontSize: 13, color: iOS.label2, letterSpacing: -0.08, textTransform: 'uppercase' }}>

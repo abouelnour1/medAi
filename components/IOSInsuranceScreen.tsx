@@ -31,7 +31,7 @@ export default function IOSInsuranceScreen({
   const tr = (ar: string, en: string) => langPick(language, ar, en);
 
   return (
-    <div style={{ direction: dir, paddingBottom: 24 }}>
+    <div style={{ direction: dir, paddingBottom: 24, paddingTop: "calc(env(safe-area-inset-top, 20px) + 4px)" }}>
       <div style={{ paddingTop: 4 }}>
         <LargeTitle
           dir={dir}

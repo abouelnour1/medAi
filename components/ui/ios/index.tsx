@@ -385,12 +385,12 @@ export function NavBar({
   return (
     <div
       style={{
-        paddingTop: 54,
+        paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)',
         paddingBottom: 8,
-        background: 'rgba(249,249,249,0.82)',
+        background: 'var(--ios-bg2)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        borderBottom: '0.5px solid rgba(60,60,67,0.18)',
+        borderBottom: `0.5px solid var(--ios-sepCell)`,
         position: 'sticky',
         top: 0,
         zIndex: 20,
