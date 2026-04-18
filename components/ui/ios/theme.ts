@@ -31,21 +31,21 @@ export const BRAND = {
 };
 
 export const iOS = {
-  // System groups - using brand paper for warmth
-  bg:        BRAND.paper,           // was #F2F2F7
-  bg2:       BRAND.white,
-  bg3:       BRAND.paper,
+  // System groups - dark-aware via CSS vars
+  bg:        'var(--ios-bg, #f7f9f6)',
+  bg2:       'var(--ios-bg2, #ffffff)',
+  bg3:       'var(--ios-bg3, #f7f9f6)',
 
-  label:     BRAND.ink,             // was #000000
-  label2:    'rgba(14, 26, 24, 0.6)',
-  label3:    'rgba(14, 26, 24, 0.3)',
+  label:     'var(--ios-label, #0e1a18)',
+  label2:    'var(--ios-label2, rgba(14, 26, 24, 0.6))',
+  label3:    'var(--ios-label3, rgba(14, 26, 24, 0.3))',
 
-  sep:       'rgba(14, 26, 24, 0.29)',
-  sepCell:   'rgba(14, 26, 24, 0.12)',
-  fill:      'rgba(14, 26, 24, 0.08)',
+  sep:       'var(--ios-sep, rgba(14, 26, 24, 0.29))',
+  sepCell:   'var(--ios-sepCell, rgba(14, 26, 24, 0.12))',
+  fill:      'var(--ios-fill, rgba(14, 26, 24, 0.08))',
 
-  // System palette — keep iOS colors for actions/system but primary = brand teal
-  blue:      BRAND.teal700,         // primary brand teal (replaces #007AFF)
+  // System palette — same in dark mode
+  blue:      BRAND.teal700,
   green:     BRAND.success,
   red:       BRAND.danger,
   orange:    BRAND.warning,
@@ -60,7 +60,7 @@ export const iOS = {
   gray3:     BRAND.ink20,
   gray4:     BRAND.ink20,
   gray5:     BRAND.ink10,
-  gray6:     BRAND.paper,
+  gray6:     'var(--ios-bg, #f7f9f6)',
 };
 
 // Gradient pairs for Tile icons — tuned to brand palette

@@ -43,7 +43,9 @@ function displayName(m: Medicine): string {
 }
 
 function displaySci(m: Medicine): string {
-  const sci = m['Scientific Name'] || '';
+  let sci = m['Scientific Name'] || '';
+  // Truncate long ingredients for list display
+  if (sci.length > 60) sci = sci.slice(0, 57) + '…';
   const strength = m.Strength ? `${m.Strength}${m.StrengthUnit || ''}` : '';
   return [sci, strength].filter(Boolean).join(' · ');
 }
@@ -83,6 +85,7 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
 
   const dir: Dir = language === 'ar' ? 'rtl' : 'ltr';
   const t = (ar: string, en: string) => langPick(language, ar, en);
+  const hasSearch = searchTerm.trim().length > 0;
 
   const segmentOptions = [
     t('اسم تجاري', 'Trade'),
@@ -146,7 +149,8 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
         />
       </div>
 
-      {/* Quick tools - 2 col grid of premium gradient tiles */}
+      {/* Quick tools - hidden while searching */}
+      {!hasSearch && (
       <div style={{ padding: '0 16px 8px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <QuickTile
@@ -223,9 +227,10 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
           />
         </div>
       </div>
+      )}
 
-      {/* Recently viewed */}
-      {recentSearches.length > 0 && (
+      {/* Recently viewed - hidden while searching */}
+      {!hasSearch && recentSearches.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div
             style={{
@@ -310,8 +315,8 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
         </div>
       )}
 
-      {/* Empty state when no recent */}
-      {recentSearches.length === 0 && (
+      {/* Empty state when no recent + not searching */}
+      {!hasSearch && recentSearches.length === 0 && (
         <div
           style={{
             margin: '32px 16px 24px',

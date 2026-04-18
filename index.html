@@ -39,9 +39,33 @@
         -moz-text-size-adjust: 100% !important;
         text-size-adjust: 100% !important;
       }
+      /* iOS design tokens - light mode */
+      :root {
+        --ios-bg: #f7f9f6;
+        --ios-bg2: #ffffff;
+        --ios-bg3: #f7f9f6;
+        --ios-label: #0e1a18;
+        --ios-label2: rgba(14, 26, 24, 0.6);
+        --ios-label3: rgba(14, 26, 24, 0.3);
+        --ios-sep: rgba(14, 26, 24, 0.29);
+        --ios-sepCell: rgba(14, 26, 24, 0.12);
+        --ios-fill: rgba(14, 26, 24, 0.08);
+      }
+      /* iOS design tokens - dark mode */
+      html.dark {
+        --ios-bg: #000000;
+        --ios-bg2: #1c1c1e;
+        --ios-bg3: #2c2c2e;
+        --ios-label: #ffffff;
+        --ios-label2: rgba(235, 235, 245, 0.6);
+        --ios-label3: rgba(235, 235, 245, 0.3);
+        --ios-sep: rgba(84, 84, 88, 0.6);
+        --ios-sepCell: rgba(84, 84, 88, 0.35);
+        --ios-fill: rgba(118, 118, 128, 0.24);
+      }
       /* منع الوميض */
       html { background-color: #f7f9f6; }
-      html.dark { background-color: #020617; }
+      html.dark { background-color: #000000; }
       body {
         font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', 'Cairo', sans-serif;
         background-color: #f7f9f6;

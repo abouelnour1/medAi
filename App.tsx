@@ -67,6 +67,7 @@ const IOSMedicineDetail = React.lazy(() => import('./components/IOSMedicineDetai
 const IOSInsuranceScreen = React.lazy(() => import('./components/IOSInsuranceScreen'));
 const IOSFavoritesScreen = React.lazy(() => import('./components/IOSFavoritesScreen'));
 const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
+const IOSAlternativesScreen = React.lazy(() => import('./components/IOSAlternativesScreen'));
 import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -1218,6 +1219,28 @@ const App: React.FC = () => {
 
       // iOS design routes — apply to all tabs now
       if (useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view)) {
+        // Alternatives view
+        if (view === 'alternatives' && selectedMedicine) {
+          return (
+            <React.Suspense fallback={null}>
+              <IOSAlternativesScreen
+                sourceMedicine={selectedMedicine}
+                alternatives={alternatives}
+                language={language}
+                t={t}
+                onSelect={(m) => {
+                  setSelectedMedicine(m);
+                  setView('details');
+                }}
+                onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
+                onBack={handleBack}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
+              />
+            </React.Suspense>
+          );
+        }
+
         // Favorites (Saved tab)
         if (view === 'favorites') {
           return (
@@ -1999,7 +2022,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"} style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4px)', paddingBottom: 'calc(83px + env(safe-area-inset-bottom))', background: '#f7f9f6', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any : { paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"} style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4px)', paddingBottom: 'calc(83px + env(safe-area-inset-bottom))', background: 'var(--ios-bg)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any : { paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               <ScreenTransition viewKey={view + '-' + activeTab}>
                 {renderContent()}

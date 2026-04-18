@@ -367,9 +367,7 @@ export function SearchField({
         >
           <Icon.xCircle color={iOS.label3} size={18} />
         </button>
-      ) : (
-        <Icon.mic color={iOS.label2} size={18} />
-      )}
+      ) : null}
     </div>
   );
 }
