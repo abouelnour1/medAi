@@ -1,8 +1,9 @@
 // iOS UI primitives — List, Row, Tile, Switch, Segmented, SearchField,
 // NavBar, LargeTitle, Badge, StatBox, ActionBtn, QuickTile, BoxPlaceholder, TabBar.
 import React from 'react';
-import { iOS, iOSType, tileGradients } from './theme';
+import { iOS, iOSType, tileGradients, BRAND, FONT_AR, FONT_EN } from './theme';
 import { Icon } from './icons';
+import { Dir, marginEnd, marginStart, textAlign, separatorInset, chevronFlip } from './rtl';
 
 // ─── Tile icon (rounded squircle with gradient) ───────────
 export function Tile({
@@ -52,6 +53,7 @@ export function Row({
   tall,
   noLeadingInset,
   onClick,
+  dir = 'ltr',
 }: {
   leading?: React.ReactNode;
   title: React.ReactNode;
@@ -65,21 +67,34 @@ export function Row({
   tall?: boolean;
   noLeadingInset?: boolean;
   onClick?: () => void;
+  dir?: Dir;
 }) {
+  const [pressed, setPressed] = React.useState(false);
+  const leadingInset = leading ? (noLeadingInset ? 16 : 58) : 16;
   return (
     <div
       onClick={onClick}
+      onTouchStart={() => onClick && setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      onMouseDown={() => onClick && setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
       style={{
         display: 'flex',
         alignItems: 'center',
         minHeight: tall ? 60 : 44,
         padding: '8px 16px',
         position: 'relative',
-        background: iOS.bg2,
+        background: pressed ? 'rgba(120,120,128,0.12)' : iOS.bg2,
         cursor: onClick ? 'pointer' : 'default',
+        direction: dir,
+        transition: 'background 120ms ease',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
-      {leading && <div style={{ marginRight: 12, display: 'flex', flexShrink: 0 }}>{leading}</div>}
+      {leading && (
+        <div style={{ ...marginEnd(12, dir), display: 'flex', flexShrink: 0 }}>{leading}</div>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -90,12 +105,23 @@ export function Row({
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+            textAlign: textAlign(dir),
           }}
         >
           {title}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 13, color: iOS.label2, marginTop: 2, letterSpacing: -0.08 }}>{subtitle}</div>
+          <div
+            style={{
+              fontSize: 13,
+              color: iOS.label2,
+              marginTop: 2,
+              letterSpacing: -0.08,
+              textAlign: textAlign(dir),
+            }}
+          >
+            {subtitle}
+          </div>
         )}
       </div>
       {detail && (
@@ -103,7 +129,7 @@ export function Row({
           style={{
             fontSize: 17,
             color: iOS.label2,
-            marginRight: chevron ? 6 : 0,
+            ...(chevron ? marginEnd(6, dir) : {}),
             letterSpacing: -0.43,
           }}
         >
@@ -112,7 +138,7 @@ export function Row({
       )}
       {trailing}
       {chevron && (
-        <div style={{ marginLeft: 8 }}>
+        <div style={{ ...marginStart(8, dir), ...chevronFlip(dir) }}>
           <Icon.chevronR />
         </div>
       )}
@@ -121,8 +147,7 @@ export function Row({
           style={{
             position: 'absolute',
             bottom: 0,
-            right: 0,
-            left: leading ? (noLeadingInset ? 16 : 58) : 16,
+            ...separatorInset(leadingInset, dir),
             height: 0.5,
             background: iOS.sepCell,
           }}
@@ -171,17 +196,24 @@ export function List({
   footer,
   children,
   style = {},
+  dir = 'ltr',
 }: {
   header?: React.ReactNode;
   footer?: React.ReactNode;
   children?: React.ReactNode;
   style?: React.CSSProperties;
+  dir?: Dir;
 }) {
-  // Inject onLast into last non-null child
+  // Inject onLast + dir into children
   const items = React.Children.toArray(children).filter(Boolean) as React.ReactElement[];
-  const withLast = items.map((c, i) => React.cloneElement(c, { onLast: i === items.length - 1 }));
+  const withLast = items.map((c, i) =>
+    React.cloneElement(c, {
+      onLast: i === items.length - 1,
+      dir: (c.props as any).dir ?? dir,
+    })
+  );
   return (
-    <div style={{ marginBottom: 24, ...style }}>
+    <div style={{ marginBottom: 24, direction: dir, ...style }}>
       {header && (
         <div
           style={{
@@ -191,6 +223,7 @@ export function List({
             letterSpacing: -0.08,
             textTransform: 'uppercase',
             fontWeight: 400,
+            textAlign: textAlign(dir),
           }}
         >
           {header}
@@ -214,6 +247,7 @@ export function List({
             color: iOS.label2,
             letterSpacing: -0.08,
             lineHeight: 1.38,
+            textAlign: textAlign(dir),
           }}
         >
           {footer}
@@ -278,6 +312,7 @@ export function SearchField({
   onBlur,
   autoFocus,
   onClear,
+  dir = 'ltr',
 }: {
   value?: string;
   placeholder?: string;
@@ -286,6 +321,7 @@ export function SearchField({
   onBlur?: () => void;
   autoFocus?: boolean;
   onClear?: () => void;
+  dir?: Dir;
 }) {
   const hasValue = value.length > 0;
   return (
@@ -298,6 +334,7 @@ export function SearchField({
         borderRadius: 10,
         height: 36,
         padding: '0 8px',
+        direction: dir,
       }}
     >
       <Icon.search color={iOS.label2} size={15} />
@@ -319,6 +356,7 @@ export function SearchField({
           background: 'transparent',
           padding: 0,
           minWidth: 0,
+          textAlign: textAlign(dir),
         }}
       />
       {hasValue ? (
@@ -405,13 +443,23 @@ export function LargeTitle({
   title,
   subtitle,
   trailing,
+  dir = 'ltr',
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   trailing?: React.ReactNode;
+  dir?: Dir;
 }) {
   return (
-    <div style={{ padding: '4px 16px 10px', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+    <div
+      style={{
+        padding: '4px 16px 10px',
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 8,
+        direction: dir,
+      }}
+    >
       <div style={{ flex: 1 }}>
         <div
           style={{
@@ -420,12 +468,23 @@ export function LargeTitle({
             letterSpacing: 0.37,
             color: iOS.label,
             lineHeight: '41px',
+            textAlign: textAlign(dir),
           }}
         >
           {title}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 15, color: iOS.label2, marginTop: 2, letterSpacing: -0.23 }}>{subtitle}</div>
+          <div
+            style={{
+              fontSize: 15,
+              color: iOS.label2,
+              marginTop: 2,
+              letterSpacing: -0.23,
+              textAlign: textAlign(dir),
+            }}
+          >
+            {subtitle}
+          </div>
         )}
       </div>
       {trailing}
@@ -545,6 +604,7 @@ export function QuickTile({
   title,
   sub,
   onClick,
+  dir = 'ltr',
 }: {
   from: string;
   to: string;
@@ -552,21 +612,35 @@ export function QuickTile({
   title: React.ReactNode;
   sub?: React.ReactNode;
   onClick?: () => void;
+  dir?: Dir;
 }) {
+  const [pressed, setPressed] = React.useState(false);
   return (
     <div
       onClick={onClick}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
       style={{
         background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
         borderRadius: 16,
         padding: '12px 14px',
         color: '#fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.06)',
+        boxShadow: pressed
+          ? '0 1px 2px rgba(0,0,0,0.08)'
+          : '0 1px 3px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.06)',
         minHeight: 78,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         cursor: onClick ? 'pointer' : 'default',
+        direction: dir,
+        transform: pressed ? 'scale(0.96)' : 'scale(1)',
+        transition: 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <div
@@ -582,7 +656,7 @@ export function QuickTile({
       >
         {icon}
       </div>
-      <div>
+      <div style={{ textAlign: textAlign(dir) }}>
         <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.24 }}>{title}</div>
         {sub && <div style={{ fontSize: 12, opacity: 0.88, letterSpacing: -0.08, marginTop: 1 }}>{sub}</div>}
       </div>
@@ -661,9 +735,20 @@ export function IOSTabBar({
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
+                transform: a ? 'scale(1)' : 'scale(1)',
+                transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms',
+                opacity: 1,
+                WebkitTapHighlightColor: 'transparent',
               }}
+              onTouchStart={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.55'; }}
+              onTouchEnd={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
             >
-              {t.icon(color)}
+              <div style={{
+                transform: a ? 'scale(1.05)' : 'scale(1)',
+                transition: 'transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+              }}>
+                {t.icon(color)}
+              </div>
               <span style={{ fontSize: 10, color, fontWeight: 500, letterSpacing: 0.06 }}>{t.label}</span>
             </button>
           );
@@ -673,5 +758,37 @@ export function IOSTabBar({
   );
 }
 
+// ─── ScreenTransition (slide + fade wrapper for view changes) ────
+export function ScreenTransition({ children, viewKey }: { children: React.ReactNode; viewKey: string }) {
+  return (
+    <div
+      key={viewKey}
+      style={{
+        animation: 'iosScreenIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
+    >
+      <style>{`
+        @keyframes iosScreenIn {
+          0% { opacity: 0; transform: translateY(8px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes iosFadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes iosPressScale {
+          0% { transform: scale(1); }
+          50% { transform: scale(0.96); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+      {children}
+    </div>
+  );
+}
+
 // Re-export helpers
-export { iOS, iOSType, tileGradients, Icon };
+export { iOS, iOSType, tileGradients, Icon, BRAND, FONT_AR, FONT_EN };
+export { EDMark, EDWordmark } from './brand';
+export type { Dir };
+export { langPick, marginEnd, marginStart, paddingStart, paddingEnd, textAlign, chevronFlip } from './rtl';

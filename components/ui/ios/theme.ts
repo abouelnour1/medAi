@@ -1,52 +1,85 @@
-// iOS system theme for EasyDrug redesign.
-// All values match Apple HIG — system colors, typography, spacing.
+// iOS system theme for EasyDrug — layered with brand identity.
+// Keeps iOS spacing/typography/motion, applies EasyDrug brand colors.
+
+// Brand palette (Easy Drug — Arabic heritage modern)
+export const BRAND = {
+  teal900: '#003d37',
+  teal700: '#006a60',   // primary
+  teal500: '#00a896',
+  teal300: '#7fd4c6',
+  teal100: '#cdeee7',
+  teal50:  '#eef9f6',
+
+  gold700: '#b8842a',
+  gold500: '#e0a84a',
+  gold100: '#faecd0',
+
+  ink:       '#0e1a18',
+  ink80:     '#2a3532',
+  ink60:     '#55605c',
+  ink40:     '#8a938f',
+  ink20:     '#c9cfcc',
+  ink10:     '#e6eae7',
+  paper:     '#f7f9f6',
+  paperWarm: '#f4f0e6',
+  white:     '#ffffff',
+
+  success: '#2e8856',
+  warning: '#c98b2c',
+  danger:  '#b33a2e',
+  info:    '#2d6da3',
+};
 
 export const iOS = {
-  // System light
-  bg:        '#F2F2F7',   // systemGroupedBackground
-  bg2:       '#FFFFFF',   // secondarySystemGroupedBackground (cells)
-  bg3:       '#F2F2F7',   // tertiarySystemGroupedBackground
+  // System groups - using brand paper for warmth
+  bg:        BRAND.paper,           // was #F2F2F7
+  bg2:       BRAND.white,
+  bg3:       BRAND.paper,
 
-  label:     '#000000',
-  label2:    'rgba(60,60,67,0.6)',
-  label3:    'rgba(60,60,67,0.3)',
+  label:     BRAND.ink,             // was #000000
+  label2:    'rgba(14, 26, 24, 0.6)',
+  label3:    'rgba(14, 26, 24, 0.3)',
 
-  sep:       'rgba(60,60,67,0.29)',
-  sepCell:   'rgba(60,60,67,0.12)',
-  fill:      'rgba(120,120,128,0.12)', // searchfield
+  sep:       'rgba(14, 26, 24, 0.29)',
+  sepCell:   'rgba(14, 26, 24, 0.12)',
+  fill:      'rgba(14, 26, 24, 0.08)',
 
-  // System palette
-  blue:      '#007AFF',
-  green:     '#34C759',
-  red:       '#FF3B30',
-  orange:    '#FF9500',
-  yellow:    '#FFCC00',
+  // System palette — keep iOS colors for actions/system but primary = brand teal
+  blue:      BRAND.teal700,         // primary brand teal (replaces #007AFF)
+  green:     BRAND.success,
+  red:       BRAND.danger,
+  orange:    BRAND.warning,
+  yellow:    BRAND.gold500,
   purple:    '#AF52DE',
   pink:      '#FF2D55',
-  teal:      '#30B0C7',
+  teal:      BRAND.teal500,
   indigo:    '#5856D6',
 
-  gray:      '#8E8E93',
-  gray2:     '#AEAEB2',
-  gray3:     '#C7C7CC',
-  gray4:     '#D1D1D6',
-  gray5:     '#E5E5EA',
-  gray6:     '#F2F2F7',
+  gray:      BRAND.ink60,
+  gray2:     BRAND.ink40,
+  gray3:     BRAND.ink20,
+  gray4:     BRAND.ink20,
+  gray5:     BRAND.ink10,
+  gray6:     BRAND.paper,
 };
 
-// Gradient pairs used for Tile icons (from → to)
+// Gradient pairs for Tile icons — tuned to brand palette
 export const tileGradients = {
-  blue:   { from: '#6DA8FF', to: '#007AFF' },
-  green:  { from: '#6BCB77', to: '#34C759' },
-  red:    { from: '#FF7A7A', to: '#FF3B30' },
-  orange: { from: '#FFB84D', to: '#FF9500' },
-  yellow: { from: '#FFC547', to: '#FFCC00' },
+  blue:   { from: BRAND.teal500, to: BRAND.teal700 },       // primary teal
+  green:  { from: '#5ecf9a', to: BRAND.success },
+  red:    { from: '#d46659', to: BRAND.danger },
+  orange: { from: '#e6b458', to: BRAND.warning },
+  yellow: { from: BRAND.gold500, to: BRAND.gold700 },       // brand gold
   purple: { from: '#C27BE6', to: '#AF52DE' },
   pink:   { from: '#FF6B8B', to: '#FF2D55' },
-  teal:   { from: '#5BC4D6', to: '#30B0C7' },
+  teal:   { from: BRAND.teal300, to: BRAND.teal500 },
   indigo: { from: '#7A79E0', to: '#5856D6' },
-  gray:   { from: '#8E8E9F', to: '#5D5D6E' },
+  gray:   { from: BRAND.ink40, to: BRAND.ink60 },
 };
+
+// Brand typography — IBM Plex preferred (bilingual)
+export const FONT_AR = "'IBM Plex Sans Arabic', 'Noto Naskh Arabic', -apple-system, sans-serif";
+export const FONT_EN = "'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
 // iOS typography presets
 export const iOSType = {
