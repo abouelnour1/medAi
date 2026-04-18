@@ -68,6 +68,7 @@ const IOSInsuranceScreen = React.lazy(() => import('./components/IOSInsuranceScr
 const IOSFavoritesScreen = React.lazy(() => import('./components/IOSFavoritesScreen'));
 const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
 const IOSAlternativesScreen = React.lazy(() => import('./components/IOSAlternativesScreen'));
+const IOSIndicationSearch = React.lazy(() => import('./components/IOSIndicationSearch'));
 import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -1219,6 +1220,25 @@ const App: React.FC = () => {
 
       // iOS design routes — apply to all tabs now
       if (useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view)) {
+        // Indication search (By Disease)
+        if (view === 'indicationSearch') {
+          return (
+            <React.Suspense fallback={null}>
+              <IOSIndicationSearch
+                indications={indications}
+                medicines={medicines}
+                language={language}
+                t={t}
+                onMedicineSelect={handleMedicineSelect}
+                onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
+                onBack={handleBack}
+              />
+            </React.Suspense>
+          );
+        }
+
         // Alternatives view
         if (view === 'alternatives' && selectedMedicine) {
           return (
