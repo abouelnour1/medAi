@@ -9,6 +9,7 @@ import {
   Icon,
   Row,
   Segmented,
+  SearchField,
   QuickTile,
   BoxPlaceholder,
   tileGradients,
@@ -49,6 +50,8 @@ function displaySci(m: Medicine): string {
 
 export interface IOSHomeScreenProps {
   language: Language;
+  searchTerm: string;
+  onSearchChange: (v: string) => void;
   textSearchMode: 'tradeName' | 'scientificName' | 'all' | 'indication';
   onSetTextSearchMode: (m: 'tradeName' | 'scientificName' | 'all' | 'indication') => void;
   recentSearches: Medicine[];
@@ -63,13 +66,14 @@ export interface IOSHomeScreenProps {
   onOpenStockTracker: () => void;
   onOpenInsurance: () => void;
   onOpenPrescription: () => void;
-  // Escape hatch — let user disable the iOS design and go back to the classic one.
   onDisableIOSDesign?: () => void;
 }
 
 export default function IOSHomeScreen(props: IOSHomeScreenProps) {
   const {
     language,
+    searchTerm,
+    onSearchChange,
     recentSearches,
     onMedicineSelect,
     onClearRecent,
@@ -121,6 +125,16 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
             {t('دليل الأدوية والتأمين', 'Saudi drug & insurance directory')}
           </div>
         </div>
+      </div>
+
+      {/* Search field */}
+      <div style={{ padding: '0 16px 10px' }}>
+        <SearchField
+          dir={dir}
+          value={searchTerm}
+          placeholder={t('أدوية، مواد فعالة، حالات', 'Medicines, ingredients, indications')}
+          onChange={onSearchChange}
+        />
       </div>
 
       {/* Segmented search mode */}

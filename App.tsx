@@ -64,6 +64,9 @@ const IOSPreviewScreen = React.lazy(() => import('./components/IOSPreviewScreen'
 const IOSHomeScreen = React.lazy(() => import('./components/IOSHomeScreen'));
 const IOSResultsList = React.lazy(() => import('./components/IOSResultsList'));
 const IOSMedicineDetail = React.lazy(() => import('./components/IOSMedicineDetail'));
+const IOSInsuranceScreen = React.lazy(() => import('./components/IOSInsuranceScreen'));
+const IOSFavoritesScreen = React.lazy(() => import('./components/IOSFavoritesScreen'));
+const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
 import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -1213,7 +1216,89 @@ const App: React.FC = () => {
         );
       }
 
-      // iOS design routes — only for the search tab flow. Other tabs still use the classic UI.
+      // iOS design routes — apply to all tabs now
+      if (useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view)) {
+        // Favorites (Saved tab)
+        if (view === 'favorites') {
+          return (
+            <React.Suspense fallback={null}>
+              <IOSFavoritesScreen
+                language={language}
+                t={t}
+                favoriteIds={favorites}
+                allMedicines={medicines}
+                onMedicineSelect={handleMedicineSelect}
+                onFindAlternative={(m) => {
+                  setPreviousView('favorites');
+                  setSelectedMedicine(m);
+                  setActiveTab('search');
+                  scrollPositions.current.delete('alternatives');
+                  if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+                  setView('alternatives');
+                }}
+                toggleFavorite={toggleFavorite}
+              />
+            </React.Suspense>
+          );
+        }
+
+        // Insurance search tab
+        if (activeTab === 'insurance' && view !== 'insuranceDetails') {
+          return (
+            <React.Suspense fallback={null}>
+              <IOSInsuranceScreen
+                language={language}
+                t={t}
+                insuranceData={insuranceData}
+                allMedicines={medicines}
+                searchTerm={insuranceSearchTerm}
+                setSearchTerm={setInsuranceSearchTerm}
+                searchMode={insuranceSearchMode}
+                setSearchMode={setInsuranceSearchMode}
+                onSelect={(d) => {
+                  setSelectedInsurance(d);
+                  setView('insuranceDetails');
+                  if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50);
+                }}
+              />
+            </React.Suspense>
+          );
+        }
+
+        // Settings tab home
+        if (activeTab === 'settings' && view === 'settings') {
+          return (
+            <React.Suspense fallback={null}>
+              <IOSSettingsScreen
+                language={language}
+                t={t}
+                user={user}
+                theme={theme}
+                onToggleTheme={() => {
+                  const next = theme === 'dark' ? 'light' : 'dark';
+                  setTheme(next);
+                  localStorage.setItem('theme', next);
+                  if (next === 'dark') document.documentElement.classList.add('dark');
+                  else document.documentElement.classList.remove('dark');
+                }}
+                onToggleLanguage={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+                onLogin={() => { setPreviousView(view); setView('login'); }}
+                onLogout={() => { logout(); }}
+                onOpenNotifications={() => setView('notifications')}
+                onOpenStockTracker={() => setView('stockTracker')}
+                onOpenOrderList={() => { refreshOrderCount(); setView('orderList'); }}
+                onOpenPrescription={() => setView('prescription')}
+                onOpenPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
+                onOpenDrugTest={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
+                onOpenAdmin={user?.role === 'admin' ? () => setView('admin') : undefined}
+                favoritesCount={favorites.length}
+              />
+            </React.Suspense>
+          );
+        }
+      }
+
+      // iOS search tab only
       if (useIOSDesign && activeTab === 'search' && !['login', 'register', 'admin', 'imageView'].includes(view)) {
         // Home (search tab, no active search)
         if (view === 'search') {
@@ -1223,6 +1308,8 @@ const App: React.FC = () => {
             <React.Suspense fallback={null}>
               <IOSHomeScreen
                 language={language}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
                 textSearchMode={textSearchMode}
                 onSetTextSearchMode={setTextSearchMode}
                 recentSearches={recentSearches}
@@ -1258,6 +1345,8 @@ const App: React.FC = () => {
             <React.Suspense fallback={null}>
               <IOSHomeScreen
                 language={language}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
                 textSearchMode={textSearchMode}
                 onSetTextSearchMode={setTextSearchMode}
                 recentSearches={recentSearches}
