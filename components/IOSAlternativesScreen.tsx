@@ -167,6 +167,16 @@ export default function IOSAlternativesScreen({
     );
   };
 
+  const [sortMode, setSortMode] = React.useState<'default' | 'priceAsc' | 'priceDesc' | 'alpha'>('default');
+
+  const sortMeds = (meds: Medicine[]) => {
+    const arr = [...meds];
+    if (sortMode === 'priceAsc') arr.sort((a, b) => (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0));
+    else if (sortMode === 'priceDesc') arr.sort((a, b) => (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0));
+    else if (sortMode === 'alpha') arr.sort((a, b) => (a['Trade Name'] || '').localeCompare(b['Trade Name'] || ''));
+    return arr;
+  };
+
   const section = (title: string, badge: string, badgeColor: string, meds: Medicine[], empty: string) => (
     <div style={{ marginBottom: 24 }}>
       <div
@@ -311,13 +321,38 @@ export default function IOSAlternativesScreen({
         </div>
       </div>
 
+      {/* Sort bar */}
+      <div style={{ padding: '6px 16px 0', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        {(['default','priceAsc','priceDesc','alpha'] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setSortMode(mode)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 14,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: sortMode === mode ? 600 : 400,
+              background: sortMode === mode ? iOS.blue : iOS.fill,
+              color: sortMode === mode ? '#fff' : iOS.label2,
+            }}
+          >
+            {mode === 'default' ? (language === 'ar' ? 'افتراضي' : 'Default')
+              : mode === 'priceAsc' ? (language === 'ar' ? 'سعر ↑' : 'Price ↑')
+              : mode === 'priceDesc' ? (language === 'ar' ? 'سعر ↓' : 'Price ↓')
+              : (language === 'ar' ? 'أبجدي' : 'A-Z')}
+          </button>
+        ))}
+      </div>
+
       {/* Sections */}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 10 }}>
         {section(
           tr('بدائل مباشرة', 'Direct alternatives'),
           String(alternatives.direct.length),
           iOS.green,
-          alternatives.direct,
+          sortMeds(alternatives.direct),
           tr('لا توجد بدائل مباشرة', 'No direct alternatives')
         )}
 
@@ -326,7 +361,7 @@ export default function IOSAlternativesScreen({
             tr('نفس المادة بتركيز مختلف', 'Same ingredient, different strength'),
             String(alternatives.diffStrength.length),
             iOS.orange,
-            alternatives.diffStrength,
+            sortMeds(alternatives.diffStrength),
             tr('لا توجد', 'None')
           )}
 
@@ -334,7 +369,7 @@ export default function IOSAlternativesScreen({
           tr('بدائل علاجية', 'Therapeutic alternatives'),
           String(alternatives.therapeutic.length),
           iOS.blue,
-          alternatives.therapeutic,
+          sortMeds(alternatives.therapeutic),
           tr('لا توجد بدائل علاجية', 'No therapeutic alternatives')
         )}
       </div>

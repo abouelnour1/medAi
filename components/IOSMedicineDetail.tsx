@@ -27,6 +27,9 @@ interface Props {
   onShare: (m: Medicine) => void;
   onOpenDoseCalc: () => void;
   onImageZoom?: (imgs: string[], idx: number, title: string, flags: boolean[]) => void;
+  onEdit?: (m: Medicine) => void;
+  isAdmin?: boolean;
+  onOpenClinical?: () => void;
 }
 
 export default function IOSMedicineDetail({
@@ -39,6 +42,9 @@ export default function IOSMedicineDetail({
   onShare,
   onOpenDoseCalc,
   onImageZoom,
+  onEdit,
+  isAdmin,
+  onOpenClinical,
 }: Props) {
   const isAr = language === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
@@ -158,11 +164,16 @@ export default function IOSMedicineDetail({
             {m['Scientific Name'] && (
               <div
                 style={{
-                  fontSize: 15,
+                  fontSize: 14,
                   color: iOS.label2,
                   marginTop: 4,
                   letterSpacing: -0.23,
                   wordBreak: 'break-word',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  lineHeight: 1.3,
                 }}
               >
                 {m['Scientific Name']}
@@ -181,21 +192,33 @@ export default function IOSMedicineDetail({
         </div>
       </div>
 
-      {/* Stat strip */}
+      {/* Stat strip - price highlighted */}
       {hasPrice && (
         <div style={{ padding: '12px 16px 8px', display: 'flex', gap: 10 }}>
-          <StatBox
-            label={isAr ? 'السعر' : 'Price'}
-            value={`${price.toFixed(2)} ${isAr ? 'ر.س' : 'SAR'}`}
-            big
-          />
+          <div
+            style={{
+              flex: 1.3,
+              background: `linear-gradient(135deg, ${iOS.blue} 0%, ${iOS.teal} 100%)`,
+              borderRadius: 12,
+              padding: '10px 14px',
+              color: '#fff',
+              boxShadow: '0 2px 8px rgba(0,106,96,0.25)',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.85 }}>
+              {isAr ? 'السعر' : 'Price'}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, marginTop: 2 }}>
+              {price.toFixed(2)} <span style={{ fontSize: 13, opacity: 0.85, fontWeight: 500 }}>{isAr ? 'ر.س' : 'SAR'}</span>
+            </div>
+          </div>
           {m.PackageSize && (
             <StatBox
               label={isAr ? 'العبوة' : 'Pack'}
-              value={m.PackageSize}
+              value={`${m.PackageSize}${m.PharmaceuticalForm ? ` ${m.PharmaceuticalForm.split(' ')[0]}` : ''}`}
             />
           )}
-          {m.AtcCode1 && <StatBox label="ATC" value={m.AtcCode1} />}
+          {m.AtcCode1 && !m.PackageSize && <StatBox label="ATC" value={m.AtcCode1} />}
         </div>
       )}
 
@@ -215,6 +238,28 @@ export default function IOSMedicineDetail({
           onClick={() => onShare(m)}
         />
       </div>
+
+      {/* Clinical + Edit (admin) */}
+      {(onOpenClinical || isAdmin) && (
+        <div style={{ padding: '0 16px 8px', display: 'grid', gridTemplateColumns: onOpenClinical && isAdmin ? '1fr 1fr' : '1fr', gap: 10 }}>
+          {onOpenClinical && (
+            <ActionBtn
+              tint={iOS.green}
+              icon={<Icon.shield color={iOS.green} size={16} />}
+              label={isAr ? 'بيانات إكلينيكية' : 'Clinical data'}
+              onClick={onOpenClinical}
+            />
+          )}
+          {isAdmin && onEdit && (
+            <ActionBtn
+              tint={iOS.orange}
+              icon={<Icon.doc color={iOS.orange} size={16} />}
+              label={isAr ? 'تعديل' : 'Edit'}
+              onClick={() => onEdit(m)}
+            />
+          )}
+        </div>
+      )}
 
       {/* Composition */}
       <List header={isAr ? 'التركيب' : 'Composition'}>

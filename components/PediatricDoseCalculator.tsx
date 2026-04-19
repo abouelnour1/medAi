@@ -148,7 +148,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-teal-500 to-cyan-500 px-5 pt-5 pb-6">
+        <div className="relative px-5 pt-5 pb-6" style={{ background: 'linear-gradient(135deg, #006a60 0%, #00a896 100%)' }}>
           <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/30 rounded-full" />
           <button onClick={onClose} className="absolute top-4 right-4 text-white/80 active:scale-90 transition-transform">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

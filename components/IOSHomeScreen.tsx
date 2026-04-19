@@ -102,25 +102,30 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
   const activeSegment = Math.max(0, segmentValues.indexOf(textSearchMode));
 
   return (
-    <div style={{ direction: dir, paddingBottom: 24, paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)' }}>
-      {/* Brand lockup */}
+    <div style={{ direction: dir, paddingBottom: 24 }}>
+      {/* Brand lockup - hidden when searching */}
+      {!hasSearch && (
       <div
         style={{
-          padding: '8px 16px 14px',
+          paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)',
+          padding: '8px 16px 10px',
+          paddingInlineStart: 16,
+          paddingInlineEnd: 16,
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           direction: dir,
-        }}
+          paddingTopCompat: undefined,
+        } as any}
       >
-        <EDMark size={48} />
+        <EDMark size={42} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <EDWordmark size={1} lang={language === 'ar' ? 'ar' : 'en'} />
+          <EDWordmark size={0.9} lang={language === 'ar' ? 'ar' : 'en'} />
           <div
             style={{
-              fontSize: 13,
+              fontSize: 12,
               color: iOS.label2,
-              marginTop: 4,
+              marginTop: 3,
               letterSpacing: -0.08,
               textAlign: language === 'ar' ? 'right' : 'left',
             }}
@@ -129,14 +134,18 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Search field - sticky */}
+      {/* Sticky search + segmented together */}
       <div
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          padding: '8px 16px 10px',
+          paddingTop: hasSearch ? 'calc(env(safe-area-inset-top, 20px) + 8px)' : 4,
+          paddingBottom: 8,
+          paddingInlineStart: 16,
+          paddingInlineEnd: 16,
           background: 'var(--ios-bg)',
         }}
       >
@@ -146,15 +155,13 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
           placeholder={t('أدوية، مواد فعالة، حالات', 'Medicines, ingredients, indications')}
           onChange={onSearchChange}
         />
-      </div>
-
-      {/* Segmented search mode */}
-      <div style={{ padding: '0 16px 14px' }}>
-        <Segmented
-          options={segmentOptions}
-          active={activeSegment}
-          onChange={(i) => onSetTextSearchMode(segmentValues[i])}
-        />
+        <div style={{ marginTop: 8 }}>
+          <Segmented
+            options={segmentOptions}
+            active={activeSegment}
+            onChange={(i) => onSetTextSearchMode(segmentValues[i])}
+          />
+        </div>
       </div>
 
       {/* Quick tools - hidden while searching */}
@@ -190,15 +197,6 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
           />
           <QuickTile
             dir={dir}
-            from={tileGradients.orange.from}
-            to={tileGradients.orange.to}
-            icon={<Icon.star color="#fff" filled size={22} />}
-            title={t('المفضلة', 'Favorites')}
-            sub={t('المحفوظة', 'Saved items')}
-            onClick={props.onOpenFavorites}
-          />
-          <QuickTile
-            dir={dir}
             from={tileGradients.green.from}
             to={tileGradients.green.to}
             icon={<Icon.stock color="#fff" size={22} />}
@@ -214,15 +212,6 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
             title={t('الوصفات', 'Prescription')}
             sub={t('بناء روشتة', 'Rx builder')}
             onClick={props.onOpenPrescription}
-          />
-          <QuickTile
-            dir={dir}
-            from={tileGradients.pink.from}
-            to={tileGradients.pink.to}
-            icon={<Icon.shield color="#fff" size={22} />}
-            title={t('التأمين', 'Insurance')}
-            sub={t('قائمة CHI', 'CHI formulary')}
-            onClick={props.onOpenInsurance}
           />
           <QuickTile
             dir={dir}

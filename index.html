@@ -175,6 +175,22 @@
         box-shadow: 0 0 0 0.5px var(--ios-sepCell) !important;
       }
 
+      /* iOS-style Insurance search input */
+      .insurance-search-wrap input[type="text"],
+      .insurance-search-wrap input[type="search"] {
+        border-radius: 10px !important;
+        background-color: var(--ios-fill) !important;
+        border: none !important;
+        padding: 10px 14px !important;
+        font-size: 17px !important;
+        color: var(--ios-label) !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      .insurance-search-wrap input::placeholder {
+        color: var(--ios-label2) !important;
+      }
+
       /* الحجم ثابت على كل الشاشات — مش بيتغير بحجم الموبايل */
       @media (min-width: 390px)  { :root { font-size: 14px !important; } }
       @media (min-width: 768px)  { :root { font-size: 15px !important; } }

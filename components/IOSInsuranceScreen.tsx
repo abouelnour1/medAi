@@ -40,7 +40,7 @@ export default function IOSInsuranceScreen({
         />
       </div>
 
-      <div style={{ padding: '0 8px' }}>
+      <div style={{ padding: '0 8px' }} className="insurance-search-wrap">
         <InsuranceSimpleSearch
           t={t}
           language={language}

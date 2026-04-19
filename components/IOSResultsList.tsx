@@ -1,5 +1,5 @@
 // IOSResultsList — iOS-style list of medicine results (MedRow).
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Medicine, Language } from '../types';
 import { iOS, Icon, BoxPlaceholder } from './ui/ios';
 
@@ -9,6 +9,8 @@ const tintForId = (id: string) => {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return priceTint[Math.abs(h) % priceTint.length];
 };
+
+type SortMode = 'relevance' | 'alpha' | 'priceAsc' | 'priceDesc';
 
 interface Props {
   medicines: Medicine[];
@@ -28,6 +30,26 @@ export default function IOSResultsList({
 }: Props) {
   const isAr = language === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
+  const [sortMode, setSortMode] = useState<SortMode>('relevance');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  const sorted = useMemo(() => {
+    const arr = [...medicines];
+    switch (sortMode) {
+      case 'alpha':
+        arr.sort((a, b) => (a['Trade Name'] || '').localeCompare(b['Trade Name'] || ''));
+        break;
+      case 'priceAsc':
+        arr.sort((a, b) => (parseFloat(a['Public price']) || 0) - (parseFloat(b['Public price']) || 0));
+        break;
+      case 'priceDesc':
+        arr.sort((a, b) => (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0));
+        break;
+      default:
+        break;
+    }
+    return arr;
+  }, [medicines, sortMode]);
 
   if (medicines.length === 0) {
     return (
@@ -39,12 +61,19 @@ export default function IOSResultsList({
     );
   }
 
+  const sortLabel = {
+    relevance: isAr ? 'الصلة' : 'Relevance',
+    alpha: isAr ? 'أبجدي' : 'A-Z',
+    priceAsc: isAr ? 'السعر ↑' : 'Price ↑',
+    priceDesc: isAr ? 'السعر ↓' : 'Price ↓',
+  };
+
   return (
     <div style={{ direction: dir }}>
-      {/* Results count header */}
+      {/* Results count + sort */}
       <div
         style={{
-          padding: '14px 32px 6px',
+          padding: '4px 16px 6px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -52,14 +81,80 @@ export default function IOSResultsList({
       >
         <span
           style={{
-            fontSize: 13,
+            fontSize: 12,
             color: iOS.label2,
             textTransform: 'uppercase',
             letterSpacing: -0.08,
           }}
         >
-          {medicines.length} {isAr ? 'نتيجة' : medicines.length === 1 ? 'Result' : 'Results'}
+          {medicines.length} {isAr ? 'نتيجة' : 'results'}
         </span>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowSortMenu((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              borderRadius: 14,
+              background: iOS.fill,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 12,
+              color: iOS.blue,
+              fontWeight: 500,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M6 12h12M10 18h4" stroke={iOS.blue} strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            {sortLabel[sortMode]}
+          </button>
+          {showSortMenu && (
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 20 }}
+                onClick={() => setShowSortMenu(false)}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  [isAr ? 'left' : 'right']: 0,
+                  zIndex: 21,
+                  background: iOS.bg2,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  minWidth: 150,
+                  border: `0.5px solid ${iOS.sepCell}`,
+                }}
+              >
+                {(['relevance', 'alpha', 'priceAsc', 'priceDesc'] as SortMode[]).map((mode, i, arr) => (
+                  <button
+                    key={mode}
+                    onClick={() => { setSortMode(mode); setShowSortMenu(false); }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      color: mode === sortMode ? iOS.blue : iOS.label,
+                      fontWeight: mode === sortMode ? 600 : 400,
+                      textAlign: isAr ? 'right' : 'left',
+                      borderBottom: i < arr.length - 1 ? `0.5px solid ${iOS.sepCell}` : 'none',
+                    }}
+                  >
+                    {sortLabel[mode]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div
@@ -70,11 +165,11 @@ export default function IOSResultsList({
           overflow: 'hidden',
         }}
       >
-        {medicines.map((m, i) => (
+        {sorted.map((m, i) => (
           <MedRow
             key={m.RegisterNumber}
             medicine={m}
-            last={i === medicines.length - 1}
+            last={i === sorted.length - 1}
             isFavorite={favorites.includes(m.RegisterNumber)}
             onClick={() => onSelect(m)}
             onLongPress={onLongPress ? () => onLongPress(m) : undefined}
