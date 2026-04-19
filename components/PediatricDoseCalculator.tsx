@@ -35,6 +35,28 @@ interface IndicationEntry {
 
 type DoseLevel = 'min' | 'mid' | 'max';
 
+interface DrugPreset {
+  id: string;
+  label: string;
+  active: string;
+  drugIdx: number | null;
+  doseLevel: DoseLevel;
+  useIndication: boolean;
+  disease: string | null;
+  condition: string | null;
+  condition2: string | null;
+}
+
+const PRESET_KEY = 'ps_ped_presets_v1';
+const MAX_PRESETS = 5;
+
+function loadPresets(): DrugPreset[] {
+  try { return JSON.parse(localStorage.getItem(PRESET_KEY) || '[]'); } catch { return []; }
+}
+function savePresets(p: DrugPreset[]) {
+  try { localStorage.setItem(PRESET_KEY, JSON.stringify(p)); } catch {}
+}
+
 // ── R2 Fetch + localStorage Cache ───────────────────────────────────────────
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
 const CACHE_KEY = 'ps_pediatric_drugs_v4';
@@ -113,6 +135,9 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
   const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
   const [selectedCondition2, setSelectedCondition2] = useState<string | null>(null);
   const [selectedDisease, setSelectedDisease] = useState<string | null>(null);
+  const [presets, setPresets] = useState<DrugPreset[]>(loadPresets);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [presetLabel, setPresetLabel] = useState('');
 
   useEffect(() => {
     if (!initialDrugName || !drugs.length || selectedActive) return;
@@ -319,6 +344,46 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     return list;
   }, [availableIndications]);
 
+  const canSave = !!selectedActive && selectedDrugIdx !== null;
+
+  const applyPreset = (p: DrugPreset) => {
+    setSelectedActive(p.active);
+    setSelectedDrugIdx(p.drugIdx);
+    setDoseLevel(p.doseLevel);
+    setUseIndication(p.useIndication);
+    setSelectedDisease(p.disease);
+    setSelectedCondition(p.condition);
+    setSelectedCondition2(p.condition2);
+    setWeight('');
+    setSelectedAge('');
+  };
+
+  const savePreset = () => {
+    const label = presetLabel.trim() || selectedActive;
+    const newPreset: DrugPreset = {
+      id: Date.now().toString(),
+      label,
+      active: selectedActive,
+      drugIdx: selectedDrugIdx,
+      doseLevel,
+      useIndication,
+      disease: selectedDisease,
+      condition: selectedCondition,
+      condition2: selectedCondition2,
+    };
+    const updated = [newPreset, ...presets].slice(0, MAX_PRESETS);
+    setPresets(updated);
+    savePresets(updated);
+    setShowSavePrompt(false);
+    setPresetLabel('');
+  };
+
+  const deletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    savePresets(updated);
+  };
+
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -361,6 +426,70 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
             </div>
           ) : (
           <div className="p-4 space-y-4">
+
+            {/* Presets Bar */}
+            {(presets.length > 0 || canSave) && (
+              <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {ar ? 'الإعدادات المحفوظة' : 'Saved Presets'}
+                  </p>
+                  {presets.length < MAX_PRESETS && canSave && !showSavePrompt && (
+                    <button
+                      onClick={() => { setPresetLabel(selectedActive); setShowSavePrompt(true); }}
+                      className="flex items-center gap-1 text-[10px] font-black text-teal-600 active:scale-95"
+                    >
+                      <span className="text-base leading-none">+</span>
+                      {ar ? 'حفظ' : 'Save'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Save prompt */}
+                {showSavePrompt && (
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      value={presetLabel}
+                      onChange={e => setPresetLabel(e.target.value)}
+                      placeholder={ar ? 'اسم الـ Preset' : 'Preset name'}
+                      className="flex-1 px-3 py-2 bg-white dark:bg-dark-card border-2 border-teal-300 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
+                    />
+                    <button onClick={savePreset} className="px-3 py-2 bg-teal-500 text-white rounded-xl text-xs font-black active:scale-95">
+                      {ar ? 'حفظ' : 'Save'}
+                    </button>
+                    <button onClick={() => setShowSavePrompt(false)} className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black active:scale-95">
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Preset chips */}
+                {presets.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+                    {presets.map(p => (
+                      <div
+                        key={p.id}
+                        className="flex-shrink-0 flex items-center gap-1.5 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl pl-3 pr-1.5 py-2 active:scale-95 transition-transform cursor-pointer"
+                        onClick={() => applyPreset(p)}
+                      >
+                        <div>
+                          <p className="text-[11px] font-black text-slate-700 dark:text-white whitespace-nowrap">{p.label}</p>
+                          {p.disease && (
+                            <p className="text-[9px] font-bold text-indigo-500 whitespace-nowrap truncate max-w-[100px]">🎯 {p.disease}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); deletePreset(p.id); }}
+                          className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 hover:bg-red-100 hover:text-red-500 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Step 1 - اختيار الدواء */}
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
@@ -693,6 +822,16 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                   <div className={`mt-3 p-3 rounded-xl text-[10px] font-bold ${maxWarning ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'}`}>
                     {maxWarning ? `⚠️ ${maxWarning}${doseSource.notes ? ' · ' + doseSource.notes : ''}` : `📋 ${doseSource.notes}`}
                   </div>
+                )}
+
+                {/* Save preset button */}
+                {canSave && presets.length < MAX_PRESETS && !presets.find(p => p.active === selectedActive && p.drugIdx === selectedDrugIdx && p.disease === selectedDisease) && (
+                  <button
+                    onClick={() => { setPresetLabel(selectedActive); setShowSavePrompt(true); window.scrollTo(0,0); }}
+                    className="mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 dark:border-teal-700 text-[11px] font-black text-teal-600 dark:text-teal-400 active:scale-95 transition-transform"
+                  >
+                    💾 {ar ? 'حفظ كإعداد سريع' : 'Save as Quick Preset'}
+                  </button>
                 )}
               </div>
             )}
