@@ -169,16 +169,12 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }
             >
               {/* Top row */}
               <div className="flex items-center gap-3 px-3 pt-3 pb-2">
-                {/* Image or fallback */}
+                {/* صورة المنتج بس لو موجودة */}
                 {(() => {
                   const img = getMedImage(p.active);
                   return img ? (
                     <img src={img} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 dark:bg-slate-800 p-1 flex-shrink-0" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0 text-lg">
-                      {drug?.form === 'Suppository' ? '🕯️' : '💊'}
-                    </div>
-                  );
+                  ) : null;
                 })()}
 
                 {/* Info */}

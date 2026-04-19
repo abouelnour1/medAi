@@ -612,7 +612,7 @@ const App: React.FC = () => {
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
           restoreScroll('insuranceSearch');
-      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch', 'pedDoseHistory'].includes(view)) {
+      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) {
           const target = activeTab === 'search' 
               ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
@@ -1339,12 +1339,47 @@ const App: React.FC = () => {
             onOpenCalc={(drugName) => { setPedCalcDrug(drugName); setPedCalcOpen(true); }}
             medicines={medicines}
           />
-          {/* Empty state */}
-          <div id="ped-preset-empty-hint" className="hidden text-center py-16">
-            <p className="text-4xl mb-3">👶</p>
-            <p className="text-sm font-black text-slate-400">{language === 'ar' ? 'لا توجد إعدادات محفوظة بعد' : 'No saved presets yet'}</p>
-            <p className="text-[11px] font-bold text-slate-300 mt-1">{language === 'ar' ? 'افتح الحاسبة واحفظ إعداد سريع' : 'Open the calculator and save a quick preset'}</p>
+        </div>
+      );
+
+      if (view === 'recentlyViewed') return (
+        <div className="pt-2 pb-8">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🕒</span>
+              <h2 className="text-base font-black text-slate-700 dark:text-white">
+                {language === 'ar' ? 'آخر الأدوية المشاهدة' : 'Recently Viewed'}
+              </h2>
+            </div>
+            {recentSearches.length > 0 && (
+              <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); setView('search'); }}
+                className="text-[10px] font-black text-rose-400 active:scale-95">
+                {language === 'ar' ? 'مسح الكل' : 'Clear All'}
+              </button>
+            )}
           </div>
+          {recentSearches.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-3xl mb-3">🕒</p>
+              <p className="text-sm font-black text-slate-400">{language === 'ar' ? 'لا توجد أدوية مشاهدة بعد' : 'No recently viewed medicines'}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentSearches.map(med => (
+                <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
+                  className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
+                  {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
+                  <div className="flex-grow min-w-0">
+                    <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
+                  </div>
+                  <span className="text-[11px] font-black text-primary whitespace-nowrap">
+                    {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (language === 'ar' ? ' ر.س' : ' SAR') : ''}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       );
 
@@ -1439,6 +1474,14 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}                  <div className="mt-2">
+                      {/* Pediatric Preset Bar — بره الحاسبة في الهوم */}
+                      {searchTerm.length === 0 && activeFiltersCount === 0 && (
+                        <PediatricPresetBar
+                          language={language}
+                          onOpenCalc={(drugName) => { setPedCalcDrug(drugName); setPedCalcOpen(true); }}
+                          medicines={medicines}
+                        />
+                      )}
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
@@ -1506,34 +1549,25 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* Recent searches - بيظهر لما مفيش بحث أو أثناء الـ debounce */}
+                      {/* Recent searches - زرار بيفتح صفحة منفصلة */}
                       {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
-                        <div className="">
-                          <div className="flex justify-between items-center mb-3 px-1">
-                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                              {language === 'ar' ? '🕒 آخر الأدوية المشاهدة' : '🕒 Recently Viewed'}
-                            </h3>
-                            <button onClick={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
-                              className="text-[10px] font-black text-rose-400 hover:text-rose-600">
-                              {language === 'ar' ? 'مسح الكل' : 'Clear All'}
-                            </button>
+                        <button
+                          onClick={() => setView('recentlyViewed')}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all mb-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">🕒</span>
+                            <span className="text-[12px] font-black text-slate-600 dark:text-slate-300">
+                              {language === 'ar' ? 'آخر الأدوية المشاهدة' : 'Recently Viewed'}
+                            </span>
+                            <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded-full">
+                              {recentSearches.length}
+                            </span>
                           </div>
-                          <div className="space-y-2">
-                            {recentSearches.map(med => (
-                              <button key={med.RegisterNumber} onClick={() => handleMedicineSelect(med)}
-                                className="w-full flex items-center gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-right">
-                                {med.imgBox && <img src={med.imgBox} className="w-10 h-10 object-contain rounded-xl bg-slate-50 p-1 flex-shrink-0" alt="" />}
-                                <div className="flex-grow min-w-0">
-                                  <p className="font-black text-sm text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
-                                  <p className="text-[10px] text-slate-400 truncate">{med['Scientific Name']}</p>
-                                </div>
-                                <span className="text-[11px] font-black text-primary whitespace-nowrap">
-                                  {parseFloat(med['Public price']) > 0 ? parseFloat(med['Public price']).toFixed(2) + (language === 'ar' ? ' ر.س' : ' SAR') : ''}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                          </svg>
+                        </button>
                       )}
                   </div>
 
@@ -1751,7 +1785,7 @@ const App: React.FC = () => {
       />
 
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
-      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory'].includes(view) && (
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{ top: headerHeight }}
@@ -1781,7 +1815,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
