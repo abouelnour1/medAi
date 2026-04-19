@@ -139,7 +139,7 @@ const DrugTestChecker: React.FC<Props> = ({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative px-5 pt-4 pb-4 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #5856D6 0%, #AF52DE 100%)' }}>
+        <div className="relative bg-gradient-to-r from-violet-500 to-purple-600 px-5 pt-4 pb-4 flex-shrink-0">
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/30 rounded-full" />
           <div className="flex items-center gap-3 mt-1">
             <button

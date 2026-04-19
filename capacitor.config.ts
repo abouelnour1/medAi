@@ -15,25 +15,24 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     scrollEnabled: true,
-    backgroundColor: '#f7f9f6',
+    backgroundColor: '#ffffff',
     preferredContentMode: 'mobile',
   },
   android: {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
-    backgroundColor: '#f7f9f6',
   },
   plugins: {
     Keyboard: {
       resize: 'ionic',
-      style: 'light',
+      style: 'dark',
       resizeOnFullScreen: true,
     },
     StatusBar: {
-      style: 'dark',
-      backgroundColor: '#f7f9f6',
-      overlaysWebView: true,
+      style: 'light',
+      backgroundColor: '#0f766e',
+      overlaysWebView: false,
     },
     SplashScreen: {
       launchShowDuration: 2000,

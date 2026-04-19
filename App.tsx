@@ -43,7 +43,6 @@ import { logSearch, logShareMedicine, logFavoriteToggle, logTabSwitch, setUserSp
 import { syncAnalyticsToFirestore } from './utils/analyticsSync';
 import CompareBar from './components/CompareBar';
 import ClinicalDataPage from './components/ClinicalDataPage';
-import ClinicalReferencePage from './components/ClinicalReferencePage';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
@@ -61,22 +60,6 @@ import SpecialtyModal from './components/SpecialtyModal';
 import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
 import BottomNavBar from './components/BottomNavBar';
-const IOSPreviewScreen = React.lazy(() => import('./components/IOSPreviewScreen'));
-const IOSSuspenseFallback = () => (
-  <div style={{ background: 'var(--ios-bg)', minHeight: '100vh' }} />
-);
-// Eager load for instant response - no flash on tab switch
-import IOSHomeScreen from './components/IOSHomeScreen';
-import IOSResultsList from './components/IOSResultsList';
-import IOSInsuranceScreen from './components/IOSInsuranceScreen';
-import IOSFavoritesScreen from './components/IOSFavoritesScreen';
-import IOSAlternativesScreen from './components/IOSAlternativesScreen';
-// Lazy load less-used screens
-const IOSMedicineDetail = React.lazy(() => import('./components/IOSMedicineDetail'));
-const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
-const IOSIndicationSearch = React.lazy(() => import('./components/IOSIndicationSearch'));
-const IOSPharmacistQuickView = React.lazy(() => import('./components/IOSPharmacistQuickView'));
-import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -294,8 +277,7 @@ const App: React.FC = () => {
     return () => unsub?.();
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
-  const [language] = useState<Language>('en');
-  const setLanguage = (_l: Language) => {}; // Language locked to English
+  const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
@@ -316,9 +298,6 @@ const App: React.FC = () => {
   }, []);
   const [previousView, setPreviousView] = useState<View>('results'); // للرجوع الصح
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [showIOSPreview, setShowIOSPreview] = useState(false);
-  const [useIOSDesign] = useState<boolean>(true);
-  const toggleIOSDesign = React.useCallback((_on: boolean) => {}, []);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
@@ -459,7 +438,6 @@ const App: React.FC = () => {
   const prevSheetMedicine = React.useRef<Medicine | null>(null);
   const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
   const [clinicalModal, setClinicalModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
-  const [clinicalRefModal, setClinicalRefModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
   const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
   const [skipNextViewKey, setSkipNextViewKey] = useState(false);
@@ -579,15 +557,12 @@ const App: React.FC = () => {
     return text;
   }, [language]);
 
-  // صفّر الـ scroll فوراً لما يتغير الـ view
+  // صفّر الـ scroll فوراً لما يتغير الـ view لـ alternatives أو أي view جديد
   const prevViewRef = useRef<string>('');
   useEffect(() => {
     if (prevViewRef.current !== view) {
       prevViewRef.current = view;
-      // iOS mode: always scroll to top on any view change (unless restoring)
-      if (useIOSDesign && scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = 0;
-      } else if (view === 'alternatives' && scrollContainerRef.current) {
+      if (view === 'alternatives' && scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
     }
@@ -672,12 +647,7 @@ const App: React.FC = () => {
     trackMedicineView(m['Trade Name'], m.RegisterNumber);
     setPreviousView(view);
     setSelectedMedicine(m);
-    // In iOS mode go to full detail view; classic opens BottomSheet
-    if (useIOSDesign) {
-      setView('details');
-    } else {
-      setSheetMedicine(m);
-    }
+    setSheetMedicine(m);  // افتح الـ BottomSheet
   };
 
   // ── Android back button ──────────────────────────────────────────────────
@@ -1227,275 +1197,6 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-      if (showIOSPreview) {
-        return (
-          <React.Suspense fallback={<IOSSuspenseFallback />}>
-            <IOSPreviewScreen onExit={() => setShowIOSPreview(false)} />
-          </React.Suspense>
-        );
-      }
-
-      // iOS design routes — apply to all tabs now
-      if (useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view)) {
-        // Indication search (By Disease)
-        if (view === 'indicationSearch') {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSIndicationSearch
-                indications={indications}
-                medicines={medicines}
-                language={language}
-                t={t}
-                onMedicineSelect={handleMedicineSelect}
-                onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-                onBack={handleBack}
-              />
-            </React.Suspense>
-          );
-        }
-
-        // Alternatives view
-        if (view === 'alternatives' && selectedMedicine) {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSAlternativesScreen
-                sourceMedicine={selectedMedicine}
-                alternatives={alternatives}
-                language={language}
-                t={t}
-                onSelect={(m) => {
-                  setSelectedMedicine(m);
-                  setView('details');
-                }}
-                onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
-                onBack={handleBack}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-                onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); }}
-              />
-            </React.Suspense>
-          );
-        }
-
-        // Favorites (Saved tab)
-        if (view === 'favorites') {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSFavoritesScreen
-                language={language}
-                t={t}
-                favoriteIds={favorites}
-                allMedicines={medicines}
-                onMedicineSelect={handleMedicineSelect}
-                onFindAlternative={(m) => {
-                  setPreviousView('favorites');
-                  setSelectedMedicine(m);
-                  setActiveTab('search');
-                  scrollPositions.current.delete('alternatives');
-                  if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
-                  setView('alternatives');
-                }}
-                toggleFavorite={toggleFavorite}
-              />
-            </React.Suspense>
-          );
-        }
-
-        // Insurance search tab
-        if (activeTab === 'insurance' && view !== 'insuranceDetails') {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSInsuranceScreen
-                language={language}
-                t={t}
-                insuranceData={insuranceData}
-                allMedicines={medicines}
-                searchTerm={insuranceSearchTerm}
-                setSearchTerm={setInsuranceSearchTerm}
-                searchMode={insuranceSearchMode}
-                setSearchMode={setInsuranceSearchMode}
-                onSelect={(d) => {
-                  setSelectedInsurance(d);
-                  setView('insuranceDetails');
-                  if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50);
-                }}
-              />
-            </React.Suspense>
-          );
-        }
-
-        // Settings tab home
-        if (activeTab === 'settings' && view === 'settings') {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSSettingsScreen
-                language={language}
-                t={t}
-                user={user}
-                theme={theme}
-                onToggleTheme={() => {
-                  const next = theme === 'dark' ? 'light' : 'dark';
-                  setTheme(next);
-                  localStorage.setItem('theme', next);
-                  if (next === 'dark') document.documentElement.classList.add('dark');
-                  else document.documentElement.classList.remove('dark');
-                }}
-                onToggleLanguage={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-                onLogin={() => { setPreviousView(view); setView('login'); }}
-                onLogout={() => { logout(); setActiveTab('search'); setView('search'); }}
-                onOpenNotifications={() => setView('notifications')}
-                onOpenStockTracker={() => setView('stockTracker')}
-                onOpenOrderList={() => { refreshOrderCount(); setView('orderList'); }}
-                onOpenPrescription={() => setView('prescription')}
-                onOpenPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-                onOpenDrugTest={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-                onOpenAdmin={user?.role === 'admin' ? () => setView('admin') : undefined}
-                favoritesCount={favorites.length}
-                onUpdateProfile={(updates) => {
-                  if (user) updateUser({ ...user, displayName: updates.name, specialty: updates.specialty as any });
-                }}
-              />
-            </React.Suspense>
-          );
-        }
-      }
-
-      // iOS search tab only
-      if (useIOSDesign && activeTab === 'search' && !['login', 'register', 'admin', 'imageView'].includes(view)) {
-        // Home (search tab, no active search)
-        if (view === 'search') {
-          const minLen = textSearchMode === 'indication' ? 1 : 3;
-          const hasSearch = searchTerm.replace(/\s/g, '').length >= minLen;
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSHomeScreen
-                language={language}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                textSearchMode={textSearchMode}
-                onSetTextSearchMode={setTextSearchMode}
-                recentSearches={recentSearches}
-                onMedicineSelect={handleMedicineSelect}
-                onClearRecent={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
-                onOpenPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-                onOpenDrugTest={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-                onOpenIndicationSearch={() => setView('indicationSearch')}
-                onOpenFavorites={() => setView('favorites')}
-                onOpenOrderList={() => { refreshOrderCount(); setActiveTab('settings'); setView('orderList'); }}
-                onOpenStockTracker={() => { setActiveTab('settings'); setView('stockTracker'); }}
-                onOpenInsurance={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
-                onOpenPrescription={() => { setActiveTab('settings'); setView('prescription'); }}
-                onDisableIOSDesign={() => toggleIOSDesign(false)}
-              />
-              {hasSearch && textSearchMode === 'indication' ? (
-                <IOSIndicationSearch
-                  indications={indications}
-                  medicines={medicines}
-                  language={language}
-                  t={t}
-                  onMedicineSelect={handleMedicineSelect}
-                  onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
-                  favorites={favorites}
-                  onToggleFavorite={toggleFavorite}
-                  onBack={() => {}}
-                  initialQuery={searchTerm}
-                  hideHeader
-                />
-              ) : hasSearch && (
-                <IOSResultsList
-                  medicines={displayedMedicines}
-                  language={language}
-                  onSelect={handleMedicineSelect}
-                  onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
-                  favorites={favorites}
-                  onToggleFavorite={toggleFavorite}
-                  onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); }}
-                />
-              )}
-            </React.Suspense>
-          );
-        }
-
-        // Results view
-        if (view === 'results') {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSHomeScreen
-                language={language}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                textSearchMode={textSearchMode}
-                onSetTextSearchMode={setTextSearchMode}
-                recentSearches={recentSearches}
-                onMedicineSelect={handleMedicineSelect}
-                onClearRecent={() => { setRecentSearchIds([]); localStorage.removeItem(RECENT_SEARCHES_KEY); }}
-                onOpenPediatricCalc={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-                onOpenDrugTest={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-                onOpenIndicationSearch={() => setView('indicationSearch')}
-                onOpenFavorites={() => setView('favorites')}
-                onOpenOrderList={() => { refreshOrderCount(); setActiveTab('settings'); setView('orderList'); }}
-                onOpenStockTracker={() => { setActiveTab('settings'); setView('stockTracker'); }}
-                onOpenInsurance={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
-                onOpenPrescription={() => { setActiveTab('settings'); setView('prescription'); }}
-                onDisableIOSDesign={() => toggleIOSDesign(false)}
-              />
-              <IOSResultsList
-                medicines={displayedMedicines}
-                language={language}
-                onSelect={handleMedicineSelect}
-                onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-              />
-            </React.Suspense>
-          );
-        }
-
-        // Detail view
-        if (view === 'details' && selectedMedicine) {
-          return (
-            <React.Suspense fallback={<IOSSuspenseFallback />}>
-              <IOSMedicineDetail
-                medicine={selectedMedicine}
-                language={language}
-                t={t}
-                isFavorite={favorites.includes(selectedMedicine.RegisterNumber)}
-                onToggleFavorite={toggleFavorite}
-                onBack={handleBack}
-                onFindAlternative={(m) => {
-                  if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop);
-                  setPreviousView(view);
-                  setSelectedMedicine(m);
-                  scrollPositions.current.delete('alternatives');
-                  if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
-                  setView('alternatives');
-                }}
-                onShare={handleShareMedicine}
-                onOpenDoseCalc={() => {
-                  setPedCalcDrug(
-                    (selectedMedicine?.['Scientific Name'] as string) ||
-                      (selectedMedicine?.['Trade Name'] as string) ||
-                      undefined,
-                  );
-                  setPedCalcOpen(true);
-                }}
-                onImageZoom={(imgs, idx, title, flags) => {
-                  setPreviousView(view);
-                  setActiveImageViewer({ images: imgs, index: idx, title, flags });
-                }}
-                isAdmin={user?.role === 'admin'}
-                onEdit={(m) => { setSelectedMedicine(m); setIsEditModalOpen(true); }}
-                onOpenClinical={() => setClinicalRefModal({ open: true, medicine: selectedMedicine })}
-                onAskGemini={handleAskGemini}
-              />
-            </React.Suspense>
-          );
-        }
-        // For alternatives / other views under search tab, fall through to classic renderers below.
-      }
-
       if (view === 'login') return <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { const prev = previousView || 'search'; setView(prev as View); restoreScroll(prev); }} />;
       if (view === 'register') return <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />;
       if (view === 'admin') return <AdminDashboard t={t} allMedicines={medicines} setMedicines={setMedicines} language={language} onExport={async (type) => {
@@ -1617,7 +1318,7 @@ const App: React.FC = () => {
       if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={<IOSSuspenseFallback />}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
+          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
           
           return (
@@ -1626,44 +1327,6 @@ const App: React.FC = () => {
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
                     <div className="mb-3">
-                      {/* iOS redesign banner — only show when NOT enabled */}
-                      {!useIOSDesign && (
-                      <div
-                        className="w-full mb-4 p-4 rounded-2xl flex items-center gap-3"
-                        style={{
-                          background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
-                          boxShadow: '0 4px 16px rgba(0,122,255,0.3)',
-                        }}
-                      >
-                        <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-                          <svg width="22" height="22" viewBox="0 0 20 20" fill="#fff">
-                            <path d="M10 1l1.8 5.2L17 8l-5.2 1.8L10 15l-1.8-5.2L3 8l5.2-1.8L10 1zM15 13l.9 1.8L17.8 16l-1.9.9L15 18.7 14.1 16.8 12.2 16l1.9-.9z"/>
-                          </svg>
-                        </div>
-                        <div className="flex-grow min-w-0">
-                          <div className="text-white font-bold text-[15px] leading-tight">
-                            {language === 'ar' ? '✨ التصميم الجديد' : '✨ New iOS Design'}
-                          </div>
-                          <div className="text-white/85 text-[12px] mt-0.5">
-                            {language === 'ar' ? 'فعّله دلوقتي أو شوف معاينة' : 'Try it now or see preview'}
-                          </div>
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() => setShowIOSPreview(true)}
-                            className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-[11px] font-bold active:scale-95 transition-all"
-                          >
-                            {language === 'ar' ? 'معاينة' : 'Preview'}
-                          </button>
-                          <button
-                            onClick={() => toggleIOSDesign(true)}
-                            className="px-3 py-1.5 rounded-lg bg-white text-blue-600 text-[11px] font-bold active:scale-95 transition-all"
-                          >
-                            {language === 'ar' ? 'فعّل' : 'Enable'}
-                          </button>
-                        </div>
-                      </div>
-                      )}
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
@@ -1856,21 +1519,10 @@ const App: React.FC = () => {
       }
 
       if (activeTab === 'settings') {
-          if (view === 'prescription') return (
-            <div style={{ paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)' }}>
-              <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setView('settings'); }} />
-            </div>
-          );
-          if (view === 'stockTracker') return (
-            <div style={{ paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)' }}>
-              <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />
-            </div>
-          );
-          if (view === 'orderList') return (
-            <div style={{ paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)' }}>
-              <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />
-            </div>
-          );
+          // settings tab مش محتاج extra padding
+          if (view === 'prescription') return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
+      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-6 animate-fade-in">
                   <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
@@ -2044,7 +1696,6 @@ const App: React.FC = () => {
       {/* ── Notification Permission Prompt ── */}
       
 
-      {!(useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view)) && (
       <Header
         ref={headerRef}
         title="Easy Drug"
@@ -2061,9 +1712,9 @@ const App: React.FC = () => {
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
       />
-      )}
+
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
-      {!useIOSDesign && activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view) && (
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{ top: headerHeight }}
@@ -2093,86 +1744,22 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main
-        id="main-scroll-container"
-        ref={scrollContainerRef}
-        onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }}
-        className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"}
-        style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? {
-          paddingTop: 0,
-          paddingBottom: 'calc(83px + env(safe-area-inset-bottom))',
-          background: 'var(--ios-bg)',
-          WebkitOverflowScrolling: "touch",
-          overscrollBehavior: "none",
-          minHeight: '100%',
-        } as any : {
-          paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8,
-          paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))',
-          transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease',
-          WebkitOverflowScrolling: "touch",
-          overscrollBehavior: "none",
-        } as any}
-      >
-        <div
-          key={skipNextViewKey ? 'stable' : (view + activeTab)}
-          style={useIOSDesign ? { animation: 'iosFadeIn 150ms ease', background: 'var(--ios-bg)', minHeight: '100%' } : undefined}
-        >
-          {renderContent()}
-        </div>
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+          <div key={skipNextViewKey ? 'stable' : view}>
+              {renderContent()}
+            </div>
       </main>
-
-      {/* iOS tab bar — shown only when iOS design is enabled and not on auth screens */}
-      {useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) && (
-        <IOSTabBar
-          active={(() => {
-            if (activeTab === 'insurance') return 'insurance' as IOSTabKey;
-            if (view === 'favorites') return 'saved' as IOSTabKey;
-            if (activeTab === 'settings') return 'settings' as IOSTabKey;
-            return 'search' as IOSTabKey;
-          })()}
-          onChange={(t) => {
-            if (t === 'search') {
-              setActiveTab('search');
-              setView('search');
-            } else if (t === 'insurance') {
-              setActiveTab('insurance');
-              setView('insuranceSearch');
-            } else if (t === 'saved') {
-              setActiveTab('search');
-              setView('favorites');
-            } else if (t === 'settings') {
-              setActiveTab('settings');
-              setView('settings');
-            }
-          }}
-        />
-      )}
-
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (
-        useIOSDesign ? (
-          <React.Suspense fallback={<IOSSuspenseFallback />}>
-            <IOSPharmacistQuickView
-              medicine={quickViewMedicine}
-              language={language}
-              t={t}
-              onClose={() => setQuickViewMedicine(null)}
-              onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
-              isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
-              onToggleFavorite={(id) => { toggleFavorite(id); }}
-            />
-          </React.Suspense>
-        ) : (
-          <PharmacistQuickView
-            medicine={quickViewMedicine}
-            language={language}
-            t={t}
-            onClose={() => setQuickViewMedicine(null)}
-            onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
-            isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
-            onToggleFavorite={(id) => { toggleFavorite(id); }}
-          />
-        )
+        <PharmacistQuickView
+          medicine={quickViewMedicine}
+          language={language}
+          t={t}
+          onClose={() => setQuickViewMedicine(null)}
+          onOpenFull={() => { handleMedicineSelect(quickViewMedicine); setQuickViewMedicine(null); }}
+          isFavorite={favorites.includes(quickViewMedicine.RegisterNumber)}
+          onToggleFavorite={(id) => { toggleFavorite(id); }}
+        />
       )}
 
       {compareList.length > 0 && !showCompare && (
@@ -2194,7 +1781,7 @@ onClearSearch={handleClearSearch}
         onClose={() => setSheetMedicine(null)}
       >
         {sheetMedicine && (
-          <React.Suspense fallback={<IOSSuspenseFallback />}>
+          <React.Suspense fallback={null}>
           <MedicineDetail
             medicine={sheetMedicine}
             insuranceData={insuranceData}
@@ -2233,18 +1820,6 @@ onClearSearch={handleClearSearch}
             isAdmin={user?.role === 'admin'}
             allMedicines={medicines}
             onClose={() => setClinicalModal({ open: false, medicine: null })}
-          />
-        </div>
-      )}
-
-      {/* R2 Clinical Reference — Drug interactions + clinical safety from R2 */}
-      {clinicalRefModal.open && clinicalRefModal.medicine && (
-        <div className="fixed inset-0 z-[999]">
-          <ClinicalReferencePage
-            scientificName={String(clinicalRefModal.medicine['Scientific Name'] || '')}
-            tradeName={String(clinicalRefModal.medicine['Trade Name'] || '')}
-            language={language}
-            onClose={() => setClinicalRefModal({ open: false, medicine: null })}
           />
         </div>
       )}
