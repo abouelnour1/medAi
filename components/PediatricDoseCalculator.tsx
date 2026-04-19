@@ -3,9 +3,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 // ── Types ───────────────────────────────────────────────────────────────────
 interface DrugEntry {
   active: string;
-  conc_mg: number;
-  conc_ml: number;
-  dose_mg_kg: number;
+  conc_mg: number | null;
+  conc_ml: number | null;
+  fixed_dose: string | null;
+  dose_mg_kg_min: number | null;
+  dose_mg_kg_max: number | null;
+  max_mg_kg_day: number | null;
+  max_single_dose_mg: number | null;
   frequency: string;
   notes: string;
   form: 'Syrup' | 'Suppository' | string;
@@ -14,27 +18,41 @@ interface DrugEntry {
 
 interface WeightEntry { age: string; weight: number; }
 
+interface IndicationEntry {
+  disease: string;
+  condition: string | null;
+  fixed_dose: string | null;
+  dose_mg_kg_min: number | null;
+  dose_mg_kg_max: number | null;
+  frequency: string;
+  duration: string;
+  max_mg_kg_day: number | null;
+  max_single_dose_mg: number | null;
+  notes: string;
+}
+
+type DoseLevel = 'min' | 'mid' | 'max';
+
 // ── R2 Fetch + localStorage Cache ───────────────────────────────────────────
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
+const CACHE_KEY = 'ps_pediatric_drugs_v3';
 
-// Max single dose per active ingredient (from Excel)
-const MAX_DOSE_MAP: Record<string, number> = {"paracetamol":1000,"paracetamol suppository":1000,"diclofenac (rofinac) supp":50,"ibuprofen":400,"amoxicillin":1000,"amoxicillin/clavulanate":875,"amoxicillin/clavulanate (es)":1000,"azithromycin":500,"cefdinir":600,"cefixime":400,"cephalexin":1000,"clarithromycin":500,"metronidazole":750,"trimethoprim/sulfamethoxazole":160,"cetirizine":10,"loratadine":10,"desloratadine":5,"fexofenadine":60,"diphenhydramine":50,"salbutamol":4,"prednisolone":60,"dexamethasone":16,"domperidone":10,"ondansetron":8,"simethicone":80,"iron polymaltose":100,"ferrous sulfate (drops)":125,"vitamin d3 (drops)":1000,"zinc":20,"ambroxol (ambolar)":30,"guaifenesin":400,"chlorpheniramine":4,"nifuroxazide":220,"furazolidone":100,"albendazole":400,"mebendazole":100,"nitazoxanide":500,"ketotifen":1,"hydroxyzine":25,"cefadroxil":1000};
-const CACHE_KEY = 'ps_pediatric_drugs_v2';
-
-async function fetchPediatricData(): Promise<{ drugs: DrugEntry[]; weightChart: WeightEntry[] }> {
-  // جرب الـ cache أولاً
+async function fetchPediatricData(): Promise<{
+  drugs: DrugEntry[];
+  weightChart: WeightEntry[];
+  specialIndications: Record<string, IndicationEntry[]>;
+}> {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) return JSON.parse(cached);
   } catch {}
-  // جيب من R2
   const res = await fetch(R2_URL);
   if (!res.ok) throw new Error('Failed to fetch');
   const data = await res.json();
+  if (!data.specialIndications) data.specialIndications = {};
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
   return data;
 }
-
 
 // Static set للـ MedicineDetail matching — مش محتاج fetch
 export const PEDIATRIC_DRUG_NAMES = new Set([
@@ -56,27 +74,49 @@ interface Props {
   language?: 'ar' | 'en';
 }
 
+// Normalize active name for indication lookup
+const normalizeActive = (s: string) => s.toLowerCase().trim()
+  .replace(/\s*\/\s*/g, ',')
+  .replace(/\s+/g, ' ');
+
 const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, language = 'ar' }) => {
   const ar = language === 'ar';
 
   // ── Data from R2 ───────────────────────────────────────────────────────────
   const [drugs, setDrugs] = useState<DrugEntry[]>([]);
   const [weightChart, setWeightChart] = useState<WeightEntry[]>([]);
+  const [specialIndications, setSpecialIndications] = useState<Record<string, IndicationEntry[]>>({});
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState(false);
 
   useEffect(() => {
     fetchPediatricData()
-      .then(data => { setDrugs(data.drugs); setWeightChart(data.weightChart); setDataLoading(false); })
+      .then(data => {
+        setDrugs(data.drugs);
+        setWeightChart(data.weightChart);
+        setSpecialIndications(data.specialIndications || {});
+        setDataLoading(false);
+      })
       .catch(() => { setDataError(true); setDataLoading(false); });
   }, []);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [inputMode, setInputMode] = useState<'weight' | 'age'>('weight');
+  const [weight, setWeight] = useState('');
+  const [selectedAge, setSelectedAge] = useState('');
+  const [selectedActive, setSelectedActive] = useState('');
+  const [selectedDrugIdx, setSelectedDrugIdx] = useState<number | null>(null);
+  const [doseLevel, setDoseLevel] = useState<DoseLevel>('min');
+  const [useIndication, setUseIndication] = useState(false);
+  const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
+  const [selectedDisease, setSelectedDisease] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialDrugName || !drugs.length || selectedActive) return;
     const lower = initialDrugName.toLowerCase()
-      .replace(/,\s*/g, ',')           // normalize spaces after comma
-      .replace('clavulanic acid', 'clavulanate')  // normalize clavulanic acid
-      .replace('cholecalciferol', 'vitamin d3');  // normalize vitamin d
+      .replace(/,\s*/g, ',')
+      .replace('clavulanic acid', 'clavulanate')
+      .replace('cholecalciferol', 'vitamin d3');
     const match = Array.from(new Set(drugs.map(d => d.active)))
       .find(a => {
         const aNorm = a.toLowerCase().replace(/,\s*/g, ',').replace('clavulanic acid', 'clavulanate');
@@ -85,21 +125,13 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     if (match) setSelectedActive(match);
   }, [drugs, initialDrugName]);
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [inputMode, setInputMode] = useState<'weight' | 'age'>('weight');
-  const [weight, setWeight] = useState('');
-  const [selectedAge, setSelectedAge] = useState('');
-  const [selectedActive, setSelectedActive] = useState('');
-  const [selectedDrugIdx, setSelectedDrugIdx] = useState<number | null>(null);
-
-  // تحديث التركيز لما تتغير المادة الفعالة
   const activeIngredients = useMemo(() => Array.from(new Set(drugs.map(d => d.active))), [drugs]);
   const concentrations = useMemo(
     () => drugs.filter(d => d.active === selectedActive),
     [drugs, selectedActive]
   );
 
-  // لو التركيز واحد بس → يتحدد تلقائي، لو أكتر → صفّر الاختيار
+  // Auto-select إذا تركيز واحد
   useEffect(() => {
     if (concentrations.length === 1) {
       setSelectedDrugIdx(drugs.indexOf(concentrations[0]));
@@ -108,36 +140,164 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     }
   }, [concentrations]);
 
-  // الدواء المختار
+  // رجّع حالة الـ indication لما المادة الفعالة تتغير
+  useEffect(() => {
+    setUseIndication(false);
+    setSelectedCondition(null);
+    setSelectedDisease(null);
+  }, [selectedActive]);
+
+  // هل المادة الفعالة فيها special indications؟
+  const availableIndications = useMemo(() => {
+    if (!selectedActive) return [];
+    const key = normalizeActive(selectedActive);
+    return specialIndications[key] || [];
+  }, [selectedActive, specialIndications]);
+
+  const hasIndications = availableIndications.length > 0;
+
+  // Conditions متاحة للمرض المختار
+  const availableConditions = useMemo(() => {
+    if (!selectedDisease) return [];
+    const matches = availableIndications.filter(i => i.disease === selectedDisease);
+    const conds = matches.filter(m => m.condition).map(m => m.condition!);
+    return Array.from(new Set(conds));
+  }, [selectedDisease, availableIndications]);
+
+  // الـ indication النهائي بعد اختيار disease + condition
+  const finalIndication = useMemo<IndicationEntry | null>(() => {
+    if (!useIndication || !selectedDisease) return null;
+    const matches = availableIndications.filter(i => i.disease === selectedDisease);
+    if (matches.length === 0) return null;
+    if (matches.length === 1 && !matches[0].condition) return matches[0];
+    if (selectedCondition) {
+      return matches.find(m => m.condition === selectedCondition) || null;
+    }
+    // أكتر من condition ومحدش اتختار → null
+    return null;
+  }, [useIndication, selectedDisease, selectedCondition, availableIndications]);
+
+  // Auto-select condition لو واحد بس
+  useEffect(() => {
+    if (availableConditions.length === 1) {
+      setSelectedCondition(availableConditions[0]);
+    } else if (availableConditions.length > 1) {
+      setSelectedCondition(null);
+    } else {
+      setSelectedCondition(null);
+    }
+  }, [selectedDisease, availableConditions.length]);
+
   const drug = selectedDrugIdx !== null ? drugs[selectedDrugIdx] : null;
 
-  // الوزن الفعلي المستخدم في الحساب
+  // الوزن الفعلي
   const effectiveWeight = useMemo(() => {
     if (inputMode === 'weight') return parseFloat(weight) || 0;
     const entry = weightChart.find(w => w.age === selectedAge);
     return entry?.weight || 0;
   }, [inputMode, weight, selectedAge]);
 
-  // الحساب مع تطبيق Max Dose
-  const result = useMemo(() => {
-    if (!drug || effectiveWeight <= 0) return null;
-    const rawDoseMg = drug.dose_mg_kg * effectiveWeight;
-    // جيب الـ max من الـ map أو من الـ drug نفسه
-    const maxFromMap = MAX_DOSE_MAP[drug.active.toLowerCase()];
-    const maxDoseMg = maxFromMap ?? Infinity;
-    const capped = rawDoseMg > maxDoseMg;
-    const doseMg = Math.min(rawDoseMg, maxDoseMg);
-    const doseML = (doseMg / drug.conc_mg) * drug.conc_ml;
-    const concPerML = drug.conc_mg / drug.conc_ml;
-    return { doseMg, doseML, concPerML, capped, maxDoseMg, rawDoseMg };
-  }, [drug, effectiveWeight]);
+  // مصدر الجرعة: إما indication أو drug الأساسي
+  const doseSource = useMemo(() => {
+    // لو الـ indication active، استخدمه
+    if (finalIndication) {
+      return {
+        fixed_dose: finalIndication.fixed_dose,
+        dose_min: finalIndication.dose_mg_kg_min,
+        dose_max: finalIndication.dose_mg_kg_max,
+        max_mg_kg_day: finalIndication.max_mg_kg_day,
+        max_single_dose_mg: finalIndication.max_single_dose_mg,
+        frequency: finalIndication.frequency,
+        duration: finalIndication.duration,
+        notes: finalIndication.notes,
+        isIndication: true,
+      };
+    }
+    if (!drug) return null;
+    return {
+      fixed_dose: drug.fixed_dose,
+      dose_min: drug.dose_mg_kg_min,
+      dose_max: drug.dose_mg_kg_max,
+      max_mg_kg_day: drug.max_mg_kg_day,
+      max_single_dose_mg: drug.max_single_dose_mg,
+      frequency: drug.frequency,
+      duration: '',
+      notes: drug.notes,
+      isIndication: false,
+    };
+  }, [drug, finalIndication]);
 
-  // تحذير لو اتطبق الحد الأقصى
+  // هل الجرعة رينج؟
+  const isRange = useMemo(() => {
+    if (!doseSource) return false;
+    return doseSource.dose_min !== null && doseSource.dose_max !== null && doseSource.dose_min !== doseSource.dose_max;
+  }, [doseSource]);
+
+  // اختار الـ dose/kg حسب مستوى المستخدم
+  const pickedDosePerKg = useMemo<number | null>(() => {
+    if (!doseSource) return null;
+    const { dose_min, dose_max } = doseSource;
+    if (dose_min === null && dose_max === null) return null;
+    if (dose_min !== null && dose_max === null) return dose_min;
+    if (dose_min === null && dose_max !== null) return dose_max;
+    // both present
+    if (doseLevel === 'min') return dose_min!;
+    if (doseLevel === 'max') return dose_max!;
+    return (dose_min! + dose_max!) / 2; // mid
+  }, [doseSource, doseLevel]);
+
+  // الحساب
+  const result = useMemo(() => {
+    if (!doseSource || !drug) return null;
+
+    // Fixed dose → لا حساب
+    if (doseSource.fixed_dose && doseSource.fixed_dose.trim()) {
+      // ممكن يبقى فيه حالات متعددة مفصولة بـ ,
+      const cases = doseSource.fixed_dose.split(',').map(s => s.trim()).filter(Boolean);
+      return {
+        kind: 'fixed' as const,
+        cases,
+      };
+    }
+
+    if (effectiveWeight <= 0 || pickedDosePerKg === null) return null;
+
+    const rawDoseMg = pickedDosePerKg * effectiveWeight;
+    const maxSingle = doseSource.max_single_dose_mg ?? Infinity;
+    const capped = rawDoseMg > maxSingle;
+    const doseMg = Math.min(rawDoseMg, maxSingle);
+    const doseML = (drug.conc_mg && drug.conc_ml) ? (doseMg / drug.conc_mg) * drug.conc_ml : 0;
+
+    return {
+      kind: 'calc' as const,
+      doseMg,
+      doseML,
+      capped,
+      maxSingle,
+      rawDoseMg,
+      usedPerKg: pickedDosePerKg,
+    };
+  }, [doseSource, drug, effectiveWeight, pickedDosePerKg]);
+
   const maxWarning = useMemo(() => {
-    if (!result) return null;
-    if (result.capped) return `الجرعة المحسوبة (${result.rawDoseMg.toFixed(1)}mg) تجاوزت الحد الأقصى — تم تحديدها بـ ${result.maxDoseMg}mg`;
-    return null;
-  }, [result]);
+    if (!result || result.kind !== 'calc' || !result.capped) return null;
+    return ar
+      ? `الجرعة المحسوبة (${result.rawDoseMg.toFixed(1)}mg) تجاوزت الحد الأقصى — تم تحديدها بـ ${result.maxSingle}mg`
+      : `Calculated dose (${result.rawDoseMg.toFixed(1)}mg) exceeded max — capped at ${result.maxSingle}mg`;
+  }, [result, ar]);
+
+  // Unique diseases للمادة الفعالة المختارة
+  const uniqueDiseases = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const ind of availableIndications) {
+      if (!seen.has(ind.disease)) {
+        seen.add(ind.disease);
+        list.push(ind.disease);
+      }
+    }
+    return list;
+  }, [availableIndications]);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (
@@ -174,7 +334,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
             <div className="flex flex-col items-center justify-center py-16 gap-3 px-6">
               <span className="text-3xl">⚠️</span>
               <p className="text-xs font-bold text-slate-500 text-center">No internet connection. Please try again.</p>
-              <button onClick={() => { setDataError(false); setDataLoading(true); fetchPediatricData().then(d => { setDrugs(d.drugs); setWeightChart(d.weightChart); setDataLoading(false); }).catch(() => { setDataError(true); setDataLoading(false); }); }}
+              <button onClick={() => { setDataError(false); setDataLoading(true); fetchPediatricData().then(d => { setDrugs(d.drugs); setWeightChart(d.weightChart); setSpecialIndications(d.specialIndications || {}); setDataLoading(false); }).catch(() => { setDataError(true); setDataLoading(false); }); }}
                 className="px-4 py-2 bg-teal-500 text-white rounded-xl text-xs font-black active:scale-95">
                 Retry
               </button>
@@ -204,6 +364,68 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                   ))}
                 </select>
               </div>
+
+              {/* Advanced: Special Indication */}
+              {hasIndications && (
+                <div className="mb-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-3">
+                  <button
+                    onClick={() => { setUseIndication(!useIndication); setSelectedDisease(null); setSelectedCondition(null); }}
+                    className="flex items-center justify-between w-full"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🎯</span>
+                      <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-300">
+                        {ar ? 'متقدم · اختر التشخيص' : 'Advanced · Select Diagnosis'}
+                      </span>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full transition-colors ${useIndication ? 'bg-indigo-500' : 'bg-slate-300'} relative`}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${useIndication ? 'left-5' : 'left-0.5'}`} />
+                    </div>
+                  </button>
+
+                  {useIndication && (
+                    <div className="mt-3 space-y-2">
+                      <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-300 px-1">
+                        {ar ? 'التشخيص / المرض' : 'Diagnosis / Disease'}
+                      </label>
+                      <select
+                        value={selectedDisease || ''}
+                        onChange={e => setSelectedDisease(e.target.value || null)}
+                        className="w-full p-2.5 bg-white dark:bg-dark-card border-2 border-indigo-200 dark:border-indigo-700 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none focus:border-indigo-400 transition-colors"
+                      >
+                        <option value="">{ar ? '-- اختر المرض --' : '-- Select disease --'}</option>
+                        {uniqueDiseases.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+
+                      {/* Conditions لو فيه اختيارات */}
+                      {availableConditions.length > 1 && (
+                        <>
+                          <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-300 px-1 mt-2">
+                            {ar ? 'الحالة' : 'Condition'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {availableConditions.map(c => (
+                              <button
+                                key={c}
+                                onClick={() => setSelectedCondition(c)}
+                                className={`p-2 rounded-lg border-2 text-[10px] font-black transition-all active:scale-95 ${
+                                  selectedCondition === c
+                                    ? 'bg-indigo-500 border-indigo-500 text-white'
+                                    : 'bg-white dark:bg-dark-card border-indigo-200 dark:border-indigo-700 text-slate-700 dark:text-white'
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* التركيز */}
               {concentrations.length > 0 && (
@@ -237,121 +459,195 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
               )}
             </div>
 
-            {/* Step 2 - الوزن أو العمر */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                {ar ? '٢ · أدخل الوزن أو العمر' : '2 · Weight or Age'}
-              </p>
+            {/* Step 2 - الوزن أو العمر (مخفي لو fixed_dose) */}
+            {!(doseSource?.fixed_dose) && (
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                  {ar ? '٢ · أدخل الوزن أو العمر' : '2 · Weight or Age'}
+                </p>
 
-              {/* Toggle */}
-              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1 mb-3">
-                {(['weight','age'] as const).map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setInputMode(m)}
-                    className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${
-                      inputMode === m
-                        ? 'bg-white dark:bg-dark-card text-teal-600 shadow-sm'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    {m === 'weight' ? (ar ? '⚖️ الوزن' : '⚖️ Weight') : (ar ? '🎂 العمر' : '🎂 Age')}
-                  </button>
-                ))}
-              </div>
-
-              {inputMode === 'weight' ? (
-                <div className="relative">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={weight}
-                    onChange={e => setWeight(e.target.value)}
-                    placeholder={ar ? 'مثال: 12.5' : 'e.g. 12.5'}
-                    className="w-full p-4 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-lg font-black text-slate-700 dark:text-white outline-none focus:border-teal-400 transition-colors pr-16"
-                  />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">kg</span>
+                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1 mb-3">
+                  {(['weight','age'] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setInputMode(m)}
+                      className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${
+                        inputMode === m
+                          ? 'bg-white dark:bg-dark-card text-teal-600 shadow-sm'
+                          : 'text-slate-500'
+                      }`}
+                    >
+                      {m === 'weight' ? (ar ? '⚖️ الوزن' : '⚖️ Weight') : (ar ? '🎂 العمر' : '🎂 Age')}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {weightChart.map(w => (
-                      <button
-                        key={w.age}
-                        onClick={() => setSelectedAge(w.age)}
-                        className={`p-2.5 rounded-xl border-2 text-[10px] font-black transition-all active:scale-95 ${
-                          selectedAge === w.age
-                            ? 'bg-teal-500 border-teal-500 text-white'
-                            : 'bg-white dark:bg-dark-card border-slate-100 dark:border-dark-border text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        {w.age}
-                        <span className="block text-[9px] opacity-70 mt-0.5">{w.weight} kg</span>
-                      </button>
-                    ))}
+
+                {inputMode === 'weight' ? (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={weight}
+                      onChange={e => setWeight(e.target.value)}
+                      placeholder={ar ? 'مثال: 12.5' : 'e.g. 12.5'}
+                      className="w-full p-4 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-lg font-black text-slate-700 dark:text-white outline-none focus:border-teal-400 transition-colors pr-16"
+                    />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">kg</span>
                   </div>
-                  {selectedAge && (
-                    <p className="text-[10px] text-teal-600 font-bold mt-2 px-1">
-                      {ar ? `متوسط الوزن المستخدم: ${weightChart.find(w=>w.age===selectedAge)?.weight} kg` : `Using avg weight: ${weightChart.find(w=>w.age===selectedAge)?.weight} kg`}
+                ) : (
+                  <div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {weightChart.map(w => (
+                        <button
+                          key={w.age}
+                          onClick={() => setSelectedAge(w.age)}
+                          className={`p-2.5 rounded-xl border-2 text-[10px] font-black transition-all active:scale-95 ${
+                            selectedAge === w.age
+                              ? 'bg-teal-500 border-teal-500 text-white'
+                              : 'bg-white dark:bg-dark-card border-slate-100 dark:border-dark-border text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {w.age}
+                          <span className="block text-[9px] opacity-70 mt-0.5">{w.weight} kg</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedAge && (
+                      <p className="text-[10px] text-teal-600 font-bold mt-2 px-1">
+                        {ar ? `متوسط الوزن المستخدم: ${weightChart.find(w=>w.age===selectedAge)?.weight} kg` : `Using avg weight: ${weightChart.find(w=>w.age===selectedAge)?.weight} kg`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Dose Level Selector (min/mid/max) — يطلع بس لو رينج */}
+                {isRange && doseSource && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-black text-slate-500 mb-1.5 px-1">
+                      {ar ? 'مستوى الجرعة' : 'Dose Level'}
+                      <span className="text-[9px] font-bold text-slate-400 mr-1">
+                        ({doseSource.dose_min}–{doseSource.dose_max} mg/kg)
+                      </span>
                     </p>
-                  )}
-                </div>
-              )}
-            </div>
+                    <div className="flex bg-slate-200 dark:bg-slate-700 rounded-xl p-1">
+                      {(['min','mid','max'] as const).map(lvl => (
+                        <button
+                          key={lvl}
+                          onClick={() => setDoseLevel(lvl)}
+                          className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${
+                            doseLevel === lvl
+                              ? 'bg-white dark:bg-dark-card text-teal-600 shadow-sm'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {lvl === 'min' ? (ar ? `أقل · ${doseSource.dose_min}` : `Min · ${doseSource.dose_min}`)
+                            : lvl === 'mid' ? (ar ? `وسط · ${((doseSource.dose_min! + doseSource.dose_max!)/2).toFixed(2)}` : `Mid · ${((doseSource.dose_min! + doseSource.dose_max!)/2).toFixed(2)}`)
+                            : (ar ? `أعلى · ${doseSource.dose_max}` : `Max · ${doseSource.dose_max}`)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold mt-1 px-1">
+                      {ar ? 'الافتراضي: الجرعة الأقل' : 'Default: minimum dose'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* النتيجة */}
-            {result && drug && (
-              <div className={`rounded-2xl p-5 border-2 ${maxWarning ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700' : 'bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200 dark:from-teal-900/20 dark:to-cyan-900/20 dark:border-teal-700'}`}>
+            {result && drug && doseSource && (
+              <div className={`rounded-2xl p-5 border-2 ${maxWarning ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700' : result.kind === 'fixed' ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 dark:from-indigo-900/20 dark:to-purple-900/20 dark:border-indigo-700' : 'bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200 dark:from-teal-900/20 dark:to-cyan-900/20 dark:border-teal-700'}`}>
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xl">{maxWarning ? '⚠️' : '✅'}</span>
+                  <span className="text-xl">{maxWarning ? '⚠️' : result.kind === 'fixed' ? '📌' : '✅'}</span>
                   <p className="text-[10px] font-black text-teal-700 dark:text-teal-400 uppercase tracking-widest">
-                    {ar ? 'الجرعة المحسوبة' : 'Calculated Dose'}
+                    {result.kind === 'fixed' ? (ar ? 'جرعة ثابتة' : 'Fixed Dose') : (ar ? 'الجرعة المحسوبة' : 'Calculated Dose')}
                   </p>
-                </div>
-
-                {/* الجرعة الرئيسية */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {drug.form === 'Suppository' ? (
-                    <>
-                      <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm col-span-2">
-                        <p className="text-3xl font-black text-purple-600">{result.doseMg.toFixed(0)} mg</p>
-                        <p className="text-[10px] font-black text-slate-400 mt-1">🕯️ Suppository dose</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm">
-                        <p className="text-2xl font-black text-teal-600">{result.doseML.toFixed(1)}</p>
-                        <p className="text-[10px] font-black text-slate-400 mt-1">ml</p>
-                      </div>
-                      <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm">
-                        <p className="text-2xl font-black text-slate-700 dark:text-white">{result.doseMg.toFixed(1)}</p>
-                        <p className="text-[10px] font-black text-slate-400 mt-1">mg</p>
-                      </div>
-                    </>
+                  {doseSource.isIndication && (
+                    <span className="mr-auto bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-black px-2 py-0.5 rounded-full">
+                      🎯 {ar ? 'حسب التشخيص' : 'By Indication'}
+                    </span>
                   )}
                 </div>
+
+                {/* Fixed dose → عرض نصي بالحالات */}
+                {result.kind === 'fixed' ? (
+                  <div className="space-y-2 mb-3">
+                    {result.cases.map((c, i) => (
+                      <div key={i} className="bg-white dark:bg-dark-card rounded-xl p-3 shadow-sm">
+                        <p className="text-[12px] font-bold text-slate-700 dark:text-white leading-relaxed">{c}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {/* الجرعة الرئيسية */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {drug.form === 'Suppository' ? (
+                        <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm col-span-2">
+                          <p className="text-3xl font-black text-purple-600">{result.doseMg.toFixed(0)} mg</p>
+                          <p className="text-[10px] font-black text-slate-400 mt-1">🕯️ Suppository dose</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm">
+                            <p className="text-2xl font-black text-teal-600">{result.doseML.toFixed(1)}</p>
+                            <p className="text-[10px] font-black text-slate-400 mt-1">ml</p>
+                          </div>
+                          <div className="bg-white dark:bg-dark-card rounded-xl p-3 text-center shadow-sm">
+                            <p className="text-2xl font-black text-slate-700 dark:text-white">{result.doseMg.toFixed(1)}</p>
+                            <p className="text-[10px] font-black text-slate-400 mt-1">mg</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* التفاصيل */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
-                    <span className="text-[11px] font-bold text-slate-500">{ar ? 'التكرار' : 'Frequency'}</span>
-                    <span className="text-[11px] font-black text-slate-700 dark:text-white">{drug.frequency}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
-                    <span className="text-[11px] font-bold text-slate-500">{ar ? 'الوزن المستخدم' : 'Weight used'}</span>
-                    <span className="text-[11px] font-black text-slate-700 dark:text-white">{effectiveWeight} kg</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5">
-                    <span className="text-[11px] font-bold text-slate-500">{ar ? 'الجرعة بالكيلو' : 'Dose/kg'}</span>
-                    <span className="text-[11px] font-black text-slate-700 dark:text-white">{drug.dose_mg_kg} mg/kg</span>
-                  </div>
+                  {doseSource.frequency && (
+                    <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
+                      <span className="text-[11px] font-bold text-slate-500">{ar ? 'التكرار' : 'Frequency'}</span>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-white">{doseSource.frequency}</span>
+                    </div>
+                  )}
+                  {doseSource.duration && (
+                    <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
+                      <span className="text-[11px] font-bold text-slate-500">{ar ? 'المدة' : 'Duration'}</span>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-white text-right max-w-[60%]">{doseSource.duration}</span>
+                    </div>
+                  )}
+                  {result.kind === 'calc' && effectiveWeight > 0 && (
+                    <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
+                      <span className="text-[11px] font-bold text-slate-500">{ar ? 'الوزن المستخدم' : 'Weight used'}</span>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-white">{effectiveWeight} kg</span>
+                    </div>
+                  )}
+                  {result.kind === 'calc' && (
+                    <div className="flex items-center justify-between py-1.5 border-b border-teal-100 dark:border-teal-800/40">
+                      <span className="text-[11px] font-bold text-slate-500">{ar ? 'الجرعة بالكيلو' : 'Dose/kg'}</span>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-white">
+                        {result.usedPerKg} mg/kg
+                        {isRange && (
+                          <span className="text-[9px] font-bold text-slate-400 mr-1">
+                            ({doseLevel === 'min' ? (ar ? 'أقل' : 'min') : doseLevel === 'max' ? (ar ? 'أعلى' : 'max') : (ar ? 'وسط' : 'mid')})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {doseSource.max_mg_kg_day && (
+                    <div className="flex items-center justify-between py-1.5">
+                      <span className="text-[11px] font-bold text-slate-500">{ar ? 'الحد الأقصى اليومي' : 'Max daily'}</span>
+                      <span className="text-[11px] font-black text-slate-700 dark:text-white">{doseSource.max_mg_kg_day} mg/kg/day</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Notes */}
-                {drug.notes && (
+                {(doseSource.notes || maxWarning) && (
                   <div className={`mt-3 p-3 rounded-xl text-[10px] font-bold ${maxWarning ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'}`}>
-                    {maxWarning ? `⚠️ ${maxWarning} · ` : '📋 '}{drug.notes}
+                    {maxWarning ? `⚠️ ${maxWarning}${doseSource.notes ? ' · ' + doseSource.notes : ''}` : `📋 ${doseSource.notes}`}
                   </div>
                 )}
               </div>
