@@ -103,59 +103,55 @@ export default function IOSHomeScreen(props: IOSHomeScreenProps) {
 
   return (
     <div style={{ direction: dir, paddingBottom: 24 }}>
-      {/* Brand lockup - hidden when searching */}
-      {!hasSearch && (
-      <div
-        style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 20px) + 4px)',
-          padding: '8px 16px 10px',
-          paddingInlineStart: 16,
-          paddingInlineEnd: 16,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          direction: dir,
-          paddingTopCompat: undefined,
-        } as any}
-      >
-        <EDMark size={42} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <EDWordmark size={0.9} lang={language === 'ar' ? 'ar' : 'en'} />
-          <div
-            style={{
-              fontSize: 12,
-              color: iOS.label2,
-              marginTop: 3,
-              letterSpacing: -0.08,
-              textAlign: language === 'ar' ? 'right' : 'left',
-            }}
-          >
-            {t('دليل الأدوية والتأمين', 'Saudi drug & insurance directory')}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Sticky search + segmented together */}
+      {/* Sticky header: brand (when not searching) + search + segmented */}
       <div
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          paddingTop: hasSearch ? 'calc(env(safe-area-inset-top, 20px) + 8px)' : 4,
+          paddingTop: 'calc(env(safe-area-inset-top, 20px) + 6px)',
           paddingBottom: 8,
           paddingInlineStart: 16,
           paddingInlineEnd: 16,
           background: 'var(--ios-bg)',
         }}
       >
+        {/* Brand lockup - hidden when searching */}
+        {!hasSearch && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              direction: dir,
+              marginBottom: 10,
+            }}
+          >
+            <EDMark size={38} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <EDWordmark size={0.85} lang={language === 'ar' ? 'ar' : 'en'} />
+              <div
+                style={{
+                  fontSize: 11,
+                  color: iOS.label2,
+                  marginTop: 2,
+                  letterSpacing: -0.08,
+                  textAlign: language === 'ar' ? 'right' : 'left',
+                }}
+              >
+                {t('دليل الأدوية والتأمين', 'Saudi drug & insurance directory')}
+              </div>
+            </div>
+          </div>
+        )}
+
         <SearchField
           dir={dir}
           value={searchTerm}
           placeholder={t('أدوية، مواد فعالة، حالات', 'Medicines, ingredients, indications')}
           onChange={onSearchChange}
         />
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 6 }}>
           <Segmented
             options={segmentOptions}
             active={activeSegment}

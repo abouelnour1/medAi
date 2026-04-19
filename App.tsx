@@ -2088,12 +2088,32 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"} style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? { paddingTop: 0, paddingBottom: 'calc(83px + env(safe-area-inset-bottom))', background: 'var(--ios-bg)', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any : { paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          <div key={skipNextViewKey ? 'stable' : view}>
-              <ScreenTransition viewKey={view + '-' + activeTab}>
-                {renderContent()}
-              </ScreenTransition>
-            </div>
+      <main
+        id="main-scroll-container"
+        ref={scrollContainerRef}
+        onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }}
+        className={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? "flex-grow min-h-0 mx-auto overflow-y-auto w-full max-w-[480px] no-scrollbar" : "flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar"}
+        style={useIOSDesign && !['login', 'register', 'admin', 'imageView'].includes(view) ? {
+          paddingTop: 0,
+          paddingBottom: 'calc(83px + env(safe-area-inset-bottom))',
+          background: 'var(--ios-bg)',
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "none",
+          minHeight: '100%',
+        } as any : {
+          paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8,
+          paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))',
+          transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease',
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "none",
+        } as any}
+      >
+        <div
+          key={skipNextViewKey ? 'stable' : (view + activeTab)}
+          style={useIOSDesign ? { animation: 'iosFadeIn 150ms ease', background: 'var(--ios-bg)', minHeight: '100%' } : undefined}
+        >
+          {renderContent()}
+        </div>
       </main>
 
       {/* iOS tab bar — shown only when iOS design is enabled and not on auth screens */}

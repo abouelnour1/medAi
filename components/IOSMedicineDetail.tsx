@@ -217,70 +217,66 @@ export default function IOSMedicineDetail({
           {m.PackageSize && (
             <StatBox
               label={isAr ? 'العبوة' : 'Pack'}
-              value={`${m.PackageSize}${m.PharmaceuticalForm ? ` ${m.PharmaceuticalForm.split(' ')[0]}` : ''}`}
+              value={`${m.PackageSize} × ${m.PharmaceuticalForm ? m.PharmaceuticalForm.split(' ').slice(0,2).join(' ') : ''}`}
             />
           )}
-          {m.AtcCode1 && !m.PackageSize && <StatBox label="ATC" value={m.AtcCode1} />}
+          {m.AtcCode1 && <StatBox label="ATC" value={m.AtcCode1} />}
         </div>
       )}
 
-      {/* Actions row 1: Alternatives + Share */}
-      <div style={{ padding: '4px 16px 8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <ActionBtn
-          tint={iOS.blue}
-          filled
-          icon={<Icon.pill color="#fff" size={16} />}
-          label={isAr ? 'بدائل' : 'Alternatives'}
-          onClick={() => onFindAlternative(m)}
-        />
-        <ActionBtn
-          tint={iOS.blue}
-          icon={<Icon.share color={iOS.blue} size={16} />}
-          label={isAr ? 'مشاركة' : 'Share'}
-          onClick={() => onShare(m)}
-        />
-      </div>
-
-      {/* Actions row 2: Claude Clinical + Gemini + Edit */}
-      {(onOpenClinical || onAskGemini || isAdmin) && (
-        <div style={{
-          padding: '0 16px 8px',
-          display: 'grid',
-          gridTemplateColumns: [onOpenClinical, onAskGemini, isAdmin && onEdit].filter(Boolean).length === 3 ? '1fr 1fr 1fr'
-            : [onOpenClinical, onAskGemini, isAdmin && onEdit].filter(Boolean).length === 2 ? '1fr 1fr' : '1fr',
-          gap: 10,
-        }}>
+      {/* Actions */}
+      <div style={{ padding: '4px 16px 8px' }}>
+        {/* Row 1: Alternatives (full width, filled) */}
+        <div style={{ marginBottom: 8 }}>
+          <ActionBtn
+            tint={iOS.blue}
+            filled
+            icon={<Icon.pill color="#fff" size={16} />}
+            label={isAr ? 'البدائل والأدوية المشابهة' : 'Alternatives'}
+            onClick={() => onFindAlternative(m)}
+          />
+        </div>
+        {/* Row 2: Share + Clinical + Gemini */}
+        <div style={{ display: 'grid', gridTemplateColumns: [true, onOpenClinical, onAskGemini].filter(Boolean).length === 3 ? '1fr 1fr 1fr' : [true, onOpenClinical || onAskGemini].filter(Boolean).length === 2 ? '1fr 1fr' : '1fr', gap: 8 }}>
+          <ActionBtn
+            tint={iOS.blue}
+            icon={<Icon.share color={iOS.blue} size={15} />}
+            label={isAr ? 'مشاركة' : 'Share'}
+            onClick={() => onShare(m)}
+          />
           {onOpenClinical && (
             <ActionBtn
-              tint={iOS.teal}
-              icon={<Icon.shield color={iOS.teal} size={16} />}
-              label={isAr ? 'كلود إكلينيكي' : 'Claude Clinical'}
+              tint={iOS.green}
+              icon={<Icon.shield color={iOS.green} size={15} />}
+              label={isAr ? 'بيانات سريرية' : 'Clinical'}
               onClick={onOpenClinical}
             />
           )}
           {onAskGemini && (
             <ActionBtn
-              tint={iOS.blue}
+              tint="#1a73e8"
               icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill={iOS.blue}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 3l2.5 5.5L20 12l-5.5 2.5L12 20l-2.5-5.5L4 12l5.5-2.5L12 5z" fill="#1a73e8"/>
                 </svg>
               }
-              label={isAr ? 'اسأل جيمناي' : 'Ask Gemini'}
+              label={isAr ? 'جيمناي' : 'Gemini'}
               onClick={() => onAskGemini(m)}
             />
           )}
-          {isAdmin && onEdit && (
+        </div>
+        {/* Row 3: Edit (admin only) */}
+        {isAdmin && onEdit && (
+          <div style={{ marginTop: 8 }}>
             <ActionBtn
               tint={iOS.orange}
-              icon={<Icon.doc color={iOS.orange} size={16} />}
-              label={isAr ? 'تعديل' : 'Edit'}
+              icon={<Icon.doc color={iOS.orange} size={15} />}
+              label={isAr ? 'تعديل البيانات' : 'Edit'}
               onClick={() => onEdit(m)}
             />
-          )}
-        </div>
-      )}
-
+          </div>
+        )}
+      </div>
       {/* Composition */}
       <List header={isAr ? 'التركيب' : 'Composition'}>
         {m['Scientific Name'] && (() => {

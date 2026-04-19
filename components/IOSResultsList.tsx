@@ -331,8 +331,7 @@ function MedRow({
           >
             {m.PharmaceuticalForm && (
               <span>
-                {m.PharmaceuticalForm}
-                {m.PackageSize ? ` · ${m.PackageSize}` : ''}
+                {m.PackageSize ? `${m.PackageSize} × ` : ''}{m.PharmaceuticalForm}
               </span>
             )}
             {m.PharmaceuticalForm && m['Manufacture Name'] && (

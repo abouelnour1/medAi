@@ -761,24 +761,11 @@ export function ScreenTransition({ children, viewKey }: { children: React.ReactN
   return (
     <div
       key={viewKey}
-      style={{
-        animation: 'iosScreenIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
-      }}
+      style={{ animation: 'iosFadeIn 180ms ease' }}
     >
       <style>{`
-        @keyframes iosScreenIn {
-          0% { opacity: 0; transform: translateY(8px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes iosFadeIn {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
-        }
-        @keyframes iosPressScale {
-          0% { transform: scale(1); }
-          50% { transform: scale(0.96); }
-          100% { transform: scale(1); }
-        }
+        @keyframes iosFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes iosScreenIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
       `}</style>
       {children}
     </div>
