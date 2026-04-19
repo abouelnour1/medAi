@@ -20,14 +20,16 @@ interface WeightEntry { age: string; weight: number; }
 
 interface IndicationEntry {
   disease: string;
+  dosage_form: string | null;
   condition: string | null;
+  condition_2: string | null;
   fixed_dose: string | null;
   dose_mg_kg_min: number | null;
   dose_mg_kg_max: number | null;
   frequency: string;
   duration: string;
-  max_mg_kg_day: number | null;
-  max_single_dose_mg: number | null;
+  max_mg_kg_day: number | string | null;
+  max_single_dose_mg: number | string | null;
   notes: string;
 }
 
@@ -35,7 +37,7 @@ type DoseLevel = 'min' | 'mid' | 'max';
 
 // ── R2 Fetch + localStorage Cache ───────────────────────────────────────────
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
-const CACHE_KEY = 'ps_pediatric_drugs_v3';
+const CACHE_KEY = 'ps_pediatric_drugs_v4';
 
 async function fetchPediatricData(): Promise<{
   drugs: DrugEntry[];
@@ -109,6 +111,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
   const [doseLevel, setDoseLevel] = useState<DoseLevel>('min');
   const [useIndication, setUseIndication] = useState(false);
   const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
+  const [selectedCondition2, setSelectedCondition2] = useState<string | null>(null);
   const [selectedDisease, setSelectedDisease] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,6 +147,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
   useEffect(() => {
     setUseIndication(false);
     setSelectedCondition(null);
+    setSelectedCondition2(null);
     setSelectedDisease(null);
   }, [selectedActive]);
 
@@ -164,29 +168,44 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     return Array.from(new Set(conds));
   }, [selectedDisease, availableIndications]);
 
-  // الـ indication النهائي بعد اختيار disease + condition
+  // condition_2 متاحة بعد اختيار condition
+  const availableConditions2 = useMemo(() => {
+    if (!selectedDisease || !selectedCondition) return [];
+    const matches = availableIndications.filter(
+      i => i.disease === selectedDisease && i.condition === selectedCondition
+    );
+    const conds2 = matches.filter(m => m.condition_2).map(m => m.condition_2!);
+    return Array.from(new Set(conds2));
+  }, [selectedDisease, selectedCondition, availableIndications]);
+
+  // الـ indication النهائي
   const finalIndication = useMemo<IndicationEntry | null>(() => {
     if (!useIndication || !selectedDisease) return null;
     const matches = availableIndications.filter(i => i.disease === selectedDisease);
     if (matches.length === 0) return null;
+    // بدون conditions → أول نتيجة
     if (matches.length === 1 && !matches[0].condition) return matches[0];
-    if (selectedCondition) {
-      return matches.find(m => m.condition === selectedCondition) || null;
+    // عنده condition → لازم يتختار
+    if (!selectedCondition) return null;
+    const byCondition = matches.filter(m => m.condition === selectedCondition);
+    if (byCondition.length === 0) return null;
+    // condition_2؟
+    if (availableConditions2.length > 0) {
+      if (!selectedCondition2) return null;
+      return byCondition.find(m => m.condition_2 === selectedCondition2) || null;
     }
-    // أكتر من condition ومحدش اتختار → null
-    return null;
-  }, [useIndication, selectedDisease, selectedCondition, availableIndications]);
+    return byCondition[0];
+  }, [useIndication, selectedDisease, selectedCondition, selectedCondition2, availableConditions2, availableIndications]);
 
   // Auto-select condition لو واحد بس
   useEffect(() => {
-    if (availableConditions.length === 1) {
-      setSelectedCondition(availableConditions[0]);
-    } else if (availableConditions.length > 1) {
-      setSelectedCondition(null);
-    } else {
-      setSelectedCondition(null);
-    }
-  }, [selectedDisease, availableConditions.length]);
+    setSelectedCondition(availableConditions.length === 1 ? availableConditions[0] : null);
+  }, [selectedDisease]);
+
+  // Reset condition_2 لما condition تتغير، وauto-select لو واحد
+  useEffect(() => {
+    setSelectedCondition2(availableConditions2.length === 1 ? availableConditions2[0] : null);
+  }, [selectedCondition]);
 
   const drug = selectedDrugIdx !== null ? drugs[selectedDrugIdx] : null;
 
@@ -263,7 +282,8 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
     if (effectiveWeight <= 0 || pickedDosePerKg === null) return null;
 
     const rawDoseMg = pickedDosePerKg * effectiveWeight;
-    const maxSingle = doseSource.max_single_dose_mg ?? Infinity;
+    const maxSingleRaw = doseSource.max_single_dose_mg;
+    const maxSingle = typeof maxSingleRaw === 'number' ? maxSingleRaw : Infinity;
     const capped = rawDoseMg > maxSingle;
     const doseMg = Math.min(rawDoseMg, maxSingle);
     const doseML = (drug.conc_mg && drug.conc_ml) ? (doseMg / drug.conc_mg) * drug.conc_ml : 0;
@@ -369,7 +389,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
               {hasIndications && (
                 <div className="mb-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-3">
                   <button
-                    onClick={() => { setUseIndication(!useIndication); setSelectedDisease(null); setSelectedCondition(null); }}
+                    onClick={() => { setUseIndication(!useIndication); setSelectedDisease(null); setSelectedCondition(null); setSelectedCondition2(null); }}
                     className="flex items-center justify-between w-full"
                   >
                     <div className="flex items-center gap-2">
@@ -390,7 +410,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                       </label>
                       <select
                         value={selectedDisease || ''}
-                        onChange={e => setSelectedDisease(e.target.value || null)}
+                        onChange={e => { setSelectedDisease(e.target.value || null); setSelectedCondition(null); setSelectedCondition2(null); }}
                         className="w-full p-2.5 bg-white dark:bg-dark-card border-2 border-indigo-200 dark:border-indigo-700 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none focus:border-indigo-400 transition-colors"
                       >
                         <option value="">{ar ? '-- اختر المرض --' : '-- Select disease --'}</option>
@@ -399,7 +419,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                         ))}
                       </select>
 
-                      {/* Conditions لو فيه اختيارات */}
+                      {/* Condition */}
                       {availableConditions.length > 1 && (
                         <>
                           <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-300 px-1 mt-2">
@@ -409,10 +429,34 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                             {availableConditions.map(c => (
                               <button
                                 key={c}
-                                onClick={() => setSelectedCondition(c)}
+                                onClick={() => { setSelectedCondition(c); setSelectedCondition2(null); }}
                                 className={`p-2 rounded-lg border-2 text-[10px] font-black transition-all active:scale-95 ${
                                   selectedCondition === c
                                     ? 'bg-indigo-500 border-indigo-500 text-white'
+                                    : 'bg-white dark:bg-dark-card border-indigo-200 dark:border-indigo-700 text-slate-700 dark:text-white'
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Condition 2 */}
+                      {availableConditions2.length > 1 && (
+                        <>
+                          <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-300 px-1 mt-2">
+                            {ar ? 'تفاصيل إضافية' : 'Additional detail'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {availableConditions2.map(c => (
+                              <button
+                                key={c}
+                                onClick={() => setSelectedCondition2(c)}
+                                className={`p-2 rounded-lg border-2 text-[10px] font-black transition-all active:scale-95 ${
+                                  selectedCondition2 === c
+                                    ? 'bg-purple-500 border-purple-500 text-white'
                                     : 'bg-white dark:bg-dark-card border-indigo-200 dark:border-indigo-700 text-slate-700 dark:text-white'
                                 }`}
                               >
