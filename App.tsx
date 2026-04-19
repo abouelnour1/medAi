@@ -28,6 +28,7 @@ import { useSearch } from './hooks/useSearch';
 import { useAlternatives } from './hooks/useMedicineUtils';
 import DrugToolsModal from './components/DrugToolsModal';
 import PediatricDoseCalculator from './components/PediatricDoseCalculator';
+import PediatricPresetBar from './components/PediatricPresetBar';
 import DrugTestChecker from './components/DrugTestChecker';
 import { fuzzyMatch, fuzzyScore } from './utils/fuzzySearch';
 import { trackMedicineView, getTopSearched, getTotalSearches } from './utils/analytics';
@@ -1402,6 +1403,13 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}                  <div className="mt-2">
+                      {/* Pediatric Preset Bar */}
+                      {searchTerm.length === 0 && activeFiltersCount === 0 && (
+                        <PediatricPresetBar
+                          language={language}
+                          onOpenCalc={(drugName) => { setPedCalcDrug(drugName); setPedCalcOpen(true); }}
+                        />
+                      )}
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
