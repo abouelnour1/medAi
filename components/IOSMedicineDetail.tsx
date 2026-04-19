@@ -29,7 +29,8 @@ interface Props {
   onImageZoom?: (imgs: string[], idx: number, title: string, flags: boolean[]) => void;
   onEdit?: (m: Medicine) => void;
   isAdmin?: boolean;
-  onOpenClinical?: () => void;
+  onOpenClinical?: () => void;   // Claude clinical
+  onAskGemini?: (m: Medicine) => void;
 }
 
 export default function IOSMedicineDetail({
@@ -45,6 +46,7 @@ export default function IOSMedicineDetail({
   onEdit,
   isAdmin,
   onOpenClinical,
+  onAskGemini,
 }: Props) {
   const isAr = language === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
@@ -222,7 +224,7 @@ export default function IOSMedicineDetail({
         </div>
       )}
 
-      {/* Actions */}
+      {/* Actions row 1: Alternatives + Share */}
       <div style={{ padding: '4px 16px 8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <ActionBtn
           tint={iOS.blue}
@@ -239,15 +241,33 @@ export default function IOSMedicineDetail({
         />
       </div>
 
-      {/* Clinical + Edit (admin) */}
-      {(onOpenClinical || isAdmin) && (
-        <div style={{ padding: '0 16px 8px', display: 'grid', gridTemplateColumns: onOpenClinical && isAdmin ? '1fr 1fr' : '1fr', gap: 10 }}>
+      {/* Actions row 2: Claude Clinical + Gemini + Edit */}
+      {(onOpenClinical || onAskGemini || isAdmin) && (
+        <div style={{
+          padding: '0 16px 8px',
+          display: 'grid',
+          gridTemplateColumns: [onOpenClinical, onAskGemini, isAdmin && onEdit].filter(Boolean).length === 3 ? '1fr 1fr 1fr'
+            : [onOpenClinical, onAskGemini, isAdmin && onEdit].filter(Boolean).length === 2 ? '1fr 1fr' : '1fr',
+          gap: 10,
+        }}>
           {onOpenClinical && (
             <ActionBtn
-              tint={iOS.green}
-              icon={<Icon.shield color={iOS.green} size={16} />}
-              label={isAr ? 'بيانات إكلينيكية' : 'Clinical data'}
+              tint={iOS.teal}
+              icon={<Icon.shield color={iOS.teal} size={16} />}
+              label={isAr ? 'كلود إكلينيكي' : 'Claude Clinical'}
               onClick={onOpenClinical}
+            />
+          )}
+          {onAskGemini && (
+            <ActionBtn
+              tint={iOS.blue}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill={iOS.blue}>
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+                </svg>
+              }
+              label={isAr ? 'اسأل جيمناي' : 'Ask Gemini'}
+              onClick={() => onAskGemini(m)}
             />
           )}
           {isAdmin && onEdit && (
@@ -263,17 +283,33 @@ export default function IOSMedicineDetail({
 
       {/* Composition */}
       <List header={isAr ? 'التركيب' : 'Composition'}>
-        {m['Scientific Name'] && (
-          <Row title={isAr ? 'المادة الفعالة' : 'Active ingredient'} detail={m['Scientific Name']} />
-        )}
-        {m.Strength && (
-          <Row title={isAr ? 'التركيز' : 'Strength'} detail={`${m.Strength}${m.StrengthUnit || ''}`} />
-        )}
+        {m['Scientific Name'] && (() => {
+          // Multi-ingredient: split on comma
+          const sciNames = String(m['Scientific Name']).split(',').map(s => s.trim()).filter(Boolean);
+          const strengths = String(m.Strength || '').split(',').map(s => s.trim());
+          const unit = m.StrengthUnit || '';
+          if (sciNames.length > 1) {
+            return sciNames.map((sci, i) => (
+              <Row
+                key={i}
+                title={sci}
+                detail={strengths[i] ? `${strengths[i]}${unit}` : undefined}
+                onLast={i === sciNames.length - 1 && !m.PharmaceuticalForm && !m.AdministrationRoute}
+              />
+            ));
+          }
+          return (
+            <Row
+              title={sciNames[0]}
+              detail={m.Strength ? `${m.Strength}${unit}` : undefined}
+            />
+          );
+        })()}
         {m.PharmaceuticalForm && (
           <Row title={isAr ? 'الشكل الصيدلاني' : 'Pharmaceutical form'} detail={m.PharmaceuticalForm} />
         )}
         {m.AdministrationRoute && (
-          <Row title={isAr ? 'طريقة الإعطاء' : 'Administration route'} detail={m.AdministrationRoute} />
+          <Row title={isAr ? 'طريقة الإعطاء' : 'Administration route'} detail={m.AdministrationRoute} onLast />
         )}
       </List>
 

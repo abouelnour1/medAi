@@ -10,7 +10,7 @@ const tintForId = (id: string) => {
   return priceTint[Math.abs(h) % priceTint.length];
 };
 
-type SortMode = 'relevance' | 'alpha' | 'priceAsc' | 'priceDesc';
+type SortMode = 'relevance' | 'alpha' | 'priceAsc' | 'priceDesc' | 'strengthAsc';
 
 interface Props {
   medicines: Medicine[];
@@ -19,6 +19,7 @@ interface Props {
   onLongPress?: (m: Medicine) => void;
   favorites: string[];
   onToggleFavorite?: (id: string) => void;
+  onImageZoom?: (imgs: string[], idx: number, title: string, flags: boolean[]) => void;
 }
 
 export default function IOSResultsList({
@@ -27,6 +28,7 @@ export default function IOSResultsList({
   onSelect,
   onLongPress,
   favorites,
+  onImageZoom,
 }: Props) {
   const isAr = language === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
@@ -45,7 +47,8 @@ export default function IOSResultsList({
       case 'priceDesc':
         arr.sort((a, b) => (parseFloat(b['Public price']) || 0) - (parseFloat(a['Public price']) || 0));
         break;
-      default:
+      case 'strengthAsc':
+        arr.sort((a, b) => (parseFloat(a.Strength) || 0) - (parseFloat(b.Strength) || 0));
         break;
     }
     return arr;
@@ -61,11 +64,12 @@ export default function IOSResultsList({
     );
   }
 
-  const sortLabel = {
+  const sortLabel: Record<SortMode, string> = {
     relevance: isAr ? 'الصلة' : 'Relevance',
     alpha: isAr ? 'أبجدي' : 'A-Z',
-    priceAsc: isAr ? 'السعر ↑' : 'Price ↑',
-    priceDesc: isAr ? 'السعر ↓' : 'Price ↓',
+    priceAsc: isAr ? 'سعر ↑' : 'Price ↑',
+    priceDesc: isAr ? 'سعر ↓' : 'Price ↓',
+    strengthAsc: isAr ? 'تركيز' : 'Strength',
   };
 
   return (
@@ -131,7 +135,7 @@ export default function IOSResultsList({
                   border: `0.5px solid ${iOS.sepCell}`,
                 }}
               >
-                {(['relevance', 'alpha', 'priceAsc', 'priceDesc'] as SortMode[]).map((mode, i, arr) => (
+                {(['relevance', 'alpha', 'priceAsc', 'priceDesc', 'strengthAsc'] as SortMode[]).map((mode, i, arr) => (
                   <button
                     key={mode}
                     onClick={() => { setSortMode(mode); setShowSortMenu(false); }}
@@ -174,6 +178,7 @@ export default function IOSResultsList({
             onClick={() => onSelect(m)}
             onLongPress={onLongPress ? () => onLongPress(m) : undefined}
             language={language}
+            onImageZoom={onImageZoom}
           />
         ))}
       </div>
@@ -188,6 +193,7 @@ function MedRow({
   onLongPress,
   isFavorite,
   language,
+  onImageZoom,
 }: {
   medicine: Medicine;
   last: boolean;
@@ -195,6 +201,7 @@ function MedRow({
   onLongPress?: () => void;
   isFavorite: boolean;
   language: Language;
+  onImageZoom?: (imgs: string[], idx: number, title: string, flags: boolean[]) => void;
 }) {
   const isAr = language === 'ar';
   const tint = tintForId(m.RegisterNumber);
@@ -241,6 +248,13 @@ function MedRow({
     >
       {m.imgBox ? (
         <div
+          onClick={(e) => {
+            if (onImageZoom) {
+              e.stopPropagation();
+              const imgs = [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[];
+              onImageZoom(imgs, 0, m['Trade Name'] || '', [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2]);
+            }
+          }}
           style={{
             width: 52,
             height: 52,
@@ -253,6 +267,7 @@ function MedRow({
             justifyContent: 'center',
             overflow: 'hidden',
             padding: 2,
+            cursor: onImageZoom ? 'zoom-in' : 'pointer',
           }}
         >
           <img
@@ -301,7 +316,7 @@ function MedRow({
             {m.Strength ? ` ${m.Strength}${m.StrengthUnit || ''}` : ''}
           </div>
         )}
-        {(m.PharmaceuticalForm || m['Manufacture Name']) && (
+        {(m.PharmaceuticalForm || m['Manufacture Name'] || m.PackageSize) && (
           <div
             style={{
               fontSize: 12,
@@ -314,7 +329,12 @@ function MedRow({
               overflow: 'hidden',
             }}
           >
-            {m.PharmaceuticalForm && <span>{m.PharmaceuticalForm}</span>}
+            {m.PharmaceuticalForm && (
+              <span>
+                {m.PharmaceuticalForm}
+                {m.PackageSize ? ` · ${m.PackageSize}` : ''}
+              </span>
+            )}
             {m.PharmaceuticalForm && m['Manufacture Name'] && (
               <span style={{ width: 2, height: 2, borderRadius: '50%', background: iOS.label3, flexShrink: 0 }} />
             )}

@@ -277,7 +277,10 @@ export default function IOSSettingsScreen(props: Props) {
           onClick={(e) => { if (e.target === e.currentTarget) setShowEditProfile(false); }}
         >
           <div
-            style={{
+            onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          style={{
               background: iOS.bg,
               borderTopLeftRadius: 14,
               borderTopRightRadius: 14,

@@ -22,6 +22,7 @@ interface Props {
   onBack: () => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
+  onImageZoom?: (imgs: string[], idx: number, title: string, flags: boolean[]) => void;
 }
 
 function tintFor(regNo: string): string {
@@ -50,6 +51,7 @@ export default function IOSAlternativesScreen({
   onSelect,
   onLongPress,
   onBack,
+  onImageZoom,
 }: Props) {
   const dir: Dir = language === 'ar' ? 'rtl' : 'ltr';
   const tr = (ar: string, en: string) => langPick(language, ar, en);
@@ -82,15 +84,17 @@ export default function IOSAlternativesScreen({
           <img
             src={m.imgBox}
             alt=""
+            onClick={(e) => { if (onImageZoom) { e.stopPropagation(); const imgs=[m.imgBox,m.imgIndex1,m.imgIndex2].filter(Boolean) as string[]; onImageZoom(imgs,0,m["Trade Name"]||"",[!!m.imgBox,!!m.imgIndex1,!!m.imgIndex2]); } }}
             style={{
               width: 46,
               height: 46,
               borderRadius: 10,
-              objectFit: 'contain',
+              objectFit: "contain",
               background: iOS.gray6,
               padding: 3,
               border: `0.5px solid ${iOS.sepCell}`,
               flexShrink: 0,
+              cursor: onImageZoom ? "zoom-in" : "pointer",
             }}
           />
         ) : (
@@ -348,6 +352,20 @@ export default function IOSAlternativesScreen({
 
       {/* Sections */}
       <div style={{ marginTop: 10 }}>
+        {/* Explanation legend */}
+        <div style={{ margin: '0 16px 12px', padding: '10px 14px', borderRadius: 10, background: iOS.bg2, direction: dir }}>
+          <div style={{ fontSize: 12, color: iOS.label2, lineHeight: 1.5, textAlign: language === 'ar' ? 'right' : 'left' }}>
+            <span style={{ color: iOS.green, fontWeight: 600 }}>● {tr('مباشرة', 'Direct')}</span>
+            {' — '}{tr('نفس المادة الفعالة والتركيز', 'Same ingredient & strength')}
+            {'   '}
+            <span style={{ color: iOS.orange, fontWeight: 600 }}>● {tr('تركيز مختلف', 'Diff strength')}</span>
+            {' — '}{tr('نفس المادة بتركيز مختلف', 'Same ingredient, different dose')}
+            {'   '}
+            <span style={{ color: iOS.blue, fontWeight: 600 }}>● {tr('علاجية', 'Therapeutic')}</span>
+            {' — '}{tr('نفس الاستخدام لكن مادة مختلفة', 'Same use, different ingredient')}
+          </div>
+        </div>
+
         {section(
           tr('بدائل مباشرة', 'Direct alternatives'),
           String(alternatives.direct.length),

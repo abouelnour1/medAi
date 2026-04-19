@@ -1268,6 +1268,7 @@ const App: React.FC = () => {
                 onBack={handleBack}
                 favorites={favorites}
                 onToggleFavorite={toggleFavorite}
+                onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); }}
               />
             </React.Suspense>
           );
@@ -1405,6 +1406,7 @@ const App: React.FC = () => {
                   onLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }}
                   favorites={favorites}
                   onToggleFavorite={toggleFavorite}
+                  onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({ images: imgs, index: idx, title, flags }); }}
                 />
               )}
             </React.Suspense>
@@ -1481,6 +1483,7 @@ const App: React.FC = () => {
                 isAdmin={user?.role === 'admin'}
                 onEdit={(m) => { setSelectedMedicine(m); setIsEditModalOpen(true); }}
                 onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })}
+                onAskGemini={handleAskGemini}
               />
             </React.Suspense>
           );
