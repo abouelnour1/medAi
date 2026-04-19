@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Medicine } from '../types';
 
 // ── Types (مشتركة مع PediatricDoseCalculator) ────────────────────────────────
 type DoseLevel = 'min' | 'mid' | 'max';
@@ -93,14 +94,26 @@ function calcDose(drug: DrugEntry, preset: DrugPreset, weight: number) {
 interface Props {
   language: 'ar' | 'en';
   onOpenCalc: (drugName?: string) => void;
+  medicines: Medicine[];
 }
 
-const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc }) => {
+const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }) => {
   const ar = language === 'ar';
   const [presets, setPresets] = useState<DrugPreset[]>(loadPresets);
   const [drugs, setDrugs] = useState<DrugEntry[]>([]);
   const [weights, setWeights] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // إيجاد صورة المنتج من الـ medicines array بالمادة الفعالة
+  const getMedImage = (active: string): string | null => {
+    if (!medicines.length) return null;
+    const norm = active.toLowerCase().replace(/,\s*/g, ',');
+    const match = medicines.find(m => {
+      const sci = (m['Scientific Name'] || '').toLowerCase().replace(/,\s*/g, ',');
+      return sci.includes(norm) || norm.includes(sci);
+    });
+    return match?.imgBox || match?.imgPill || null;
+  };
 
   // مستمع لأي تغيير في الـ presets من الحاسبة
   useEffect(() => {
@@ -156,10 +169,17 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc }) => {
             >
               {/* Top row */}
               <div className="flex items-center gap-3 px-3 pt-3 pb-2">
-                {/* Icon */}
-                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-base">{drug?.form === 'Suppository' ? '🕯️' : '💊'}</span>
-                </div>
+                {/* Image or fallback */}
+                {(() => {
+                  const img = getMedImage(p.active);
+                  return img ? (
+                    <img src={img} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 dark:bg-slate-800 p-1 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0 text-lg">
+                      {drug?.form === 'Suppository' ? '🕯️' : '💊'}
+                    </div>
+                  );
+                })()}
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">

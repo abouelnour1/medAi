@@ -663,9 +663,10 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                       value={weight}
                       onChange={e => setWeight(e.target.value)}
                       placeholder={ar ? 'مثال: 12.5' : 'e.g. 12.5'}
-                      className="w-full p-4 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-lg font-black text-slate-700 dark:text-white outline-none focus:border-teal-400 transition-colors pr-16"
+                      className="w-full py-4 px-4 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-lg font-black text-slate-700 dark:text-white outline-none focus:border-teal-400 transition-colors"
+                      style={{ paddingLeft: '3rem' }}
                     />
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">kg</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none bg-white dark:bg-dark-card px-1">kg</span>
                   </div>
                 ) : (
                   <div>

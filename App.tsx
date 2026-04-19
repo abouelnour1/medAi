@@ -612,7 +612,7 @@ const App: React.FC = () => {
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
           restoreScroll('insuranceSearch');
-      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch'].includes(view)) {
+      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch', 'pedDoseHistory'].includes(view)) {
           const target = activeTab === 'search' 
               ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
@@ -1318,6 +1318,36 @@ const App: React.FC = () => {
       if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
       if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
 
+      if (view === 'pedDoseHistory') return (
+        <div className="pt-2 pb-8">
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <div className="w-9 h-9 bg-teal-50 dark:bg-teal-900/20 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">👶</div>
+            <div>
+              <h2 className="text-base font-black text-slate-700 dark:text-white">{language === 'ar' ? 'الجرعات السريعة' : 'Quick Doses'}</h2>
+              <p className="text-[10px] font-bold text-slate-400">{language === 'ar' ? 'الإعدادات المحفوظة — أدخل الوزن للحساب الفوري' : 'Saved presets — enter weight for instant dose'}</p>
+            </div>
+            <button
+              onClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
+              className="mr-auto flex items-center gap-1.5 px-3 py-2 bg-teal-500 text-white rounded-xl text-[11px] font-black active:scale-95"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+              {language === 'ar' ? 'حاسبة' : 'Calc'}
+            </button>
+          </div>
+          <PediatricPresetBar
+            language={language}
+            onOpenCalc={(drugName) => { setPedCalcDrug(drugName); setPedCalcOpen(true); }}
+            medicines={medicines}
+          />
+          {/* Empty state */}
+          <div id="ped-preset-empty-hint" className="hidden text-center py-16">
+            <p className="text-4xl mb-3">👶</p>
+            <p className="text-sm font-black text-slate-400">{language === 'ar' ? 'لا توجد إعدادات محفوظة بعد' : 'No saved presets yet'}</p>
+            <p className="text-[11px] font-bold text-slate-300 mt-1">{language === 'ar' ? 'افتح الحاسبة واحفظ إعداد سريع' : 'Open the calculator and save a quick preset'}</p>
+          </div>
+        </div>
+      );
+
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
           if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
@@ -1400,16 +1430,15 @@ const App: React.FC = () => {
                           </svg>
                           <span className="text-[10px] font-black text-indigo-600">{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
                         </button>
+                        {/* Quick Doses */}
+                        <button onClick={() => setView('pedDoseHistory')}
+                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/20 active:scale-95 transition-all relative">
+                          <span className="text-2xl leading-none">👶</span>
+                          <span className="text-[10px] font-black text-teal-600">{language === 'ar' ? 'جرعات سريعة' : 'Quick Doses'}</span>
+                        </button>
                       </div>
                     </div>
                   )}                  <div className="mt-2">
-                      {/* Pediatric Preset Bar */}
-                      {searchTerm.length === 0 && activeFiltersCount === 0 && (
-                        <PediatricPresetBar
-                          language={language}
-                          onOpenCalc={(drugName) => { setPedCalcDrug(drugName); setPedCalcOpen(true); }}
-                        />
-                      )}
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
                         const minLen = textSearchMode === 'indication' ? 1 : 3;
@@ -1722,7 +1751,7 @@ const App: React.FC = () => {
       />
 
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
-      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view) && (
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{ top: headerHeight }}
@@ -1752,7 +1781,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
