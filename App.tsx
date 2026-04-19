@@ -43,6 +43,7 @@ import { logSearch, logShareMedicine, logFavoriteToggle, logTabSwitch, setUserSp
 import { syncAnalyticsToFirestore } from './utils/analyticsSync';
 import CompareBar from './components/CompareBar';
 import ClinicalDataPage from './components/ClinicalDataPage';
+import ClinicalReferencePage from './components/ClinicalReferencePage';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
@@ -64,13 +65,15 @@ const IOSPreviewScreen = React.lazy(() => import('./components/IOSPreviewScreen'
 const IOSSuspenseFallback = () => (
   <div style={{ background: 'var(--ios-bg)', minHeight: '100vh' }} />
 );
-const IOSHomeScreen = React.lazy(() => import('./components/IOSHomeScreen'));
-const IOSResultsList = React.lazy(() => import('./components/IOSResultsList'));
+// Eager load for instant response - no flash on tab switch
+import IOSHomeScreen from './components/IOSHomeScreen';
+import IOSResultsList from './components/IOSResultsList';
+import IOSInsuranceScreen from './components/IOSInsuranceScreen';
+import IOSFavoritesScreen from './components/IOSFavoritesScreen';
+import IOSAlternativesScreen from './components/IOSAlternativesScreen';
+// Lazy load less-used screens
 const IOSMedicineDetail = React.lazy(() => import('./components/IOSMedicineDetail'));
-const IOSInsuranceScreen = React.lazy(() => import('./components/IOSInsuranceScreen'));
-const IOSFavoritesScreen = React.lazy(() => import('./components/IOSFavoritesScreen'));
 const IOSSettingsScreen = React.lazy(() => import('./components/IOSSettingsScreen'));
-const IOSAlternativesScreen = React.lazy(() => import('./components/IOSAlternativesScreen'));
 const IOSIndicationSearch = React.lazy(() => import('./components/IOSIndicationSearch'));
 const IOSPharmacistQuickView = React.lazy(() => import('./components/IOSPharmacistQuickView'));
 import { IOSTabBar, type TabKey as IOSTabKey, ScreenTransition } from './components/ui/ios';
@@ -291,7 +294,8 @@ const App: React.FC = () => {
     return () => unsub?.();
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
-  const [language, setLanguage] = useState<Language>('en');
+  const [language] = useState<Language>('en');
+  const setLanguage = (_l: Language) => {}; // Language locked to English
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
@@ -455,6 +459,7 @@ const App: React.FC = () => {
   const prevSheetMedicine = React.useRef<Medicine | null>(null);
   const [geminiModal, setGeminiModal] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: '' });
   const [clinicalModal, setClinicalModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
+  const [clinicalRefModal, setClinicalRefModal] = useState<{ open: boolean; medicine: any | null }>({ open: false, medicine: null });
   const [sheetSkipAnim, setSheetSkipAnim] = useState(false);
   const openSheet = (m: Medicine, skip = false) => { setSheetSkipAnim(skip); setSheetMedicine(m); };
   const [skipNextViewKey, setSkipNextViewKey] = useState(false);
@@ -1349,7 +1354,7 @@ const App: React.FC = () => {
                 onOpenAdmin={user?.role === 'admin' ? () => setView('admin') : undefined}
                 favoritesCount={favorites.length}
                 onUpdateProfile={(updates) => {
-                  if (user) updateUser({ ...user, ...(updates as any) });
+                  if (user) updateUser({ ...user, displayName: updates.name, specialty: updates.specialty as any });
                 }}
               />
             </React.Suspense>
@@ -1482,7 +1487,7 @@ const App: React.FC = () => {
                 }}
                 isAdmin={user?.role === 'admin'}
                 onEdit={(m) => { setSelectedMedicine(m); setIsEditModalOpen(true); }}
-                onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })}
+                onOpenClinical={() => setClinicalRefModal({ open: true, medicine: selectedMedicine })}
                 onAskGemini={handleAskGemini}
               />
             </React.Suspense>
@@ -2228,6 +2233,18 @@ onClearSearch={handleClearSearch}
             isAdmin={user?.role === 'admin'}
             allMedicines={medicines}
             onClose={() => setClinicalModal({ open: false, medicine: null })}
+          />
+        </div>
+      )}
+
+      {/* R2 Clinical Reference — Drug interactions + clinical safety from R2 */}
+      {clinicalRefModal.open && clinicalRefModal.medicine && (
+        <div className="fixed inset-0 z-[999]">
+          <ClinicalReferencePage
+            scientificName={String(clinicalRefModal.medicine['Scientific Name'] || '')}
+            tradeName={String(clinicalRefModal.medicine['Trade Name'] || '')}
+            language={language}
+            onClose={() => setClinicalRefModal({ open: false, medicine: null })}
           />
         </div>
       )}

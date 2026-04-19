@@ -708,10 +708,10 @@ export function IOSTabBar({
         left: 0,
         right: 0,
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)',
-        background: 'rgba(249,249,249,0.92)',
+        background: 'var(--ios-tabbar-bg, rgba(249,249,249,0.94))',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        borderTop: '0.33px solid rgba(60,60,67,0.3)',
+        borderTop: '0.33px solid var(--ios-sepCell)',
         zIndex: 40,
       }}
     >
@@ -761,12 +761,9 @@ export function ScreenTransition({ children, viewKey }: { children: React.ReactN
   return (
     <div
       key={viewKey}
-      style={{ animation: 'iosFadeIn 180ms ease' }}
+      style={{ animation: 'iosFadeIn 120ms ease-out' }}
     >
-      <style>{`
-        @keyframes iosFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-        @keyframes iosScreenIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      <style>{`@keyframes iosFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }`}</style>
       {children}
     </div>
   );

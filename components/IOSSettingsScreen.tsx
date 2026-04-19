@@ -40,8 +40,15 @@ export default function IOSSettingsScreen(props: Props) {
   const dir: Dir = language === 'ar' ? 'rtl' : 'ltr';
   const tr = (ar: string, en: string) => langPick(language, ar, en);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [editName, setEditName] = useState(user?.name || '');
-  const [editSpecialty, setEditSpecialty] = useState(user?.specialty || 'Pharmacist');
+  const [editName, setEditName] = useState('');
+  const [editSpecialty, setEditSpecialty] = useState('Pharmacist');
+
+  // Sync when modal opens
+  const openEditProfile = () => {
+    setEditName(user?.displayName || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || '');
+    setEditSpecialty(user?.specialty || 'Pharmacist');
+    setShowEditProfile(true);
+  };
 
   const specialties = [
     'Pharmacist',
@@ -92,13 +99,11 @@ export default function IOSSettingsScreen(props: Props) {
                 {initials}
               </div>
             }
-            title={user.name || user.email || tr('مستخدم', 'User')}
+            title={user.displayName || (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '') || user.email || tr('مستخدم', 'User')}
             subtitle={[user.specialty, user.role].filter(Boolean).join(' · ')}
             chevron
             onClick={() => {
-              setEditName(user.name || '');
-              setEditSpecialty(user.specialty || 'Pharmacist');
-              setShowEditProfile(true);
+              openEditProfile();
             }}
           />
         ) : (
@@ -273,19 +278,25 @@ export default function IOSSettingsScreen(props: Props) {
             flexDirection: 'column',
             justifyContent: 'flex-end',
             direction: dir,
+            overflowY: 'hidden',
+            touchAction: 'none',
           }}
+          onTouchMove={(e) => e.preventDefault()}
           onClick={(e) => { if (e.target === e.currentTarget) setShowEditProfile(false); }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-          style={{
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            style={{
               background: iOS.bg,
               borderTopLeftRadius: 14,
               borderTopRightRadius: 14,
               paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
               animation: 'iosSheetIn 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+              overflowY: 'auto',
+              maxHeight: '85vh',
+              touchAction: 'pan-y',
             }}
           >
             <style>{`@keyframes iosSheetIn { 0% { transform: translateY(100%); } 100% { transform: translateY(0); } }`}</style>

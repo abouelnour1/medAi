@@ -72,13 +72,7 @@ export default function IOSIndicationSearch({
   }, [initialQuery]);
 
   const matchedIndications = useMemo(() => {
-    if (!query.trim()) {
-      // Show all indications sorted alphabetically
-      return Object.entries(indications)
-        .slice(0, 100)
-        .map(([name, data]) => ({ name, icd10Code: data.icd10Code, drugCount: (data.drugs || []).length }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }
+    if (!query.trim()) return []; // empty until user types
     const q = query.toLowerCase();
     return Object.entries(indications)
       .filter(
