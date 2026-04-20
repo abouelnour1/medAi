@@ -347,17 +347,12 @@ const PrescriptionView: React.FC<PrescriptionViewProps> = ({ language, user, all
 
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-dark-bg border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d={ar ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+        <button onClick={onBack} className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-90 transition-all flex-shrink-0">
+          <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center">
-            <svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
           <div>
             <h1 className="text-sm font-black text-slate-800 dark:text-white">{ar ? 'الوصفة الطبية' : 'Prescription'}</h1>
             <p className="text-[10px] text-slate-400">{ar ? 'إنشاء وطباعة وصفة طبية' : 'Create & print prescriptions'}</p>

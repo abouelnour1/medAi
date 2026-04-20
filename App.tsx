@@ -62,7 +62,7 @@ import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
 import BottomNavBar from './components/BottomNavBar';
 import { useSubscription } from './hooks/useSubscription';
-import PaywallModal from './components/PaywallModal';
+import PlansPage from './components/PlansPage';
 import AdBanner from './components/AdBanner';
 
 const normalizeMedicine = (item: any): Medicine => {
@@ -302,7 +302,8 @@ const App: React.FC = () => {
       else sessionStorage.removeItem('ps_selected_reg');
     } catch {}
   }, []);
-  const [previousView, setPreviousView] = useState<View>('results'); // للرجوع الصح
+  const [previousView, setPreviousView] = useState<View>('results');
+  const [previousTab, setPreviousTab] = useState<Tab>('search'); // لحفظ الـ tab عند فتح notifications
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => { try { const s = localStorage.getItem(FAVORITES_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [recentSearchIds, setRecentSearchIds] = useState<string[]>(() => { try { const s = localStorage.getItem(RECENT_SEARCHES_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -617,7 +618,13 @@ const App: React.FC = () => {
       } else if (view === 'insuranceDetails') {
           setView('insuranceSearch');
           restoreScroll('insuranceSearch');
-      } else if (['login', 'register', 'admin', 'notifications', 'favorites', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) {
+      } else if (view === 'notifications') {
+          const prev = previousView && previousView !== 'notifications' ? previousView : 'search';
+          const tab = previousTab || 'search';
+          setActiveTab(tab as Tab);
+          setView(prev as View);
+          restoreScroll(prev);
+      } else if (['login', 'register', 'admin', 'favorites', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) {
           const target = activeTab === 'search' 
               ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
@@ -1790,13 +1797,13 @@ const App: React.FC = () => {
       <Header
         ref={headerRef}
         title="Easy Drug"
-        showBack={(view !== 'search' && view !== 'prescription') || activeTab === 'insurance'}
+        showBack={(view !== 'search') || activeTab === 'insurance'}
         onBack={handleBack}
         t={t}
         onLoginClick={() => { setPreviousView(view); setView('login'); }}
         onAdminClick={()=>setView('admin')}
         onPediatricCalcClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-        onNotificationsClick={() => setView('notifications')}
+        onNotificationsClick={() => { setPreviousView(view); setPreviousTab(activeTab); setView('notifications'); }}
         onSettingsClick={(target?: string) => { setActiveTab('settings'); if (target === 'stockTracker') { setView('stockTracker'); } else if (target === 'orderList') { refreshOrderCount(); setView('orderList'); } else { setView('settings'); restoreScroll('settings'); } }}
         view={view}
         unreadCount={notifications.filter(n => !n.isRead).length}
@@ -2020,17 +2027,20 @@ onClearSearch={handleClearSearch}
 
       {/* Paywall Modal */}
       {showPaywall && (
-        <PaywallModal
+        <PlansPage
           language={language}
           onClose={() => setShowPaywall(false)}
+          currentPlan={subscription.plan}
+          expiresAt={subscription.expiresAt}
+          daysLeft={subscription.daysLeft}
+          onRestore={async () => {
+            // TODO: Google Play restore
+          }}
           onSubscribe={async (plan) => {
-            // Google Play Billing flow
             try {
-              // Google Play Billing — بعد ما تضيف @capacitor-community/in-app-purchases
-              // حالياً: call verifyPurchase Cloud Function مباشرة بعد Google Play confirmation
               const { getFunctions, httpsCallable } = await import('firebase/functions');
-              const functions = getFunctions();
-              const verifyPurchase = httpsCallable(functions, 'verifyPurchase');
+              const fns = getFunctions();
+              const verifyPurchase = httpsCallable(fns, 'verifyPurchase');
               const productId = plan === 'yearly' ? 'easydrug_premium_yearly' : 'easydrug_premium_monthly';
               // TODO: استبدل 'GOOGLE_PLAY_TOKEN' بالـ token الجاي من Google Play SDK
               await verifyPurchase({ purchaseToken: 'GOOGLE_PLAY_TOKEN', productId });

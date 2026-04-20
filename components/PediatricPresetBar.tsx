@@ -14,6 +14,7 @@ interface DrugPreset {
   disease: string | null;
   condition: string | null;
   condition2: string | null;
+  customImage?: string | null;
 }
 
 interface DrugEntry {
@@ -169,11 +170,11 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }
             >
               {/* Top row */}
               <div className="flex items-center gap-3 px-3 pt-3 pb-2">
-                {/* صورة المنتج بس لو موجودة */}
+                {/* صورة: customImage أولاً، بعدين medicines lookup */}
                 {(() => {
-                  const img = getMedImage(p.active);
+                  const img = p.customImage?.trim() || getMedImage(p.active);
                   return img ? (
-                    <img src={img} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 dark:bg-slate-800 p-1 flex-shrink-0" />
+                    <img src={img} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 dark:bg-slate-800 p-1 flex-shrink-0" onError={e => (e.currentTarget.style.display = 'none')} />
                   ) : null;
                 })()}
 
@@ -198,16 +199,18 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }
               {/* Weight input + result row */}
               <div className="flex items-center gap-2 px-3 pb-3">
                 {/* Weight */}
-                <div className="relative flex-shrink-0 w-28">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={weights[p.id] || ''}
-                    onChange={e => setWeights(prev => ({ ...prev, [p.id]: e.target.value }))}
-                    placeholder={ar ? 'الوزن' : 'Weight'}
-                    className="w-full pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl text-sm font-black text-slate-700 dark:text-white outline-none focus:border-teal-400 transition-colors"
-                  />
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">kg</span>
+                <div className="flex-shrink-0 w-24">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl overflow-hidden focus-within:border-teal-400 transition-colors">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={weights[p.id] || ''}
+                      onChange={e => setWeights(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      placeholder="0.0"
+                      className="w-0 flex-1 py-2 px-2 bg-transparent text-sm font-black text-slate-700 dark:text-white outline-none text-center"
+                    />
+                    <span className="pr-2 text-[10px] font-black text-slate-400 flex-shrink-0">kg</span>
+                  </div>
                 </div>
 
                 {/* Result */}

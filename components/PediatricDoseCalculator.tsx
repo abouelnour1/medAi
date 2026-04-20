@@ -45,6 +45,7 @@ interface DrugPreset {
   disease: string | null;
   condition: string | null;
   condition2: string | null;
+  customImage?: string | null; // URL اختياري يضيفه المستخدم
 }
 
 const PRESET_KEY = 'ps_ped_presets_v1';
@@ -138,6 +139,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
   const [presets, setPresets] = useState<DrugPreset[]>(loadPresets);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [presetLabel, setPresetLabel] = useState('');
+  const [presetImageUrl, setPresetImageUrl] = useState('');
 
   useEffect(() => {
     if (!initialDrugName || !drugs.length || selectedActive) return;
@@ -370,12 +372,14 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
       disease: selectedDisease,
       condition: selectedCondition,
       condition2: selectedCondition2,
+      customImage: presetImageUrl.trim() || null,
     };
     const updated = [newPreset, ...presets].slice(0, MAX_PRESETS);
     setPresets(updated);
     savePresets(updated);
     setShowSavePrompt(false);
     setPresetLabel('');
+    setPresetImageUrl('');
   };
 
   const deletePreset = (id: string) => {
@@ -447,19 +451,32 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
 
                 {/* Save prompt */}
                 {showSavePrompt && (
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      value={presetLabel}
-                      onChange={e => setPresetLabel(e.target.value)}
-                      placeholder={ar ? 'اسم الـ Preset' : 'Preset name'}
-                      className="flex-1 px-3 py-2 bg-white dark:bg-dark-card border-2 border-teal-300 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
-                    />
-                    <button onClick={savePreset} className="px-3 py-2 bg-teal-500 text-white rounded-xl text-xs font-black active:scale-95">
-                      {ar ? 'حفظ' : 'Save'}
-                    </button>
-                    <button onClick={() => setShowSavePrompt(false)} className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black active:scale-95">
-                      ✕
-                    </button>
+                  <div className="space-y-2 mb-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={presetLabel}
+                        onChange={e => setPresetLabel(e.target.value)}
+                        placeholder={ar ? 'اسم الـ Preset' : 'Preset name'}
+                        className="flex-1 px-3 py-2 bg-white dark:bg-dark-card border-2 border-teal-300 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
+                      />
+                      <button onClick={savePreset} className="px-3 py-2 bg-teal-500 text-white rounded-xl text-xs font-black active:scale-95">
+                        {ar ? 'حفظ' : 'Save'}
+                      </button>
+                      <button onClick={() => { setShowSavePrompt(false); setPresetImageUrl(''); }} className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black active:scale-95">
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {presetImageUrl.trim() && (
+                        <img src={presetImageUrl} alt="" className="w-8 h-8 rounded-lg object-contain bg-slate-100 flex-shrink-0" onError={e => (e.currentTarget.style.display = 'none')} />
+                      )}
+                      <input
+                        value={presetImageUrl}
+                        onChange={e => setPresetImageUrl(e.target.value)}
+                        placeholder={ar ? 'رابط صورة الدواء (اختياري)' : 'Medicine image URL (optional)'}
+                        className="flex-1 px-3 py-2 bg-white dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
+                      />
+                    </div>
                   </div>
                 )}
 
