@@ -1,36 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 
-// AdMob Unit IDs — استبدل بالـ IDs الحقيقية من AdMob console
-// للتست استخدم الـ test IDs دول
 const ADMOB_BANNER_ID = Capacitor.getPlatform() === 'android'
-  ? 'ca-app-pub-3940256099942544/6300978111' // TEST ID — استبدل بـ real ID
-  : 'ca-app-pub-3940256099942544/2934735716'; // iOS TEST ID
+  ? 'ca-app-pub-3940256099942544/6300978111' // TEST ID
+  : 'ca-app-pub-3940256099942544/2934735716';
 
 interface Props {
   isPremium: boolean;
 }
 
 const AdBanner: React.FC<Props> = ({ isPremium }) => {
-  const [adLoaded, setAdLoaded] = useState(false);
-  const [adError, setAdError] = useState(false);
-
   useEffect(() => {
-    if (isPremium) return; // مش هنحمل أي إعلانات للـ premium
-    if (!Capacitor.isNativePlatform()) return; // AdMob native only
+    if (isPremium || !Capacitor.isNativePlatform()) return;
 
-    let isMounted = true;
+    let active = true;
 
-    const initAdMob = async () => {
+    const showAd = async () => {
       try {
-        // @ts-ignore — AdMob plugin
-        const { AdMob, BannerAdSize, BannerAdPosition } = await import('@capacitor-community/admob');
-
-        await AdMob.initialize({
-          testingDevices: [],
-          initializeForTesting: false,
-        });
-
+        // AdMob بيشتغل على native بس — الـ import هيفشل على web وده متوقع
+        const mod = await import(/* @vite-ignore */ '@capacitor-community/admob');
+        if (!mod || !active) return;
+        const { AdMob, BannerAdSize, BannerAdPosition } = mod;
+        await AdMob.initialize({ testingDevices: [], initializeForTesting: false });
         await AdMob.showBanner({
           adId: ADMOB_BANNER_ID,
           adSize: BannerAdSize.ADAPTIVE_BANNER,
@@ -38,42 +29,23 @@ const AdBanner: React.FC<Props> = ({ isPremium }) => {
           margin: 0,
           isTesting: false,
         });
-
-        if (isMounted) setAdLoaded(true);
-      } catch (e) {
-        console.warn('AdMob error:', e);
-        if (isMounted) setAdError(true);
-      }
+      } catch {}
     };
 
-    initAdMob();
+    showAd();
 
     return () => {
-      isMounted = false;
-      // إخفاء الـ banner لما الـ component يتشيل
-      (async () => {
-        try {
-          // @ts-ignore
-          const { AdMob } = await import('@capacitor-community/admob');
-          await AdMob.hideBanner();
-        } catch {}
-      })();
+      active = false;
+      import(/* @vite-ignore */ '@capacitor-community/admob')
+        .then(({ AdMob }) => AdMob.hideBanner())
+        .catch(() => {});
     };
   }, [isPremium]);
 
-  // لو premium أو مش native → مش بنعرض حاجة
-  if (isPremium || !Capacitor.isNativePlatform()) return null;
-
-  // Placeholder للـ web preview بس
-  if (process.env.NODE_ENV === 'development') {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-[50] flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700" style={{ height: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">📢 Ad Banner Placeholder</p>
-      </div>
-    );
-  }
-
-  return null; // Native AdMob يتحكم في الـ banner نفسه
+  // لا شيء يُعرض في الـ DOM — AdMob native بيتحكم في الـ banner
+  return null;
 };
+
+export default AdBanner;
 
 export default AdBanner;
