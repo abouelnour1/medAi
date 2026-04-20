@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
+import BrandHeader from '../BrandHeader';
 
 interface RegisterViewProps {
   onSwitchToLogin: () => void;
@@ -51,19 +52,9 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onR
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 animate-card">
       <div className="bg-white dark:bg-dark-card w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.1)] border border-slate-50 dark:border-dark-border">
-        
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-3">
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-            </svg>
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white">{t('register')}</h2>
-          <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Create your account</p>
-        </div>
 
-
+        {/* Brand Header */}
+        <BrandHeader subtitle={ar ? 'إنشاء حساب جديد' : 'Create your account'} size="sm" />
 
         {/* Email/Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

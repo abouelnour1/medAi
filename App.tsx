@@ -1466,7 +1466,8 @@ const App: React.FC = () => {
                           </svg>
                           <span className="text-[10px] font-black text-rose-500">{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
                         </button>
-                        {/* Prescription */}
+                        {/* Prescription — admin only until payment is ready */}
+                        {user?.role === 'admin' && (
                         <button onClick={() => { setActiveTab('settings'); setView('prescription'); }}
                           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 active:scale-95 transition-all">
                           <svg className="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -1477,6 +1478,7 @@ const App: React.FC = () => {
                           </svg>
                           <span className="text-[10px] font-black text-indigo-600">{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
                         </button>
+                        )}
                         {/* Quick Doses */}
                         <button onClick={() => setView('pedDoseHistory')}
                           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/20 active:scale-95 transition-all relative">
@@ -1604,16 +1606,12 @@ const App: React.FC = () => {
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
           if (view === 'prescription') {
-            if (!subscription.isPremium) {
+            if (user?.role !== 'admin') {
               return (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                   <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center text-4xl mb-4">📋</div>
-                  <h2 className="text-lg font-black text-slate-700 dark:text-white mb-2">{language === 'ar' ? 'ميزة Premium' : 'Premium Feature'}</h2>
-                  <p className="text-sm font-bold text-slate-400 mb-6">{language === 'ar' ? 'الوصفات الطبية متاحة لمشتركي Premium فقط' : 'Prescriptions are available for Premium subscribers only'}</p>
-                  <button onClick={() => setShowPaywall(true)}
-                    className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">
-                    {language === 'ar' ? '⭐ ترقية إلى Premium' : '⭐ Upgrade to Premium'}
-                  </button>
+                  <h2 className="text-lg font-black text-slate-700 dark:text-white mb-2">{language === 'ar' ? 'قريباً' : 'Coming Soon'}</h2>
+                  <p className="text-sm font-bold text-slate-400">{language === 'ar' ? 'الوصفات الطبية ستكون متاحة قريباً' : 'Prescription feature coming soon'}</p>
                 </div>
               );
             }
@@ -1782,7 +1780,7 @@ const App: React.FC = () => {
         {specialtyModalEl}
       {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setView('search'); }} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />
         }
       </div>
     );

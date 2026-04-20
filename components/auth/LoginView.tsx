@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { TFunction } from '../../types';
 import GoogleIcon from '../icons/GoogleIcon';
+import BrandHeader from '../BrandHeader';
 
 
 interface LoginViewProps {
@@ -95,22 +96,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-5">
       <div className="w-full max-w-sm">
 
-        {/* Logo */}
-        <div className="mb-10 text-center">
-          <div className="relative inline-flex mb-5">
-            <img
-              src="/logo.png"
-              alt="Easy Drug"
-              className="w-20 h-20 rounded-[1.5rem] object-cover"
-            />
-          </div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-            Easy<span className="text-teal-500">Drug</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 font-medium tracking-widest uppercase">
-            {ar ? 'تسجيل الدخول' : 'Sign in to continue'}
-          </p>
-        </div>
+        {/* Brand Header */}
+        <BrandHeader subtitle={ar ? 'تسجيل الدخول' : 'Sign in to continue'} />
 
         {/* Social */}
         <div className="space-y-3 mb-6">
