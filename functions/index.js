@@ -1,11 +1,213 @@
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getFirestore } = require('firebase-admin/firestore');
 const { defineSecret } = require('firebase-functions/params');
+const { google } = require('googleapis');
 
 initializeApp();
+
+const geminiApiKey = defineSecret('GEMINI_API_KEY');
+
+// Product IDs — طابقها مع Google Play Console
+const PRODUCT_MAP = {
+  'easydrug_premium_monthly': { plan: 'monthly', durationDays: 31 },
+  'easydrug_premium_yearly':  { plan: 'yearly',  durationDays: 366 },
+};
+
+const APP_PACKAGE_NAME = 'com.easydrug.ksa'; // غيّره لاسم الـ package الحقيقي
+
+// ============================================
+// verifyPurchase — التحقق الحقيقي من Google
+// Google Play API → Cloud Function → Firestore
+// ============================================
+exports.verifyPurchase = onCall(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Must be logged in');
+
+    const { purchaseToken, productId } = request.data;
+    if (!purchaseToken || !productId) {
+      throw new HttpsError('invalid-argument', 'purchaseToken and productId required');
+    }
+
+    const product = PRODUCT_MAP[productId];
+    if (!product) throw new HttpsError('invalid-argument', 'Unknown product');
+
+    // ── التحقق الحقيقي من Google Play API ────────────────────────────────────
+    // الـ Function بتستخدم Application Default Credentials تلقائياً في Firebase
+    let purchaseData;
+    try {
+      const auth = new google.auth.GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+      });
+      const androidpublisher = google.androidpublisher({ version: 'v3', auth });
+
+      const response = await androidpublisher.purchases.subscriptions.get({
+        packageName: APP_PACKAGE_NAME,
+        subscriptionId: productId,
+        token: purchaseToken,
+      });
+      purchaseData = response.data;
+    } catch (err) {
+      console.error('Google Play verification failed:', err);
+      throw new HttpsError('invalid-argument', 'Purchase verification failed — invalid token');
+    }
+
+    // تحقق إن الـ subscription فعلاً active
+    // paymentState: 1 = Payment received, 2 = Free trial
+    if (purchaseData.paymentState !== 1 && purchaseData.paymentState !== 2) {
+      throw new HttpsError('failed-precondition', 'Payment not confirmed');
+    }
+
+    // expiryTimeMillis بيجي من Google مباشرة — مش بنحسبه احنا
+    const expiresAt = new Date(parseInt(purchaseData.expiryTimeMillis)).toISOString();
+    const uid = request.auth.uid;
+    const db = getFirestore();
+
+    const now = new Date().toISOString();
+    const subscriptionData = {
+      plan: product.plan,
+      status: 'active',
+      expiresAt,
+      purchaseToken,
+      productId,
+      orderId: purchaseData.orderId || null,
+      updatedAt: now,
+    };
+
+    await db.collection('users').doc(uid).update({
+      role: 'premium',
+      subscriptionPlan: product.plan,
+      subscriptionStatus: 'active',
+      subscriptionExpiresAt: expiresAt,
+      subscriptionPurchaseToken: purchaseToken,
+    });
+
+    await db.collection('users').doc(uid)
+      .collection('subscription').doc('current')
+      .set(subscriptionData);
+
+    console.log(`✅ Premium verified & activated: ${uid} — ${product.plan} until ${expiresAt}`);
+    return { success: true, plan: product.plan, expiresAt };
+  }
+);
+
+// ============================================
+// Google Play RTDN Webhook
+// Real-time Developer Notifications
+// اضبطه في Google Play Console → Monetization → Setup
+// URL: https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/googlePlayWebhook
+// ============================================
+exports.googlePlayWebhook = onRequest(
+  { cors: false },
+  async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+
+    try {
+      const db = getFirestore();
+      const message = req.body?.message;
+      if (!message?.data) { res.status(200).send('OK'); return; }
+
+      const decoded = Buffer.from(message.data, 'base64').toString('utf-8');
+      const notification = JSON.parse(decoded);
+
+      const { subscriptionNotification, packageName } = notification;
+      if (!subscriptionNotification) { res.status(200).send('OK'); return; }
+
+      const { notificationType, purchaseToken, subscriptionId } = subscriptionNotification;
+
+      // أنواع الإشعارات:
+      // 1 = RECOVERED, 2 = RENEWED, 3 = CANCELED, 4 = PURCHASED
+      // 5 = ON_HOLD, 6 = IN_GRACE_PERIOD, 7 = RESTARTED, 13 = EXPIRED
+
+      // دور على الـ user بالـ purchaseToken
+      const usersSnap = await db.collection('users')
+        .where('subscriptionPurchaseToken', '==', purchaseToken)
+        .limit(1)
+        .get();
+
+      if (usersSnap.empty) {
+        console.warn('No user found for token:', purchaseToken);
+        res.status(200).send('OK');
+        return;
+      }
+
+      const userDoc = usersSnap.docs[0];
+      const uid = userDoc.id;
+
+      if (notificationType === 3 || notificationType === 13) {
+        // CANCELED or EXPIRED → downgrade to free
+        await db.collection('users').doc(uid).update({
+          role: 'free',
+          subscriptionStatus: 'expired',
+        });
+        await db.collection('users').doc(uid)
+          .collection('subscription').doc('current')
+          .update({ status: 'expired', updatedAt: new Date().toISOString() });
+        console.log(`⬇️ Subscription expired for ${uid}`);
+
+      } else if ([1, 2, 4, 7].includes(notificationType)) {
+        // RECOVERED / RENEWED / PURCHASED / RESTARTED → ensure premium
+        const PRODUCT_MAP = {
+          'easydrug_premium_monthly': { plan: 'monthly', durationDays: 31 },
+          'easydrug_premium_yearly':  { plan: 'yearly',  durationDays: 366 },
+        };
+        const product = PRODUCT_MAP[subscriptionId] || { plan: 'monthly', durationDays: 31 };
+        const expiresAt = new Date(Date.now() + product.durationDays * 86400000).toISOString();
+
+        await db.collection('users').doc(uid).update({
+          role: 'premium',
+          subscriptionStatus: 'active',
+          subscriptionExpiresAt: expiresAt,
+        });
+        console.log(`⬆️ Subscription renewed for ${uid}`);
+      }
+
+      res.status(200).send('OK');
+    } catch (err) {
+      console.error('Webhook error:', err);
+      res.status(200).send('OK'); // Google Play بيحاول تاني لو 200
+    }
+  }
+);
+
+// ============================================
+// checkPremium — يتحقق إن الـ subscription
+// لسه valid ويجدد الـ role لو لازم
+// ============================================
+exports.checkPremium = onCall(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Must be logged in');
+
+    const db = getFirestore();
+    const uid = request.auth.uid;
+    const userDoc = await db.collection('users').doc(uid).get();
+    const data = userDoc.data();
+
+    if (!data) throw new HttpsError('not-found', 'User not found');
+
+    // لو expired → downgrade
+    if (
+      data.subscriptionStatus === 'active' &&
+      data.subscriptionExpiresAt &&
+      new Date(data.subscriptionExpiresAt) < new Date()
+    ) {
+      await db.collection('users').doc(uid).update({
+        role: 'free',
+        subscriptionStatus: 'expired',
+      });
+      return { isPremium: false, reason: 'expired' };
+    }
+
+    const isPremium = data.role === 'admin' || data.role === 'premium' ||
+      (data.subscriptionStatus === 'active' && new Date(data.subscriptionExpiresAt) > new Date());
+
+    return { isPremium, plan: data.subscriptionPlan || null, expiresAt: data.subscriptionExpiresAt || null };
+  }
+);
 
 // الـ API key محفوظ في Firebase Secret Manager - مش في الكود
 const geminiApiKey = defineSecret('GEMINI_API_KEY');

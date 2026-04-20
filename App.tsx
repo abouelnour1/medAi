@@ -61,6 +61,9 @@ import SpecialtyModal from './components/SpecialtyModal';
 import StockTracker from './components/StockTracker';
 import { UserSpecialty, PhysicianSubSpecialty } from './types';
 import BottomNavBar from './components/BottomNavBar';
+import { useSubscription } from './hooks/useSubscription';
+import PaywallModal from './components/PaywallModal';
+import AdBanner from './components/AdBanner';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -214,6 +217,8 @@ const WHATSAPP_NUMBER = '966550806894'; // +966 Saudi Arabia
 const App: React.FC = () => {
   const { user, logout, requestAIAccess, getSettings, isLoading: authLoading, updateUser } = useAuth();
   const appSettings = getSettings();
+  const subscription = useSubscription(user);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     try { return (sessionStorage.getItem('ps_tab') as Tab) || 'search'; } catch { return 'search'; }
   });
@@ -1591,7 +1596,22 @@ const App: React.FC = () => {
 
       if (activeTab === 'settings') {
           // settings tab مش محتاج extra padding
-          if (view === 'prescription') return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
+          if (view === 'prescription') {
+            if (!subscription.isPremium) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                  <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center text-4xl mb-4">📋</div>
+                  <h2 className="text-lg font-black text-slate-700 dark:text-white mb-2">{language === 'ar' ? 'ميزة Premium' : 'Premium Feature'}</h2>
+                  <p className="text-sm font-bold text-slate-400 mb-6">{language === 'ar' ? 'الوصفات الطبية متاحة لمشتركي Premium فقط' : 'Prescriptions are available for Premium subscribers only'}</p>
+                  <button onClick={() => setShowPaywall(true)}
+                    className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">
+                    {language === 'ar' ? '⭐ ترقية إلى Premium' : '⭐ Upgrade to Premium'}
+                  </button>
+                </div>
+              );
+            }
+            return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
+          }
       if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
@@ -1997,6 +2017,35 @@ onClearSearch={handleClearSearch}
       )}
 
       {isEditModalOpen && <EditMedicineModal isOpen={isEditModalOpen} onClose={()=>{ setIsEditModalOpen(false); if(selectedMedicine) openSheet(selectedMedicine, true); }} medicine={selectedMedicine} onSave={async (m) => { await handleSaveMedicine(m); setIsEditModalOpen(false); openSheet(m, true); }} t={t} />}
+
+      {/* Paywall Modal */}
+      {showPaywall && (
+        <PaywallModal
+          language={language}
+          onClose={() => setShowPaywall(false)}
+          onSubscribe={async (plan) => {
+            // Google Play Billing flow
+            try {
+              // Google Play Billing — بعد ما تضيف @capacitor-community/in-app-purchases
+              // حالياً: call verifyPurchase Cloud Function مباشرة بعد Google Play confirmation
+              const { getFunctions, httpsCallable } = await import('firebase/functions');
+              const functions = getFunctions();
+              const verifyPurchase = httpsCallable(functions, 'verifyPurchase');
+              const productId = plan === 'yearly' ? 'easydrug_premium_yearly' : 'easydrug_premium_monthly';
+              // TODO: استبدل 'GOOGLE_PLAY_TOKEN' بالـ token الجاي من Google Play SDK
+              await verifyPurchase({ purchaseToken: 'GOOGLE_PLAY_TOKEN', productId });
+              await updateUser({ ...user!, role: 'premium', subscriptionPlan: plan, subscriptionStatus: 'active' });
+              setShowPaywall(false);
+            } catch (e) {
+              console.error('Purchase error:', e);
+            }
+          }}
+        />
+      )}
+
+      {/* Ad Banner — free users only */}
+      <AdBanner isPremium={subscription.isPremium} />
+
     </div></div>
   );
 };

@@ -191,7 +191,7 @@ export interface User {
   username: string;
   firstName?: string;
   lastName?: string;
-  role: 'admin' | 'premium' | 'company';
+  role: 'admin' | 'premium' | 'free' | 'company';
   specialty?: UserSpecialty;
   subSpecialty?: PhysicianSubSpecialty;
   aiRequestCount: number;
@@ -204,6 +204,19 @@ export interface User {
   institution?: string;
   licenseNo?: string;
   displayName?: string;
+  // subscription
+  subscriptionPlan?: 'monthly' | 'yearly' | null;
+  subscriptionStatus?: 'active' | 'expired' | 'cancelled' | null;
+  subscriptionExpiresAt?: string | null; // ISO date
+  subscriptionPurchaseToken?: string | null;
+}
+
+export interface Subscription {
+  plan: 'monthly' | 'yearly';
+  status: 'active' | 'expired' | 'cancelled';
+  expiresAt: string; // ISO date
+  purchaseToken?: string;
+  updatedAt: string;
 }
 
 export interface AppSettings {

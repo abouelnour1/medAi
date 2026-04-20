@@ -35,16 +35,20 @@ const toPlainObject = (user: any): User | null => {
     const obj: any = {
         id: String(user.id || user.uid || ''),
         username: String(user.username || user.displayName || user.email?.split('@')[0] || 'User'),
-        role: (typeof user.role === 'string' ? user.role : 'premium') as any,
+        role: (typeof user.role === 'string' ? user.role : 'free') as any,
         email: String(user.email || ''),
         emailVerified: Boolean(user.emailVerified),
         status: (typeof user.status === 'string' ? user.status : 'active') as any,
         aiRequestCount: Number(user.aiRequestCount || 0),
         customAiLimit: user.customAiLimit ? Number(user.customAiLimit) : undefined,
         lastRequestDate: String(user.lastRequestDate || new Date().toISOString().split('T')[0]),
-        prescriptionPrivilege: Boolean(user.prescriptionPrivilege)
+        prescriptionPrivilege: Boolean(user.prescriptionPrivilege),
+        // subscription
+        subscriptionPlan: user.subscriptionPlan || null,
+        subscriptionStatus: user.subscriptionStatus || null,
+        subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+        subscriptionPurchaseToken: user.subscriptionPurchaseToken || null,
     };
-    // ── احتفظ بالـ specialty دايماً عشان ميطلبهاش تاني ──
     if (user.specialty) obj.specialty = user.specialty;
     if (user.subSpecialty) obj.subSpecialty = user.subSpecialty;
     return obj as User;
@@ -161,11 +165,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           emailVerified: firebaseUser.emailVerified
         });
       } else {
-        // مستخدم جديد
+        // مستخدم جديد → free by default
         userData = toPlainObject({
           id: firebaseUser.uid,
           username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          role: 'premium',
+          role: 'free',
           email: firebaseUser.email || '',
           emailVerified: firebaseUser.emailVerified,
           status: 'active',
@@ -196,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fallback = toPlainObject({
         id: firebaseUser.uid,
         username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-        role: 'premium',
+        role: 'free',
         email: firebaseUser.email || '',
         emailVerified: firebaseUser.emailVerified,
         status: 'active',
