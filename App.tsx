@@ -64,6 +64,7 @@ import BottomNavBar from './components/BottomNavBar';
 import { useSubscription } from './hooks/useSubscription';
 import PlansPage from './components/PlansPage';
 import AdBanner from './components/AdBanner';
+import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -219,6 +220,7 @@ const App: React.FC = () => {
   const appSettings = getSettings();
   const subscription = useSubscription(user);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     try { return (sessionStorage.getItem('ps_tab') as Tab) || 'search'; } catch { return 'search'; }
   });
@@ -2048,6 +2050,14 @@ onClearSearch={handleClearSearch}
               console.error('Purchase error:', e);
             }
           }}
+        />
+      )}
+
+      {/* Onboarding — مرة واحدة بس */}
+      {showOnboarding && (
+        <OnboardingOverlay
+          language={language}
+          onDone={() => setShowOnboarding(false)}
         />
       )}
 
