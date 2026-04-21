@@ -4,97 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Easy Drug</title>
-
-    <!-- خطوط محلية - لا تحتاج إنترنت -->
     <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap">
-
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#0d9488">
+    <meta name="theme-color" content="#006a60">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-    <!-- Dark Mode Flash Prevention - يجب أن يكون أول شيء -->
     <script>
       (function() {
         try {
-          var theme = localStorage.getItem('theme');
-          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          var t = localStorage.getItem('theme');
+          if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
-            document.documentElement.style.backgroundColor = '#020617';
+            document.documentElement.style.backgroundColor = '#060f0e';
           } else {
-            document.documentElement.style.backgroundColor = '#f8fafc';
+            document.documentElement.style.backgroundColor = '#f7f9f6';
           }
         } catch(e) {}
       })();
     </script>
-    <style>
-      /* ── الحجم الثابت بغض النظر عن إعدادات الموبايل ── */
-      :root {
-        font-size: 14px !important;
-        -webkit-text-size-adjust: 100% !important;
-        -moz-text-size-adjust: 100% !important;
-        text-size-adjust: 100% !important;
-      }
-      /* منع الوميض */
-      html { background-color: #f8fafc; }
-      html.dark { background-color: #020617; }
-      body {
-        font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', 'Cairo', sans-serif;
-        background-color: #f8fafc;
-        margin: 0;
-        padding: 0;
-        -webkit-font-smoothing: antialiased;
-        overflow: hidden;
-        color: #0f172a;
-        /* منع تغيير الخط بإعدادات المستخدم */
-        -webkit-text-size-adjust: 100% !important;
-        text-size-adjust: 100% !important;
-      }
-      .dark body {
-        background-color: #020617;
-        color: #f8fafc;
-      }
-      #root { 
-        height: 100%;
-        display: flex; 
-        flex-direction: column;
-        overflow: hidden;
-        min-height: 0;
-      }
-      html { 
-        height: 100%;
-        overscroll-behavior: none;
-      }
-      body { 
-        height: 100%;
-        overflow: hidden;
-        width: 100%;
-        overscroll-behavior: none;
-        -webkit-overflow-scrolling: touch;
-        /* Android keyboard fix — لا نستخدم dvh عشان بيتغير مع الكيبورد */
-      }
-      ::-webkit-scrollbar { width: 0px; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-      .bg-glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-      }
-      .dark .bg-glass {
-        background: rgba(15, 23, 42, 0.7);
-        border-color: rgba(255, 255, 255, 0.05);
-      }
-
-      /* الحجم ثابت على كل الشاشات — مش بيتغير بحجم الموبايل */
-      @media (min-width: 390px)  { :root { font-size: 14px !important; } }
-      @media (min-width: 768px)  { :root { font-size: 15px !important; } }
-      @media (min-width: 1024px) { :root { font-size: 16px !important; } }
-    </style>
   </head>
   <body>
     <div id="root"></div>

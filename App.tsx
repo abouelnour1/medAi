@@ -1407,85 +1407,109 @@ const App: React.FC = () => {
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
                     <div className="mb-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest mb-3 px-1" style={{ color: '#8a938f' }}>
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-2.5">
                         {/* Dosing */}
                         <button onClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-                            <path d="M12 12h.01M12 16h.01M16 12h.01"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#eef9f6', border: '1.5px solid #cdeee7' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="4"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
                           </svg>
-                          <span className="text-[10px] font-black text-teal-600">{language === 'ar' ? 'الجرعات' : 'Dosing'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'الجرعات' : 'Dosing'}</span>
                         </button>
                         {/* Drug Test */}
                         <button onClick={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#f5f0ff', border: '1.5px solid #e0d5ff' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M8 3h8M9 3v6l-5 7a2 2 0 001.66 3h12.68A2 2 0 0020 19l-5-7V3"/>
                             <line x1="9" y1="9" x2="15" y2="9"/>
                           </svg>
-                          <span className="text-[10px] font-black text-purple-600">{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#6d28d9' }}>{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
                         </button>
-                        {/* Disease Search */}
+                        {/* By Disease */}
                         <button onClick={() => setView('indicationSearch')}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-cyan-50 dark:bg-cyan-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-cyan-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#f0f9ff', border: '1.5px solid #bae6fd' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
                           </svg>
-                          <span className="text-[10px] font-black text-cyan-600">{language === 'ar' ? 'بحث بالمرض' : 'By Disease'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#0369a1' }}>{language === 'ar' ? 'بحث بالمرض' : 'By Disease'}</span>
                         </button>
+                        {/* Favorites */}
                         <button onClick={() => setView('favorites')}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#fffbeb', border: '1.5px solid #fde68a' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                           </svg>
-                          <span className="text-[10px] font-black text-amber-500">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#b45309' }}>{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
                         </button>
                         {/* Orders */}
                         <button onClick={() => { refreshOrderCount(); setActiveTab('settings'); setView('orderList'); }}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <path d="M16 10a4 4 0 01-8 0"/>
                           </svg>
-                          <span className="text-[10px] font-black text-blue-600">{language === 'ar' ? 'الطلبات' : 'Orders'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#1d4ed8' }}>{language === 'ar' ? 'الطلبات' : 'Orders'}</span>
                         </button>
                         {/* Stock */}
                         <button onClick={() => { setActiveTab('settings'); setView('stockTracker'); }}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/><path d="M12 12v4m-2-2h4"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="7" width="20" height="15" rx="2"/>
+                            <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/>
+                            <line x1="12" y1="12" x2="12" y2="17"/>
+                            <line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/>
                           </svg>
-                          <span className="text-[10px] font-black text-green-600">{language === 'ar' ? 'المخزون' : 'Stock'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#15803d' }}>{language === 'ar' ? 'المخزون' : 'Stock'}</span>
                         </button>
                         {/* Insurance */}
                         <button onClick={() => setActiveTab('insurance')}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: '#fff1f2', border: '1.5px solid #fecdd3' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
                           </svg>
-                          <span className="text-[10px] font-black text-rose-500">{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
+                          <span className="text-[10px] font-black" style={{ color: '#be123c' }}>{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
                         </button>
-                        {/* Prescription — admin only until payment is ready */}
+                        {/* Prescription — admin only */}
                         {user?.role === 'admin' && (
-                        <button onClick={() => { setActiveTab('settings'); setView('prescription'); }}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 active:scale-95 transition-all">
-                          <svg className="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-                            <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2"/>
-                            <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            <path d="M9 12h6M9 16h4"/>
-                          </svg>
-                          <span className="text-[10px] font-black text-indigo-600">{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
-                        </button>
+                          <button onClick={() => { setActiveTab('settings'); setView('prescription'); }}
+                            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                            style={{ background: '#eef9f6', border: '1.5px solid #cdeee7' }}>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <line x1="16" y1="13" x2="8" y2="13"/>
+                              <line x1="16" y1="17" x2="8" y2="17"/>
+                              <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
+                          </button>
                         )}
                         {/* Quick Doses */}
                         <button onClick={() => setView('pedDoseHistory')}
-                          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/20 active:scale-95 transition-all relative">
-                          <span className="text-2xl leading-none">👶</span>
-                          <span className="text-[10px] font-black text-teal-600">{language === 'ar' ? 'جرعات سريعة' : 'Quick Doses'}</span>
+                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
+                          style={{ background: 'linear-gradient(135deg, #eef9f6, #cdeee7)', border: '1.5px solid #7fd4c6' }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="8" r="4"/>
+                            <path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+                            <line x1="12" y1="14" x2="12" y2="20"/>
+                            <line x1="9" y1="17" x2="15" y2="17"/>
+                          </svg>
+                          <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'جرعات سريعة' : 'Quick Doses'}</span>
                         </button>
                       </div>
                     </div>
