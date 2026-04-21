@@ -119,8 +119,8 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
         border: '1px solid var(--border)',
         overflow: 'hidden',
         cursor: 'pointer',
-        transform: pressed ? 'scale(0.972)' : 'scale(1)',
-        transition: 'transform 130ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 130ms ease',
+        transform: pressed ? 'scale(0.986)' : 'scale(1)',
+        transition: 'transform 120ms ease-out, box-shadow 120ms ease',
         boxShadow: pressed
           ? 'none'
           : '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)',
@@ -197,17 +197,15 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
             </span>
           ) : null}
           {medicine.PharmaceuticalForm && (
-            <span style={{
-              fontSize: 10, color: 'var(--text-subtle)',
-              background: 'var(--surface-2)',
-              padding: '2px 8px', borderRadius: 6,
-              display: 'inline-block', maxWidth: 150,
+            <p style={{
+              fontSize: 10.5, color: 'var(--text-subtle)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              lineHeight: 1,
             }}>
               {medicine.PackageSize
                 ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${abbreviateForm(medicine.PharmaceuticalForm)}`
                 : abbreviateForm(medicine.PharmaceuticalForm)}
-            </span>
+            </p>
           )}
         </div>
 
@@ -221,14 +219,15 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           {hasPrice ? (
             <div style={{ textAlign: 'center', minWidth: 48 }}>
               <span style={{
-                fontSize: 15, fontWeight: 900, color: 'var(--text)',
+                fontSize: 15, fontWeight: 900, color: '#0369a1',
                 display: 'block', lineHeight: 1, letterSpacing: '-0.02em',
               }}>
                 {price.toFixed(2)}
               </span>
               <span style={{
                 fontSize: 9, fontWeight: 600,
-                color: 'var(--text-subtle)', display: 'block', marginTop: 2,
+                color: '#0369a1', opacity: 0.65,
+                display: 'block', marginTop: 2,
                 textTransform: 'uppercase', letterSpacing: '0.04em',
               }}>
                 {ar ? 'ر.س' : 'SAR'}
