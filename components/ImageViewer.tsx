@@ -145,6 +145,9 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
 const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags, onBack }) => {
   const [current, setCurrent] = useState(initialIndex);
   const [closing, setClosing] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,9 +156,35 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
     el.scrollLeft = initialIndex * el.clientWidth;
   }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setClosing(true);
     setTimeout(onBack, 180);
+  }, [onBack]);
+
+  // Swipe down to dismiss
+  const onContainerTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      dragStart.current = e.touches[0].clientY;
+    }
+  };
+
+  const onContainerTouchMove = (e: React.TouchEvent) => {
+    if (dragStart.current === null || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - dragStart.current;
+    if (dy > 0) {
+      setIsDragging(true);
+      setDragY(dy);
+    }
+  };
+
+  const onContainerTouchEnd = () => {
+    if (dragY > 100) {
+      handleClose();
+    } else {
+      setDragY(0);
+    }
+    setIsDragging(false);
+    dragStart.current = null;
   };
 
   const handleScroll = () => {
@@ -172,8 +201,28 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
     setCurrent(idx);
   };
 
+  const bgOpacity = isDragging ? Math.max(0, 1 - dragY / 300) : 1;
+
   return (
-    <div className={`fixed inset-0 z-[9999] bg-black flex flex-col ${closing ? 'anim-img-out' : 'anim-img-in'}`} style={{ direction: 'ltr' }}>
+    <div
+      className={`fixed inset-0 z-[9999] flex flex-col ${closing ? 'anim-img-out' : 'anim-img-in'}`}
+      style={{
+        direction: 'ltr',
+        background: `rgba(0,0,0,${bgOpacity})`,
+        transform: isDragging ? `translateY(${dragY * 0.4}px)` : 'none',
+        transition: isDragging ? 'none' : 'transform 300ms cubic-bezier(0.22,1,0.36,1), background 300ms ease',
+      }}
+      onTouchStart={onContainerTouchStart}
+      onTouchMove={onContainerTouchMove}
+      onTouchEnd={onContainerTouchEnd}
+    >
+
+      {/* Swipe down hint */}
+      <div style={{
+        position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 4, borderRadius: 2,
+        background: 'rgba(255,255,255,0.3)', zIndex: 20,
+      }} />
 
       {/* Header */}
       <div

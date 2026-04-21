@@ -94,6 +94,18 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
+  const initial1 = (medicine['Trade Name'] || '?')[0].toUpperCase();
+  const initial2 = (medicine['Trade Name'] || '??')[1]?.toUpperCase() || '';
+
+  // Deterministic pastel from name
+  const colorPairs = [
+    ['#e8f4f0', '#006a60'], ['#eef2ff', '#4338ca'], ['#fdf4ff', '#9333ea'],
+    ['#fff7ed', '#c2410c'], ['#f0f9ff', '#0369a1'], ['#fefce8', '#a16207'],
+    ['#fdf2f8', '#be185d'], ['#f0fdf4', '#15803d'],
+  ];
+  const ci = medicine['Trade Name'].charCodeAt(0) % colorPairs.length;
+  const [avatarBg, avatarFg] = colorPairs[ci] as [string, string];
+
   return (
     <div
       onClick={handleClick}
@@ -103,78 +115,155 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
       onTouchCancel={handleTouchEnd}
       style={{
         background: 'var(--surface)',
-        borderRadius: 16,
-        border: '1.5px solid var(--border)',
+        borderRadius: 18,
+        border: '1px solid var(--border)',
         overflow: 'hidden',
         cursor: 'pointer',
-        transform: pressed ? 'scale(0.975)' : 'scale(1)',
-        transition: 'transform 140ms cubic-bezier(0.34,1.56,0.64,1)',
-        boxShadow: pressed ? 'none' : 'var(--shadow-sm)',
+        transform: pressed ? 'scale(0.972)' : 'scale(1)',
+        transition: 'transform 130ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 130ms ease',
+        boxShadow: pressed
+          ? 'none'
+          : '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
-      {/* brand top accent */}
-      <div style={{ height: 2, background: 'linear-gradient(90deg, var(--primary), var(--primary-light))', opacity: 0.45 }} />
+      <div style={{ display: 'flex', gap: 12, padding: '12px 14px 12px' }}>
 
-      <div style={{ display: 'flex', gap: 10, padding: '10px 12px 12px' }}>
-
-        {/* Image */}
+        {/* Image / Letter Avatar */}
         {medicine.imgBox ? (
           <div
-            style={{ flexShrink: 0, width: 60, height: 60, background: 'var(--surface-2)', borderRadius: 12, border: '1px solid var(--border)', padding: 4, alignSelf: 'flex-start', cursor: onImageClick ? 'zoom-in' : 'default', [ar ? 'marginLeft' : 'marginRight']: 'auto' } as React.CSSProperties}
-            onClick={onImageClick ? (e) => { e.stopPropagation(); onImageClick(); } : undefined}
+            onClick={onImageClick ? e => { e.stopPropagation(); onImageClick(); } : undefined}
+            style={{
+              flexShrink: 0, width: 56, height: 56,
+              background: '#f8f9fa',
+              borderRadius: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: onImageClick ? 'zoom-in' : 'default',
+              overflow: 'hidden',
+            }}
           >
-            <img src={medicine.imgBox} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src={medicine.imgBox} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
           </div>
         ) : (
-          <div style={{ flexShrink: 0, width: 60, height: 60, background: 'var(--primary-ultra)', borderRadius: 12, border: '1px solid rgba(0,106,96,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', [ar ? 'marginLeft' : 'marginRight']: 'auto' } as React.CSSProperties}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--primary-mid)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" />
-            </svg>
+          <div style={{
+            flexShrink: 0, width: 56, height: 56,
+            background: avatarBg,
+            borderRadius: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{
+              fontSize: 17, fontWeight: 900, color: avatarFg,
+              letterSpacing: '-0.02em', lineHeight: 1,
+              fontFamily: "'IBM Plex Sans', system-ui",
+            }}>
+              {initial1}{initial2}
+            </span>
           </div>
         )}
 
         {/* Info */}
-        <div style={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <p style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1 }}>
-            {medicine['Manufacture Name'] || ''}
-          </p>
-          <h2 style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
+          {medicine['Manufacture Name'] && (
+            <p style={{
+              fontSize: 9.5, fontWeight: 600, color: 'var(--text-subtle)',
+              textTransform: 'uppercase', letterSpacing: '0.07em',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1,
+            }}>
+              {medicine['Manufacture Name']}
+            </p>
+          )}
+          <h2 style={{
+            fontSize: 15, fontWeight: 800, color: 'var(--text)',
+            lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            letterSpacing: '-0.01em',
+          }}>
             {medicine['Trade Name']}
           </h2>
           {ingredientsString ? (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 2 } as React.CSSProperties} dir="ltr">
+            <p style={{
+              fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }} dir="ltr">
               {ingredientsString}
             </p>
           ) : ingredientCount > 3 ? (
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'var(--primary-ultra)', color: 'var(--primary)', display: 'inline-block', marginBottom: 2 }}>
-              {ingredientCount} {ar ? 'مواد فعالة' : 'ingredients'}
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              padding: '2px 8px', borderRadius: 6,
+              background: 'var(--surface-2)', color: 'var(--text-muted)',
+              display: 'inline-block',
+            }}>
+              {ingredientCount} {ar ? 'مكونات' : 'ingredients'}
             </span>
-          ) : <div style={{ minHeight: 4 }} />}
+          ) : null}
           {medicine.PharmaceuticalForm && (
-            <span style={{ fontSize: 10, color: 'var(--text-subtle)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 6, display: 'inline-block', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {medicine.PackageSize ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${abbreviateForm(medicine.PharmaceuticalForm)}` : abbreviateForm(medicine.PharmaceuticalForm)}
+            <span style={{
+              fontSize: 10, color: 'var(--text-subtle)',
+              background: 'var(--surface-2)',
+              padding: '2px 8px', borderRadius: 6,
+              display: 'inline-block', maxWidth: 150,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {medicine.PackageSize
+                ? `${medicine.PackageSize}${medicine.SizeUnit ? ' ' + medicine.SizeUnit : ''} · ${abbreviateForm(medicine.PharmaceuticalForm)}`
+                : abbreviateForm(medicine.PharmaceuticalForm)}
             </span>
           )}
         </div>
 
-        {/* Right: price + buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0, width: 62, minWidth: 62 }}>
+        {/* Right: price + actions */}
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'flex-end', justifyContent: 'space-between',
+          flexShrink: 0, gap: 4,
+        }}>
+          {/* Price */}
           {hasPrice ? (
-            <div style={{ background: 'linear-gradient(135deg, rgba(0,106,96,0.08), rgba(0,168,150,0.05))', border: '1px solid rgba(0,106,96,0.12)', borderRadius: 10, padding: '5px 6px', textAlign: 'center', width: 60 }}>
-              <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--primary)', display: 'block', lineHeight: 1, whiteSpace: 'nowrap' }}>{price.toFixed(2)}</span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--primary)', opacity: 0.6, display: 'block', marginTop: 1 }}>{ar ? 'ر.س' : 'SAR'}</span>
+            <div style={{ textAlign: 'center', minWidth: 48 }}>
+              <span style={{
+                fontSize: 15, fontWeight: 900, color: 'var(--text)',
+                display: 'block', lineHeight: 1, letterSpacing: '-0.02em',
+              }}>
+                {price.toFixed(2)}
+              </span>
+              <span style={{
+                fontSize: 9, fontWeight: 600,
+                color: 'var(--text-subtle)', display: 'block', marginTop: 2,
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+              }}>
+                {ar ? 'ر.س' : 'SAR'}
+              </span>
             </div>
-          ) : <div style={{ width: 60, height: 36 }} />}
+          ) : <div />}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <button onClick={e => { e.stopPropagation(); onFindAlternative(medicine); }}
-              style={{ padding: 8, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-subtle)', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-              <div style={{ width: 18, height: 18 }}><AlternativeIcon /></div>
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 0 }}>
+            <button
+              onClick={e => { e.stopPropagation(); onFindAlternative(medicine); }}
+              style={{
+                width: 32, height: 32, borderRadius: 10, border: 'none',
+                background: 'transparent', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-subtle)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <div style={{ width: 17, height: 17 }}><AlternativeIcon /></div>
             </button>
-            <button onClick={handleFavorite}
-              style={{ padding: 8, borderRadius: 10, border: 'none', cursor: 'pointer', background: isFavorite ? 'rgba(245,158,11,0.1)' : 'transparent', color: isFavorite ? '#f59e0b' : 'var(--text-subtle)', transform: starPop ? 'scale(1.35)' : 'scale(1)', transition: 'transform 100ms cubic-bezier(0.34,1.56,0.64,1)', WebkitTapHighlightColor: 'transparent' }}>
-              <div style={{ width: 18, height: 18 }}><StarIcon isFilled={isFavorite} /></div>
+            <button
+              onClick={handleFavorite}
+              style={{
+                width: 32, height: 32, borderRadius: 10, border: 'none',
+                background: isFavorite ? 'rgba(245,158,11,0.08)' : 'transparent',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: isFavorite ? '#f59e0b' : 'var(--text-subtle)',
+                transform: starPop ? 'scale(1.4)' : 'scale(1)',
+                transition: 'transform 120ms cubic-bezier(0.34,1.56,0.64,1)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <div style={{ width: 17, height: 17 }}><StarIcon isFilled={isFavorite} /></div>
             </button>
           </div>
         </div>
