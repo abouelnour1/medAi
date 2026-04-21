@@ -512,11 +512,14 @@ const App: React.FC = () => {
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const handleResize = () => {
       setViewportOffsetTop(vv.offsetTop || 0);
+      const kbOpen = vv.height < window.innerHeight * 0.75;
+      setIsKeyboardOpen(kbOpen);
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = scrollPositions.current.get(view) || 0;
       }
@@ -1833,15 +1836,19 @@ const App: React.FC = () => {
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
+        style={{ opacity: isKeyboardOpen ? 0 : 1, pointerEvents: isKeyboardOpen ? 'none' : 'auto', transition: 'opacity 0.15s ease' } as any}
       />
 
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
-          style={{ top: headerHeight }}
+          style={{
+            top: isKeyboardOpen ? 0 : headerHeight,
+            transition: 'top 0.15s ease',
+          }}
         >
-          <div className="bg-light-bg dark:bg-dark-bg pb-1 pt-1" style={{}}>
+          <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -1866,7 +1873,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.1s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.15s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>

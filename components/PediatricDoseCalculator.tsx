@@ -466,16 +466,17 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                         ✕
                       </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {presetImageUrl.trim() && (
-                        <img src={presetImageUrl} alt="" className="w-8 h-8 rounded-lg object-contain bg-slate-100 flex-shrink-0" onError={e => (e.currentTarget.style.display = 'none')} />
-                      )}
+                    <div className="relative">
                       <input
                         value={presetImageUrl}
                         onChange={e => setPresetImageUrl(e.target.value)}
-                        placeholder={ar ? 'رابط صورة الدواء (اختياري)' : 'Medicine image URL (optional)'}
-                        className="flex-1 px-3 py-2 bg-white dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
+                        placeholder={ar ? 'رابط صورة الدواء (اختياري)' : 'Image URL (optional)'}
+                        className="w-full px-3 py-2 bg-white dark:bg-dark-card border-2 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-white outline-none"
+                        style={{ paddingRight: presetImageUrl.trim() ? '2.5rem' : undefined }}
                       />
+                      {presetImageUrl.trim() && (
+                        <img src={presetImageUrl} alt="" className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded object-contain bg-slate-100" onError={e => (e.currentTarget.style.display = 'none')} />
+                      )}
                     </div>
                   </div>
                 )}

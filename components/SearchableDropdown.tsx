@@ -72,18 +72,16 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setDisplayLimit(50);
-      // دايماً يبدأ من تحت الـ header وينزل للأسفل
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setDropdownStyle({
-          position: 'fixed',
-          top: headerBottom + 8,
-          left: rect.left,
-          width: rect.width,
-          maxHeight: window.innerHeight - headerBottom - 24,
-          zIndex: 9998,
-        });
-      }
+      // بدل fixed positioning — نفتح الـ dropdown inline جوه الـ sheet
+      setDropdownStyle({
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        maxHeight: 280,
+        zIndex: 9998,
+        marginTop: 4,
+      });
     }
   }, [isOpen]);
 

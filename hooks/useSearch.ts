@@ -6,6 +6,18 @@ const SEARCH_RESULT_LIMIT = 100;
 
 function matchesWildcard(text: string, pattern: string): boolean {
   if (!pattern.includes('*')) return text.includes(pattern);
+  // لو بيبدأ بـ * → يعني "في المنتصف أو الآخر" (مش في البداية)
+  if (pattern.startsWith('*') && !pattern.endsWith('*')) {
+    const sub = pattern.slice(1); // اشيل الـ * من الأول
+    if (!sub) return false;
+    return text.includes(sub) && !text.startsWith(sub);
+  }
+  // لو بيخلص بـ * → يعني "يبدأ بـ"
+  if (pattern.endsWith('*') && !pattern.startsWith('*')) {
+    const sub = pattern.slice(0, -1);
+    return text.startsWith(sub);
+  }
+  // في المنتصف أو متعدد → عام
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
   return new RegExp(escaped, 'i').test(text);
 }
@@ -295,13 +307,13 @@ export function useSearch(
     }
 
     // Fuzzy fallback
-    if (!hasWildcard && queryWords.length > 0 && queryWords[0].length >= 2) {
-      const firstQ = queryWords[0];
+    if (!hasWildcard && queryWords.length > 0 && (queryWords[0]?.length ?? 0) >= 2) {
+      const firstQ = queryWords[0]!;
       const maxErr = Math.min(2, Math.floor(firstQ.length / 3) + 1);
       for (const m of searchContextMedicines) {
         if (addedIds.has(m.RegisterNumber)) continue;
         const tn = norm(String(m['Trade Name'] || ''));
-        if (!tn.startsWith(firstQ[0])) continue;
+        if (!tn.startsWith(firstQ[0] ?? '')) continue;
         const dist = prefixAlign(firstQ, tn);
         if (dist <= maxErr) {
           buckets.push({
