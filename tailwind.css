@@ -1,36 +1,59 @@
+/* ============================================================
+   Easy Drug — Premium UI System
+   Design Language: Soft Medical Luxury
+   Fonts: IBM Plex Sans Arabic + IBM Plex Sans
+   ============================================================ */
+
+/* ── Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Offline fallback */
+  @font-face {
+    font-family: 'Cairo';
+    src: local('Cairo'), local('Arial Unicode MS'), local('Tahoma');
+    font-weight: 400;
+    font-display: swap;
+  }
+}
+
+/* ── Design Tokens ── */
 :root {
+  /* Brand */
   --primary:        #006a60;
   --primary-dark:   #003d37;
   --primary-light:  #00a896;
   --primary-ultra:  #eef9f6;
-  --primary-mid:    #7fd4c6;
-  --gold:           #e0a84a;
-  --gold-dark:      #b8842a;
-  --gold-light:     #faecd0;
+
+  /* Neutrals */
   --bg:             #f7f9f6;
   --surface:        #ffffff;
-  --surface-2:      #eef9f6;
-  --border:         rgba(0,106,96,0.09);
-  --text:           #0e1a18;
-  --text-muted:     #55605c;
-  --text-subtle:    #8a938f;
+  --surface-2:      #f1f5f9;
+  --border:         rgba(15, 118, 110, 0.08);
+  --text:           #0f172a;
+  --text-muted:     #64748b;
+  --text-subtle:    #94a3b8;
+
+  /* Dark */
   --dark-bg:        #060f0e;
   --dark-surface:   #0d1a18;
   --dark-surface-2: #1a2e2b;
-  --dark-border:    rgba(0,168,150,0.1);
-  --dark-text:      #f0f7f5;
-  --dark-muted:     #8a9e9b;
-  --shadow-xs:  0 1px 2px rgba(0,106,96,0.04);
-  --shadow-sm:  0 2px 8px rgba(0,106,96,0.07), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:  0 4px 16px rgba(0,106,96,0.09), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:  0 8px 32px rgba(0,106,96,0.11), 0 4px 8px rgba(0,0,0,0.06);
-  --shadow-xl:  0 16px 48px rgba(0,106,96,0.13), 0 8px 16px rgba(0,0,0,0.08);
+  --dark-border:    rgba(255,255,255,0.06);
+  --dark-text:      #f8fafc;
+  --dark-muted:     #94a3b8;
 
-  
+  /* Shadows — soft layered, never harsh */
+  --shadow-xs:  0 1px 2px rgba(15,118,110,0.04);
+  --shadow-sm:  0 2px 8px rgba(15,118,110,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 16px rgba(15,118,110,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:  0 8px 32px rgba(15,118,110,0.10), 0 4px 8px rgba(0,0,0,0.06);
+  --shadow-xl:  0 16px 48px rgba(15,118,110,0.12), 0 8px 16px rgba(0,0,0,0.08);
+
+  /* Motion */
   --ease-spring:  cubic-bezier(0.22, 1, 0.36, 1);
   --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -38,7 +61,7 @@
   --dur-med:      280ms;
   --dur-slow:     420ms;
 
-  
+  /* Radius */
   --r-sm:   8px;
   --r-md:   12px;
   --r-lg:   16px;
@@ -47,6 +70,7 @@
   --r-full: 999px;
 }
 
+/* ── Base Reset ── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -82,10 +106,16 @@ body {
   flex-direction: column;
 }
 
+/* ── Scrollbar ── */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 ::-webkit-scrollbar { width: 0; height: 0; }
 
+/* ============================================================
+   CARDS & CONTAINERS
+   ============================================================ */
+
+/* Base card — floating, soft, premium */
 .ps-card {
   background: var(--surface);
   border-radius: var(--r-xl);
@@ -103,12 +133,14 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+/* Press state — subtle push */
 .ps-card:active,
 .ps-pressable:active {
   transform: scale(0.975);
   box-shadow: var(--shadow-xs);
 }
 
+/* Medicine card upgrade */
 .animate-card {
   background: var(--surface);
   border-radius: var(--r-xl) !important;
@@ -130,6 +162,10 @@ body {
   background: var(--dark-surface) !important;
   border-color: var(--dark-border) !important;
 }
+
+/* ============================================================
+   SHIMMER SKELETON
+   ============================================================ */
 
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
@@ -159,6 +195,10 @@ body {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+/* ============================================================
+   STAGGERED LIST ANIMATION
+   ============================================================ */
+
 @keyframes cardEntrance {
   from { opacity: 1; transform: none; }
   to   { opacity: 1; transform: none; }
@@ -168,6 +208,7 @@ body {
   opacity: 1;
 }
 
+/* Cap stagger at 8 items to avoid long waits */
 .stagger-item:nth-child(1)  { --i: 0; }
 .stagger-item:nth-child(2)  { --i: 1; }
 .stagger-item:nth-child(3)  { --i: 2; }
@@ -176,8 +217,13 @@ body {
 .stagger-item:nth-child(6)  { --i: 5; }
 .stagger-item:nth-child(7)  { --i: 6; }
 .stagger-item:nth-child(8)  { --i: 7; }
-.stagger-item:nth-child(n+9){ --i: 7; } 
+.stagger-item:nth-child(n+9){ --i: 7; } /* rest animate together */
 
+/* ============================================================
+   SCREEN TRANSITIONS
+   ============================================================ */
+
+/* Sheet Modal — slides up from bottom (iOS style) */
 @keyframes sheetUp {
   from {
     transform: translateY(100%);
@@ -200,6 +246,7 @@ body {
   }
 }
 
+/* Side navigation — slide in from right (RTL: from left) */
 @keyframes slideInFromRight {
   from { transform: translateX(100%); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
@@ -215,14 +262,21 @@ body {
   to   { transform: translateX(0);     opacity: 1; }
 }
 
+/* RTL-aware: detail views come from left (because Arabic) */
 [dir="rtl"] .screen-enter  { animation: slideInFromLeft var(--dur-slow) var(--ease-spring) forwards; }
 [dir="ltr"] .screen-enter  { animation: slideInFromRight var(--dur-slow) var(--ease-spring) forwards; }
 .screen-exit                { animation: slideOutToLeft var(--dur-med) var(--ease-smooth) forwards; }
 
+/* Sheet / modal */
 .sheet-enter  { animation: sheetUp   var(--dur-slow) var(--ease-spring) forwards; }
 .sheet-exit   { animation: sheetDown var(--dur-med)  var(--ease-smooth) forwards; }
 
+/* Simple fade */
 .fade-enter { animation: fadeIn var(--dur-med) var(--ease-smooth) forwards; }
+
+/* ============================================================
+   BASE KEYFRAMES
+   ============================================================ */
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -249,10 +303,16 @@ body {
   100% { transform: scale(1.8);  opacity: 0; }
 }
 
+/* Legacy class aliases */
 .animate-fade-in   { animation: fadeIn 150ms ease-out forwards; }
 .animate-slide-up  { animation: slideUp  var(--dur-slow) var(--ease-spring) forwards; }
 .animate-zoom-in   { animation: zoomIn   var(--dur-fast) var(--ease-smooth) forwards; }
 
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+/* Primary button */
 .ps-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -284,6 +344,7 @@ body {
   box-shadow: 0 2px 6px rgba(13,148,136,0.2);
 }
 
+/* Ghost button */
 .ps-btn-ghost {
   display: inline-flex;
   align-items: center;
@@ -305,6 +366,7 @@ body {
 .ps-btn-ghost:hover  { background: var(--primary-ultra); border-color: var(--primary); }
 .ps-btn-ghost:active { transform: scale(0.94); }
 
+/* Icon button */
 .ps-btn-icon {
   display: inline-flex;
   align-items: center;
@@ -324,6 +386,10 @@ body {
 
 .ps-btn-icon:hover  { color: var(--primary); background: var(--primary-ultra); }
 .ps-btn-icon:active { transform: scale(0.88); }
+
+/* ============================================================
+   SEARCH BAR
+   ============================================================ */
 
 .ps-search {
   width: 100%;
@@ -358,6 +424,10 @@ body {
   box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
 }
 
+/* ============================================================
+   BADGES & TAGS
+   ============================================================ */
+
 .ps-badge {
   display: inline-flex;
   align-items: center;
@@ -384,6 +454,10 @@ body {
 .dark .ps-badge-purple { background: rgba(168,85,247,0.15);  color: #c084fc; }
 .dark .ps-badge-slate  { background: rgba(100,116,139,0.15); color: #94a3b8; }
 
+/* ============================================================
+   GLASS SURFACE
+   ============================================================ */
+
 .bg-glass {
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(20px) saturate(180%);
@@ -396,6 +470,10 @@ body {
   border-color: rgba(255, 255, 255, 0.06);
 }
 
+/* ============================================================
+   MODAL OVERLAY
+   ============================================================ */
+
 .ps-overlay {
   position: fixed;
   inset: 0;
@@ -406,6 +484,10 @@ body {
   animation: fadeIn var(--dur-med) var(--ease-smooth) forwards;
 }
 
+/* ============================================================
+   BOTTOM NAV INDICATOR
+   ============================================================ */
+
 @keyframes navIndicator {
   from { transform: scaleX(0); opacity: 0; }
   to   { transform: scaleX(1); opacity: 1; }
@@ -415,6 +497,10 @@ body {
   animation: navIndicator var(--dur-med) var(--ease-bounce) forwards;
   transform-origin: center;
 }
+
+/* ============================================================
+   PRICE PILL
+   ============================================================ */
 
 .ps-price {
   background: linear-gradient(135deg, rgba(13,148,136,0.08), rgba(45,212,191,0.06));
@@ -429,6 +515,10 @@ body {
   background: linear-gradient(135deg, rgba(13,148,136,0.18), rgba(45,212,191,0.08));
   border-color: rgba(45,212,191,0.15);
 }
+
+/* ============================================================
+   FLOATING ACTION BUTTON
+   ============================================================ */
 
 .ps-fab {
   position: relative;
@@ -462,6 +552,10 @@ body {
   box-shadow: 0 2px 10px rgba(13,148,136,0.3);
 }
 
+/* ============================================================
+   LOADING SPINNER
+   ============================================================ */
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -475,30 +569,50 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+/* ============================================================
+   DARK MODE CARDS
+   ============================================================ */
+
 .dark .animate-card {
   background: var(--dark-surface) !important;
   border-color: var(--dark-border) !important;
 }
 
+/* ============================================================
+   UTILITY OVERRIDES
+   ============================================================ */
+
+/* Make tailwind rounded-2xl / rounded-3xl consistent */
 .rounded-2xl { border-radius: var(--r-xl) !important; }
 .rounded-3xl { border-radius: var(--r-2xl) !important; }
 
+/* Smooth scroll containers */
 .scroll-smooth { scroll-behavior: smooth; }
 
+/* Tap feedback for interactive elements */
 button, [role="button"] {
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
 }
 
+/* Focus visible ring */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
 @media (min-width: 640px) {
   :root { font-size: 16px; }
 }
+
+/* ============================================================
+   VIEW TRANSITIONS
+   ============================================================ */
 
 @keyframes viewSlideIn {
   from { opacity: 0; }
