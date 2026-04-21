@@ -8,36 +8,36 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    hostname: 'app.easydrug.ksa',   // hostname ثابت يمنع فتح روابط خارجية داخل الـ WebView
+    hostname: 'app.easydrug.ksa',
     cleartext: false,
-    // الروابط الخارجية (Google OAuth وغيرها) تُفتح في المتصفح الخارجي تلقائياً
   },
   ios: {
     contentInset: 'automatic',
     scrollEnabled: true,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#006a60',
     preferredContentMode: 'mobile',
   },
   android: {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    backgroundColor: '#006a60',
   },
   plugins: {
     Keyboard: {
-      resize: 'ionic',
-      style: 'dark',
-      resizeOnFullScreen: true,
+      resize: 'none' as any,
+      style: 'dark' as any,
+      resizeOnFullScreen: false,
     },
     StatusBar: {
       style: 'light',
-      backgroundColor: '#0f766e',
+      backgroundColor: '#006a60',
       overlaysWebView: false,
     },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#0f766e',
+      backgroundColor: '#006a60',
       androidSplashResourceName: 'splash',
       iosSplashResourceName: 'Default',
       showSpinner: false,

@@ -390,9 +390,9 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 backdrop-blur-sm" style={{ animation: 'fadeIn 200ms ease forwards' }} onClick={onClose}>
       <div
-        className="w-full max-w-lg bg-white dark:bg-dark-card rounded-t-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg bg-white dark:bg-dark-card rounded-t-3xl shadow-2xl overflow-hidden anim-sheet-up"
         style={{ maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
       >

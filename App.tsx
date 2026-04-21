@@ -514,20 +514,30 @@ const App: React.FC = () => {
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const handleResize = () => {
-      setViewportOffsetTop(vv.offsetTop || 0);
-      const kbOpen = vv.height < window.innerHeight * 0.75;
-      setIsKeyboardOpen(kbOpen);
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollPositions.current.get(view) || 0;
+    // Capacitor Keyboard plugin events (Android/iOS)
+    let cleanupCap: (() => void) | null = null;
+    (async () => {
+      try {
+        const { Keyboard } = await import('@capacitor/keyboard');
+        const showListener = await Keyboard.addListener('keyboardWillShow', () => setIsKeyboardOpen(true));
+        const hideListener = await Keyboard.addListener('keyboardWillHide', () => setIsKeyboardOpen(false));
+        cleanupCap = () => { showListener.remove(); hideListener.remove(); };
+      } catch {
+        // Web fallback: use visualViewport
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const handleResize = () => {
+          const kbOpen = vv.height < window.innerHeight * 0.75;
+          setIsKeyboardOpen(kbOpen);
+          setViewportOffsetTop(vv.offsetTop || 0);
+        };
+        vv.addEventListener('resize', handleResize);
+        vv.addEventListener('scroll', handleResize);
+        cleanupCap = () => { vv.removeEventListener('resize', handleResize); vv.removeEventListener('scroll', handleResize); };
       }
-    };
-    vv.addEventListener('resize', handleResize);
-    vv.addEventListener('scroll', handleResize);
-    return () => { vv.removeEventListener('resize', handleResize); vv.removeEventListener('scroll', handleResize); };
-  }, [view]);
+    })();
+    return () => cleanupCap?.();
+  }, []);
 
   useEffect(() => {
     if (!headerRef.current) return;
@@ -1401,8 +1411,8 @@ const App: React.FC = () => {
       );
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense>;
-          if (view === 'alternatives' && selectedMedicine) return <AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} />;
+          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense></div>;
+          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
               <div className="pt-1">
@@ -1649,61 +1659,57 @@ const App: React.FC = () => {
       if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
-              <div className="space-y-6 animate-fade-in">
-                  <div className="bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-dark-border">
-                      <h3 className="text-lg font-black mb-6 border-b pb-4 dark:border-dark-border">{t('navSettings')}</h3>
-                      <div className="space-y-4">
-                          {/* Profile Card */}
-                          {user && (
-                            <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-2xl border border-teal-100 dark:border-teal-800/30">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white text-lg font-black flex-shrink-0">
-                                  {user.username.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-black text-slate-800 dark:text-white truncate">{user.username}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                                  {(user as any).specialty && (
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
-                                        {(user as any).specialty}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                {!(user as any).specialty && (
-                                  <button
-                                    onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
-                                    className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1.5 rounded-xl active:scale-95"
-                                  >
-                                    {language === 'ar' ? 'اختر تخصصك' : 'Set Specialty'}
-                                  </button>
-                                )}
-                                {(user as any).specialty && (
-                                  <button
-                                    onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
-                                    className="text-[10px] font-bold text-slate-400 px-2 py-1 rounded-xl active:scale-95"
-                                  >
-                                    {language === 'ar' ? 'تغيير' : 'Edit'}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+              <div className="space-y-4 anim-slide-up">
+                  {/* Profile Card */}
+                  {user ? (
+                    <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', borderRadius: 20, padding: '20px', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 52, height: 52, background: 'rgba(255,255,255,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, fontWeight: 900, flexShrink: 0, border: '2px solid rgba(255,255,255,0.3)' }}>
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontWeight: 900, color: '#fff', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.username}</p>
+                          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{user.email}</p>
+                          {(user as any).specialty && (
+                            <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 8px', borderRadius: 20, display: 'inline-block', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {(user as any).specialty}
+                            </span>
                           )}
-
-                          <button onClick={() => setView('favorites')} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                              <span className="font-bold">{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
-                              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        {!(user as any).specialty ? (
+                          <button onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
+                            style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '6px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {language === 'ar' ? 'اختر تخصصك' : 'Set Specialty'}
                           </button>
-                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">{t('darkMode')}</span>
-                              <button onClick={()=>setTheme(theme==='light'?'dark':'light')} className="w-12 h-6 bg-slate-200 dark:bg-primary rounded-full relative transition-all">
-                                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${theme==='dark'?'right-1':'left-1'}`}></div>
-                              </button>
-                          </div>
-                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        ) : (
+                          <button onClick={() => { setIsEditingSpecialty(true); setShowSpecialtyModal(true); }}
+                            style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', padding: '4px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+                            {language === 'ar' ? 'تغيير' : 'Edit'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ background: 'var(--surface)', borderRadius: 20, padding: 20, border: '1.5px solid var(--border)' }}>
+                      <p style={{ fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center' }}>{language === 'ar' ? 'غير مسجل' : 'Not signed in'}</p>
+                    </div>
+                  )}
 
+                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+                      <h3 style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-subtle)', padding: '14px 16px 10px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border)' }}>{t('navSettings')}</h3>
+                      <div>
+                          <button onClick={() => setView('favorites')} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{t('darkMode')}</span>
+                            <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                              style={{ width: 48, height: 26, background: theme === 'dark' ? 'var(--primary)' : 'var(--ink-20)', borderRadius: 13, position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 200ms ease' }}>
+                              <div style={{ position: 'absolute', top: 3, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: 'left 200ms cubic-bezier(0.34,1.56,0.64,1)', left: theme === 'dark' ? 25 : 3 }} />
+                            </button>
                           </div>
+                          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
                           {/* إشعارات Push */}
                           {/* Notifications managed by system */}
                           {/* رابط الشير — للأدمن بس */}
@@ -1732,41 +1738,31 @@ const App: React.FC = () => {
                               />
                             </div>
                           )}
-                          {user && <button onClick={logout} className="w-full py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl font-black text-sm">{t('logout')}</button>}
-
-                          {/* ── منطقة منفصلة — Report / Add Medicine ── */}
-                          {user && (
-                            <div className="mt-2 pt-4 border-t-2 border-dashed border-slate-100 dark:border-slate-800">
-                              <p className="text-[10px] font-black uppercase tracking-wider text-slate-300 dark:text-slate-600 mb-3 text-center">Feedback & Support</p>
-                              <button
-                                onClick={() => {
-                                  const msg = encodeURIComponent(
-                                    `[Easy Drug Report]\n` +
-                                    `User: ${user.username || 'Unknown'}\n` +
-                                    `Email: ${user.email || 'N/A'}\n` +
-                                    `Specialty: ${(user as any).specialty || 'N/A'}\n\n` +
-                                    `Describe the issue or medicine to add:\n`
-                                  );
-                                  if (Capacitor.isNativePlatform()) {
-                                    window.open(`https://wa.me/966550806894?text=${msg}`, '_system');
-                                  } else {
-                                    window.open(`https://wa.me/966550806894?text=${msg}`, '_blank', 'noopener,noreferrer');
-                                  }
-                                }}
-                                className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl active:scale-95 transition-all"
-                              >
-                                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/20">
-                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                                </div>
-                                <div className="text-left">
-                                  <span className="block font-black text-sm text-emerald-700 dark:text-emerald-400">Report Error / Add Medicine</span>
-                                  <span className="block text-[10px] text-emerald-500/80 font-medium">Send report via WhatsApp</span>
-                                </div>
-                              </button>
-                            </div>
-                          )}
+                          {user && <button onClick={logout} style={{ width: '100%', padding: '14px', background: 'rgba(239,68,68,0.08)', color: '#ef4444', borderRadius: 14, fontWeight: 800, fontSize: 14, border: 'none', cursor: 'pointer' }}>{t('logout')}</button>}
+                      </div>
                       </div>
                   </div>
+
+                  {/* Feedback */}
+                  {user && (
+                    <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+                      <button
+                        onClick={() => {
+                          const msg = encodeURIComponent(`[Easy Drug Report]\nUser: ${user.username || 'Unknown'}\nEmail: ${user.email || 'N/A'}\nSpecialty: ${(user as any).specialty || 'N/A'}\n\nDescribe the issue or medicine to add:\n`);
+                          if (Capacitor.isNativePlatform()) { window.open(`https://wa.me/966550806894?text=${msg}`, '_system'); }
+                          else { window.open(`https://wa.me/966550806894?text=${msg}`, '_blank', 'noopener,noreferrer'); }
+                        }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                        <div style={{ width: 40, height: 40, background: '#25d366', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        </div>
+                        <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                          <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>Report Error / Add Medicine</span>
+                          <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Send report via WhatsApp</span>
+                        </div>
+                      </button>
+                    </div>
+                  )}
               </div>
           );
       }

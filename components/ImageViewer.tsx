@@ -144,6 +144,7 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
 // ── Main viewer ────────────────────────────────────────────────────────────
 const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags, onBack }) => {
   const [current, setCurrent] = useState(initialIndex);
+  const [closing, setClosing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -151,6 +152,11 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
     if (!el) return;
     el.scrollLeft = initialIndex * el.clientWidth;
   }, []);
+
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(onBack, 180);
+  };
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -167,7 +173,7 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col" style={{ direction: 'ltr' }}>
+    <div className={`fixed inset-0 z-[9999] bg-black flex flex-col ${closing ? 'anim-img-out' : 'anim-img-in'}`} style={{ direction: 'ltr' }}>
 
       {/* Header */}
       <div
@@ -178,7 +184,7 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
         }}
       >
         <button
-          onClick={onBack}
+          onClick={handleClose}
           className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-90 transition-transform"
         >
           <div className="w-5 h-5"><BackIcon /></div>
