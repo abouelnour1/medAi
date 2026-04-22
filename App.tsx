@@ -306,6 +306,11 @@ const App: React.FC = () => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // لما يبدأ يكتب، نخفي الـ focus state تلقائياً
+  useEffect(() => {
+    if (searchTerm.length > 0) setIsSearchFocused(false);
+  }, [searchTerm]);
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
@@ -1910,7 +1915,7 @@ const App: React.FC = () => {
           <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
             <SearchBar
               searchTerm={searchTerm}
-              setSearchTerm={(v) => { setSearchTerm(v); if (v.length > 0) setIsSearchFocused(false); }}
+              setSearchTerm={setSearchTerm}
               textSearchMode={textSearchMode}
               setTextSearchMode={setTextSearchMode}
               isSearchActive={searchTerm.length > 0}
