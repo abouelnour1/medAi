@@ -22,6 +22,7 @@ import AssistantModal from './components/AssistantModal';
 import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
+import { getInsurancePolicies } from './utils/insuranceMatch';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
 import { useSearch } from './hooks/useSearch';
@@ -286,6 +287,20 @@ const App: React.FC = () => {
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [showInsuranceBadge, setShowInsuranceBadge] = useState<boolean>(() => localStorage.getItem('ps_insurance_badge') === 'true');
+
+  // ── Pre-computed coverage map for fast card rendering ──────────────────────
+  // بدل ما كل كارت يحسب getInsurancePolicies لوحده (O(n) × عدد الكروت)،
+  // بنبني Map مرة واحدة لما insuranceData أو medicines يتغيروا
+  const insuranceCoveredSet = useMemo((): Set<string> | null => {
+    if (!showInsuranceBadge || !insuranceData.length) return null;
+    const set = new Set<string>();
+    medicines.forEach(m => {
+      if (getInsurancePolicies(m, insuranceData).length > 0) {
+        set.add(m.RegisterNumber);
+      }
+    });
+    return set;
+  }, [showInsuranceBadge, insuranceData, medicines]);
   const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
@@ -1608,7 +1623,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={showInsuranceBadge ? insuranceData : undefined} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceCoveredSet={insuranceCoveredSet} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">

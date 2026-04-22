@@ -202,7 +202,9 @@ export async function syncData(): Promise<SyncResult> {
   // food فاضي؟ — حاول مرة بس كل 30 دقيقة
   if (!hasFood) {
     const lastAttempt = cachedMeta?.food_last_attempt ?? 0;
-    if (Date.now() - lastAttempt > FOOD_RETRY_MS) {
+    // لو أول مرة (lastAttempt=0) أو مضت 30 دقيقة — حاول مرة تانية
+    const shouldRetry = lastAttempt === 0 || (Date.now() - lastAttempt > FOOD_RETRY_MS);
+    if (shouldRetry) {
       console.log('[dataSync] 🍎 Food missing — fetching...');
       await setItem(CACHE_KEYS.meta, { ...(cachedMeta ?? {}), food_last_attempt: Date.now() });
       fetchJSON(STORAGE_URLS.food).then(async (newFood) => {

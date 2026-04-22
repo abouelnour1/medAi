@@ -457,12 +457,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       {/* ── Insurance Bottom Sheet ─────────────────────────── */}
       {showInsuranceSheet && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 450, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setShowInsuranceSheet(false)}
         >
           <div
             style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
+              position: 'fixed', bottom: 0, left: 0, right: 0,
               background: 'var(--surface)', borderRadius: '24px 24px 0 0',
               maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
               animation: 'sheetUp 0.28s cubic-bezier(0.22,1,0.36,1)',
