@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, memo, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import { logMedicineView } from '../utils/analytics';
 import { abbreviateForm } from '../utils/formAbbrev';
@@ -454,8 +455,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       </button>
       </div>
 
-      {/* ── Insurance Bottom Sheet ─────────────────────────── */}
-      {showInsuranceSheet && (
+      {/* ── Insurance Bottom Sheet — Portal عشان يطلع فوق كل حاجة ── */}
+      {showInsuranceSheet && ReactDOM.createPortal(
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setShowInsuranceSheet(false)}
@@ -596,7 +597,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ────────────────────────────────────────────────────── */}
