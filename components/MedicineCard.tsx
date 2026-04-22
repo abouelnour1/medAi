@@ -1,8 +1,9 @@
 import { abbreviateForm } from '../utils/formAbbrev';
 import React, { useMemo, useState } from 'react';
-import { Medicine, TFunction, Language } from '../types';
+import { Medicine, TFunction, Language, InsuranceDrug } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StarIcon from './icons/StarIcon';
+import { getInsurancePolicies } from '../utils/insuranceMatch';
 
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -56,12 +57,12 @@ interface MedicineCardProps {
   t: TFunction;
   language: Language;
   imageRight?: boolean;
-  insuranceCoveredSet?: Set<string> | null;
+  insuranceData?: InsuranceDrug[];
 }
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language, insuranceCoveredSet,
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language, insuranceData,
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,10 +96,11 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
-  // Insurance coverage — O(1) lookup from pre-computed set
-  const isCovered = insuranceCoveredSet != null
-    ? (insuranceCoveredSet.has(medicine.RegisterNumber) ? true : false)
-    : null;
+  // Insurance coverage
+  const isCovered = useMemo(() => {
+    if (!insuranceData?.length) return null;
+    return getInsurancePolicies(medicine, insuranceData).length > 0;
+  }, [medicine, insuranceData]);
 
   const initial1 = (medicine['Trade Name'] || '?')[0].toUpperCase();
   const initial2 = (medicine['Trade Name'] || '??')[1]?.toUpperCase() || '';

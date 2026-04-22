@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, memo, useMemo } from 'react';
-import ReactDOM from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import { logMedicineView } from '../utils/analytics';
 import { abbreviateForm } from '../utils/formAbbrev';
@@ -455,15 +454,15 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       </button>
       </div>
 
-      {/* ── Insurance Bottom Sheet — Portal عشان يطلع فوق كل حاجة ── */}
-      {showInsuranceSheet && ReactDOM.createPortal(
+      {/* ── Insurance Bottom Sheet ─────────────────────────── */}
+      {showInsuranceSheet && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 450, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
           onClick={() => setShowInsuranceSheet(false)}
         >
           <div
             style={{
-              position: 'fixed', bottom: 0, left: 0, right: 0,
+              position: 'absolute', bottom: 0, left: 0, right: 0,
               background: 'var(--surface)', borderRadius: '24px 24px 0 0',
               maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
               animation: 'sheetUp 0.28s cubic-bezier(0.22,1,0.36,1)',
@@ -597,8 +596,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* ────────────────────────────────────────────────────── */}

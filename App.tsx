@@ -22,7 +22,6 @@ import AssistantModal from './components/AssistantModal';
 import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
-import { getInsurancePolicies } from './utils/insuranceMatch';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
 import { useSearch } from './hooks/useSearch';
@@ -287,37 +286,10 @@ const App: React.FC = () => {
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [showInsuranceBadge, setShowInsuranceBadge] = useState<boolean>(() => localStorage.getItem('ps_insurance_badge') === 'true');
-
-  // ── Pre-computed coverage set — حساب في الخلفية عشان ما يبلوكش الـ UI ──────
-  const [insuranceCoveredSet, setInsuranceCoveredSet] = useState<Set<string> | null>(null);
-  const insuranceBuildRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (insuranceBuildRef.current) clearTimeout(insuranceBuildRef.current);
-    if (!showInsuranceBadge || !insuranceData.length || !medicines.length) {
-      setInsuranceCoveredSet(null);
-      return;
-    }
-    // نأجل الحساب لـ idle time عشان ما يحجبش الـ UI render
-    insuranceBuildRef.current = setTimeout(() => {
-      const set = new Set<string>();
-      medicines.forEach(m => {
-        if (getInsurancePolicies(m, insuranceData).length > 0) set.add(m.RegisterNumber);
-      });
-      setInsuranceCoveredSet(set);
-    }, 100);
-    return () => { if (insuranceBuildRef.current) clearTimeout(insuranceBuildRef.current); };
-  }, [showInsuranceBadge, insuranceData, medicines]);
   const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  // لما يبدأ يكتب، نخفي الـ focus state تلقائياً
-  useEffect(() => {
-    if (searchTerm.length > 0) setIsSearchFocused(false);
-  }, [searchTerm]);
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
@@ -597,16 +569,7 @@ const App: React.FC = () => {
     observer.observe(headerRef.current);
     // fallback لو ResizeObserver اتأخر
     const t = setTimeout(measureNow, 50);
-    // ── Fallback: لو ResizeObserver اتأخر أو الـ height جاء 0 في أول قراءة ──
-    // بنضمن إن الـ SearchBar يظهر حتى لو مش اتقيس بشكل صح
-    const fallback1 = setTimeout(() => {
-      setHeaderHeight(h => h > 0 ? h : 60);
-      setHeaderMeasured(true);
-    }, 300);
-    const fallback2 = setTimeout(() => {
-      setHeaderMeasured(true); // guarantee بعد 800ms مهما حصل
-    }, 800);
-    return () => { observer.disconnect(); clearTimeout(t); clearTimeout(fallback1); clearTimeout(fallback2); };
+    return () => { observer.disconnect(); clearTimeout(t); };
   }, []);
 
   useEffect(() => {
@@ -1474,15 +1437,15 @@ const App: React.FC = () => {
       );
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <div style={{minHeight:'100%'}}><React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense></div>;
-          if (view === 'alternatives' && selectedMedicine) return <div style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
+          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense></div>;
+          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
               <div className="pt-1">
 
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
-                    <div className="mb-3" style={{ transition: 'opacity 0.2s ease, transform 0.2s ease', opacity: isSearchFocused ? 1 : 1, transform: isSearchFocused ? 'translateY(-4px)' : 'translateY(0)' }}>
+                    <div className="mb-3">
                       <p className="text-[10px] font-black uppercase tracking-widest mb-3 px-1" style={{ color: '#8a938f' }}>
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
@@ -1645,7 +1608,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceCoveredSet={insuranceCoveredSet} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={showInsuranceBadge ? insuranceData : undefined} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
@@ -1701,8 +1664,8 @@ const App: React.FC = () => {
       }
 
       if (activeTab === 'insurance') {
-          if (view === 'insuranceDetails' && selectedInsurance) return <div className="anim-tab-in"><InsuranceDetailsView data={selectedInsurance} t={t} /></div>;
-          return <div className="anim-tab-in"><InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} /></div>;
+          if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
@@ -1722,7 +1685,7 @@ const App: React.FC = () => {
       if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
-              <div className="space-y-4">
+              <div className="space-y-4 anim-slide-up">
                   {/* Profile Card */}
                   {user ? (
                     <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', borderRadius: 20, padding: '20px', marginBottom: 4 }}>
@@ -1915,8 +1878,7 @@ const App: React.FC = () => {
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
             transition: 'top 0.15s ease',
-            opacity: headerMeasured ? 1 : 0,
-            pointerEvents: headerMeasured ? 'auto' : 'none',
+            visibility: headerMeasured ? 'visible' : 'hidden',
           }}
         >
           <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
@@ -1939,15 +1901,13 @@ onClearSearch={handleClearSearch}
               language={language}
               onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
               isSearching={false}
-              onSearchFocus={() => setIsSearchFocused(true)}
-              onSearchBlur={() => setIsSearchFocused(false)}
             />
           </div>
         </div>
       )}
 
       <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.15s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
-          <div key={skipNextViewKey ? 'stable' : `${activeTab}-${['details','alternatives','imageView'].includes(view) ? view : 'list'}`}>
+          <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
       </main>
