@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Medicine, TFunction, Language, SortByOption } from '../types';
+import { Medicine, TFunction, Language, SortByOption, InsuranceDrug } from '../types';
 import MedicineCard from './MedicineCard';
 
 const SORT_OPTIONS = [
@@ -28,6 +28,7 @@ interface ResultsListProps {
   compareList?: string[];
   maxResults?: number;
   onImageClick?: (medicine: Medicine) => void;
+  insuranceData?: InsuranceDrug[];
 }
 
 const MAX_RESULTS = 100;
@@ -76,7 +77,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   t, language, resultsState, favorites, onToggleFavorite,
   sortBy, setSortBy,
   onToggleCompare, compareList = [],
-  maxResults, onImageClick
+  maxResults, onImageClick, insuranceData
 }) => {
 
   if (resultsState === 'empty') {
@@ -115,6 +116,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
               onImageClick={onImageClick ? () => onImageClick(med) : undefined}
               t={t}
               language={language}
+              insuranceData={insuranceData}
             />
           </div>
         ))}

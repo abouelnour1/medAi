@@ -1,8 +1,9 @@
 import { abbreviateForm } from '../utils/formAbbrev';
 import React, { useMemo, useState } from 'react';
-import { Medicine, TFunction, Language } from '../types';
+import { Medicine, TFunction, Language, InsuranceDrug } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StarIcon from './icons/StarIcon';
+import { getInsurancePolicies } from '../utils/insuranceMatch';
 
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -56,11 +57,12 @@ interface MedicineCardProps {
   t: TFunction;
   language: Language;
   imageRight?: boolean;
+  insuranceData?: InsuranceDrug[];
 }
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language,
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language, insuranceData,
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,6 +95,12 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ingredientCount = useMemo(() => getIngredientsCount(medicine), [medicine]);
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
+
+  // Insurance coverage
+  const isCovered = useMemo(() => {
+    if (!insuranceData?.length) return null;
+    return getInsurancePolicies(medicine, insuranceData).length > 0;
+  }, [medicine, insuranceData]);
 
   const initial1 = (medicine['Trade Name'] || '?')[0].toUpperCase();
   const initial2 = (medicine['Trade Name'] || '??')[1]?.toUpperCase() || '';
@@ -179,6 +187,32 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           }}>
             {medicine['Trade Name']}
           </h2>
+          {/* Insurance badge */}
+          {isCovered !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 7px', borderRadius: 20,
+                background: isCovered ? 'rgba(21,128,61,0.08)' : 'rgba(190,18,60,0.07)',
+                border: `1px solid ${isCovered ? 'rgba(21,128,61,0.2)' : 'rgba(190,18,60,0.18)'}`,
+              }}>
+                <div style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: isCovered ? '#15803d' : '#be123c',
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontSize: 9.5, fontWeight: 700,
+                  color: isCovered ? '#15803d' : '#be123c',
+                  letterSpacing: '0.01em',
+                }}>
+                  {isCovered
+                    ? (ar ? 'مغطى تأمينياً' : 'Covered')
+                    : (ar ? 'غير مغطى' : 'Not covered')}
+                </span>
+              </div>
+            </div>
+          )}
           {ingredientsString ? (
             <p style={{
               fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4,

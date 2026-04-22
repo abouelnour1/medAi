@@ -5,6 +5,7 @@ import { logMedicineView } from '../utils/analytics';
 import { abbreviateForm } from '../utils/formAbbrev';
 import { PEDIATRIC_DRUG_NAMES } from './PediatricDoseCalculator';
 import { Medicine, TFunction, Language, User, InsuranceDrug } from '../types';
+import { getInsurancePolicies } from '../utils/insuranceMatch';
 import StarIcon from './icons/StarIcon';
 import EditIcon from './icons/EditIcon';
 import AssistantIcon from './icons/AssistantIcon';
@@ -202,10 +203,20 @@ interface MedicineDetailProps {
     isInCompare?: boolean;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini, onOpenClinical }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini, onOpenClinical }) => {
   React.useEffect(() => {
     logMedicineView(medicine['Trade Name'], medicine.RegisterNumber, medicine['Product type']);
   }, [medicine.RegisterNumber]);
+
+  const ar = language === 'ar';
+  const [showInsuranceSheet, setShowInsuranceSheet] = useState(false);
+
+  // Insurance matching
+  const insurancePolicies = useMemo(
+    () => getInsurancePolicies(medicine, insuranceData),
+    [medicine, insuranceData]
+  );
+  const isCovered = insurancePolicies.length > 0;
 
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [clinicalRef, setClinicalRef]   = useState<ClinicalReference | null>(null);
@@ -404,28 +415,194 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, allMedicines,
               <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span className="font-black text-[9px] uppercase text-blue-500">Ask Gemini</span>
           </button>
-          {/* Pediatric Dose Calculator - بيظهر بس للأدوية الموجودة في القائمة */}
-          {(() => {
-            const sciName = String(medicine['Scientific Name'] || '').toLowerCase().trim();
-            const tradeName = String(medicine['Trade Name'] || '').toLowerCase().trim();
-            // بس للأشكال السائلة (شراب/قطرات) — مش أقراص أو كبسولات
-            const form = String(medicine['PharmaceuticalForm'] || '').toLowerCase();
-            const isLiquid = /syrup|suspension|drops|solution|elixir|oral liquid|شراب|قطر|محلول|معلق/.test(form);
-            if (!isLiquid) return null;
-            // نجرب كل كلمة في الاسم العلمي والتجاري
-            const tokens = [...sciName.split(/[\s/,()-]+/), ...tradeName.split(/[\s/,()-]+/)].filter(t => t.length > 2);
-            const hasPediatric = PEDIATRIC_DRUG_NAMES.has(sciName) || PEDIATRIC_DRUG_NAMES.has(tradeName) ||
-              tokens.some(tok => PEDIATRIC_DRUG_NAMES.has(tok)) ||
-              Array.from(PEDIATRIC_DRUG_NAMES).some(n => sciName.includes(n) || tradeName.includes(n));
-            if (!hasPediatric) return null;
-            return (
-              <button onClick={() => onOpenDoseCalc?.()} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200/60 dark:border-teal-800/40 p-3 rounded-2xl active:scale-95 transition-all">
-                <span className="text-base">👶</span>
-                <span className="font-black text-[9px] uppercase text-teal-600 dark:text-teal-400">{language === 'ar' ? 'جرعة الأطفال' : 'Pediatric'}</span>
-              </button>
-            );
-          })()}
+
+      {/* ── Insurance Card ──────────────────────────────────── */}
+      <button
+        onClick={() => setShowInsuranceSheet(true)}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 4, padding: '10px 8px', borderRadius: 16, border: 'none', cursor: 'pointer',
+          background: isCovered
+            ? 'linear-gradient(135deg, rgba(21,128,61,0.07), rgba(21,128,61,0.12))'
+            : 'linear-gradient(135deg, rgba(190,18,60,0.06), rgba(190,18,60,0.1))',
+          outline: `1.5px solid ${isCovered ? 'rgba(21,128,61,0.2)' : 'rgba(190,18,60,0.18)'}`,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        className="active:scale-95 transition-all"
+      >
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: isCovered ? 'rgba(21,128,61,0.12)' : 'rgba(190,18,60,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke={isCovered ? '#15803d' : '#be123c'} strokeWidth="2.2"
+            strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            {isCovered && <path d="M9 12l2 2 4-4"/>}
+            {!isCovered && <path d="M15 9l-6 6M9 9l6 6"/>}
+          </svg>
+        </div>
+        <span style={{
+          fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
+          color: isCovered ? '#15803d' : '#be123c',
+        }}>
+          {isCovered
+            ? (ar ? 'مغطى' : 'Covered')
+            : (ar ? 'غير مغطى' : 'Not Covered')}
+        </span>
+      </button>
       </div>
+
+      {/* ── Insurance Bottom Sheet ─────────────────────────── */}
+      {showInsuranceSheet && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 450, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowInsuranceSheet(false)}
+        >
+          <div
+            style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: 'var(--surface)', borderRadius: '24px 24px 0 0',
+              maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+              animation: 'sheetUp 0.28s cubic-bezier(0.22,1,0.36,1)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ink-20)' }} />
+            </div>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: isCovered ? 'rgba(21,128,61,0.1)' : 'rgba(190,18,60,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke={isCovered ? '#15803d' : '#be123c'} strokeWidth="2.2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    {isCovered && <path d="M9 12l2 2 4-4"/>}
+                    {!isCovered && <path d="M15 9l-6 6M9 9l6 6"/>}
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                    {ar ? 'التغطية التأمينية' : 'Insurance Coverage'}
+                  </p>
+                  <p style={{ fontSize: 11, color: isCovered ? '#15803d' : '#be123c', fontWeight: 700, marginTop: 1 }}>
+                    {isCovered
+                      ? `${insurancePolicies.length} ${ar ? 'دواء مغطى' : 'covered forms'}`
+                      : (ar ? 'غير مغطى في NPHIES' : 'Not covered in NPHIES')}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowInsuranceSheet(false)} style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none',
+                background: 'var(--surface-2)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-subtle)',
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ overflowY: 'auto', padding: '12px 16px 24px', flex: 1 }} className="no-scrollbar">
+              {!isCovered ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(190,18,60,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>
+                    {ar ? 'هذا الدواء غير مدرج في قائمة NPHIES' : 'This medicine is not in the NPHIES formulary'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Summary row */}
+                  <div style={{
+                    background: 'rgba(21,128,61,0.06)', border: '1px solid rgba(21,128,61,0.15)',
+                    borderRadius: 14, padding: '12px 14px',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 6 }}>
+                      {ar ? 'المادة الفعالة' : 'Active Ingredient'}
+                    </p>
+                    <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', direction: 'ltr' }}>
+                      {insurancePolicies[0].scientificName}
+                    </p>
+                    {insurancePolicies[0].drugClass && (
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                        {insurancePolicies[0].drugClass}
+                        {insurancePolicies[0].drugSubclass ? ` · ${insurancePolicies[0].drugSubclass}` : ''}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Indication */}
+                  {insurancePolicies[0].indication && (
+                    <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 14px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                        {ar ? 'الاستخدام' : 'Indication'}
+                      </p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.5 }}>
+                        {insurancePolicies[0].indication}
+                        {insurancePolicies[0].icd10Code && (
+                          <span style={{ marginRight: 6, marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', background: 'var(--surface)', padding: '2px 8px', borderRadius: 6, direction: 'ltr', display: 'inline-block' }}>
+                            {insurancePolicies[0].icd10Code}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Available forms */}
+                  <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 14px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                      {ar ? 'الأشكال المتاحة' : 'Available Forms'}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {Array.from(new Set(insurancePolicies.map(p => `${p.strength} ${p.strengthUnit} — ${p.form}`))).map((form, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#15803d', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', direction: 'ltr' }}>{form}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Extra notes */}
+                  {insurancePolicies[0].notes && (
+                    <div style={{ background: 'rgba(14,26,24,0.04)', borderRadius: 14, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                        {ar ? 'ملاحظات' : 'Notes'}
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{insurancePolicies[0].notes}</p>
+                    </div>
+                  )}
+
+                  {/* Prescribing edits */}
+                  {insurancePolicies[0].prescribingEdits && (
+                    <div style={{ background: 'rgba(234,179,8,0.06)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(234,179,8,0.2)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#a16207', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                        {ar ? 'قيود الوصف' : 'Prescribing Restrictions'}
+                      </p>
+                      <p style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{insurancePolicies[0].prescribingEdits}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────── */}
 
       {/* ── Clinical Data — Accordion sections ── */}
       {clinicalRef && (

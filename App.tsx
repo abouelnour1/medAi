@@ -506,9 +506,10 @@ const App: React.FC = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(90);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const searchBarRef = useRef<HTMLDivElement>(null);
-  const [searchBarTop, setSearchBarTop] = useState(90);
+  const [searchBarTop, setSearchBarTop] = useState(0);
+  const [headerMeasured, setHeaderMeasured] = useState(false);
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
@@ -541,23 +542,33 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!headerRef.current) return;
-    // نحفظ أول قيمة ونمنع تغييرها بسبب keyboard
     let lastH = 0;
+    // قياس فوري قبل أي رندر
+    const measureNow = () => {
+      if (!headerRef.current) return;
+      const rect = headerRef.current.getBoundingClientRect();
+      const h = Math.ceil(rect.height);
+      if (h > 0 && Math.abs(h - lastH) >= 2) {
+        lastH = h;
+        setHeaderHeight(h);
+        setSearchBarTop(h - 10);
+        setHeaderMeasured(true);
+      }
+    };
+    // قيس فوراً
+    measureNow();
+    // وبعدين track أي تغيير
     const observer = new ResizeObserver(() => {
       if (!headerRef.current) return;
       const vvHeight = window.visualViewport?.height ?? window.innerHeight;
-      const isKeyboardOpen = vvHeight < window.innerHeight * 0.75;
-      if (isKeyboardOpen && lastH > 0) return;
-      // getBoundingClientRect يعطي الارتفاع الفعلي شامل كل الـ padding
-      const rect = headerRef.current.getBoundingClientRect();
-      const h = Math.ceil(rect.height);
-      if (Math.abs(h - lastH) < 2 && lastH > 0) return;
-      lastH = h;
-      setHeaderHeight(h);
-      setSearchBarTop(h - 10);
+      const kbOpen = vvHeight < window.innerHeight * 0.75;
+      if (kbOpen && lastH > 0) return;
+      measureNow();
     });
     observer.observe(headerRef.current);
-    return () => observer.disconnect();
+    // fallback لو ResizeObserver اتأخر
+    const t = setTimeout(measureNow, 50);
+    return () => { observer.disconnect(); clearTimeout(t); };
   }, []);
 
   useEffect(() => {
@@ -1582,7 +1593,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={insuranceData} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
@@ -1842,6 +1853,7 @@ const App: React.FC = () => {
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
             transition: 'top 0.15s ease',
+            visibility: headerMeasured ? 'visible' : 'hidden',
           }}
         >
           <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
