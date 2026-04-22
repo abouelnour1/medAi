@@ -23,6 +23,8 @@ interface SearchBarProps {
   onInsuranceClick?: () => void;
   isSearching?: boolean;
   language?: string;
+  onSearchFocus?: () => void;
+  onSearchBlur?: () => void;
 }
 
 const SORT_OPTIONS = [
@@ -51,6 +53,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   setSortBy,
   onInsuranceClick,
   language = 'en',
+  onSearchFocus,
+  onSearchBlur,
 }) => {
   const [isFocused, setIsFocused]           = useState(false);
   const [isTyping, setIsTyping]             = useState(false);
@@ -102,8 +106,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
             defaultValue={searchTerm}
             onChange={handleChange}
             onKeyDown={e => e.key === 'Enter' && onForceSearch()}
-            onFocus={() => { setIsFocused(true); setShowSettings(false); setShowSort(false); }}
-            onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+            onFocus={() => { setIsFocused(true); setShowSettings(false); setShowSort(false); onSearchFocus?.(); }}
+            onBlur={() => { setTimeout(() => setIsFocused(false), 150); onSearchBlur?.(); }}
             placeholder={
               textSearchMode === 'tradeName'
                 ? (ar ? 'ابحث بالاسم التجاري...' : 'Search by trade name...')

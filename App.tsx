@@ -305,6 +305,7 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
   // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
   const debouncedSearchTerm = searchTerm;
@@ -584,7 +585,16 @@ const App: React.FC = () => {
     observer.observe(headerRef.current);
     // fallback لو ResizeObserver اتأخر
     const t = setTimeout(measureNow, 50);
-    return () => { observer.disconnect(); clearTimeout(t); };
+    // ── Fallback: لو ResizeObserver اتأخر أو الـ height جاء 0 في أول قراءة ──
+    // بنضمن إن الـ SearchBar يظهر حتى لو مش اتقيس بشكل صح
+    const fallback1 = setTimeout(() => {
+      setHeaderHeight(h => h > 0 ? h : 60);
+      setHeaderMeasured(true);
+    }, 300);
+    const fallback2 = setTimeout(() => {
+      setHeaderMeasured(true); // guarantee بعد 800ms مهما حصل
+    }, 800);
+    return () => { observer.disconnect(); clearTimeout(t); clearTimeout(fallback1); clearTimeout(fallback2); };
   }, []);
 
   useEffect(() => {
@@ -1460,7 +1470,7 @@ const App: React.FC = () => {
 
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
-                    <div className="mb-3">
+                    <div className="mb-3" style={{ transition: 'opacity 0.2s ease, transform 0.2s ease', opacity: isSearchFocused ? 1 : 1, transform: isSearchFocused ? 'translateY(-4px)' : 'translateY(0)' }}>
                       <p className="text-[10px] font-black uppercase tracking-widest mb-3 px-1" style={{ color: '#8a938f' }}>
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
@@ -1893,13 +1903,14 @@ const App: React.FC = () => {
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
             transition: 'top 0.15s ease',
-            visibility: headerMeasured ? 'visible' : 'hidden',
+            opacity: headerMeasured ? 1 : 0,
+            pointerEvents: headerMeasured ? 'auto' : 'none',
           }}
         >
           <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
             <SearchBar
               searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
+              setSearchTerm={(v) => { setSearchTerm(v); if (v.length > 0) setIsSearchFocused(false); }}
               textSearchMode={textSearchMode}
               setTextSearchMode={setTextSearchMode}
               isSearchActive={searchTerm.length > 0}
@@ -1916,6 +1927,8 @@ onClearSearch={handleClearSearch}
               language={language}
               onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
               isSearching={false}
+              onSearchFocus={() => setIsSearchFocused(true)}
+              onSearchBlur={() => setIsSearchFocused(false)}
             />
           </div>
         </div>
