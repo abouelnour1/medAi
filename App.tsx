@@ -285,6 +285,7 @@ const App: React.FC = () => {
     return () => unsub?.();
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
+  const [showInsuranceBadge, setShowInsuranceBadge] = useState<boolean>(() => localStorage.getItem('ps_insurance_badge') === 'true');
   const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
@@ -652,7 +653,7 @@ const App: React.FC = () => {
           restoreScroll(prev);
       } else if (['login', 'register', 'admin', 'favorites', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) {
           const target = activeTab === 'search' 
-              ? (searchTerm.replace(/\s/g,'').length >= 3 ? 'results' : 'search') 
+              ? (searchTerm.replace(/\s/g,'').length >= 2 ? 'results' : 'search') 
               : (activeTab === 'insurance' ? 'insuranceSearch' : 'settings');
           setView(target);
           restoreScroll(target);
@@ -1094,6 +1095,20 @@ const App: React.FC = () => {
     return { direct, diffStrength, therapeutic };
   }, [selectedMedicine, medicines]);
 
+  // حفظ scroll position لما ImageViewer يفتح وإرجاعه لما يقفل
+  const savedScrollBeforeImage = React.useRef<number>(0);
+  React.useEffect(() => {
+    if (activeImageViewer) {
+      savedScrollBeforeImage.current = scrollContainerRef.current?.scrollTop ?? 0;
+    } else if (view === 'alternatives' && savedScrollBeforeImage.current > 0) {
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = savedScrollBeforeImage.current;
+        }
+      });
+    }
+  }, [activeImageViewer]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.productType !== 'all') count++;
@@ -1423,7 +1438,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense></div>;
-          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
+          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
               <div className="pt-1">
@@ -1548,7 +1563,7 @@ const App: React.FC = () => {
                       )}
                       {/* نعرض النتائج لو: في بحث أو في فلاتر نشطة */}
                       {(() => {
-                        const minLen = textSearchMode === 'indication' ? 1 : 3;
+                        const minLen = textSearchMode === 'indication' ? 1 : 2;
                         const hasSearch = searchTerm.replace(/\s/g,"").length >= minLen;
                         const isDebouncing = searchTerm !== debouncedSearchTerm;
                         const hasResults = (hasSearch || activeFiltersCount > 0) && displayedMedicines.length > 0;
@@ -1593,7 +1608,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={insuranceData} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={showInsuranceBadge ? insuranceData : undefined} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
@@ -1650,7 +1665,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
@@ -1716,8 +1731,18 @@ const App: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
                             <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{t('darkMode')}</span>
                             <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                              style={{ width: 48, height: 26, background: theme === 'dark' ? 'var(--primary)' : 'var(--ink-20)', borderRadius: 13, position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 200ms ease' }}>
+                              style={{ width: 48, height: 26, background: theme === 'dark' ? 'var(--primary)' : '#c9cfcc', borderRadius: 13, position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 200ms ease' }}>
                               <div style={{ position: 'absolute', top: 3, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: 'left 200ms cubic-bezier(0.34,1.56,0.64,1)', left: theme === 'dark' ? 25 : 3 }} />
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                            <div>
+                              <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, display: 'block' }}>{language === 'ar' ? 'بادج التأمين' : 'Insurance Badge'}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>{language === 'ar' ? 'إظهار حالة التغطية في نتائج البحث' : 'Show coverage status in search results'}</span>
+                            </div>
+                            <button onClick={() => { const v = !showInsuranceBadge; setShowInsuranceBadge(v); localStorage.setItem('ps_insurance_badge', v ? 'true' : 'false'); }}
+                              style={{ width: 48, height: 26, background: showInsuranceBadge ? 'var(--primary)' : '#c9cfcc', borderRadius: 13, position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 200ms ease', flexShrink: 0 }}>
+                              <div style={{ position: 'absolute', top: 3, width: 20, height: 20, background: '#fff', borderRadius: '50%', transition: 'left 200ms cubic-bezier(0.34,1.56,0.64,1)', left: showInsuranceBadge ? 25 : 3 }} />
                             </button>
                           </div>
                           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>

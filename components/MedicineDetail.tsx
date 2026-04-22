@@ -561,17 +561,14 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     </div>
                   )}
 
-                  {/* Available forms */}
+                  {/* Available strengths — no form */}
                   <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 14px' }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                      {ar ? 'الأشكال المتاحة' : 'Available Forms'}
+                      {ar ? 'التركيزات المتاحة' : 'Available Strengths'}
                     </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {Array.from(new Set(insurancePolicies.map(p => `${p.strength} ${p.strengthUnit} — ${p.form}`))).map((form, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#15803d', flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', direction: 'ltr' }}>{form}</span>
-                        </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {Array.from(new Set(insurancePolicies.map(p => `${p.strength} ${p.strengthUnit}`.trim()).filter(Boolean))).map((s, i) => (
+                        <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#15803d', background: 'rgba(21,128,61,0.08)', padding: '3px 10px', borderRadius: 20, direction: 'ltr' }}>{s}</span>
                       ))}
                     </div>
                   </div>

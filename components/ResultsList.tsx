@@ -101,9 +101,9 @@ const ResultsList: React.FC<ResultsListProps> = ({
         {setSortBy && sortBy && <SortDropdown sortBy={sortBy} setSortBy={setSortBy} language={language} />}
       </div>
 
-      <div className="space-y-2.5" style={{ contain: 'content' }}>
+      <div className="space-y-2.5">
         {visibleMeds.map((med) => (
-          <div key={med.RegisterNumber} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 88px' }}>
+          <div key={med.RegisterNumber}>
             <MedicineCard
               medicine={med}
               onShortPress={() => onMedicineSelect(med)}
