@@ -205,35 +205,69 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     return results;
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
 
-  const searchBarH = 90; // approximate height of search bar for content padding
+  const [searchBarRef, setSearchBarRef] = React.useState<HTMLDivElement | null>(null);
+  const [searchBarActualH, setSearchBarActualH] = React.useState(96);
+
+  React.useEffect(() => {
+    if (!searchBarRef) return;
+    const obs = new ResizeObserver(() => {
+      setSearchBarActualH(searchBarRef.getBoundingClientRect().height + 8);
+    });
+    obs.observe(searchBarRef);
+    setSearchBarActualH(searchBarRef.getBoundingClientRect().height + 8);
+    return () => obs.disconnect();
+  }, [searchBarRef]);
 
   return (
-    <div className="space-y-4 min-h-[400px]" style={{ paddingTop: searchBarFixedTop !== undefined ? searchBarH : 0 }}>
-      {/* Single search bar — fixed like main search bar */}
-      <div style={{
-        background: 'var(--surface)', borderRadius: 16,
-        border: '1.5px solid var(--border)',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,106,96,0.07)',
-        ...(searchBarFixedTop !== undefined ? {
-          position: 'fixed',
-          top: searchBarFixedTop,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 'calc(100% - 32px)',
-          maxWidth: 448,
-          zIndex: 59,
-        } : {
-          position: 'sticky',
-          top: stickyTop,
-          zIndex: 10,
-        }),
-      }}>
-        {/* Type chips */}
-        <div style={{ display: 'flex', gap: 6, padding: '10px 12px 8px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }} className="no-scrollbar">
+    <div className="min-h-[400px]" style={{ paddingTop: searchBarFixedTop !== undefined ? searchBarActualH : 0 }}>
+      {/* Search bar */}
+      <div
+        ref={setSearchBarRef}
+        style={{
+          background: 'var(--surface)',
+          borderRadius: 14,
+          border: '1.5px solid var(--border)',
+          overflow: 'hidden',
+          boxShadow: '0 2px 12px rgba(0,106,96,0.08)',
+          ...(searchBarFixedTop !== undefined ? {
+            position: 'fixed',
+            top: searchBarFixedTop,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'calc(100% - 32px)',
+            maxWidth: 448,
+            zIndex: 59,
+          } : {
+            position: 'sticky',
+            top: stickyTop,
+            zIndex: 10,
+          }),
+        }}
+      >
+        {/* Search input row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            placeholder={t('insuranceSearchPlaceholder') || 'Search...'}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 15, color: 'var(--text)', fontFamily: 'inherit' }}
+            autoComplete="off" autoCorrect="off"
+          />
+          {inputValue && (
+            <button onClick={() => setInputValue('')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-subtle)', display: 'flex' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          )}
+        </div>
+        {/* Type chips row */}
+        <div style={{ display: 'flex', gap: 5, padding: '0 10px 8px', overflowX: 'auto' }} className="no-scrollbar">
           {(['tradeName', 'scientificName', 'indication', 'icd10Code'] as const).map(mode => (
             <button key={mode} onClick={() => setSearchMode(mode)} style={{
-              padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              padding: '4px 11px', borderRadius: 20, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               fontSize: 11, fontWeight: 700,
               background: searchMode === mode ? 'var(--primary)' : 'var(--surface-2)',
               color: searchMode === mode ? '#fff' : 'var(--text-muted)',
@@ -246,32 +280,9 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             </button>
           ))}
         </div>
-        {/* Search input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            placeholder={t('insuranceSearchPlaceholder') || 'Search...'}
-            style={{
-              flex: 1, border: 'none', outline: 'none', background: 'transparent',
-              fontSize: 15, color: 'var(--text)', fontFamily: 'inherit',
-            }}
-            autoComplete="off"
-            autoCorrect="off"
-          />
-          {inputValue && (
-            <button onClick={() => setInputValue('')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          )}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 animate-fade-in pb-20">
+      <div className="grid grid-cols-1 gap-3 animate-fade-in pb-20 pt-3">
         {searchResults.map((result, idx) => {
             if (result.type === 'covered') return <IndicationCard key={'c'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
             if (result.type === 'drug-grouped') return <DrugPolicyCard key={'d'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;

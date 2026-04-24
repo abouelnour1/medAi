@@ -531,12 +531,19 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   // نحفظ الـ headerHeight من اللي بعد في localStorage عشان أول render يكون صح
-  const STORED_H = (() => { try { const v = parseInt(localStorage.getItem('ps_header_h') || ''); return v > 40 && v < 200 ? v : 88; } catch { return 88; } })();
+  const STORED_H = (() => {
+    try {
+      const v = parseInt(localStorage.getItem('ps_header_h') || '');
+      if (v > 50 && v < 200) return v;
+    } catch {}
+    // Fallback: status bar (iOS ~44px, Android ~30px) + header content ~56px = conservative 120px
+    return 120;
+  })();
   const INITIAL_HEADER_H = STORED_H;
   const [headerHeight, setHeaderHeight] = useState(INITIAL_HEADER_H);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const [searchBarTop, setSearchBarTop] = useState(INITIAL_HEADER_H);
-  const [headerMeasured, setHeaderMeasured] = useState(true); // نبدأ بـ true لأن عندنا قيمة مخزنة
+  const [headerMeasured, setHeaderMeasured] = useState(true);
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -1929,7 +1936,6 @@ const App: React.FC = () => {
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
-            transition: 'top 0.15s ease',
           }}
         >
           <div className="bg-light-bg dark:bg-dark-bg pb-1 pt-1">
