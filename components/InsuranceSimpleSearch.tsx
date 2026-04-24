@@ -21,6 +21,7 @@ interface InsuranceSimpleSearchProps {
   setSearchMode: (mode: InsuranceSearchMode) => void;
   onSearchIconClick?: () => void;
   stickyTop?: number;
+  searchBarFixedTop?: number;
 }
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
@@ -36,6 +37,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     setSearchMode,
     onSearchIconClick,
     stickyTop = 0,
+    searchBarFixedTop,
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
 
@@ -203,14 +205,29 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     return results;
   }, [searchTerm, searchMode, insuranceData, allMedicines]);
 
+  const searchBarH = 90; // approximate height of search bar for content padding
+
   return (
-    <div className="space-y-4 min-h-[400px]">
-      {/* Single search bar with inline type selector */}
+    <div className="space-y-4 min-h-[400px]" style={{ paddingTop: searchBarFixedTop !== undefined ? searchBarH : 0 }}>
+      {/* Single search bar — fixed like main search bar */}
       <div style={{
         background: 'var(--surface)', borderRadius: 16,
         border: '1.5px solid var(--border)',
-        overflow: 'hidden', position: 'sticky', top: stickyTop, zIndex: 10,
+        overflow: 'hidden',
         boxShadow: '0 2px 8px rgba(0,106,96,0.07)',
+        ...(searchBarFixedTop !== undefined ? {
+          position: 'fixed',
+          top: searchBarFixedTop,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 32px)',
+          maxWidth: 448,
+          zIndex: 59,
+        } : {
+          position: 'sticky',
+          top: stickyTop,
+          zIndex: 10,
+        }),
       }}>
         {/* Type chips */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 12px 8px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }} className="no-scrollbar">

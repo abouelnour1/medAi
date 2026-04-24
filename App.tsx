@@ -574,33 +574,39 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!headerRef.current) return;
     let lastH = 0;
-    // قياس فوري قبل أي رندر
+    let attempts = 0;
+
     const measureNow = () => {
       if (!headerRef.current) return;
-      const rect = headerRef.current.getBoundingClientRect();
-      const h = Math.ceil(rect.height);
-      if (h > 0 && Math.abs(h - lastH) >= 2) {
+      const h = Math.ceil(headerRef.current.getBoundingClientRect().height);
+      if (h > 40 && Math.abs(h - lastH) >= 1) {
         lastH = h;
         setHeaderHeight(h);
         setSearchBarTop(h - 10);
         setHeaderMeasured(true);
         try { localStorage.setItem('ps_header_h', String(h)); } catch {}
+      } else if (h === 0 && attempts < 10) {
+        // Layout not ready yet — retry
+        attempts++;
+        setTimeout(measureNow, 30);
       }
     };
-    // قيس فوراً
-    measureNow();
-    // وبعدين track أي تغيير
+
+    // Multiple attempts to catch iOS layout completion
+    requestAnimationFrame(() => {
+      measureNow();
+      setTimeout(measureNow, 50);
+      setTimeout(measureNow, 150);
+      setTimeout(measureNow, 400);
+    });
+
     const observer = new ResizeObserver(() => {
-      if (!headerRef.current) return;
-      const vvHeight = window.visualViewport?.height ?? window.innerHeight;
-      const kbOpen = vvHeight < window.innerHeight * 0.75;
-      if (kbOpen && lastH > 0) return;
+      const vvH = window.visualViewport?.height ?? window.innerHeight;
+      if (vvH < window.innerHeight * 0.75) return; // keyboard open
       measureNow();
     });
     observer.observe(headerRef.current);
-    // fallback لو ResizeObserver اتأخر
-    const t = setTimeout(measureNow, 50);
-    return () => { observer.disconnect(); clearTimeout(t); };
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -1711,7 +1717,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={headerHeight + 8} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={0} searchBarFixedTop={headerHeight + 8} />;
       }
 
       if (activeTab === 'settings') {
