@@ -530,14 +530,13 @@ const App: React.FC = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
-  // نبدأ بقيمة تقريبية عشان نمنع الـ flash
-  // Android: status bar ~30px + header content ~56px = 86px
-  // iOS: safe-area ~44px + header content ~50px = 94px
-  const INITIAL_HEADER_H = 88;
+  // نحفظ الـ headerHeight من اللي بعد في localStorage عشان أول render يكون صح
+  const STORED_H = (() => { try { const v = parseInt(localStorage.getItem('ps_header_h') || ''); return v > 40 && v < 200 ? v : 88; } catch { return 88; } })();
+  const INITIAL_HEADER_H = STORED_H;
   const [headerHeight, setHeaderHeight] = useState(INITIAL_HEADER_H);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const [searchBarTop, setSearchBarTop] = useState(INITIAL_HEADER_H);
-  const [headerMeasured, setHeaderMeasured] = useState(false);
+  const [headerMeasured, setHeaderMeasured] = useState(true); // نبدأ بـ true لأن عندنا قيمة مخزنة
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -585,6 +584,7 @@ const App: React.FC = () => {
         setHeaderHeight(h);
         setSearchBarTop(h - 10);
         setHeaderMeasured(true);
+        try { localStorage.setItem('ps_header_h', String(h)); } catch {}
       }
     };
     // قيس فوراً
@@ -1711,7 +1711,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={headerHeight + 8} />;
       }
 
       if (activeTab === 'settings') {
@@ -1953,7 +1953,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: isKeyboardOpen ? 'none' : 'auto' } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: isKeyboardOpen ? 'none' : 'auto', scrollPaddingTop: headerHeight + 8 } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>

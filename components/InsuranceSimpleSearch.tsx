@@ -20,6 +20,7 @@ interface InsuranceSimpleSearchProps {
   searchMode: InsuranceSearchMode;
   setSearchMode: (mode: InsuranceSearchMode) => void;
   onSearchIconClick?: () => void;
+  stickyTop?: number;
 }
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
@@ -33,7 +34,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     setSearchTerm,
     searchMode,
     setSearchMode,
-    onSearchIconClick
+    onSearchIconClick,
+    stickyTop = 0,
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
 
@@ -207,7 +209,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
       <div style={{
         background: 'var(--surface)', borderRadius: 16,
         border: '1.5px solid var(--border)',
-        overflow: 'hidden', position: 'sticky', top: 0, zIndex: 10,
+        overflow: 'hidden', position: 'sticky', top: stickyTop, zIndex: 10,
         boxShadow: '0 2px 8px rgba(0,106,96,0.07)',
       }}>
         {/* Type chips */}

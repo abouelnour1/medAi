@@ -14,6 +14,7 @@ interface InsuranceSearchViewProps {
   insuranceSearchMode: InsuranceSearchMode;
   setInsuranceSearchMode: (mode: InsuranceSearchMode) => void;
   onSearchIconClick?: () => void;
+  stickyTop?: number;
 }
 
 const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
@@ -31,6 +32,7 @@ const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
           searchMode={props.insuranceSearchMode}
           setSearchMode={props.setInsuranceSearchMode}
           onSearchIconClick={props.onSearchIconClick}
+          stickyTop={props.stickyTop}
       />
     </div>
   );
