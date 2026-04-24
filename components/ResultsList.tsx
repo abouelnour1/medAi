@@ -28,7 +28,8 @@ interface ResultsListProps {
   compareList?: string[];
   maxResults?: number;
   onImageClick?: (medicine: Medicine) => void;
-  insuranceData?: InsuranceDrug[];
+  coveredAtcSet?: Set<string>;
+  coveredSciNorms?: Set<string>;
 }
 
 const MAX_RESULTS = 100;
@@ -77,7 +78,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   t, language, resultsState, favorites, onToggleFavorite,
   sortBy, setSortBy,
   onToggleCompare, compareList = [],
-  maxResults, onImageClick, insuranceData
+  maxResults, onImageClick, coveredAtcSet, coveredSciNorms
 }) => {
 
   if (resultsState === 'empty') {
@@ -116,7 +117,8 @@ const ResultsList: React.FC<ResultsListProps> = ({
               onImageClick={onImageClick ? () => onImageClick(med) : undefined}
               t={t}
               language={language}
-              insuranceData={insuranceData}
+              coveredAtcSet={coveredAtcSet}
+              coveredSciNorms={coveredSciNorms}
             />
           </div>
         ))}

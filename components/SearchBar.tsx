@@ -23,6 +23,8 @@ interface SearchBarProps {
   onInsuranceClick?: () => void;
   isSearching?: boolean;
   language?: string;
+  recentSearches?: { name: string; id: string }[];
+  onSelectRecent?: (name: string) => void;
 }
 
 const SORT_OPTIONS = [
@@ -51,6 +53,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
   setSortBy,
   onInsuranceClick,
   language = 'en',
+  recentSearches = [],
+  onSelectRecent,
 }) => {
   const [isFocused, setIsFocused]           = useState(false);
   const [isTyping, setIsTyping]             = useState(false);
@@ -202,6 +206,35 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
         </>
       )}
 
+      {/* ── Recent searches chips — only show when focused and empty ── */}
+      {isFocused && !isSearchActive && recentSearches.length > 0 && (
+        <div style={{
+          display: 'flex', gap: 6, flexWrap: 'wrap',
+          padding: '6px 2px 2px',
+          animation: 'fadeIn 180ms ease both',
+        }}>
+          {recentSearches.slice(0, 5).map((r, i) => (
+            <button
+              key={r.id}
+              onMouseDown={e => { e.preventDefault(); onSelectRecent?.(r.name); }}
+              style={{
+                padding: '5px 12px', borderRadius: 20,
+                background: 'var(--surface-2)', border: '1px solid var(--border)',
+                fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 5,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'background 120ms ease',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
 
     </div>
   );

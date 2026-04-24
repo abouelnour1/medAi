@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { Medicine, TFunction, Language, InsuranceDrug } from '../types';
 import AlternativeIcon from './icons/AlternativeIcon';
 import StarIcon from './icons/StarIcon';
-import { getInsurancePolicies } from '../utils/insuranceMatch';
 
 export const getIngredientsList = (medicine: Medicine): { name: string; strength: string }[] => {
     const sciNames = String(medicine['Scientific Name'] || '').split(',').map(s => s.trim());
@@ -57,12 +56,14 @@ interface MedicineCardProps {
   t: TFunction;
   language: Language;
   imageRight?: boolean;
-  insuranceData?: InsuranceDrug[];
+  coveredAtcSet?: Set<string>;
+  coveredSciNorms?: Set<string>;
 }
 
 const MedicineCard: React.FC<MedicineCardProps> = ({
   medicine, onShortPress, onLongPress, onFindAlternative,
-  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language, insuranceData,
+  isFavorite, onToggleFavorite, onToggleCompare, isInCompare = false, onImageClick, t, language,
+  coveredAtcSet, coveredSciNorms,
 }) => {
   const price = parseFloat(medicine['Public price']);
   const pressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,11 +97,39 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
-  // Insurance coverage
+  // Insurance coverage — O(1) lookup via pre-computed sets
   const isCovered = useMemo(() => {
-    if (!insuranceData?.length) return null;
-    return getInsurancePolicies(medicine, insuranceData).length > 0;
-  }, [medicine, insuranceData]);
+    if (!coveredAtcSet && !coveredSciNorms) return null;
+    const atc = String(medicine.AtcCode1 || '').trim();
+    if (atc && coveredAtcSet) {
+      for (const code of coveredAtcSet) {
+        if (atc === code || atc.startsWith(code)) return true;
+      }
+    }
+    if (coveredSciNorms) {
+      const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule']);
+      const sciRaw = String(medicine['Scientific Name'] || '');
+      const isMulti = /[;,+&\/]/.test(sciRaw) || sciRaw.trim().split(/\s+/).length > 4;
+      const norm = (s: string) => s.toLowerCase()
+        .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/).filter(t => t.length > 1 && !JUNK.has(t))
+        .join(' ').trim();
+      const sciNorm = norm(sciRaw);
+      if (sciNorm.length < 3) return false;
+      if (isMulti) {
+        // Multi-ingredient: exact match only
+        return coveredSciNorms.has(sciNorm);
+      } else {
+        // Single ingredient: allow partial
+        if (coveredSciNorms.has(sciNorm)) return true;
+        for (const n of coveredSciNorms) {
+          if (n.length > 5 && sciNorm.length > 4 && (sciNorm === n || (sciNorm.includes(n) && n.split(' ').length >= sciNorm.split(' ').length - 1))) return true;
+        }
+      }
+    }
+    return false;
+  }, [medicine, coveredAtcSet, coveredSciNorms]);
 
   const initial1 = (medicine['Trade Name'] || '?')[0].toUpperCase();
   const initial2 = (medicine['Trade Name'] || '??')[1]?.toUpperCase() || '';

@@ -203,7 +203,8 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   return (
     <div className="space-y-4 min-h-[400px]">
-      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border space-y-4">
+      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border space-y-4"
+        style={{ position: 'sticky', top: 0, zIndex: 10 }}>
           <div className="relative">
             <select
               value={searchMode}

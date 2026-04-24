@@ -109,6 +109,17 @@ body {
   color: var(--dark-text);
 }
 
+.dark {
+  --bg:      #060f0e;
+  --surface: #0d1a18;
+  --surface-2: #1a2e2b;
+  --border:  rgba(0,168,150,0.1);
+  --text:    #f0f7f5;
+  --text-muted: #8a9e9b;
+  --text-subtle: #55726d;
+  --paper:   #060f0e;
+}
+
 #root {
   height: 100dvh;
   display: flex;

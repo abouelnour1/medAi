@@ -234,6 +234,27 @@ const App: React.FC = () => {
   });
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [insuranceData, setInsuranceData] = useState<InsuranceDrug[]>([]);
+
+  // Pre-compute covered ATC codes + scientific name norms for O(1) lookup in cards
+  const coveredAtcSet = useMemo(() => {
+    const s = new Set<string>();
+    insuranceData.forEach(p => { if (p.atcCode) s.add(p.atcCode.trim()); });
+    return s;
+  }, [insuranceData]);
+
+  const coveredSciNorms = useMemo(() => {
+    const s = new Set<string>();
+    insuranceData.forEach(p => {
+      if (!p.scientificName) return;
+      const norm = p.scientificName.toLowerCase()
+        .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/).filter(t => t.length > 1 && !['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule'].includes(t))
+        .join(' ').trim();
+      if (norm) s.add(norm);
+    });
+    return s;
+  }, [insuranceData]);
   const [indications, setIndications] = useState<Record<string, { icd10Code: string; drugs: { s: string; a: string }[] }>>({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   // نشوف IndexedDB مباشرة — لو في داتا محلية مش نعرض loading
@@ -507,31 +528,39 @@ const App: React.FC = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // نبدأ بقيمة تقريبية عشان نمنع الـ flash
+  // Android: status bar ~30px + header content ~56px = 86px
+  // iOS: safe-area ~44px + header content ~50px = 94px
+  const INITIAL_HEADER_H = 88;
+  const [headerHeight, setHeaderHeight] = useState(INITIAL_HEADER_H);
   const searchBarRef = useRef<HTMLDivElement>(null);
-  const [searchBarTop, setSearchBarTop] = useState(0);
+  const [searchBarTop, setSearchBarTop] = useState(INITIAL_HEADER_H);
   const [headerMeasured, setHeaderMeasured] = useState(false);
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
-  const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
-    // Capacitor Keyboard plugin events (Android/iOS)
     let cleanupCap: (() => void) | null = null;
     (async () => {
       try {
         const { Keyboard } = await import('@capacitor/keyboard');
-        const showListener = await Keyboard.addListener('keyboardWillShow', () => setIsKeyboardOpen(true));
-        const hideListener = await Keyboard.addListener('keyboardWillHide', () => setIsKeyboardOpen(false));
+        const showListener = await Keyboard.addListener('keyboardWillShow', (info: any) => {
+          setIsKeyboardOpen(true);
+          setKeyboardHeight(info?.keyboardHeight || 0);
+        });
+        const hideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          setIsKeyboardOpen(false);
+          setKeyboardHeight(0);
+        });
         cleanupCap = () => { showListener.remove(); hideListener.remove(); };
       } catch {
-        // Web fallback: use visualViewport
         const vv = window.visualViewport;
         if (!vv) return;
         const handleResize = () => {
           const kbOpen = vv.height < window.innerHeight * 0.75;
           setIsKeyboardOpen(kbOpen);
-          setViewportOffsetTop(vv.offsetTop || 0);
+          setKeyboardHeight(kbOpen ? Math.max(0, window.innerHeight - vv.height) : 0);
         };
         vv.addEventListener('resize', handleResize);
         vv.addEventListener('scroll', handleResize);
@@ -1608,7 +1637,7 @@ const App: React.FC = () => {
                                   {pagedMeds.length} / {displayedMedicines.length} نتيجة
                                 </p>
                               )}
-                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} insuranceData={showInsuranceBadge ? insuranceData : undefined} />
+                              <ResultsList medicines={pagedMeds} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); else handleMedicineSelect(m); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} resultsState="loaded" scrollContainerRef={scrollContainerRef} sortBy={sortBy} setSortBy={setSortBy as (v: string) => void} onImageClick={(m) => { if (m.imgBox) { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} coveredAtcSet={showInsuranceBadge ? coveredAtcSet : undefined} coveredSciNorms={showInsuranceBadge ? coveredSciNorms : undefined} />
                               {hasMore && (
                                 <button onClick={() => setAdminResultsPage(p => p + 1)}
                                   className="w-full mt-3 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-sm active:scale-95 transition-all">
@@ -1877,8 +1906,8 @@ const App: React.FC = () => {
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
-            transition: 'top 0.15s ease',
-            visibility: headerMeasured ? 'visible' : 'hidden',
+            transition: headerMeasured ? 'top 0.15s ease' : 'none',
+            opacity: headerMeasured ? 1 : 0,
           }}
         >
           <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
@@ -1901,12 +1930,14 @@ onClearSearch={handleClearSearch}
               language={language}
               onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
               isSearching={false}
+              recentSearches={recentSearches.slice(0, 5).map(m => ({ name: m['Trade Name'], id: m.RegisterNumber }))}
+              onSelectRecent={(name) => { setSearchTerm(name); setView('results'); }}
             />
           </div>
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))', transition: 'padding-top 0.15s ease, padding-bottom 0.4s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${keyboardHeight + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
