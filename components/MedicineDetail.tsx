@@ -512,48 +512,42 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
               </button>
             </div>
 
-            {/* Content */}
-            <div style={{ overflowY: 'auto', padding: '12px 16px 24px', flex: 1 }} className="no-scrollbar">
+            {/* Content — compact, no scroll needed for basics */}
+            <div style={{ overflowY: 'auto', padding: '10px 16px 20px', flex: 1 }} className="no-scrollbar">
               {!isCovered ? (
-                <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(190,18,60,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-                  </div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>
-                    {ar ? 'هذا الدواء غير مدرج في قائمة NPHIES' : 'This medicine is not in the NPHIES formulary'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(190,18,60,0.06)', borderRadius: 14, border: '1px solid rgba(190,18,60,0.15)' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#be123c', margin: 0 }}>
+                    {ar ? 'غير مدرج في قائمة NPHIES' : 'Not in the NPHIES formulary'}
                   </p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {/* Summary row */}
-                  <div style={{
-                    background: 'rgba(21,128,61,0.06)', border: '1px solid rgba(21,128,61,0.15)',
-                    borderRadius: 14, padding: '12px 14px',
-                  }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Active ingredient + class — most important, first */}
+                  <div style={{ background: 'rgba(21,128,61,0.06)', border: '1px solid rgba(21,128,61,0.15)', borderRadius: 14, padding: '10px 14px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#15803d', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       {ar ? 'المادة الفعالة' : 'Active Ingredient'}
                     </p>
-                    <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', direction: 'ltr' }}>
+                    <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', direction: 'ltr', margin: 0 }}>
                       {insurancePolicies[0].scientificName}
                     </p>
                     {insurancePolicies[0].drugClass && (
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                        {insurancePolicies[0].drugClass}
-                        {insurancePolicies[0].drugSubclass ? ` · ${insurancePolicies[0].drugSubclass}` : ''}
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {insurancePolicies[0].drugClass}{insurancePolicies[0].drugSubclass ? ` · ${insurancePolicies[0].drugSubclass}` : ''}
                       </p>
                     )}
                   </div>
 
-                  {/* Indication */}
+                  {/* Indication — second most important */}
                   {insurancePolicies[0].indication && (
-                    <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 14px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                    <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '10px 14px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                         {ar ? 'الاستخدام' : 'Indication'}
                       </p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.45, margin: 0 }}>
                         {insurancePolicies[0].indication}
                         {insurancePolicies[0].icd10Code && (
-                          <span style={{ marginRight: 6, marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', background: 'var(--surface)', padding: '2px 8px', borderRadius: 6, direction: 'ltr', display: 'inline-block' }}>
+                          <span style={{ marginRight: 6, marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', background: 'var(--surface)', padding: '2px 7px', borderRadius: 6, direction: 'ltr', display: 'inline-block' }}>
                             {insurancePolicies[0].icd10Code}
                           </span>
                         )}
@@ -561,35 +555,22 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                     </div>
                   )}
 
-                  {/* Available strengths — no form */}
-                  <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 14px' }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                      {ar ? 'التركيزات المتاحة' : 'Available Strengths'}
+                  {/* Strengths as chips */}
+                  <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '10px 14px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                      {ar ? 'التركيزات' : 'Strengths'}
                     </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {Array.from(new Set(insurancePolicies.map(p => `${p.strength} ${p.strengthUnit}`.trim()).filter(Boolean))).map((s, i) => (
                         <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#15803d', background: 'rgba(21,128,61,0.08)', padding: '3px 10px', borderRadius: 20, direction: 'ltr' }}>{s}</span>
                       ))}
                     </div>
                   </div>
 
-                  {/* Extra notes */}
                   {insurancePolicies[0].notes && (
-                    <div style={{ background: 'rgba(14,26,24,0.04)', borderRadius: 14, padding: '12px 14px', border: '1px solid var(--border)' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
-                        {ar ? 'ملاحظات' : 'Notes'}
-                      </p>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{insurancePolicies[0].notes}</p>
-                    </div>
-                  )}
-
-                  {/* Prescribing edits */}
-                  {insurancePolicies[0].prescribingEdits && (
-                    <div style={{ background: 'rgba(234,179,8,0.06)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(234,179,8,0.2)' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#a16207', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
-                        {ar ? 'قيود الوصف' : 'Prescribing Restrictions'}
-                      </p>
-                      <p style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{insurancePolicies[0].prescribingEdits}</p>
+                    <div style={{ background: 'rgba(14,26,24,0.03)', borderRadius: 14, padding: '10px 14px', border: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{ar ? 'ملاحظات' : 'Notes'}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>{insurancePolicies[0].notes}</p>
                     </div>
                   )}
                 </div>

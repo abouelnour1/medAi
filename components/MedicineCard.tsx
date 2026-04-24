@@ -97,37 +97,34 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   const ar = language === 'ar';
   const hasPrice = price > 0 && !isNaN(price);
 
-  // Insurance coverage — O(1) lookup via pre-computed sets
+  // Insurance coverage — O(1) exact match only, no supplements/food
   const isCovered = useMemo(() => {
     if (!coveredAtcSet && !coveredSciNorms) return null;
+    // Supplements and food are never covered
+    const ptype = String(medicine['Product type'] || '').toLowerCase();
+    if (ptype === 'supplement' || ptype === 'food' || ptype === 'supplements') return false;
+
+    const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule']);
+    const norm = (s: string) => s.toLowerCase()
+      .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel|%)\b/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/).filter(t => t.length > 1 && !JUNK.has(t))
+      .join(' ').trim();
+
+    // ATC exact prefix match
     const atc = String(medicine.AtcCode1 || '').trim();
     if (atc && coveredAtcSet) {
       for (const code of coveredAtcSet) {
-        if (atc === code || atc.startsWith(code)) return true;
+        if (code.length >= 4 && (atc === code || atc.startsWith(code.substring(0, 4)))) return true;
       }
     }
+
+    // Scientific name — exact normalized match only (no partial)
     if (coveredSciNorms) {
-      const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule']);
-      const sciRaw = String(medicine['Scientific Name'] || '');
-      const isMulti = /[;,+&\/]/.test(sciRaw) || sciRaw.trim().split(/\s+/).length > 4;
-      const norm = (s: string) => s.toLowerCase()
-        .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .split(/\s+/).filter(t => t.length > 1 && !JUNK.has(t))
-        .join(' ').trim();
-      const sciNorm = norm(sciRaw);
-      if (sciNorm.length < 3) return false;
-      if (isMulti) {
-        // Multi-ingredient: exact match only
-        return coveredSciNorms.has(sciNorm);
-      } else {
-        // Single ingredient: allow partial
-        if (coveredSciNorms.has(sciNorm)) return true;
-        for (const n of coveredSciNorms) {
-          if (n.length > 5 && sciNorm.length > 4 && (sciNorm === n || (sciNorm.includes(n) && n.split(' ').length >= sciNorm.split(' ').length - 1))) return true;
-        }
-      }
+      const sciNorm = norm(String(medicine['Scientific Name'] || ''));
+      if (sciNorm.length >= 4 && coveredSciNorms.has(sciNorm)) return true;
     }
+
     return false;
   }, [medicine, coveredAtcSet, coveredSciNorms]);
 

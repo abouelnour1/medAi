@@ -9,7 +9,7 @@ import SearchBar from './components/SearchBar';
 import ResultsList from './components/ResultsList';
 import MedicineCard from './components/MedicineCard';
 import IndicationSearch from './components/IndicationSearch';
-const MedicineDetail = React.lazy(() => import('./components/MedicineDetail'));
+import MedicineDetail from './components/MedicineDetail';
 import PrescriptionView from './components/PrescriptionView';
 import BottomSheet from './components/BottomSheet';
 import GeminiPromptModal from './components/GeminiPromptModal';
@@ -1466,7 +1466,7 @@ const App: React.FC = () => {
       );
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><React.Suspense fallback={null}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></React.Suspense></div>;
+          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></div>;
           if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
@@ -1657,25 +1657,40 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* Recent searches - زرار بيفتح صفحة منفصلة */}
+                      {/* Recently viewed — inline chips بدل الزرار الكبير */}
                       {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
-                        <button
-                          onClick={() => setView('recentlyViewed')}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all mb-3"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🕒</span>
-                            <span className="text-[12px] font-black text-slate-600 dark:text-slate-300">
-                              {language === 'ar' ? 'آخر الأدوية المشاهدة' : 'Recently Viewed'}
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                              {language === 'ar' ? 'آخر المشاهدات' : 'Recently Viewed'}
                             </span>
-                            <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded-full">
-                              {recentSearches.length}
-                            </span>
+                            <button
+                              onClick={() => setView('recentlyViewed')}
+                              style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                            >
+                              {language === 'ar' ? 'الكل ←' : 'See all →'}
+                            </button>
                           </div>
-                          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                          </svg>
-                        </button>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {recentSearches.slice(0, 6).map(med => (
+                              <button
+                                key={med.RegisterNumber}
+                                onClick={() => { setSelectedMedicine(med); setView('details'); }}
+                                style={{
+                                  padding: '5px 12px', borderRadius: 20,
+                                  background: 'var(--surface)', border: '1px solid var(--border)',
+                                  fontSize: 11, fontWeight: 700, color: 'var(--text)',
+                                  cursor: 'pointer', whiteSpace: 'nowrap',
+                                  maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis',
+                                  WebkitTapHighlightColor: 'transparent',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                }}
+                              >
+                                {med['Trade Name']}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                   </div>
 
@@ -1897,7 +1912,7 @@ const App: React.FC = () => {
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
-        style={{ opacity: isKeyboardOpen ? 0 : 1, pointerEvents: isKeyboardOpen ? 'none' : 'auto', transition: 'opacity 0.15s ease' } as any}
+        style={(isKeyboardOpen && activeTab === 'search') ? { opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease' } as any : undefined}
       />
 
       {/* SearchBar — ثابت تحت الهيدر مباشرة */}
@@ -1906,11 +1921,10 @@ const App: React.FC = () => {
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
           style={{
             top: isKeyboardOpen ? 0 : headerHeight,
-            transition: headerMeasured ? 'top 0.15s ease' : 'none',
-            opacity: headerMeasured ? 1 : 0,
+            transition: 'top 0.15s ease',
           }}
         >
-          <div className={`pb-1 pt-1 ${isKeyboardOpen ? 'bg-light-bg dark:bg-dark-bg pt-2' : 'bg-light-bg dark:bg-dark-bg'}`}>
+          <div className="bg-light-bg dark:bg-dark-bg pb-1 pt-1">
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
