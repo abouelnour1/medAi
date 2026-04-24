@@ -201,9 +201,10 @@ interface MedicineDetailProps {
     onOpenClinical?: () => void;
     onToggleCompare?: (medicine: Medicine) => void;
     isInCompare?: boolean;
+    onShowInsuranceSheet?: (m: Medicine) => void;
 }
 
-const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini, onOpenClinical }) => {
+const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData, allMedicines, t, language, isFavorite, onToggleFavorite, user, onEdit, onOpenAssistant, onOpenInteractions, onOpenDoseCalc, onImageZoom, onFindAlternative, onShare, onToggleCompare, isInCompare, onAskGemini, onOpenClinical, onShowInsuranceSheet }) => {
   React.useEffect(() => {
     logMedicineView(medicine['Trade Name'], medicine.RegisterNumber, medicine['Product type']);
   }, [medicine.RegisterNumber]);
@@ -418,7 +419,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
       {/* ── Insurance Card ──────────────────────────────────── */}
       <button
-        onClick={() => setShowInsuranceSheet(true)}
+        onClick={() => onShowInsuranceSheet ? onShowInsuranceSheet(medicine) : setShowInsuranceSheet(true)}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 4, padding: '10px 8px', borderRadius: 16, border: 'none', cursor: 'pointer',

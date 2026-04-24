@@ -65,6 +65,7 @@ import { useSubscription } from './hooks/useSubscription';
 import PlansPage from './components/PlansPage';
 import AdBanner from './components/AdBanner';
 import OnboardingOverlay, { shouldShowOnboarding } from './components/OnboardingOverlay';
+import { getInsurancePolicies } from './utils/insuranceMatch';
 
 const normalizeMedicine = (item: any): Medicine => {
   const findValue = (obj: any, keys: string[]) => {
@@ -307,6 +308,7 @@ const App: React.FC = () => {
   }, [user?.id]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'));
   const [showInsuranceBadge, setShowInsuranceBadge] = useState<boolean>(() => localStorage.getItem('ps_insurance_badge') === 'true');
+  const [insuranceSheetMedicine, setInsuranceSheetMedicine] = useState<Medicine | null>(null);
   const [language, setLanguage] = useState<Language>('en');
   const [searchTerm, setSearchTerm] = useState(() => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
@@ -1466,7 +1468,7 @@ const App: React.FC = () => {
       );
 
       if (activeTab === 'search') {
-          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} /></div>;
+          if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} onShowInsuranceSheet={(m) => setInsuranceSheetMedicine(m)} /></div>;
           if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
@@ -1951,7 +1953,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${keyboardHeight + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: isKeyboardOpen ? 'none' : 'auto' } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
@@ -2170,10 +2172,63 @@ onClearSearch={handleClearSearch}
         />
       )}
 
+      {/* ── Insurance Coverage Sheet — App level (above overflow containers) ── */}
+      {insuranceSheetMedicine && (() => {
+        const policies = getInsurancePolicies(insuranceSheetMedicine, insuranceData);
+        const isCov = policies.length > 0;
+        const ar = language === 'ar';
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setInsuranceSheetMedicine(null)}>
+            <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--surface)', borderRadius: '24px 24px 0 0', maxHeight: '70vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', animation: 'sheetUp 0.28s cubic-bezier(0.22,1,0.36,1)' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ink-20)' }} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: isCov ? 'rgba(21,128,61,0.1)' : 'rgba(190,18,60,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCov ? '#15803d' : '#be123c'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>{isCov ? <path d="M9 12l2 2 4-4"/> : <><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></>}</svg>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2, margin: 0 }}>{ar ? 'التغطية التأمينية' : 'Insurance Coverage'}</p>
+                    <p style={{ fontSize: 11, color: isCov ? '#15803d' : '#be123c', fontWeight: 700, marginTop: 2, margin: 0 }}>{isCov ? `${policies.length} ${ar ? 'نتيجة' : 'forms'}` : (ar ? 'غير مغطى' : 'Not covered')}</p>
+                  </div>
+                </div>
+                <button onClick={() => setInsuranceSheetMedicine(null)} style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div style={{ overflowY: 'auto', padding: '10px 16px 20px', flex: 1 }} className="no-scrollbar">
+                {!isCov ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(190,18,60,0.06)', borderRadius: 14, border: '1px solid rgba(190,18,60,0.15)' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#be123c', margin: 0 }}>{ar ? 'غير مدرج في قائمة NPHIES' : 'Not in the NPHIES formulary'}</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ background: 'rgba(21,128,61,0.06)', border: '1px solid rgba(21,128,61,0.15)', borderRadius: 14, padding: '10px 14px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#15803d', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{ar ? 'المادة الفعالة' : 'Active Ingredient'}</p>
+                      <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', direction: 'ltr', margin: 0 }}>{policies[0].scientificName}</p>
+                      {policies[0].drugClass && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, marginBottom: 0 }}>{policies[0].drugClass}{policies[0].drugSubclass ? ` · ${policies[0].drugSubclass}` : ''}</p>}
+                    </div>
+                    {policies[0].indication && (
+                      <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '10px 14px' }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{ar ? 'الاستخدام' : 'Indication'}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.45, margin: 0 }}>{policies[0].indication}{policies[0].icd10Code && <span style={{ marginRight: 6, marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', background: 'var(--surface)', padding: '2px 7px', borderRadius: 6, direction: 'ltr', display: 'inline-block' }}>{policies[0].icd10Code}</span>}</p>
+                      </div>
+                    )}
+                    <div style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '10px 14px' }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{ar ? 'التركيزات' : 'Strengths'}</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{Array.from(new Set(policies.map(p => `${p.strength} ${p.strengthUnit}`.trim()).filter(Boolean))).map((s, i) => <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#15803d', background: 'rgba(21,128,61,0.08)', padding: '3px 10px', borderRadius: 20, direction: 'ltr' }}>{s}</span>)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Ad Banner — free users only */}
       <AdBanner isPremium={subscription.isPremium} />
 
     </div></div>
-  );
-};
+    );
+  };
 export default App;

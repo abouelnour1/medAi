@@ -15,17 +15,33 @@ export function normalizeForMatch(name: string): string {
 
 export function getInsurancePolicies(medicine: Medicine, insuranceData: InsuranceDrug[]): InsuranceDrug[] {
   if (!insuranceData.length) return [];
-  const sciNorm = normalizeForMatch(String(medicine['Scientific Name'] || ''));
-  const atc = String(medicine.AtcCode1 || '').trim();
+
+  // Skip supplements and food — never covered
+  const ptype = String((medicine as any)['Product type'] || '').toLowerCase();
+  if (ptype === 'supplement' || ptype === 'food' || ptype === 'supplements') return [];
+
+  const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule','hard','soft']);
+
+  const normSci = (s: string) => s.toLowerCase()
+    .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel|%)\b/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(t => t.length > 1 && !JUNK.has(t))
+    .join(' ').trim();
+
+  const atc = String((medicine as any).AtcCode1 || '').trim();
+  const sciNorm = normSci(String((medicine as any)['Scientific Name'] || ''));
 
   return insuranceData.filter(p => {
-    const pNorm = normalizeForMatch(p.scientificName);
-    const atcMatch = atc && p.atcCode && (atc === p.atcCode || atc.startsWith(p.atcCode));
-    const nameMatch = sciNorm.length > 4 && (
-      pNorm === sciNorm ||
-      (sciNorm.length > 5 && pNorm.includes(sciNorm)) ||
-      (pNorm.length > 5 && sciNorm.includes(pNorm))
-    );
-    return atcMatch || nameMatch;
+    // 1. ATC descriptor code match (most reliable)
+    if (atc && p.atcCode) {
+      const pAtc = p.atcCode.trim();
+      if (pAtc.length >= 4 && (atc === pAtc || atc.startsWith(pAtc.substring(0, 4)))) return true;
+    }
+    // 2. Scientific name exact normalized match only (no partial)
+    if (sciNorm.length >= 4 && p.scientificName) {
+      const pNorm = normSci(p.scientificName);
+      if (pNorm === sciNorm) return true;
+    }
+    return false;
   });
 }

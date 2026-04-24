@@ -203,31 +203,53 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
 
   return (
     <div className="space-y-4 min-h-[400px]">
-      <div className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border space-y-4"
-        style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="relative">
-            <select
-              value={searchMode}
-              onChange={(e) => setSearchMode(e.target.value as InsuranceSearchMode)}
-              className="w-full h-12 pl-4 pr-10 rtl:pr-4 rtl:pl-10 text-base font-bold bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-dark-border rounded-xl appearance-none cursor-pointer focus:border-primary transition-all shadow-inner"
-            >
-              <option value="tradeName">{t('tradeName')}</option>
-              <option value="scientificName">{t('scientificName')}</option>
-              <option value="indication">{t('indication')}</option>
-              <option value="icd10Code">{t('icd10Code')}</option>
-            </select>
-          </div>
-
-          <div className="relative">
-             <button onClick={onSearchIconClick} className="absolute top-1/2 left-3 rtl:right-3 transform -translate-y-1/2 text-gray-400 h-5 w-5 hover:text-primary transition-colors z-10"><SearchIcon /></button>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              placeholder={t('insuranceSearchPlaceholder')}
-              className="w-full h-12 pl-10 pr-10 rtl:pr-10 rtl:pl-10 text-lg bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-dark-border rounded-xl focus:border-primary outline-none transition-all shadow-inner"
-            />
-          </div>
+      {/* Single search bar with inline type selector */}
+      <div style={{
+        background: 'var(--surface)', borderRadius: 16,
+        border: '1.5px solid var(--border)',
+        overflow: 'hidden', position: 'sticky', top: 0, zIndex: 10,
+        boxShadow: '0 2px 8px rgba(0,106,96,0.07)',
+      }}>
+        {/* Type chips */}
+        <div style={{ display: 'flex', gap: 6, padding: '10px 12px 8px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }} className="no-scrollbar">
+          {(['tradeName', 'scientificName', 'indication', 'icd10Code'] as const).map(mode => (
+            <button key={mode} onClick={() => setSearchMode(mode)} style={{
+              padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              fontSize: 11, fontWeight: 700,
+              background: searchMode === mode ? 'var(--primary)' : 'var(--surface-2)',
+              color: searchMode === mode ? '#fff' : 'var(--text-muted)',
+              transition: 'all 0.15s ease',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+              {mode === 'tradeName' ? (t('tradeName') || 'Trade Name') :
+               mode === 'scientificName' ? (t('scientificName') || 'Scientific') :
+               mode === 'indication' ? (t('indication') || 'Indication') : 'ICD-10'}
+            </button>
+          ))}
+        </div>
+        {/* Search input */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            placeholder={t('insuranceSearchPlaceholder') || 'Search...'}
+            style={{
+              flex: 1, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: 15, color: 'var(--text)', fontFamily: 'inherit',
+            }}
+            autoComplete="off"
+            autoCorrect="off"
+          />
+          {inputValue && (
+            <button onClick={() => setInputValue('')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 animate-fade-in pb-20">
