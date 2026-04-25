@@ -617,10 +617,22 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    // Set CSS variable for header height based on platform
+    const { Capacitor: Cap } = require('@capacitor/core');
+    const isAndroid = Cap.getPlatform() === 'android';
+    const root = document.documentElement;
+    if (isAndroid) {
+      root.style.setProperty('--header-h', 'calc(30px + 56px)');
+    }
+    // After actual measurement, override with real value
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (headerHeight !== 120) {
+      root.style.setProperty('--header-h', `${headerHeight}px`);
+    }
+  }, [headerHeight]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -628,6 +640,12 @@ const App: React.FC = () => {
     root.setAttribute('lang', language);
     localStorage.setItem('language', language);
   }, [language]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const t: TFunction = useCallback((key, replacements) => {
     const text = translations[language][key] || key;
@@ -1724,7 +1742,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={0} searchBarFixedTop={headerHeight + 8} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={0} searchBarFixedTop={'var(--header-h)' as any} />;
       }
 
       if (activeTab === 'settings') {
@@ -1930,13 +1948,11 @@ const App: React.FC = () => {
         style={(isKeyboardOpen && activeTab === 'search') ? { opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease' } as any : undefined}
       />
 
-      {/* SearchBar — ثابت تحت الهيدر مباشرة */}
+      {/* SearchBar -- fixed under header using CSS variable */}
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px]"
-          style={{
-            top: isKeyboardOpen ? 0 : headerHeight,
-          }}
+          style={{ top: isKeyboardOpen ? 0 : `var(--header-h)` }}
         >
           <div className="bg-light-bg dark:bg-dark-bg pb-1 pt-1">
             <SearchBar
@@ -1965,7 +1981,7 @@ onClearSearch={handleClearSearch}
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-top 0.15s ease, padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: isKeyboardOpen ? 'none' : 'auto', scrollPaddingTop: headerHeight + 8 } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? `calc(var(--header-h) + 56px)` : `calc(var(--header-h) + 8px)`, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: isKeyboardOpen ? 'none' : 'auto', scrollPaddingTop: `var(--header-h)` } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>

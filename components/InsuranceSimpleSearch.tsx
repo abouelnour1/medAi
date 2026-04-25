@@ -21,7 +21,7 @@ interface InsuranceSimpleSearchProps {
   setSearchMode: (mode: InsuranceSearchMode) => void;
   onSearchIconClick?: () => void;
   stickyTop?: number;
-  searchBarFixedTop?: number;
+  searchBarFixedTop?: number | string;
 }
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };

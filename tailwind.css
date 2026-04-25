@@ -109,6 +109,18 @@ body {
   color: var(--dark-text);
 }
 
+
+/* Header height vars     used by search bar and main padding */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --header-content: 56px;
+  --header-h: calc(var(--safe-top) + var(--header-content));
+}
+/* Android: fixed 30px status bar */
+.android-header {
+  --header-h: calc(30px + var(--header-content));
+}
+
 .dark {
   --bg:      #060f0e;
   --surface: #0d1a18;
