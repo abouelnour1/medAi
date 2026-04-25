@@ -89,6 +89,8 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
           ? 'calc(var(--android-status, 30px) + 8px)'
           : 'calc(env(safe-area-inset-top, 44px) + 6px)',
         background: 'inherit',
+        transform: 'translateZ(0)',
+        willChange: 'transform',
         ...style,
       }}
     >

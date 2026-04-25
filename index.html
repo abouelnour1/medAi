@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Easy Drug</title>
     <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,8 +12,7 @@
     <meta name="theme-color" content="#006a60">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <script>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">    <script>
       (function() {
         try {
           var t = localStorage.getItem('theme');
@@ -25,6 +24,10 @@
             document.documentElement.style.backgroundColor = '#f7f9f6';
             document.body && (document.body.style.backgroundColor = '#f7f9f6');
           }
+          var isAndroid = /Android/i.test(navigator.userAgent);
+          var statusH = isAndroid ? 30 : 0;
+          var headerH = statusH + 8 + 56 + 3;
+          document.documentElement.style.setProperty('--header-h', headerH + 'px');
         } catch(e) {}
       })();
     </script>

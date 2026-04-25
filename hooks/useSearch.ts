@@ -159,19 +159,23 @@ export function useSearch(
       if (!termLower || Object.keys(indications).length === 0) return [];
       try {
         const matchedSciNames = new Set<string>();
-        Object.entries(indications).forEach(([indication, data]) => {
-          if (!data) return;
+        const entries = Object.entries(indications);
+        // Early exit if too many matches to prevent freeze
+        let matchCount = 0;
+        for (const [indication, data] of entries) {
+          if (!data) continue;
           if (indication.toLowerCase().includes(termLower) ||
               (data.icd10Code || '').toLowerCase().includes(termLower)) {
             (data.drugs || []).forEach(d => { if (d?.s) matchedSciNames.add(d.s.toLowerCase()); });
+            matchCount++;
+            if (matchCount > 50) break; // safety limit
           }
-        });
+        }
         if (matchedSciNames.size === 0) return [];
         return medicines.filter(m =>
           matchedSciNames.has(String(m['Scientific Name'] || '').toLowerCase())
-        );
+        ).slice(0, 300);
       } catch (e) {
-        console.warn('[indication search] error:', e);
         return [];
       }
     }
@@ -223,7 +227,7 @@ export function useSearch(
 
     if (rawNoSpaces.length < 1 && hasActiveFilters) {
       const sorted = [...searchContextMedicines].sort(sortFnAlpha);
-      return isAdmin ? sorted : sorted;
+      return sorted.slice(0, 500); // limit to prevent freeze with large categories
     }
 
     // البحث النصي: 100 نتيجة للعاديين، 200 للأدمن (pagination يتحكم في البقية)

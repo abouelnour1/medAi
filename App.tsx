@@ -1141,6 +1141,24 @@ const App: React.FC = () => {
     }
   }, [activeImageViewer]);
 
+  // Lock fixed elements when keyboard opens on Android
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let lastScrollY = 0;
+    const lock = () => {
+      if (isKeyboardOpen) {
+        // Prevent the page from scrolling up when keyboard opens
+        window.scrollTo(0, lastScrollY);
+      } else {
+        lastScrollY = window.scrollY;
+      }
+    };
+    vv.addEventListener('resize', lock);
+    vv.addEventListener('scroll', lock);
+    return () => { vv.removeEventListener('resize', lock); vv.removeEventListener('scroll', lock); };
+  }, [isKeyboardOpen]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.productType !== 'all') count++;
@@ -1629,10 +1647,9 @@ const App: React.FC = () => {
 
                         if (hasResults) {
                           const isAdmin = user?.role === 'admin';
-                          const pagedMeds = isAdmin
-                            ? displayedMedicines.slice(0, adminResultsPage * ADMIN_PAGE_SIZE)
-                            : displayedMedicines;
-                          const hasMore = isAdmin && pagedMeds.length < displayedMedicines.length;
+                          const PAGE = isAdmin ? ADMIN_PAGE_SIZE : 50;
+                          const pagedMeds = displayedMedicines.slice(0, adminResultsPage * PAGE);
+                          const hasMore = pagedMeds.length < displayedMedicines.length;
                           return (
                             <>
                               {isAdmin && displayedMedicines.length > ADMIN_PAGE_SIZE && (
@@ -1712,7 +1729,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} scrollContainerRef={scrollContainerRef as React.RefObject<HTMLElement | null>} />;
       }
 
       if (activeTab === 'settings') {
@@ -1928,11 +1945,11 @@ const App: React.FC = () => {
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
       />
 
-      {/* Search bar - fixed position, always right below header */}
+      {/* Search bar - fixed, GPU layer prevents keyboard movement */}
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
-          style={{ top: isKeyboardOpen ? 0 : headerHeight }}
+          style={{ top: 'var(--header-h)', transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -1959,7 +1976,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
@@ -2236,5 +2253,5 @@ const App: React.FC = () => {
 
     </div></div>
     );
-  };
+};
 export default App;
