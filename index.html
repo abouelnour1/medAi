@@ -20,15 +20,17 @@
           if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
             document.documentElement.style.backgroundColor = '#060f0e';
+            document.body && (document.body.style.backgroundColor = '#060f0e');
           } else {
             document.documentElement.style.backgroundColor = '#f7f9f6';
+            document.body && (document.body.style.backgroundColor = '#f7f9f6');
           }
         } catch(e) {}
       })();
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" style="background:#f7f9f6;min-height:100%;"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

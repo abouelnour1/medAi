@@ -14,14 +14,14 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     scrollEnabled: true,
-    backgroundColor: '#006a60',
+    backgroundColor: '#f7f9f6',
     preferredContentMode: 'mobile',
   },
   android: {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
-    backgroundColor: '#006a60',
+    backgroundColor: '#f7f9f6',
   },
   plugins: {
     Keyboard: {
