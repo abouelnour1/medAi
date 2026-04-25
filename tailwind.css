@@ -110,15 +110,12 @@ body {
 }
 
 
-/* Header height vars     used by search bar and main padding */
+/* Header height - set via JS on mount */
 :root {
-  --safe-top: env(safe-area-inset-top, 0px);
+  --android-status: 30px;
   --header-content: 56px;
-  --header-h: calc(var(--safe-top) + var(--header-content));
-}
-/* Android: fixed 30px status bar */
-.android-header {
-  --header-h: calc(30px + var(--header-content));
+  --safe-top: env(safe-area-inset-top, 0px);
+  --header-h: calc(var(--safe-top) + 14px + var(--header-content));
 }
 
 .dark {

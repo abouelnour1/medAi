@@ -43,6 +43,7 @@ interface HeaderProps {
   isLoading?: boolean;
   searchBarVisible?: boolean;
   style?: React.CSSProperties;
+  children?: React.ReactNode;
 }
 
 const OnlineIndicator: React.FC = () => {
@@ -62,7 +63,7 @@ const OnlineIndicator: React.FC = () => {
   );
 };
 
-const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, onSettingsClick, onPediatricCalcClick, view, unreadCount = 0, isLoading = false, searchBarVisible, style }, ref) => {
+const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, t, onLoginClick, onAdminClick, onNotificationsClick, onSettingsClick, onPediatricCalcClick, view, unreadCount = 0, isLoading = false, searchBarVisible, style, children }, ref) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -81,8 +82,15 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
   return (
     <header
       ref={ref}
-      className={`fixed top-0 left-0 right-0 z-[60] px-4 ${Capacitor.getPlatform() === 'android' ? 'pt-[30px]' : 'pt-[calc(env(safe-area-inset-top)+6px)]'} pb-3`}
-      style={{ background: 'inherit', ...style }}
+      className="fixed top-0 left-0 right-0 z-[60] px-4 pb-3"
+      id="app-header"
+      style={{
+        paddingTop: Capacitor.getPlatform() === 'android'
+          ? 'calc(var(--android-status, 30px) + 8px)'
+          : 'calc(env(safe-area-inset-top, 44px) + 6px)',
+        background: 'inherit',
+        ...style,
+      }}
     >
       <div className="absolute inset-0 bg-light-bg dark:bg-dark-bg" style={{ zIndex: -1 }} />
 
@@ -178,6 +186,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
           )}
         </div>
       </div>
+      {children}
     </header>
   );
 });
