@@ -617,14 +617,11 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Set CSS variable for header height based on platform
-    const { Capacitor: Cap } = require('@capacitor/core');
-    const isAndroid = Cap.getPlatform() === 'android';
-    const root = document.documentElement;
-    if (isAndroid) {
-      root.style.setProperty('--header-h', 'calc(30px + 56px)');
-    }
-    // After actual measurement, override with real value
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.getPlatform() === 'android') {
+        document.documentElement.style.setProperty('--header-h', 'calc(30px + 56px)');
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
