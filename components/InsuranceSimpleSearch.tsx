@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { fuzzyMatch, fuzzyScore } from '../utils/fuzzySearch';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
@@ -19,33 +18,20 @@ interface InsuranceSimpleSearchProps {
   setSearchTerm: (term: string) => void;
   searchMode: InsuranceSearchMode;
   setSearchMode: (mode: InsuranceSearchMode) => void;
-  onSearchIconClick?: () => void;
-  stickyTop?: number;
-  searchBarFixedTop?: number | string;
 }
 
 type SearchResult = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
 
-const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({ 
-    t, 
-    insuranceData, 
-    allMedicines, 
-    onSelectInsuranceData,
-    searchTerm,
-    setSearchTerm,
-    searchMode,
-    setSearchMode,
-    onSearchIconClick,
-    stickyTop = 0,
-    searchBarFixedTop,
+const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
+  t, insuranceData, allMedicines, onSelectInsuranceData,
+  searchTerm, setSearchTerm, searchMode, setSearchMode,
 }) => {
   const [inputValue, setInputValue] = useState(searchTerm);
+  const ar = true;
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      if (inputValue !== searchTerm) setSearchTerm(inputValue);
-    }, 400);
-    return () => clearTimeout(handler);
+    const h = setTimeout(() => { if (inputValue !== searchTerm) setSearchTerm(inputValue); }, 350);
+    return () => clearTimeout(h);
   }, [inputValue, searchTerm, setSearchTerm]);
 
   const searchResults = useMemo((): SearchResult[] => {
@@ -79,7 +65,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 matchingMeds = allMedicines.filter(m => regex.test(String(m[field])));
             }
         } else {
-            // ✅ نفس منطق البحث العادي: startsWith > startsWithWord > contains > fuzzy
+            //                                            : startsWith > startsWithWord > contains > fuzzy
             const startsWith = allMedicines.filter(m => String(m[field]).toLowerCase().startsWith(term));
             const startsWithWord = allMedicines.filter(m => {
                 const v = String(m[field]).toLowerCase();
@@ -99,7 +85,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 matchingMeds = exact;
             }
         }
-        // Food = Product type 'Food' — غير مغطى تأمينياً
+        // Food = Product type 'Food'                                     
         foodMeds = matchingMeds.filter(m => 
             String(m['Product type'] || '').toLowerCase() === 'food'
         );
@@ -111,7 +97,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     const results: SearchResult[] = [];
 
     if (isNameSearch) {
-        // نبني sciGroups مرتبة على أساس أفضل rank (startsWith أولاً)
+        //          sciGroups                                     rank (startsWith           )
         const sciGroupsOrder: string[] = [];
         const sciGroupsRank = new Map<string, number>();
         const sciGroups = new Map<string, Set<Medicine>>();
@@ -155,7 +141,7 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
                 });
             }
         });
-        // Food: غير مغطاة — تيجي في الآخر
+        // Food:                                               
         foodMeds.forEach(med => results.push({ type: 'not-covered', medicine: med }));
     } else {
         let regex: RegExp;
@@ -217,61 +203,25 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
     setSearchBarActualH(searchBarRef.getBoundingClientRect().height + 8);
     return () => obs.disconnect();
   }, [searchBarRef]);
-
   return (
-    <div className="min-h-[400px]" style={{ paddingTop: searchBarFixedTop !== undefined ? searchBarActualH : 0 }}>
-      {/* Search bar */}
-      <div
-        ref={setSearchBarRef}
-        style={{
-          background: 'var(--surface)',
-          borderRadius: 14,
-          border: '1.5px solid var(--border)',
-          overflow: 'hidden',
-          boxShadow: '0 2px 12px rgba(0,106,96,0.08)',
-          ...(searchBarFixedTop !== undefined ? {
-            position: 'fixed',
-            top: searchBarFixedTop,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 32px)',
-            maxWidth: 448,
-            zIndex: 59,
-          } : {
-            position: 'sticky',
-            top: stickyTop,
-            zIndex: 10,
-          }),
-        }}
-      >
-        {/* Search input row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            placeholder={t('insuranceSearchPlaceholder') || 'Search...'}
-            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 15, color: 'var(--text)', fontFamily: 'inherit' }}
-            autoComplete="off" autoCorrect="off"
-          />
-          {inputValue && (
-            <button onClick={() => setInputValue('')} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-subtle)', display: 'flex' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          )}
-        </div>
-        {/* Type chips row */}
-        <div style={{ display: 'flex', gap: 5, padding: '0 10px 8px', overflowX: 'auto' }} className="no-scrollbar">
+    <div className="flex flex-col min-h-[400px]">
+      {/* Search bar - plain, no fixed/sticky tricks */}
+      <div style={{
+        background: 'var(--surface)',
+        borderRadius: 14,
+        border: '1.5px solid var(--border)',
+        marginBottom: 12,
+        boxShadow: '0 2px 8px rgba(0,106,96,0.07)',
+        overflow: 'hidden',
+      }}>
+        {/* Type chips */}
+        <div style={{ display: 'flex', gap: 6, padding: '8px 12px 0', overflowX: 'auto' }} className="no-scrollbar">
           {(['tradeName', 'scientificName', 'indication', 'icd10Code'] as const).map(mode => (
             <button key={mode} onClick={() => setSearchMode(mode)} style={{
-              padding: '4px 11px', borderRadius: 20, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              fontSize: 11, fontWeight: 700,
+              padding: '4px 11px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              whiteSpace: 'nowrap', fontSize: 11, fontWeight: 700,
               background: searchMode === mode ? 'var(--primary)' : 'var(--surface-2)',
               color: searchMode === mode ? '#fff' : 'var(--text-muted)',
-              transition: 'all 0.15s ease',
               WebkitTapHighlightColor: 'transparent',
             }}>
               {mode === 'tradeName' ? (t('tradeName') || 'Trade Name') :
@@ -280,15 +230,41 @@ const InsuranceSimpleSearch: React.FC<InsuranceSimpleSearchProps> = ({
             </button>
           ))}
         </div>
+        {/* Input */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 10px' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            placeholder={t('insuranceSearchPlaceholder') || 'Search...'}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 15, color: 'var(--text)', fontFamily: 'inherit' }}
+            autoComplete="off" autoCorrect="off" spellCheck={false}
+          />
+          {inputValue ? (
+            <button onClick={() => { setInputValue(''); setSearchTerm(''); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-subtle)', display: 'flex', padding: 2 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 animate-fade-in pb-20 pt-3">
+      {/* Results */}
+      <div className="space-y-3 pb-20">
         {searchResults.map((result, idx) => {
-            if (result.type === 'covered') return <IndicationCard key={'c'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
-            if (result.type === 'drug-grouped') return <DrugPolicyCard key={'d'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
-            if (result.type === 'not-covered') return <NotCoveredCard key={'n'+idx} medicine={result.medicine} t={t} />;
-            return null;
+          if (result.type === 'covered') return <IndicationCard key={'c'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+          if (result.type === 'drug-grouped') return <DrugPolicyCard key={'d'+idx} group={result} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+          if (result.type === 'not-covered') return <NotCoveredCard key={'n'+idx} medicine={result.medicine} t={t} />;
+          return null;
         })}
+        {!searchTerm && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-subtle)' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <p style={{ fontSize: 13, fontWeight: 600 }}>{t('insuranceSearchPlaceholder') || 'Search for condition, drug, or code...'}</p>
+          </div>
+        )}
       </div>
     </div>
   );

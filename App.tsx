@@ -572,45 +572,29 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!headerRef.current) return;
-    let lastH = 0;
-    let attempts = 0;
+    let done = false;
 
-    const measureNow = () => {
-      if (!headerRef.current) return;
+    const measureOnce = () => {
+      if (done || !headerRef.current) return;
       const h = Math.ceil(headerRef.current.getBoundingClientRect().height);
-      if (h > 40 && Math.abs(h - lastH) >= 1) {
-        lastH = h;
+      if (h > 40) {
+        done = true;
         setHeaderHeight(h);
-        setSearchBarTop(h - 10);
+        setHeaderOnlyHeight(h);
+        setSearchBarTop(h);
         setHeaderMeasured(true);
-        // Header-only = total minus search bar when present
-        const searchBarEl = headerRef.current.querySelector('[data-search-bar]') as HTMLElement;
-        if (searchBarEl) {
-          const sbH = Math.ceil(searchBarEl.getBoundingClientRect().height);
-          setHeaderOnlyHeight(Math.max(h - sbH, 50));
-        } else {
-          setHeaderOnlyHeight(h);
-        }
-      } else if (h === 0 && attempts < 10) {
-        attempts++;
-        requestAnimationFrame(measureNow);
+        observer.disconnect();
       }
     };
 
-    // Multiple attempts to catch iOS layout completion
-    requestAnimationFrame(() => {
-      measureNow();
-      setTimeout(measureNow, 50);
-      setTimeout(measureNow, 150);
-      setTimeout(measureNow, 400);
-    });
-
-    const observer = new ResizeObserver(() => {
-      const vvH = window.visualViewport?.height ?? window.innerHeight;
-      if (vvH < window.innerHeight * 0.75) return; // keyboard open
-      measureNow();
-    });
+    const observer = new ResizeObserver(measureOnce);
     observer.observe(headerRef.current);
+
+    // Also try immediately and with delays
+    requestAnimationFrame(measureOnce);
+    setTimeout(measureOnce, 100);
+    setTimeout(measureOnce, 300);
+
     return () => observer.disconnect();
   }, []);
 
@@ -1728,7 +1712,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} stickyTop={0} searchBarFixedTop={headerOnlyHeight} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} />;
       }
 
       if (activeTab === 'settings') {
@@ -1942,40 +1926,14 @@ const App: React.FC = () => {
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
-        style={(isKeyboardOpen && activeTab === 'search') ? { opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease' } as any : undefined}
-      >
-        {/* SearchBar جوا الهيدر — دايماً في مكانه الصح */}
-        {activeTab === 'search' && !isKeyboardOpen && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
-          <div className="px-0 pt-1" data-search-bar="1">
-            <SearchBar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              textSearchMode={textSearchMode}
-              setTextSearchMode={setTextSearchMode}
-              isSearchActive={searchTerm.length > 0}
-              onClearSearch={handleClearSearch}
-              onForceSearch={() => { setView('results'); }}
-              onBarcodeScanClick={()=>{}}
-              fuzzyEnabled={fuzzyEnabled}
-              onToggleFuzzy={() => setFuzzyEnabled(v => !v)}
-              t={t}
-              activeFiltersCount={activeFiltersCount}
-              onOpenFilters={() => setIsFilterModalOpen(true)}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              language={language}
-              onInsuranceClick={() => { setActiveTab('insurance'); setView('insuranceSearch'); }}
-              isSearching={false}
-              recentSearches={recentSearches.slice(0, 5).map(m => ({ name: m['Trade Name'], id: m.RegisterNumber }))}
-              onSelectRecent={(name) => { setSearchTerm(name); setView('results'); }}
-            />
-          </div>
-        )}
-      </Header>
+      />
 
-      {/* SearchBar لما الكيبورد يفتح - يطلع فوق */}
-      {activeTab === 'search' && isKeyboardOpen && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[61] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pt-2 pb-1">
+      {/* Search bar - fixed position, always right below header */}
+      {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
+          style={{ top: isKeyboardOpen ? 0 : headerHeight }}
+        >
           <SearchBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -2001,7 +1959,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : `calc(var(--header-h) + 8px)`, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none", scrollPaddingTop: `var(--header-h)` } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), transition: 'padding-bottom 0.2s ease', WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>

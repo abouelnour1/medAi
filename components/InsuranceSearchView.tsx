@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Medicine, TFunction, Language, InsuranceDrug, SelectedInsuranceData, InsuranceSearchMode } from '../types';
 import InsuranceSimpleSearch from './InsuranceSimpleSearch';
@@ -13,30 +12,21 @@ interface InsuranceSearchViewProps {
   setInsuranceSearchTerm: (term: string) => void;
   insuranceSearchMode: InsuranceSearchMode;
   setInsuranceSearchMode: (mode: InsuranceSearchMode) => void;
-  onSearchIconClick?: () => void;
-  stickyTop?: number;
-  searchBarFixedTop?: number | string;
 }
 
 const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
-
   return (
-    <div className="space-y-4 animate-fade-in">
-      <InsuranceSimpleSearch 
-          t={props.t} 
-          language={props.language} 
-          insuranceData={props.insuranceData} 
-          allMedicines={props.allMedicines}
-          onSelectInsuranceData={props.onSelectInsuranceData}
-          searchTerm={props.insuranceSearchTerm}
-          setSearchTerm={props.setInsuranceSearchTerm}
-          searchMode={props.insuranceSearchMode}
-          setSearchMode={props.setInsuranceSearchMode}
-          onSearchIconClick={props.onSearchIconClick}
-          stickyTop={props.stickyTop}
-          searchBarFixedTop={props.searchBarFixedTop}
-      />
-    </div>
+    <InsuranceSimpleSearch
+      t={props.t}
+      language={props.language}
+      insuranceData={props.insuranceData}
+      allMedicines={props.allMedicines}
+      onSelectInsuranceData={props.onSelectInsuranceData}
+      searchTerm={props.insuranceSearchTerm}
+      setSearchTerm={props.setInsuranceSearchTerm}
+      searchMode={props.insuranceSearchMode}
+      setSearchMode={props.setInsuranceSearchMode}
+    />
   );
 };
 
