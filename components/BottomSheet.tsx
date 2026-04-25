@@ -12,7 +12,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   isOpen,
   onClose,
   children,
-  snapPoints = [0.68, 0.93],
+  snapPoints = [0.88, 0.97],
   skipOpenAnimation = false,
 }) => {
   const sheetRef        = useRef<HTMLDivElement>(null);

@@ -186,6 +186,7 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20); // ← Pagination: show 20 at a time
 
   useEffect(() => {
     fetchInteractions(scientificName, tradeName).then(data => {
@@ -193,6 +194,9 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
       setLoading(false);
     });
   }, [scientificName, tradeName]);
+
+  // Reset pagination when filter changes
+  useEffect(() => { setVisibleCount(20); }, [filter]);
 
   if (loading) return (
     <div className="flex items-center gap-2 py-3">
@@ -237,7 +241,9 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
     acc[ix.severity] = (acc[ix.severity] || 0) + 1; return acc;
   }, {});
 
-  const visible = filter ? sorted.filter(ix => ix.severity === filter) : sorted;
+  const filtered = filter ? sorted.filter(ix => ix.severity === filter) : sorted;
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   return (
     <div>
@@ -271,6 +277,17 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
       <div className="space-y-2">
         {visible.map((ix, i) => <IxCard key={i} ix={ix} />)}
       </div>
+
+      {/* Load more button */}
+      {hasMore && (
+        <button
+          onClick={() => setVisibleCount(v => v + 20)}
+          className="mt-3 w-full py-2.5 text-[11px] font-black text-amber-700 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl active:scale-95 transition-all">
+          {ar
+            ? `▼ عرض 20 تفاعل آخر (${filtered.length - visibleCount} متبقي)`
+            : `▼ Load 20 more (${filtered.length - visibleCount} remaining)`}
+        </button>
+      )}
     </div>
   );
 }
