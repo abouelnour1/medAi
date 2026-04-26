@@ -578,33 +578,38 @@ const App: React.FC = () => {
     return () => cleanupCap?.();
   }, []);
 
-  useEffect(() => {
-    if (!headerRef.current) return;
-    let done = false;
-
-    const measureOnce = () => {
-      if (done || !headerRef.current) return;
+  // useLayoutEffect: بيشتغل sync قبل ما المتصفح يرسم → الـ header height صح من أول frame
+  React.useLayoutEffect(() => {
+    const measure = () => {
+      if (!headerRef.current) return false;
       const h = Math.ceil(headerRef.current.getBoundingClientRect().height);
-      if (h > 40) {
-        done = true;
+      if (h >= 40) {
         setHeaderHeight(h);
         setHeaderOnlyHeight(h);
         setSearchBarTop(h);
         setHeaderMeasured(true);
         try { localStorage.setItem('_hh', String(h)); } catch {}
-        observer.disconnect();
+        return true;
       }
+      return false;
     };
 
-    const observer = new ResizeObserver(measureOnce);
-    observer.observe(headerRef.current);
+    // محاولة فورية
+    if (measure()) return;
 
-    // Also try immediately and with delays
-    requestAnimationFrame(measureOnce);
-    setTimeout(measureOnce, 100);
-    setTimeout(measureOnce, 300);
+    // لو مش جاهز بعد، نراقب بـ ResizeObserver
+    let done = false;
+    const obs = new ResizeObserver(() => {
+      if (done) return;
+      if (measure()) { done = true; obs.disconnect(); }
+    });
+    if (headerRef.current) obs.observe(headerRef.current);
 
-    return () => observer.disconnect();
+    // fallbacks
+    const t1 = setTimeout(() => { if (!done) measure(); }, 50);
+    const t2 = setTimeout(() => { if (!done) measure(); }, 150);
+
+    return () => { obs.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   useEffect(() => {
@@ -1954,11 +1959,12 @@ const App: React.FC = () => {
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
       />
 
-      {/* Search bar - fixed, GPU layer prevents keyboard movement */}
+      {/* Search bar — fixed, يقعد تحت الـ header مباشرة */}
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
-          style={{ top: 'var(--header-h)', transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
+          ref={searchBarRef}
+          className="fixed left-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
+          style={{ top: headerHeight, transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -1985,7 +1991,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen && !['indicationSearch','insuranceSearch'].includes(view) ? headerHeight + 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>

@@ -60,7 +60,7 @@ function savePresets(p: DrugPreset[]) {
 
 // ── R2 Fetch + localStorage Cache ───────────────────────────────────────────
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
-const CACHE_KEY = 'ps_pediatric_drugs_v4';
+const CACHE_KEY = 'ps_pediatric_drugs_v5';
 
 async function fetchPediatricData(): Promise<{
   drugs: DrugEntry[];
@@ -71,8 +71,6 @@ async function fetchPediatricData(): Promise<{
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) return JSON.parse(cached);
   } catch {}
-  // لو مفيش نت → throw مباشرة بدون ما نحاول fetch
-  if (!navigator.onLine) throw new Error('offline');
   const res = await fetch(R2_URL);
   if (!res.ok) throw new Error('Failed to fetch');
   const data = await res.json();

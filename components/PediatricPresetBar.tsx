@@ -34,7 +34,7 @@ interface DrugEntry {
 
 // ── localStorage ─────────────────────────────────────────────────────────────
 const PRESET_KEY = 'ps_ped_presets_v1';
-const DRUGS_CACHE = 'ps_pediatric_drugs_v4';
+const DRUGS_CACHE = 'ps_pediatric_drugs_v5';
 const R2_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pediatric-drugs.json';
 
 function loadPresets(): DrugPreset[] {
