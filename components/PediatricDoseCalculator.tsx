@@ -71,6 +71,8 @@ async function fetchPediatricData(): Promise<{
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) return JSON.parse(cached);
   } catch {}
+  // لو مفيش نت → throw مباشرة بدون ما نحاول fetch
+  if (!navigator.onLine) throw new Error('offline');
   const res = await fetch(R2_URL);
   if (!res.ok) throw new Error('Failed to fetch');
   const data = await res.json();

@@ -239,7 +239,13 @@ const App: React.FC = () => {
   // Pre-compute covered ATC codes + scientific name norms for O(1) lookup in cards
   const coveredAtcSet = useMemo(() => {
     const s = new Set<string>();
-    insuranceData.forEach(p => { if (p.atcCode) s.add(p.atcCode.trim()); });
+    insuranceData.forEach(p => {
+      if (!p.atcCode) return;
+      const atc = p.atcCode.trim();
+      s.add(atc);
+      // أضف أول 4 حروف كـ prefix لمطابقة أوسع (زي InsuranceSimpleSearch)
+      if (atc.length >= 4) s.add(atc.substring(0, 4));
+    });
     return s;
   }, [insuranceData]);
 
@@ -530,12 +536,14 @@ const App: React.FC = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
-  // نحفظ الـ headerHeight من اللي بعد في localStorage عشان أول render يكون صح
-  const [headerHeight, setHeaderHeight] = useState(97);
-  const [headerOnlyHeight, setHeaderOnlyHeight] = useState(97); // same as headerHeight initially
+  // نسترد الـ headerHeight من localStorage عشان أول render يكون صح بدون انتظار
+  const _savedH = parseInt(localStorage.getItem('_hh') || '0', 10);
+  const _initH = (_savedH >= 40 && _savedH <= 200) ? _savedH : 97;
+  const [headerHeight, setHeaderHeight] = useState(_initH);
+  const [headerOnlyHeight, setHeaderOnlyHeight] = useState(_initH);
   const searchBarRef = useRef<HTMLDivElement>(null);
-  const [searchBarTop, setSearchBarTop] = useState(97);
-  const [headerMeasured, setHeaderMeasured] = useState(true);
+  const [searchBarTop, setSearchBarTop] = useState(_initH);
+  const [headerMeasured, setHeaderMeasured] = useState(_savedH >= 40);
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -583,6 +591,7 @@ const App: React.FC = () => {
         setHeaderOnlyHeight(h);
         setSearchBarTop(h);
         setHeaderMeasured(true);
+        try { localStorage.setItem('_hh', String(h)); } catch {}
         observer.disconnect();
       }
     };
@@ -1688,7 +1697,7 @@ const App: React.FC = () => {
                               onClick={() => setView('recentlyViewed')}
                               style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
                             >
-                              {language === 'ar' ? 'الكل ←' : 'See all →'}
+                              See all →
                             </button>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1729,7 +1738,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} />;
       }
 
       if (activeTab === 'settings') {
@@ -1976,7 +1985,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen ? 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: isKeyboardOpen && !['indicationSearch','insuranceSearch'].includes(view) ? headerHeight + 56 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
@@ -2136,13 +2145,13 @@ const App: React.FC = () => {
             if (isListView) {
               setSkipNextViewKey(true);
               setView(targetView);
-              requestAnimationFrame(() => requestAnimationFrame(() => {
-                setSkipNextViewKey(false);
+              setTimeout(() => {
                 const savedPos = scrollPositions.current.get(targetView);
                 if (scrollContainerRef.current && savedPos !== undefined) {
                   scrollContainerRef.current.scrollTop = savedPos;
                 }
-              }));
+                setSkipNextViewKey(false);
+              }, 80);
             } else {
               setSkipNextViewKey(false);
               setView(targetView);

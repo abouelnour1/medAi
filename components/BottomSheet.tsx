@@ -18,6 +18,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const sheetRef        = useRef<HTMLDivElement>(null);
   const contentRef      = useRef<HTMLDivElement>(null);
   const dragStartY      = useRef(0);
+  const dragStartX      = useRef(0);
   const dragStartHeight = useRef(0);
   const isDragging      = useRef(false);
 
@@ -173,9 +174,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           onTouchStart={(e) => {
             const el = contentRef.current;
             if (el && el.scrollTop === 0) {
-              // نسجل نقطة البداية بس — مش نبدأ drag لحد ما نعرف الاتجاه
               isDragging.current = false;
               dragStartY.current = e.touches[0].clientY;
+              dragStartX.current = e.touches[0].clientX;
               dragStartHeight.current = height;
             }
           }}
@@ -183,8 +184,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             const el = contentRef.current;
             if (!el) return;
             const dy = e.touches[0].clientY - dragStartY.current;
-            // بس لو سحب لتحت (dy > 0) وفي أعلى الـ scroll
-            if (el.scrollTop === 0 && dy > 8) {
+            const dx = Math.abs(e.touches[0].clientX - (dragStartX.current || 0));
+            // بس لو سحب لتحت (dy > 0) وفي أعلى الـ scroll + مش horizontal swipe
+            if (el.scrollTop === 0 && dy > 8 && dy > dx * 1.5) {
               if (!isDragging.current) {
                 isDragging.current = true;
                 if (sheetRef.current) sheetRef.current.style.transition = 'none';

@@ -24,9 +24,10 @@
             document.documentElement.style.backgroundColor = '#f7f9f6';
             document.body && (document.body.style.backgroundColor = '#f7f9f6');
           }
+          var savedHH = parseInt(localStorage.getItem('_hh') || '0', 10);
           var isAndroid = /Android/i.test(navigator.userAgent);
           var statusH = isAndroid ? 30 : 0;
-          var headerH = statusH + 8 + 56 + 3;
+          var headerH = (savedHH >= 40 && savedHH <= 200) ? savedHH : (statusH + 8 + 56 + 3);
           document.documentElement.style.setProperty('--header-h', headerH + 'px');
         } catch(e) {}
       })();

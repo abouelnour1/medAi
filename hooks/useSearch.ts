@@ -146,7 +146,8 @@ export function useSearch(
   const raw         = rawFull;
   const hasWildcard = raw.includes('*');
   const term        = raw.replace(/\*/g, '');
-  const queryWords  = norm(term).match(/[a-z0-9]+/g) || [];
+  const isArabic    = /[\u0600-\u06ff]/.test(raw);
+  const queryWords  = isArabic ? [] : (norm(term).match(/[a-z0-9]+/g) || []);
   const termNorm    = queryWords.join('');
 
   const searchTextResults = useMemo(() => {
@@ -181,6 +182,12 @@ export function useSearch(
     }
 
     return medicines.filter(m => {
+      if (isArabic) {
+        // Arabic search: direct substring in Trade Name or Scientific Name
+        const tradeName = String(m['Trade Name'] || '');
+        const sciName   = String(m['Scientific Name'] || '');
+        return tradeName.includes(raw) || sciName.includes(raw);
+      }
       if (hasWildcard) return matchesWildcard(norm(String(m['Trade Name'] || '')), raw) || matchesWildcard(norm(String(m['Scientific Name'] || '')), raw);
       return scoreQuery(String(m['Trade Name'] || ''), String(m['Scientific Name'] || ''), queryWords, textSearchMode === 'tradeName') !== null;
     });
@@ -227,7 +234,7 @@ export function useSearch(
 
     if (rawNoSpaces.length < 1 && hasActiveFilters) {
       const sorted = [...searchContextMedicines].sort(sortFnAlpha);
-      return sorted.slice(0, 500); // limit to prevent freeze with large categories
+      return sorted.slice(0, 100); // limit to prevent freeze — pagination handles the rest
     }
 
     // البحث النصي: 100 نتيجة للعاديين، 200 للأدمن (pagination يتحكم في البقية)
@@ -238,6 +245,19 @@ export function useSearch(
     if (textSearchMode === 'indication') {
       return applyLimit([...searchTextResults].sort(sortFnAlpha));
     }
+
+    // Arabic search: simple substring, sorted by startsWith first
+    if (isArabic) {
+      const results = searchContextMedicines.filter(m => {
+        const t = String(m['Trade Name'] || '');
+        const s = String(m['Scientific Name'] || '');
+        return t.includes(raw) || s.includes(raw);
+      });
+      const t1 = results.filter(m => String(m['Trade Name'] || '').startsWith(raw)).sort(sortFnAlpha);
+      const t2 = results.filter(m => !String(m['Trade Name'] || '').startsWith(raw)).sort(sortFnAlpha);
+      return applyLimit([...t1, ...t2]);
+    }
+
     if (!fuzzyEnabled || textSearchMode === 'scientificName') {
       const isSci   = textSearchMode === 'scientificName';
       const isTrade = textSearchMode === 'tradeName';

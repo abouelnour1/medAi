@@ -114,7 +114,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
       </div>
 
       {/* Content */}
-      <div className="flex-grow overflow-y-auto px-4 py-4 pb-[calc(80px+env(safe-area-inset-bottom))]">
+      <div className="flex-grow overflow-y-auto px-4 py-4 pb-[calc(24px+env(safe-area-inset-bottom))] overscroll-none">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"/>

@@ -86,9 +86,10 @@ interface Props {
   searchTerm: string; setSearchTerm: (s: string) => void;
   searchMode: InsuranceSearchMode; setSearchMode: (m: InsuranceSearchMode) => void;
   headerHeight?: number;
+  isKeyboardOpen?: boolean;
 }
 
-const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97 }) => {
+const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false }) => {
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);
@@ -118,7 +119,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
 
   return (
     <div style={{ display:'flex', flexDirection:'column', minHeight:400, paddingTop: 96 }}>
-      <div style={{ position:'fixed', top:headerHeight, left:'50%', transform:'translateX(-50%) translateZ(0)', width:'calc(100% - 32px)', maxWidth:448, zIndex:59, background:'var(--bg)', paddingBottom:8, willChange:'transform' }}>
+      <div style={{ position:'fixed', top: headerHeight, left:'50%', transform:'translateX(-50%) translateZ(0)', width:'calc(100% - 32px)', maxWidth:448, zIndex:59, background:'var(--bg)', paddingBottom:8, willChange:'transform' }}>
         <div style={{ background:'var(--surface)', borderRadius:14, border:'1.5px solid var(--border)', boxShadow:'0 2px 8px rgba(0,106,96,0.07)', overflow:'hidden' }}>
           <div style={{ display:'flex', gap:6, padding:'8px 12px 0', overflowX:'auto' }} className="no-scrollbar">
             {MODES.map(m => (

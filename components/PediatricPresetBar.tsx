@@ -200,7 +200,7 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }
               <div className="flex items-center gap-2 px-3 pb-3">
                 {/* Weight */}
                 <div className="flex-shrink-0 w-24">
-                  <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl overflow-hidden focus-within:border-teal-400 transition-colors">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl overflow-hidden focus-within:border-slate-300 dark:focus-within:border-slate-500 transition-colors">
                     <input
                       type="number"
                       inputMode="decimal"

@@ -418,18 +418,15 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           </button>
 
       {/* ── Insurance Card ──────────────────────────────────── */}
-      <button
-        onClick={() => onShowInsuranceSheet ? onShowInsuranceSheet(medicine) : setShowInsuranceSheet(true)}
+      <div
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          gap: 4, padding: '10px 8px', borderRadius: 16, border: 'none', cursor: 'pointer',
+          gap: 4, padding: '10px 8px', borderRadius: 16,
           background: isCovered
             ? 'linear-gradient(135deg, rgba(21,128,61,0.07), rgba(21,128,61,0.12))'
             : 'linear-gradient(135deg, rgba(190,18,60,0.06), rgba(190,18,60,0.1))',
           outline: `1.5px solid ${isCovered ? 'rgba(21,128,61,0.2)' : 'rgba(190,18,60,0.18)'}`,
-          WebkitTapHighlightColor: 'transparent',
         }}
-        className="active:scale-95 transition-all"
       >
         <div style={{
           width: 28, height: 28, borderRadius: 8,
@@ -452,7 +449,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
             ? (ar ? 'مغطى' : 'Covered')
             : (ar ? 'غير مغطى' : 'Not Covered')}
         </span>
-      </button>
+      </div>
       </div>
 
       {/* ── Insurance Bottom Sheet ─────────────────────────── */}

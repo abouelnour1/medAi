@@ -116,7 +116,7 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 : (ar ? 'ابحث بالاسم العلمي...'  : 'Search by scientific name...')
             }
             autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
-            className="w-full bg-white dark:bg-dark-card h-12 pl-11 pr-11 rounded-2xl text-sm font-semibold border border-slate-100 dark:border-slate-700 focus:border-primary/40 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
+            className="w-full bg-white dark:bg-dark-card h-12 pl-11 pr-11 rounded-2xl text-sm font-semibold border border-slate-100 dark:border-slate-700 focus:border-slate-200 dark:focus:border-slate-600 outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600"
           />
           {isSearchActive && (
             <button onClick={onClearSearch} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-rose-500 transition-colors">
