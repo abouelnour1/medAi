@@ -14,15 +14,20 @@ interface Props {
   onFindAlternative: (m: Medicine) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
+  externalQuery?: string;
+  onExternalQueryChange?: (q: string) => void;
 }
 
 const IndicationSearch: React.FC<Props> = ({
   indications, medicines, language, t,
   onMedicineSelect, onMedicineLongPress, onFindAlternative,
-  favorites, onToggleFavorite
+  favorites, onToggleFavorite,
+  externalQuery, onExternalQueryChange
 }) => {
   const ar = language === 'ar';
-  const [query, setQuery] = useState('');
+  const [_query, _setQuery] = useState('');
+  const query = externalQuery !== undefined ? externalQuery : _query;
+  const setQuery = onExternalQueryChange || _setQuery;
   const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   const [selectedSciName, setSelectedSciName] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
@@ -101,8 +106,8 @@ const IndicationSearch: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Search input — only show when no disease selected */}
-      {!selectedIndication && (
+      {/* Search input — hidden when externalQuery provided (rendered in Header) */}
+      {!selectedIndication && !onExternalQueryChange && (
         <div className="relative mb-4">
           <input
             type="text"

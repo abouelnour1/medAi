@@ -71,6 +71,9 @@
           // حساب header height
           var headerH = (savedHH >= 40 && savedHH <= 200) ? savedHH : (statusH + 8 + 56 + 3);
           document.documentElement.style.setProperty('--header-h', headerH + 'px');
+          // --header-base-h = header row only, never includes search bar
+          var baseH = statusH + 8 + 56;
+          document.documentElement.style.setProperty('--header-base-h', baseH + 'px');
 
           // احفظ الـ status bar height لو مش محفوظ
           if (!(savedSB >= 20 && savedSB <= 120) && statusH >= 20) {

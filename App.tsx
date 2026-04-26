@@ -21,6 +21,7 @@ import FloatingAssistantButton from './components/FloatingAssistantButton';
 import AssistantModal from './components/AssistantModal';
 import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
+import InsuranceSimpleSearch from './components/InsuranceSimpleSearch';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
@@ -547,6 +548,8 @@ const App: React.FC = () => {
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [indicationQuery, setIndicationQuery] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
     let cleanupCap: (() => void) | null = null;
@@ -578,32 +581,26 @@ const App: React.FC = () => {
     return () => cleanupCap?.();
   }, []);
 
-  // useLayoutEffect: بيشتغل sync قبل ما المتصفح يرسم → الـ header height صح من أول frame
+  // useLayoutEffect: يقيس الـ header paddingTop (= android-status + 8) ويحسب header-h
   React.useLayoutEffect(() => {
     const measure = () => {
       if (!headerRef.current) return false;
-      const h = Math.ceil(headerRef.current.getBoundingClientRect().height);
-      if (h >= 40) {
-        setHeaderHeight(h);
-        setHeaderOnlyHeight(h);
-        setSearchBarTop(h);
-        setHeaderMeasured(true);
-        // حدث الـ CSS variable فوراً — الـ search bar بيستخدمه مباشرة
-        document.documentElement.style.setProperty('--header-h', h + 'px');
-        try { localStorage.setItem('_hh', String(h)); } catch {}
-        // احفظ الـ status bar height من الـ header padding
-        try {
-          const hdr = headerRef.current;
-          if (hdr) {
-            const pt = parseFloat(window.getComputedStyle(hdr).paddingTop) || 0;
-            const sbH = Math.round(pt - 8);
-            if (sbH >= 15 && sbH <= 120) {
-              localStorage.setItem('_sb', String(sbH));
-              document.documentElement.style.setProperty('--android-status', sbH + 'px');
-            }
-          }
-        } catch {}
-        return true;
+      // نقيس من الـ paddingTop مباشرة — مش من الـ height (اللي بيشمل الـ search bar)
+      const pt = parseFloat(window.getComputedStyle(headerRef.current).paddingTop) || 0;
+      if (pt >= 8) {
+        const sbPx = Math.round(pt - 8); // android status bar height
+        const baseH = Math.round(pt) + 56 + 3; // pt + header content + bottom padding
+        if (sbPx >= 0 && baseH >= 40) {
+          setHeaderHeight(baseH);
+          setHeaderOnlyHeight(baseH);
+          setSearchBarTop(baseH);
+          setHeaderMeasured(true);
+          document.documentElement.style.setProperty('--android-status', sbPx + 'px');
+          document.documentElement.style.setProperty('--header-h', baseH + 'px');
+          document.documentElement.style.setProperty('--header-base-h', baseH + 'px');
+          try { localStorage.setItem('_sb', String(sbPx)); localStorage.setItem('_hh', String(baseH)); } catch {}
+          return true;
+        }
       }
       return false;
     };
@@ -626,11 +623,7 @@ const App: React.FC = () => {
     return () => { obs.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--header-h', `${headerHeight}px`);
-    root.style.setProperty('--header-only-h', `${headerOnlyHeight}px`);
-  }, [headerHeight, headerOnlyHeight]);
+  // --header-h is set by useLayoutEffect and index.html, no need for separate useEffect
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -1311,7 +1304,7 @@ const App: React.FC = () => {
       if (activeTab === tab) {
           // لو ضغط على نفس الـ tab، يرجع للأول ويعمل scroll to top
           if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
-          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
+          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); } setIndicationQuery('');
           if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
           logTabSwitch(tab);
           // scroll to top دايماً لما يضغط على نفس الـ tab
@@ -1447,7 +1440,7 @@ const App: React.FC = () => {
         }}
       />;
       if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
-      if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
+      if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} externalQuery={indicationQuery} onExternalQueryChange={setIndicationQuery} />;
 
       if (view === 'pedDoseHistory') return (
         <div className="pt-2 pb-8">
@@ -1757,7 +1750,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'insurance') {
           if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} />;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} renderPart="results" />;
       }
 
       if (activeTab === 'settings') {
@@ -1987,14 +1980,11 @@ const App: React.FC = () => {
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
-      />
-
-      {/* Search bar — fixed, يقعد تحت الـ header مباشرة */}
+      >
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           ref={searchBarRef}
-          className="fixed left-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
-          style={{ top: 'var(--header-h)', transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
+          className="w-full pt-1.5"
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -2021,11 +2011,69 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 88 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      {activeTab === 'insurance' && !['insuranceDetails'].includes(view) && (
+        <div className="w-full pt-1.5">
+          <InsuranceSimpleSearch
+            t={t}
+            language={language}
+            insuranceData={insuranceData}
+            allMedicines={medicines}
+            onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); }}
+            searchTerm={insuranceSearchTerm}
+            setSearchTerm={setInsuranceSearchTerm}
+            searchMode={insuranceSearchMode}
+            setSearchMode={setInsuranceSearchMode}
+            renderPart="bar"
+          />
+        </div>
+      )}
+
+      {view === 'indicationSearch' && (
+        <div className="w-full pt-1.5 pb-1 px-0">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input
+              type="text"
+              value={indicationQuery}
+              onChange={e => setIndicationQuery(e.target.value)}
+              placeholder={language === 'ar' ? 'ابحث عن مرض...' : 'Search disease... e.g. Hypertension'}
+              className="w-full h-11 pl-10 pr-9 bg-white dark:bg-dark-card border border-slate-100 dark:border-dark-border rounded-2xl text-sm font-semibold text-slate-700 dark:text-white outline-none placeholder-slate-300"
+            />
+            {indicationQuery && (
+              <button onClick={() => setIndicationQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      </Header>
+
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={(e) => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); const t = (e.currentTarget as HTMLDivElement).scrollTop; setShowScrollTop(t > 400); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details','alternatives','login','register','admin','imageView','notifications','favorites','settings','stockTracker','orderList','aiHistory','pedDoseHistory','recentlyViewed'].includes(view)) ? 'calc(var(--header-h) + 48px)' : (view === 'indicationSearch') ? 'calc(var(--header-h) + 52px)' : (activeTab === 'insurance' && !['insuranceDetails'].includes(view)) ? 'calc(var(--header-h) + 92px)' : 'calc(var(--header-h) + 8px)', paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
       </main>
+      {/* Scroll to top button */}
+      {showScrollTop && activeTab === 'search' && !['details','alternatives','imageView'].includes(view) && (
+        <button
+          onClick={() => { scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          className="fixed z-[58] rounded-2xl shadow-lg active:scale-90 transition-all"
+          style={{
+            bottom: 'calc(24px + env(safe-area-inset-bottom))',
+            right: 16,
+            width: 44, height: 44,
+            background: 'linear-gradient(135deg, #006a60, #00897b)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 200ms ease',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 15l-6-6-6 6"/>
+          </svg>
+        </button>
+      )}
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (
         <PharmacistQuickView

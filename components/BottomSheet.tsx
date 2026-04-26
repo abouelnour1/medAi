@@ -141,15 +141,23 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       const dy = e.touches[0].clientY - startY;
       const dx = Math.abs(e.touches[0].clientX - startX);
 
-      // بدأنا drag للـ sheet: لما scroll في أعلى + سحب لتحت + مش horizontal
-      if (!dragging && el.scrollTop === 0 && dy > 10 && dy > dx * 1.5) {
+      // start drag when: at top AND pulling down, OR at bottom AND pulling up → sheet resize
+      const atTop    = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      const pullDown = dy > 0;
+      const pullUp   = dy < 0;
+      const isVertical = Math.abs(dy) > 10 && Math.abs(dy) > dx * 1.5;
+
+      if (!dragging && isVertical && ((atTop && pullDown) || (atBottom && pullUp))) {
         dragging = true;
+        startY = e.touches[0].clientY; // reset startY
         if (sheetRef.current) sheetRef.current.style.transition = 'none';
       }
 
       if (dragging) {
-        e.preventDefault(); // منع الـ scroll
-        const newH = Math.min(maxH, Math.max(80, startH - dy * 0.6));
+        e.preventDefault();
+        const delta = e.touches[0].clientY - startY;
+        const newH = Math.min(maxH, Math.max(80, startH - delta * 0.7));
         setHeight(newH);
       }
     };

@@ -59,8 +59,14 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
     });
     food.forEach(med => results.push({ type:'not-covered', medicine:med }));
   } else {
-    const regex = new RegExp(esc(t),'i');
-    const matching = ins.filter(p => regex.test((mode==='indication' ? p.indication||'' : p.icd10Code||'').toLowerCase())).slice(0,80);
+    // precompute meds lookup by normalized scientific name
+    const medsMap = new Map<string, Medicine[]>();
+    meds.forEach(m => {
+      const k = normStr(m['Scientific Name']||'');
+      if (k) { if (!medsMap.has(k)) medsMap.set(k,[]); medsMap.get(k)!.push(m); }
+    });
+    const field = mode === 'indication' ? 'indication' : 'icd10Code';
+    const matching = ins.filter(p => (p[field as keyof InsuranceDrug]||'').toString().toLowerCase().includes(t)).slice(0,80);
     const byInd = new Map<string, InsuranceDrug[]>();
     matching.forEach(p => {
       const k = p.indication||'General';
@@ -70,7 +76,7 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
     byInd.forEach((policies, indication) => {
       const sm = new Map<string, ScientificGroupData>();
       policies.forEach(p => {
-        if (!sm.has(p.scientificName)) sm.set(p.scientificName,{ scientificName:p.scientificName, policies:[], availableMedicines:meds.filter(m=>normStr(m['Scientific Name'])===normStr(p.scientificName)).slice(0,10) });
+        if (!sm.has(p.scientificName)) sm.set(p.scientificName,{ scientificName:p.scientificName, policies:[], availableMedicines:(medsMap.get(normStr(p.scientificName))||[]).slice(0,5) });
         sm.get(p.scientificName)!.policies.push(p);
       });
       results.push({ type:'covered', indication, icd10Codes:Array.from(new Set(policies.map(p=>p.icd10Code))).filter(Boolean) as string[], scientificGroups:Array.from(sm.values()) });
@@ -87,15 +93,16 @@ interface Props {
   searchMode: InsuranceSearchMode; setSearchMode: (m: InsuranceSearchMode) => void;
   headerHeight?: number;
   isKeyboardOpen?: boolean;
+  renderPart?: 'bar' | 'results' | 'all';
 }
 
-const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false }) => {
+const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 400);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 150);
     return () => clearTimeout(h);
   }, [input]);
 
@@ -117,9 +124,8 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
     { id:'icd10Code' as const, label: 'ICD-10' },
   ];
 
-  return (
-    <div style={{ display:'flex', flexDirection:'column', minHeight:400, paddingTop: 88 }}>
-      <div style={{ position:'fixed', top: headerHeight, left:'50%', transform:'translateX(-50%) translateZ(0)', width:'calc(100% - 32px)', maxWidth:448, zIndex:59, background:'var(--bg)', paddingBottom:8, willChange:'transform' }}>
+  const barEl = (
+      <div style={{ width:'100%', paddingBottom:8 }}>
         <div style={{ background:'var(--surface)', borderRadius:14, border:'1.5px solid var(--border)', boxShadow:'0 2px 8px rgba(0,106,96,0.07)', overflow:'hidden' }}>
           <div style={{ display:'flex', gap:6, padding:'8px 12px 0', overflowX:'auto' }} className="no-scrollbar">
             {MODES.map(m => (
@@ -133,7 +139,9 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
           </div>
         </div>
       </div>
+  );
 
+  const resultsEl = (
       <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80 }}>
         {busy && <div style={{ textAlign:'center', padding:20, color:'var(--text-subtle)', fontSize:12 }}>Loading...</div>}
         {!busy && results.map((r,i) => {
@@ -149,8 +157,11 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
           </div>
         )}
       </div>
-    </div>
   );
+
+  if (renderPart === 'bar') return <>{barEl}</>;
+  if (renderPart === 'results') return <div style={{ display:'flex', flexDirection:'column', minHeight:400 }}>{resultsEl}</div>;
+  return <div style={{ display:'flex', flexDirection:'column', minHeight:400 }}>{barEl}{resultsEl}</div>;
 };
 
 export default InsuranceSimpleSearch;

@@ -343,7 +343,12 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   };
 
   return (
-    <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" data-overlay="true" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+    <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" data-overlay="true"
+      style={{ direction: ar ? 'rtl' : 'ltr' }}
+      onTouchStart={e => e.stopPropagation()}
+      onTouchMove={e => e.stopPropagation()}
+      onTouchEnd={e => e.stopPropagation()}
+    >
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
