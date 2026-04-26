@@ -157,7 +157,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
             </div>
           </div>
         ) : data && (() => {
-          const PREVIEW = 400;
+          const PREVIEW = 150;
           return (
           <div className="space-y-3">
             {fields.filter(f => data[f.key]).map(f => {
@@ -180,11 +180,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
                 <p className="text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{displayed}</p>
                 {isLong && (
                   <button onClick={() => setOpen(v => !v)}
-                    className={`mt-3 w-full py-2 text-[12px] font-black rounded-xl active:scale-95 transition-all border ${
-                      open
-                        ? 'text-slate-500 border-slate-200 dark:border-slate-700'
-                        : 'text-white bg-primary border-primary shadow-sm'
-                    }`}>
+                    className="mt-2 text-[11px] font-black text-primary active:scale-95 transition-all">
                     {open ? (ar ? '▲ عرض أقل' : '▲ Show less') : (ar ? '▼ عرض النص الكامل' : '▼ See full text')}
                   </button>
                 )}

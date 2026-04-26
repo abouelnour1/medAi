@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -79,45 +79,6 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
   return results;
 }
 
-// ── Virtualized list: renders only visible items ──
-const ITEM_ESTIMATE = 120; // px per card estimate
-const OVERSCAN = 5;
-
-function VirtualList({ items, renderItem, containerRef }: { items: SR[]; renderItem: (item: SR, i: number) => React.ReactNode; containerRef: React.RefObject<HTMLElement | null> }) {
-  const [scrollTop, setScrollTop] = useState(0);
-  const [containerHeight, setContainerHeight] = useState(600);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => { setScrollTop(el.scrollTop); setContainerHeight(el.clientHeight); };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    return () => el.removeEventListener('scroll', update);
-  }, [containerRef]);
-
-  if (items.length <= 30) {
-    // Small list: render all
-    return <>{items.map((r, i) => <React.Fragment key={i}>{renderItem(r, i)}</React.Fragment>)}</>;
-  }
-
-  const totalHeight = items.length * ITEM_ESTIMATE;
-  const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_ESTIMATE) - OVERSCAN);
-  const endIdx = Math.min(items.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_ESTIMATE) + OVERSCAN);
-  const paddingTop = startIdx * ITEM_ESTIMATE;
-  const paddingBottom = (items.length - 1 - endIdx) * ITEM_ESTIMATE;
-
-  return (
-    <>
-      <div style={{ height: paddingTop }} />
-      {items.slice(startIdx, endIdx + 1).map((r, idx) => (
-        <React.Fragment key={startIdx + idx}>{renderItem(r, startIdx + idx)}</React.Fragment>
-      ))}
-      <div style={{ height: paddingBottom }} />
-    </>
-  );
-}
-
 interface Props {
   t: TFunction; language: Language;
   insuranceData: InsuranceDrug[]; allMedicines: Medicine[];
@@ -125,35 +86,28 @@ interface Props {
   searchTerm: string; setSearchTerm: (s: string) => void;
   searchMode: InsuranceSearchMode; setSearchMode: (m: InsuranceSearchMode) => void;
   headerHeight?: number;
-  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
-const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, scrollContainerRef }) => {
+const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97 }) => {
   const [input, setInput] = useState(searchTerm);
-  const [debouncedTerm, setDebouncedTerm] = useState(searchTerm);
-  const internalRef = useRef<HTMLElement | null>(null);
+  const [results, setResults] = useState<SR[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  // Sync input if parent clears term
-  useEffect(() => { setInput(searchTerm); }, [searchTerm]);
-
-  // Debounce input → debouncedTerm
   useEffect(() => {
-    const h = setTimeout(() => {
-      setDebouncedTerm(input);
-      if (input !== searchTerm) setSearchTerm(input);
-    }, 350);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 400);
     return () => clearTimeout(h);
   }, [input]);
 
-  // Compute results in useMemo (avoids extra state + double render)
-  const results = useMemo<SR[]>(() => {
-    if (!debouncedTerm || debouncedTerm.replace(/\*/g,'').length < 3) return [];
-    return compute(debouncedTerm, searchMode, allMedicines, insuranceData);
-  }, [debouncedTerm, searchMode, allMedicines, insuranceData]);
-
-  const busy = input !== debouncedTerm;
-
-  const containerRef = scrollContainerRef ?? internalRef as React.RefObject<HTMLElement | null>;
+  useEffect(() => {
+    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); return; }
+    setBusy(true);
+    const tid = setTimeout(() => {
+      try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
+      catch { setResults([]); }
+      setBusy(false);
+    }, 0);
+    return () => clearTimeout(tid);
+  }, [searchTerm, searchMode, allMedicines, insuranceData]);
 
   const MODES = [
     { id:'tradeName' as const, label: t('tradeName')||'Trade Name' },
@@ -162,44 +116,32 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
     { id:'icd10Code' as const, label: 'ICD-10' },
   ];
 
-  const renderItem = useCallback((r: SR, i: number) => {
-    if (r.type==='covered') return <IndicationCard key={'c'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
-    if (r.type==='drug-grouped') return <DrugPolicyCard key={'d'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
-    if (r.type==='not-covered') return <NotCoveredCard key={'n'+i} medicine={r.medicine} t={t} />;
-    return null;
-  }, [t, onSelectInsuranceData]);
-
   return (
     <div style={{ display:'flex', flexDirection:'column', minHeight:400, paddingTop: 96 }}>
-      {/* Fixed search header */}
       <div style={{ position:'fixed', top:headerHeight, left:'50%', transform:'translateX(-50%) translateZ(0)', width:'calc(100% - 32px)', maxWidth:448, zIndex:59, background:'var(--bg)', paddingBottom:8, willChange:'transform' }}>
         <div style={{ background:'var(--surface)', borderRadius:14, border:'1.5px solid var(--border)', boxShadow:'0 2px 8px rgba(0,106,96,0.07)', overflow:'hidden' }}>
           <div style={{ display:'flex', gap:6, padding:'8px 12px 0', overflowX:'auto' }} className="no-scrollbar">
             {MODES.map(m => (
-              <button key={m.id} onClick={() => setSearchMode(m.id)} style={{ padding:'4px 11px', borderRadius:20, border:'none', cursor:'pointer', whiteSpace:'nowrap', fontSize:11, fontWeight:700, flexShrink:0, background:searchMode===m.id?'var(--primary)':'var(--surface-2)', color:searchMode===m.id?'#fff':'var(--text-muted)', transition:'all 0.15s' }}>{m.label}</button>
+              <button key={m.id} onClick={() => setSearchMode(m.id)} style={{ padding:'4px 11px', borderRadius:20, border:'none', cursor:'pointer', whiteSpace:'nowrap', fontSize:11, fontWeight:700, flexShrink:0, background:searchMode===m.id?'var(--primary)':'var(--surface-2)', color:searchMode===m.id?'#fff':'var(--text-muted)' }}>{m.label}</button>
             ))}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px 10px' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <input value={input} onChange={e => setInput(e.target.value)} placeholder={t('insuranceSearchPlaceholder')||'Search...'} style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:15, color:'var(--text)', fontFamily:'inherit' }} autoComplete="off" autoCorrect="off" spellCheck={false} />
-            {input ? <button onClick={() => { setInput(''); setSearchTerm(''); setDebouncedTerm(''); }} style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-subtle)', display:'flex', padding:2 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button> : null}
-            {busy && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" style={{ flexShrink:0, animation:'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
+            {input ? <button onClick={() => { setInput(''); setSearchTerm(''); }} style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-subtle)', display:'flex', padding:2 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button> : null}
           </div>
         </div>
       </div>
 
-      {/* Results */}
       <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80 }}>
-        {!busy && results.length > 0 && (
-          <VirtualList items={results} renderItem={renderItem} containerRef={containerRef} />
-        )}
-        {!busy && results.length === 0 && debouncedTerm.replace(/\*/g,'').length >= 3 && (
-          <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-subtle)' }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin:'0 auto 10px', display:'block', opacity:0.35 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <p style={{ fontSize:13, fontWeight:600 }}>No results found</p>
-          </div>
-        )}
-        {!busy && !debouncedTerm && (
+        {busy && <div style={{ textAlign:'center', padding:20, color:'var(--text-subtle)', fontSize:12 }}>Loading...</div>}
+        {!busy && results.map((r,i) => {
+          if (r.type==='covered') return <IndicationCard key={'c'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+          if (r.type==='drug-grouped') return <DrugPolicyCard key={'d'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
+          if (r.type==='not-covered') return <NotCoveredCard key={'n'+i} medicine={r.medicine} t={t} />;
+          return null;
+        })}
+        {!busy && !searchTerm && (
           <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--text-subtle)' }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin:'0 auto 12px', display:'block', opacity:0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <p style={{ fontSize:13, fontWeight:600 }}>{t('insuranceSearchPlaceholder')||'Search for condition, drug, or code...'}</p>

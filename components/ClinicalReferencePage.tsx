@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Language } from '../types';
 import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines';
 
-const R2_INTERACTIONS_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/interactions_merged.json';
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
 
 interface StructuredInteraction {
@@ -42,7 +41,6 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
   },
 };
 
-let _ixCache: Record<string, StructuredInteraction[]> | null = null;
 let _clinCache: Record<string, any> | null = null;
 
 // ── Drug name normalization for matching ────────────────────────────────────
@@ -118,17 +116,6 @@ function findInMap<T>(map: Record<string, T>, ...raws: string[]): T | undefined 
   return undefined;
 }
 
-async function fetchInteractions(scientificName: string, tradeName?: string): Promise<StructuredInteraction[]> {
-  if (!_ixCache) {
-    try {
-      const res = await fetch(R2_INTERACTIONS_URL);
-      if (res.ok) _ixCache = await res.json();
-      else _ixCache = {};
-    } catch { _ixCache = {}; }
-  }
-  return findInMap(_ixCache!, scientificName, tradeName ?? '') ?? [];
-}
-
 async function fetchFullClinical(scientificName: string, tradeName?: string): Promise<any | null> {
   if (!_clinCache) {
     try {
@@ -186,17 +173,14 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(20); // ← Pagination: show 20 at a time
 
   useEffect(() => {
-    fetchInteractions(scientificName, tradeName).then(data => {
-      setItems(data);
+    fetchFullClinical(scientificName, tradeName).then(data => {
+      const ix: StructuredInteraction[] = Array.isArray(data?.interactions) ? data.interactions : [];
+      setItems(ix);
       setLoading(false);
     });
   }, [scientificName, tradeName]);
-
-  // Reset pagination when filter changes
-  useEffect(() => { setVisibleCount(20); }, [filter]);
 
   if (loading) return (
     <div className="flex items-center gap-2 py-3">
@@ -241,9 +225,7 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
     acc[ix.severity] = (acc[ix.severity] || 0) + 1; return acc;
   }, {});
 
-  const filtered = filter ? sorted.filter(ix => ix.severity === filter) : sorted;
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const visible = filter ? sorted.filter(ix => ix.severity === filter) : sorted;
 
   return (
     <div>
@@ -277,17 +259,6 @@ function InteractionsView({ scientificName, tradeName, fallbackText, language }:
       <div className="space-y-2">
         {visible.map((ix, i) => <IxCard key={i} ix={ix} />)}
       </div>
-
-      {/* Load more button */}
-      {hasMore && (
-        <button
-          onClick={() => setVisibleCount(v => v + 20)}
-          className="mt-3 w-full py-2.5 text-[11px] font-black text-amber-700 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl active:scale-95 transition-all">
-          {ar
-            ? `▼ عرض 20 تفاعل آخر (${filtered.length - visibleCount} متبقي)`
-            : `▼ Load 20 more (${filtered.length - visibleCount} remaining)`}
-        </button>
-      )}
     </div>
   );
 }

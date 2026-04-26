@@ -28,8 +28,6 @@ const config: CapacitorConfig = {
       resize: 'none' as any,
       style: 'dark' as any,
       resizeOnFullScreen: false,
-      // @ts-ignore - valid runtime property not yet typed in @capacitor/keyboard
-      hideFormAccessoryBar: true,
     },
     StatusBar: {
       style: 'light',

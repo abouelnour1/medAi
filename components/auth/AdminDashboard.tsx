@@ -142,19 +142,18 @@ export const AdminDashboard: React.FC<{ t: TFunction, allMedicines: Medicine[], 
 
   // توليد قوائم فريدة من البيانات الحالية للاقتراح التلقائي
   const dbLists = useMemo(() => {
-    const LIMIT = 300;
-    const getUnique = (key: keyof Medicine, limit = LIMIT) =>
-        Array.from(new Set(allMedicines.map(m => String(m[key] || '').trim()).filter(val => val !== '' && val.toLowerCase() !== 'n/a'))).sort().slice(0, limit);
+    const getUnique = (key: keyof Medicine) => 
+        Array.from(new Set(allMedicines.map(m => String(m[key] || '').trim()).filter(val => val !== '' && val.toLowerCase() !== 'n/a'))).sort();
 
     return {
       scientificNames: getUnique('Scientific Name'),
       manufacturers: getUnique('Manufacture Name'),
-      forms: getUnique('PharmaceuticalForm', 100),
-      units: getUnique('StrengthUnit', 50),
+      forms: getUnique('PharmaceuticalForm'),
+      units: getUnique('StrengthUnit'),
       marketingCompanies: getUnique('Marketing Company'),
       agents: getUnique('Main Agent'),
-      routes: getUnique('AdministrationRoute', 50),
-      countries: getUnique('Manufacture Country', 100),
+      routes: getUnique('AdministrationRoute'),
+      countries: getUnique('Manufacture Country'),
       tradeNames: getUnique('Trade Name')
     };
   }, [allMedicines]);
