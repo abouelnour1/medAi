@@ -228,7 +228,7 @@ const ImageViewer: React.FC<Props> = ({ images, initialIndex, title, indexFlags,
       <div
         className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 pb-6"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
+          paddingTop: 'calc(var(--android-status, 0px) + 12px)',
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
         }}
       >

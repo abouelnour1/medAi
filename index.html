@@ -12,23 +12,70 @@
     <meta name="theme-color" content="#006a60">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">    <script>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <style>
+      /* probe div عشان نقيس env(safe-area-inset-top) */
+      #safe-area-probe {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 1px;
+        height: env(safe-area-inset-top, 0px);
+        pointer-events: none;
+        visibility: hidden;
+      }
+    </style>
+    <script>
       (function() {
         try {
+          // ── Theme ──────────────────────────────────────────────
           var t = localStorage.getItem('theme');
-          if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          var isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
             document.documentElement.classList.add('dark');
             document.documentElement.style.backgroundColor = '#060f0e';
-            document.body && (document.body.style.backgroundColor = '#060f0e');
           } else {
             document.documentElement.style.backgroundColor = '#f7f9f6';
-            document.body && (document.body.style.backgroundColor = '#f7f9f6');
           }
-          var savedHH = parseInt(localStorage.getItem('_hh') || '0', 10);
+
+          // ── Status Bar Height ──────────────────────────────────
           var isAndroid = /Android/i.test(navigator.userAgent);
-          var statusH = isAndroid ? 30 : 0;
+          var savedSB = parseInt(localStorage.getItem('_sb') || '0', 10);
+          var savedHH = parseInt(localStorage.getItem('_hh') || '0', 10);
+
+          // القيمة اللي هنستخدمها
+          var statusH;
+
+          if (savedSB >= 20 && savedSB <= 120) {
+            // عندنا قيمة محفوظة من جلسة سابقة → استخدمها فوراً
+            statusH = savedSB;
+          } else if (isAndroid) {
+            // أول مرة على Android → نقيس env(safe-area-inset-top) بـ probe div
+            // بنعمل ده sync قبل أي render
+            var probe = document.createElement('div');
+            probe.id = 'safe-area-probe';
+            probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden;';
+            document.documentElement.appendChild(probe);
+            var probeH = probe.getBoundingClientRect().height;
+            document.documentElement.removeChild(probe);
+            
+            // لو env() شتغلت وديت قيمة حقيقية
+            statusH = (probeH >= 20 && probeH <= 120) ? Math.round(probeH) : 30;
+          } else {
+            statusH = 0;
+          }
+
+          // طبق CSS variables
+          document.documentElement.style.setProperty('--android-status', statusH + 'px');
+
+          // حساب header height
           var headerH = (savedHH >= 40 && savedHH <= 200) ? savedHH : (statusH + 8 + 56 + 3);
           document.documentElement.style.setProperty('--header-h', headerH + 'px');
+
+          // احفظ الـ status bar height لو مش محفوظ
+          if (!(savedSB >= 20 && savedSB <= 120) && statusH >= 20) {
+            try { localStorage.setItem('_sb', String(statusH)); } catch(e) {}
+          }
         } catch(e) {}
       })();
     </script>

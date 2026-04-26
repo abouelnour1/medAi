@@ -335,7 +335,7 @@ const OnboardingOverlay: React.FC<Props> = ({ language, onDone }) => {
         background: `linear-gradient(160deg, ${s.bg} 0%, ${s.bg2} 100%)`,
         direction: ar ? 'rtl' : 'ltr',
         display: 'flex', flexDirection: 'column',
-        paddingTop: 'env(safe-area-inset-top)',
+        paddingTop: 'var(--android-status, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         opacity: exiting ? 0 : 1,
         transition: 'opacity 0.4s ease, background 0.5s ease',

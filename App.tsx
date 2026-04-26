@@ -588,7 +588,21 @@ const App: React.FC = () => {
         setHeaderOnlyHeight(h);
         setSearchBarTop(h);
         setHeaderMeasured(true);
+        // حدث الـ CSS variable فوراً — الـ search bar بيستخدمه مباشرة
+        document.documentElement.style.setProperty('--header-h', h + 'px');
         try { localStorage.setItem('_hh', String(h)); } catch {}
+        // احفظ الـ status bar height من الـ header padding
+        try {
+          const hdr = headerRef.current;
+          if (hdr) {
+            const pt = parseFloat(window.getComputedStyle(hdr).paddingTop) || 0;
+            const sbH = Math.round(pt - 8);
+            if (sbH >= 15 && sbH <= 120) {
+              localStorage.setItem('_sb', String(sbH));
+              document.documentElement.style.setProperty('--android-status', sbH + 'px');
+            }
+          }
+        } catch {}
         return true;
       }
       return false;
@@ -1502,7 +1516,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} onShowInsuranceSheet={(m) => setInsuranceSheetMedicine(m)} /></div>;
-          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
+          if (view === 'alternatives' && selectedMedicine) return <div style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
               <div className="pt-1">
@@ -1912,12 +1926,28 @@ const App: React.FC = () => {
 
   // لو auth لسه بيتحقق بس مفيش medicine خالص نكتفي بـ spinner صغير في الـ header
 
-  // ✅ Auth Gate — مش مسجّل → Login مباشرة بدون أي تعديل تاني في الكود
+  // ✅ Auth Gate — مش مسجّل → Login
+  // نستغل الوقت ده نقيس الـ safe-area-inset-top الحقيقي
   if (!user) {
     return (
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
         {specialtyModalEl}
-      {view === 'register'
+        {/* probe div — نقيس منه env(safe-area-inset-top) */}
+        <div
+          ref={headerRef as React.RefObject<HTMLDivElement>}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0,
+            width: '100%',
+            paddingTop: 'calc(var(--android-status, 30px) + 8px)',
+            paddingBottom: 8,
+            zIndex: -1,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ height: 56 }} />
+        </div>
+        {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
           : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />
         }
@@ -1964,7 +1994,7 @@ const App: React.FC = () => {
         <div
           ref={searchBarRef}
           className="fixed left-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
-          style={{ top: headerHeight, transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
+          style={{ top: 'var(--header-h)', transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -1991,7 +2021,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 88 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
@@ -2151,13 +2181,16 @@ const App: React.FC = () => {
             if (isListView) {
               setSkipNextViewKey(true);
               setView(targetView);
+              // منع أي animation لما نرجع من الصورة
+              document.documentElement.classList.add('no-anim');
               setTimeout(() => {
                 const savedPos = scrollPositions.current.get(targetView);
                 if (scrollContainerRef.current && savedPos !== undefined) {
                   scrollContainerRef.current.scrollTop = savedPos;
                 }
                 setSkipNextViewKey(false);
-              }, 80);
+                document.documentElement.classList.remove('no-anim');
+              }, 100);
             } else {
               setSkipNextViewKey(false);
               setView(targetView);

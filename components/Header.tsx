@@ -87,7 +87,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
       style={{
         paddingTop: Capacitor.getPlatform() === 'android'
           ? 'calc(var(--android-status, 30px) + 8px)'
-          : 'calc(env(safe-area-inset-top, 44px) + 6px)',
+          : 'calc(var(--android-status, 0px) + 8px)',
         background: 'inherit',
         transform: 'translateZ(0)',
         willChange: 'transform',

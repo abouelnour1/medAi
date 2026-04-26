@@ -114,8 +114,9 @@ body {
 :root {
   --android-status: 30px;
   --header-content: 56px;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --header-h: calc(var(--safe-top) + 14px + var(--header-content));
+  --safe-top: var(--android-status, 0px);
+  /* --header-h يتحدد بالكامل من JS عشان env() بتبدأ بـ 0 */
+  --header-h: 97px;
 }
 
 .dark {
@@ -720,3 +721,11 @@ button, [role="button"] {
 .anim-slide-down { animation: slideDownOut 200ms cubic-bezier(0.4,0,1,1) both; }
 .anim-fade-scale { animation: fadeScaleIn 260ms cubic-bezier(0.22,1,0.36,1) both; }
 .anim-tab-in   { animation: tabFadeIn 200ms ease both; }
+
+/* منع الـ animations مؤقتاً لما نرجع من الصورة */
+.no-anim *, .no-anim *::before, .no-anim *::after {
+  animation-duration: 0ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}

@@ -12,7 +12,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   isOpen,
   onClose,
   children,
-  snapPoints = [0.68, 0.93],
+  snapPoints = [0.93, 0.93],
   skipOpenAnimation = false,
 }) => {
   const sheetRef        = useRef<HTMLDivElement>(null);
@@ -134,6 +134,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     };
 
     const onMove = (e: TouchEvent) => {
+      // لو فيه overlay فوق الـ sheet (clinical/image viewer) — مش نتدخل
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-overlay]')) return;
+
       const dy = e.touches[0].clientY - startY;
       const dx = Math.abs(e.touches[0].clientX - startX);
 
