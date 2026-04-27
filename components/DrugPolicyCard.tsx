@@ -39,7 +39,7 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
                         <h2 className="text-base font-black text-green-800 dark:text-green-300 leading-tight mb-1" style={{wordBreak:"break-word",overflowWrap:"break-word",maxWidth:"100%"}}>
                             {group.tradeNames.join(' / ')}
                         </h2>
-                        <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-tight" style={{wordBreak:"break-word",overflowWrap:"break-word",maxWidth:"100%"}}>
+                        <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-tight" style={{wordBreak:"break-word",overflowWrap:"break-word",maxWidth:"100%",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
                             {group.scientificName}
                         </p>
                         <p className="text-[10px] text-slate-400 dark:text-dark-muted font-medium mt-1">مغطى تأمينياً (Covered)</p>
