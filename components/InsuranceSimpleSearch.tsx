@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -100,6 +100,28 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);
+  const [classFilter, setClassFilter] = useState<string>('');
+
+  // Build unique classes from results
+  const availableClasses = useMemo(() => {
+    const classes = new Set<string>();
+    results.forEach(r => {
+      if (r.type === 'drug-grouped') r.policies?.forEach(p => p.drugClass && classes.add(p.drugClass));
+      if (r.type === 'covered') r.scientificGroups?.forEach(sg => sg.policies?.forEach(p => p.drugClass && classes.add(p.drugClass)));
+    });
+    classes.delete('');
+    return Array.from(classes).sort();
+  }, [results]);
+
+  const filteredResults = useMemo(() => {
+    if (!classFilter) return results;
+    return results.filter(r => {
+      if (r.type === 'drug-grouped') return r.policies?.some(p => p.drugClass === classFilter || p.drugSubclass === classFilter);
+      if (r.type === 'covered') return r.scientificGroups?.some(sg => sg.policies?.some(p => p.drugClass === classFilter || p.drugSubclass === classFilter));
+      if (r.type === 'not-covered') return String(r.medicine?.['Scientific Name'] || '').includes(classFilter);
+      return true;
+    });
+  }, [results, classFilter]);
 
   useEffect(() => {
     const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 150);
@@ -107,7 +129,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [input]);
 
   useEffect(() => {
-    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); return; }
+    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); setClassFilter(''); return; }
     setBusy(true);
     const tid = setTimeout(() => {
       try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }

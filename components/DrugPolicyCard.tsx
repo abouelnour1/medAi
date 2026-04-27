@@ -29,7 +29,7 @@ const DrugPolicyCard: React.FC<DrugPolicyCardProps> = ({ group, t, onSelectInsur
     const primaryPolicy = group.policies[0];
 
     return (
-        <div className="bg-green-50/30 dark:bg-green-900/10 rounded-2xl shadow-sm p-4 animate-fade-in border-2 border-green-200 dark:border-green-800 space-y-3 overflow-hidden">
+        <div className="bg-green-50/30 dark:bg-green-900/10 rounded-2xl shadow-sm p-4 animate-fade-in border-2 border-green-200 dark:border-green-800 space-y-3 overflow-hidden" style={{maxWidth:"100%",wordBreak:"break-word"}}>
              <div className="border-b pb-3 border-green-100 dark:border-green-800/50">
                 <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl bg-green-500 text-white flex items-center justify-center mt-1 flex-shrink-0 shadow-lg">
