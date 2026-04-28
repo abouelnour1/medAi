@@ -56,6 +56,13 @@ const DRUG_SYNONYMS: Record<string, string> = {
   'miconazole': 'clotrimazole',
   'folic acid': 'folate',
   'vitamin c': 'ascorbic acid',
+  'amoxicillin/clavulanate': 'amoxicillin-clavulanate potassium',
+  'amoxicillin-clavulanate': 'amoxicillin-clavulanate potassium',
+  'co-amoxiclav': 'amoxicillin-clavulanate potassium',
+  'aspirin': 'aspirin',
+  'ibuprofen': 'ibuprofen',
+  'omeprazole': 'omeprazole',
+  'metformin': 'metformin',
 };
 
 function normalizeDrug(name: string): string {
