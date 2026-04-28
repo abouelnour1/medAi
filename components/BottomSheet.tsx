@@ -150,7 +150,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </div>
         </div>
 
-        {/* Content — completely free scroll, NO touch interception */}
+        {/* Content — free scroll + drag-to-close when at top */}
         <div
           ref={contentRef}
           className="flex-grow overflow-y-auto no-scrollbar bg-white dark:bg-dark-card"
@@ -161,6 +161,38 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
             direction: 'ltr',
           } as React.CSSProperties}
+          onTouchStart={e => {
+            const el = contentRef.current;
+            if (!el || el.scrollTop > 4) return;
+            const sy = e.touches[0].clientY;
+            const sx = e.touches[0].clientX;
+            const sh = height;
+            let dragging = false;
+            const onMove = (ev: TouchEvent) => {
+              const dy = ev.touches[0].clientY - sy;
+              const dx = Math.abs(ev.touches[0].clientX - sx);
+              if (!dragging && dy > 12 && dy > dx * 1.5) {
+                dragging = true;
+                if (sheetRef.current) sheetRef.current.style.transition = 'none';
+              }
+              if (dragging) {
+                ev.preventDefault();
+                const newH = Math.min(maxH, Math.max(80, sh - dy * 0.7));
+                setHeight(newH);
+              }
+            };
+            const onEnd = (ev: TouchEvent) => {
+              if (!dragging) return;
+              if (sheetRef.current) sheetRef.current.style.transition = '';
+              const dy = ev.changedTouches[0].clientY - sy;
+              if (sh - dy < minH * 0.75) onClose();
+              else setHeight(dy > 0 ? minH : maxH);
+              document.removeEventListener('touchmove', onMove);
+              document.removeEventListener('touchend', onEnd);
+            };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd, { passive: true });
+          }}
         >
           {children}
         </div>

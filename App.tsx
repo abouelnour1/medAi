@@ -1750,26 +1750,6 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Data & Cache Info */}
-                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', padding: 16 }}>
-                    <p style={{ fontWeight: 900, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
-                      {language === 'ar' ? '📦 بيانات التطبيق' : '📦 App Data'}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                      {language === 'ar'
-                        ? 'البيانات (الأدوية، الجرعات، الكلينيكال) محفوظة محلياً وبتتحدث تلقائياً عند فتح التطبيق إذا فيه إنترنت. لتحديث يدوي، أغلق التطبيق وافتحه من جديد.'
-                        : 'Drug data is cached locally and updates automatically on app launch if online. To force refresh, close and reopen the app.'
-                      }
-                    </p>
-                    <button onClick={() => {
-                      const keys = ['pharma_medicines_cache','pharma_clinical_ref_full','ps_pediatric_drugs_v5','pharma_indications_v3'];
-                      keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-                      window.location.reload();
-                    }} style={{ marginTop: 10, padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
-                      {language === 'ar' ? '🔄 مسح الكاش وتحديث البيانات' : '🔄 Clear Cache & Refresh Data'}
-                    </button>
-                  </div>
-
                   {/* User Guide & Privacy */}
                   <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
                     <button onClick={() => setView('userGuide' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
@@ -1821,7 +1801,7 @@ const App: React.FC = () => {
       }
           if (view === ('userGuide' as any)) return <UserGuide language={language} onBack={() => setView('settings')} />;
           if (view === ('privacyPolicy' as any)) return <PrivacyPolicy language={language} onBack={() => setView('settings')} />;
-          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
+          if (view === 'orderList') { if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95">{t('login') || 'Sign In'}</button></div>); return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />; }
           return (
               <div className="space-y-4 anim-slide-up">
                   {/* Profile Card */}
@@ -1937,26 +1917,6 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   )}
-
-                  {/* Data & Cache Info */}
-                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', padding: 16 }}>
-                    <p style={{ fontWeight: 900, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
-                      {language === 'ar' ? '📦 بيانات التطبيق' : '📦 App Data'}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                      {language === 'ar'
-                        ? 'البيانات (الأدوية، الجرعات، الكلينيكال) محفوظة محلياً وبتتحدث تلقائياً عند فتح التطبيق إذا فيه إنترنت. لتحديث يدوي، أغلق التطبيق وافتحه من جديد.'
-                        : 'Drug data is cached locally and updates automatically on app launch if online. To force refresh, close and reopen the app.'
-                      }
-                    </p>
-                    <button onClick={() => {
-                      const keys = ['pharma_medicines_cache','pharma_clinical_ref_full','ps_pediatric_drugs_v5','pharma_indications_v3'];
-                      keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-                      window.location.reload();
-                    }} style={{ marginTop: 10, padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
-                      {language === 'ar' ? '🔄 مسح الكاش وتحديث البيانات' : '🔄 Clear Cache & Refresh Data'}
-                    </button>
-                  </div>
 
                   {/* User Guide & Privacy */}
                   <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
