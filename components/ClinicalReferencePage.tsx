@@ -280,18 +280,16 @@ interface Section {
 }
 
 // SVG icon components for sections
+// Section key maps to both new JSON field AND old field (fallback)
 const SECTIONS = [
-  { key: 'indications',       labelAr: 'دواعي الاستخدام',        labelEn: 'Indications',        color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-900/25' },
-  { key: 'mechanism',         labelAr: 'آلية العمل',             labelEn: 'Mechanism',          color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/25' },
-  { key: 'adultDose',         labelAr: 'جرعة البالغين',         labelEn: 'Adult Dose',         color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/25' },
-  { key: 'pediatricDose',     labelAr: 'جرعة الأطفال',          labelEn: 'Pediatric Dose',     color: 'text-pink-600',    bg: 'bg-pink-50 dark:bg-pink-900/25' },
-  { key: 'contraindications', labelAr: 'موانع الاستخدام',       labelEn: 'Contraindications',  color: 'text-red-600',     bg: 'bg-red-50 dark:bg-red-900/25' },
-  { key: 'interactions',      labelAr: 'التفاعلات الدوائية',    labelEn: 'Drug Interactions',  color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/25' },
-  { key: 'pregnancy',         labelAr: 'الحمل',                 labelEn: 'Pregnancy',          color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-900/25' },
-  { key: 'lactation',         labelAr: 'الرضاعة',               labelEn: 'Lactation',          color: 'text-orange-600',  bg: 'bg-orange-50 dark:bg-orange-900/25' },
-  { key: 'renalDosing',       labelAr: 'جرعة القصور الكلوي',    labelEn: 'Renal Dosing',       color: 'text-cyan-600',    bg: 'bg-cyan-50 dark:bg-cyan-900/25' },
-  { key: 'hepaticDosing',     labelAr: 'جرعة القصور الكبدي',    labelEn: 'Hepatic Dosing',     color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/25' },
-  { key: 'g6pd',              labelAr: 'نقص G6PD',              labelEn: 'G6PD Deficiency',    color: 'text-indigo-600',  bg: 'bg-indigo-50 dark:bg-indigo-900/25' },
+  { key: 'indications',            newKey: 'indications',            labelAr: 'دواعي الاستخدام',       labelEn: 'Indications',             color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-900/25' },
+  { key: 'mechanism',              newKey: 'mechanism',              labelAr: 'آلية العمل',            labelEn: 'Mechanism',               color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/25' },
+  { key: 'dosage',                 newKey: 'dosage',                 labelAr: 'الجرعة',               labelEn: 'Dosage',                  color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/25' },
+  { key: 'maternalConsiderations', newKey: 'maternalConsiderations', labelAr: 'اعتبارات الأم الحامل', labelEn: 'Maternal Considerations', color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-900/25' },
+  { key: 'fetalConsiderations',    newKey: 'fetalConsiderations',    labelAr: 'اعتبارات الجنين',      labelEn: 'Fetal Considerations',    color: 'text-pink-600',    bg: 'bg-pink-50 dark:bg-pink-900/25' },
+  { key: 'breastfeedingSafety',    newKey: 'breastfeedingSafety',    labelAr: 'الرضاعة الطبيعية',     labelEn: 'Breastfeeding Safety',    color: 'text-orange-600',  bg: 'bg-orange-50 dark:bg-orange-900/25' },
+  { key: 'interactions',           newKey: 'interactions',           labelAr: 'التفاعلات الدوائية',   labelEn: 'Drug Interactions',       color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/25' },
+  { key: 'summaryNotes',           newKey: 'summaryNotes',           labelAr: 'ملاحظات موجزة',        labelEn: 'Summary Notes',           color: 'text-slate-600',   bg: 'bg-slate-50 dark:bg-slate-800/25' },
 ];
 
 const SectionIcon: React.FC<{ k: string; cls: string }> = ({ k, cls }) => {
@@ -320,11 +318,20 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Load both sources in parallel, show content as soon as fullData arrives
+    let done = false;
+    const finish = () => { if (!done) { done = true; setLoading(false); } };
+
     getClinicalReference(scientificName, tradeName)
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => { setData(d); finish(); })
+      .catch(finish);
+
     fetchFullClinical(scientificName, tradeName)
-      .then(d => { if (d) setFullData(d); });
+      .then(d => {
+        if (d) { setFullData(d); finish(); }
+        else finish();
+      })
+      .catch(finish);
   }, [scientificName, tradeName]);
 
   const toggle = (key: string) => {
@@ -336,13 +343,22 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   };
 
   // merge: prefer fullData fields over fallback data
-  const getText = (key: keyof ClinicalReference): string => {
-    // Try direct key in fullData
-    const fullVal = (fullData as any)?.[key];
-    if (fullVal && typeof fullVal === 'string' && fullVal.trim()) return fullVal.trim();
-    // Try old field names in data
-    return ((data as any)?.[key] as string) || '';
+  const getTextByKey = (sectionKey: string): string => {
+    // Try fullData first (new JSON format)
+    if (fullData) {
+      const v = (fullData as any)[sectionKey];
+      if (v && typeof v === 'string' && v.trim()) return v.trim();
+    }
+    // Fallback to old data
+    if (data) {
+      const v = (data as any)[sectionKey];
+      if (v && typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return '';
   };
+
+  // Keep backward compat
+  const getText = (key: keyof ClinicalReference): string => getTextByKey(key as string);
 
   return (
     <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" data-overlay="true"
@@ -401,7 +417,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
         )}
 
         {!loading && (data || fullData) && SECTIONS.map(sec => {
-          const text = getText(sec.key as keyof ClinicalReference);
+          const text = getTextByKey(sec.key);
           // Interactions section always shows (it fetches from R2 independently)
           const hasContent = sec.key === 'interactions'
             ? true
