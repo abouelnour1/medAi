@@ -70,6 +70,7 @@ function normalizeDrug(name: string): string {
     .toLowerCase()
     .trim()
     .replace(/-/g, '/')
+    .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|ug|iu|%|units?|mmol)\b/gi, '') // remove dosage numbers
     .replace(SALT_SUFFIXES, '')
     .replace(/\s+/g, ' ')
     .trim();

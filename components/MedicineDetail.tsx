@@ -265,7 +265,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     if (medicine?.RegisterNumber && medicine.RegisterNumber !== prevRegNumRef.current) {
       prevRegNumRef.current = medicine.RegisterNumber;
       getClinicalData(medicine.RegisterNumber).then(setClinicalData);
-      getClinicalReference(String(medicine['Scientific Name'] || '')).then(setClinicalRef);
+      // بنبعت Scientific Name + Trade Name + RegisterNumber + DescriptionCode للـ lookup
+      const sciName = String(medicine['Scientific Name'] || '').split(',')[0].trim(); // أول مادة فعالة بس
+      const tradeName = String(medicine['Trade Name'] || '');
+      const regNum = String(medicine.RegisterNumber || '');
+      const descCode = String(medicine['Description Code'] || '');
+      getClinicalReference(sciName, tradeName, descCode, regNum).then(setClinicalRef);
     }
   }, [medicine?.RegisterNumber]);
 
@@ -743,7 +748,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       {/* Clinical Reference Full Page — from R2 */}
       {showClinicalRef && clinicalRef && (
         <ClinicalReferencePage
-          scientificName={String(medicine['Scientific Name'] || '')}
+          scientificName={String(medicine['Scientific Name'] || '').split(',')[0].trim()}
           tradeName={String(medicine['Trade Name'] || '')}
           language={language}
           onClose={() => setShowClinicalRef(false)}
