@@ -337,9 +337,11 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
 
   // merge: prefer fullData fields over fallback data
   const getText = (key: keyof ClinicalReference): string => {
-    const fullVal = fullData?.[key as string];
+    // Try direct key in fullData
+    const fullVal = (fullData as any)?.[key];
     if (fullVal && typeof fullVal === 'string' && fullVal.trim()) return fullVal.trim();
-    return (data?.[key] as string) || '';
+    // Try old field names in data
+    return ((data as any)?.[key] as string) || '';
   };
 
   return (
