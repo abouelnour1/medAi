@@ -1,3 +1,14 @@
+/* Remove Android WebView green outline on focused inputs */
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ============================================================
    Easy Drug     Premium UI System
    Design Language: Soft Medical Luxury

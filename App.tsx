@@ -45,6 +45,8 @@ import { logSearch, logShareMedicine, logFavoriteToggle, logTabSwitch, setUserSp
 import { syncAnalyticsToFirestore } from './utils/analyticsSync';
 import CompareBar from './components/CompareBar';
 import ClinicalDataPage from './components/ClinicalDataPage';
+import UserGuide from './components/UserGuide';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
@@ -1439,7 +1441,10 @@ const App: React.FC = () => {
           }
         }}
       />;
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      if (view === 'favorites') {
+            if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95 transition-all">{t('login') || 'Sign In'}</button></div>);
+            return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      }
       if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} externalQuery={indicationQuery} onExternalQueryChange={setIndicationQuery} />;
 
       if (view === 'pedDoseHistory') return (
@@ -1744,12 +1749,55 @@ const App: React.FC = () => {
                       </span>
                     </div>
                   )}
+
+                  {/* Data & Cache Info */}
+                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', padding: 16 }}>
+                    <p style={{ fontWeight: 900, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
+                      {language === 'ar' ? '📦 بيانات التطبيق' : '📦 App Data'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                      {language === 'ar'
+                        ? 'البيانات (الأدوية، الجرعات، الكلينيكال) محفوظة محلياً وبتتحدث تلقائياً عند فتح التطبيق إذا فيه إنترنت. لتحديث يدوي، أغلق التطبيق وافتحه من جديد.'
+                        : 'Drug data is cached locally and updates automatically on app launch if online. To force refresh, close and reopen the app.'
+                      }
+                    </p>
+                    <button onClick={() => {
+                      const keys = ['pharma_medicines_cache','pharma_clinical_ref_full','ps_pediatric_drugs_v5','pharma_indications_v3'];
+                      keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+                      window.location.reload();
+                    }} style={{ marginTop: 10, padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                      {language === 'ar' ? '🔄 مسح الكاش وتحديث البيانات' : '🔄 Clear Cache & Refresh Data'}
+                    </button>
+                  </div>
+
+                  {/* User Guide & Privacy */}
+                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+                    <button onClick={() => setView('userGuide' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ width: 36, height: 36, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>📖</span>
+                      </div>
+                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'دليل المستخدم' : 'User Guide'}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'شرح كل ميزات التطبيق' : 'Learn all app features'}</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setView('privacyPolicy' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                      <div style={{ width: 36, height: 36, background: '#6366f1', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>🔒</span>
+                      </div>
+                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'كيف نتعامل مع بياناتك' : 'How we handle your data'}</span>
+                      </div>
+                    </button>
+                  </div>
+
               </div>
           );
       }
 
       if (activeTab === 'insurance') {
-          if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
+          if (view === 'insuranceDetails' && selectedInsurance) return <div className="anim-rtl-in" style={{minHeight:'100%'}}><InsuranceDetailsView data={selectedInsurance} t={t} /></div>;
           return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} renderPart="results" />;
       }
 
@@ -1767,7 +1815,12 @@ const App: React.FC = () => {
             }
             return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
           }
-      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+      if (view === 'stockTracker') {
+        if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95 transition-all">{t('login') || 'Sign In'}</button></div>);
+        return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+      }
+          if (view === ('userGuide' as any)) return <UserGuide language={language} onBack={() => setView('settings')} />;
+          if (view === ('privacyPolicy' as any)) return <PrivacyPolicy language={language} onBack={() => setView('settings')} />;
           if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
           return (
               <div className="space-y-4 anim-slide-up">
@@ -1884,6 +1937,49 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   )}
+
+                  {/* Data & Cache Info */}
+                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', padding: 16 }}>
+                    <p style={{ fontWeight: 900, fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
+                      {language === 'ar' ? '📦 بيانات التطبيق' : '📦 App Data'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                      {language === 'ar'
+                        ? 'البيانات (الأدوية، الجرعات، الكلينيكال) محفوظة محلياً وبتتحدث تلقائياً عند فتح التطبيق إذا فيه إنترنت. لتحديث يدوي، أغلق التطبيق وافتحه من جديد.'
+                        : 'Drug data is cached locally and updates automatically on app launch if online. To force refresh, close and reopen the app.'
+                      }
+                    </p>
+                    <button onClick={() => {
+                      const keys = ['pharma_medicines_cache','pharma_clinical_ref_full','ps_pediatric_drugs_v5','pharma_indications_v3'];
+                      keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+                      window.location.reload();
+                    }} style={{ marginTop: 10, padding: '8px 16px', background: 'var(--surface-2)', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                      {language === 'ar' ? '🔄 مسح الكاش وتحديث البيانات' : '🔄 Clear Cache & Refresh Data'}
+                    </button>
+                  </div>
+
+                  {/* User Guide & Privacy */}
+                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+                    <button onClick={() => setView('userGuide' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ width: 36, height: 36, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>📖</span>
+                      </div>
+                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'دليل المستخدم' : 'User Guide'}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'شرح كل ميزات التطبيق' : 'Learn all app features'}</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setView('privacyPolicy' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                      <div style={{ width: 36, height: 36, background: '#6366f1', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>🔒</span>
+                      </div>
+                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'كيف نتعامل مع بياناتك' : 'How we handle your data'}</span>
+                      </div>
+                    </button>
+                  </div>
+
               </div>
           );
       }
@@ -1919,30 +2015,23 @@ const App: React.FC = () => {
 
   // لو auth لسه بيتحقق بس مفيش medicine خالص نكتفي بـ spinner صغير في الـ header
 
-  // ✅ Auth Gate — مش مسجّل → Login
-  // نستغل الوقت ده نقيس الـ safe-area-inset-top الحقيقي
-  if (!user) {
+  // ✅ Auth Gate — لو مش مسجّل بيظهر صفحة Login/Register
+  // لو في guest mode بيكمل للـ app بس بعض الـ features مقفولة
+  const isGuest = !user;
+
+  if (!user && (view === 'login' || view === 'register')) {
     return (
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
         {specialtyModalEl}
-        {/* probe div — نقيس منه env(safe-area-inset-top) */}
         <div
           ref={headerRef as React.RefObject<HTMLDivElement>}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0,
-            width: '100%',
-            paddingTop: 'calc(var(--android-status, 30px) + 8px)',
-            paddingBottom: 8,
-            zIndex: -1,
-            pointerEvents: 'none',
-          }}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', paddingTop: 'calc(var(--android-status, 30px) + 8px)', paddingBottom: 8, zIndex: -1, pointerEvents: 'none' }}
         >
           <div style={{ height: 56 }} />
         </div>
         {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} onContinueAsGuest={() => setView('search')} />
         }
       </div>
     );

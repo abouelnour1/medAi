@@ -14,35 +14,30 @@ interface Props {
 
 // ── Single zoomable image ──────────────────────────────────────────────────
 const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
-  const [scale, setScale]   = useState(1);
-  const [origin, setOrigin] = useState({ x: 50, y: 50 });
-  const [pan, setPan]       = useState({ x: 0, y: 0 });
-
-  const lastDist   = useRef(0);
-  const lastScale  = useRef(1);
-  const lastPan    = useRef({ x: 0, y: 0 });
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const imgRef     = useRef<HTMLImageElement>(null);
-  const lastTap    = useRef(0);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan]     = useState({ x: 0, y: 0 });
+  const lastScale = useRef(1);
+  const lastPan   = useRef({ x: 0, y: 0 });
+  const lastDist  = useRef(0);
+  const panStart  = useRef({ x: 0, y: 0 });
+  const lastTap   = useRef(0);
+  const animating = useRef(false);
+  const imgRef    = useRef<HTMLImageElement>(null);
 
   const reset = useCallback(() => {
-    setScale(1);
-    setPan({ x: 0, y: 0 });
-    setOrigin({ x: 50, y: 50 });
-    lastScale.current = 1;
-    lastPan.current   = { x: 0, y: 0 };
+    animating.current = true;
+    setScale(1); setPan({ x: 0, y: 0 });
+    lastScale.current = 1; lastPan.current = { x: 0, y: 0 };
+    setTimeout(() => { animating.current = false; }, 300);
   }, []);
 
-  const clampPan = (s: number, px: number, py: number) => {
+  const clamp = (s: number, px: number, py: number) => {
     if (s <= 1) return { x: 0, y: 0 };
     const el = imgRef.current;
     if (!el) return { x: px, y: py };
     const maxX = (el.offsetWidth  * (s - 1)) / 2;
     const maxY = (el.offsetHeight * (s - 1)) / 2;
-    return {
-      x: Math.min(maxX, Math.max(-maxX, px)),
-      y: Math.min(maxY, Math.max(-maxY, py)),
-    };
+    return { x: Math.min(maxX, Math.max(-maxX, px)), y: Math.min(maxY, Math.max(-maxY, py)) };
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -50,17 +45,8 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
       const dx = e.touches[1].clientX - e.touches[0].clientX;
       const dy = e.touches[1].clientY - e.touches[0].clientY;
       lastDist.current = Math.hypot(dx, dy);
-      const rect = imgRef.current?.getBoundingClientRect();
-      if (rect) {
-        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        setOrigin({
-          x: ((mx - rect.left) / rect.width)  * 100,
-          y: ((my - rect.top)  / rect.height) * 100,
-        });
-      }
-    } else if (e.touches.length === 1) {
-      touchStart.current = {
+    } else {
+      panStart.current = {
         x: e.touches[0].clientX - lastPan.current.x,
         y: e.touches[0].clientY - lastPan.current.y,
       };
@@ -72,45 +58,29 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
     if (e.touches.length === 2) {
       const dx = e.touches[1].clientX - e.touches[0].clientX;
       const dy = e.touches[1].clientY - e.touches[0].clientY;
-      const dist   = Math.hypot(dx, dy);
-      const ratio  = dist / (lastDist.current || dist);
-      const newScale = Math.min(5, Math.max(1, lastScale.current * ratio));
-      setScale(newScale);
-    } else if (e.touches.length === 1 && lastScale.current > 1 && touchStart.current) {
-      const nx = e.touches[0].clientX - touchStart.current.x;
-      const ny = e.touches[0].clientY - touchStart.current.y;
-      setPan(clampPan(lastScale.current, nx, ny));
+      const d = Math.hypot(dx, dy);
+      const s = Math.min(4, Math.max(1, lastScale.current * (d / (lastDist.current || d))));
+      setScale(s);
+    } else if (lastScale.current > 1) {
+      const nx = e.touches[0].clientX - panStart.current.x;
+      const ny = e.touches[0].clientY - panStart.current.y;
+      setPan(clamp(lastScale.current, nx, ny));
     }
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length < 2) {
-      lastScale.current = scale < 1.05 ? 1 : scale;
-      if (scale < 1.05) reset();
+      const s = scale < 1.1 ? 1 : scale;
+      lastScale.current = s;
+      if (s === 1) reset();
       else lastPan.current = pan;
+      lastDist.current = 0;
     }
-    if (e.touches.length === 0) touchStart.current = null;
-
-    // double-tap zoom
+    // double-tap to zoom
     const now = Date.now();
-    if (now - lastTap.current < 280 && e.changedTouches.length === 1) {
-      if (scale > 1.5) {
-        reset();
-      } else {
-        const rect = imgRef.current?.getBoundingClientRect();
-        if (rect) {
-          const t = e.changedTouches[0];
-          setOrigin({
-            x: ((t.clientX - rect.left) / rect.width)  * 100,
-            y: ((t.clientY - rect.top)  / rect.height) * 100,
-          });
-        }
-        const ns = 2.5;
-        setScale(ns);
-        lastScale.current = ns;
-        lastPan.current   = { x: 0, y: 0 };
-        setPan({ x: 0, y: 0 });
-      }
+    if (now - lastTap.current < 300 && e.changedTouches.length === 1) {
+      if (scale > 1.5) { reset(); }
+      else { const s = 2.5; setScale(s); lastScale.current = s; setPan({ x: 0, y: 0 }); lastPan.current = { x: 0, y: 0 }; animating.current = true; setTimeout(() => { animating.current = false; }, 300); }
     }
     lastTap.current = now;
   };
@@ -125,16 +95,13 @@ const ZoomableImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => 
     >
       <img
         ref={imgRef}
-        src={src}
-        alt={alt}
-        draggable={false}
+        src={src} alt={alt} draggable={false}
         className="max-w-full max-h-full object-contain"
         style={{
-          transform: `scale(${scale}) translate(${pan.x / scale}px, ${pan.y / scale}px)`,
-          transformOrigin: `${origin.x}% ${origin.y}%`,
-          transition: lastDist.current > 0 ? 'none' : 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-          userSelect: 'none',
-          WebkitUserDrag: 'none',
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+          transformOrigin: 'center center',
+          transition: animating.current ? 'transform 0.25s ease' : lastDist.current > 0 ? 'none' : 'transform 0.1s ease',
+          willChange: 'transform',
         } as any}
       />
     </div>

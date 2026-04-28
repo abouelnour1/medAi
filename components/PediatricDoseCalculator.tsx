@@ -395,10 +395,31 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
         className="w-full max-w-lg bg-white dark:bg-dark-card rounded-t-3xl shadow-2xl overflow-hidden anim-sheet-up"
         style={{ maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
+        onTouchStart={e => {
+          const el = e.currentTarget;
+          const startY = e.touches[0].clientY;
+          const startT = Date.now();
+          const onMove = (ev: TouchEvent) => {
+            const dy = ev.touches[0].clientY - startY;
+            if (dy > 0) (el as HTMLElement).style.transform = `translateY(${dy * 0.4}px)`;
+          };
+          const onEnd = (ev: TouchEvent) => {
+            const dy = ev.changedTouches[0].clientY - startY;
+            const dt = Date.now() - startT;
+            (el as HTMLElement).style.transform = '';
+            (el as HTMLElement).style.transition = 'transform 0.2s ease';
+            if (dy > 80 || (dy > 40 && dt < 250)) onClose();
+            setTimeout(() => { if (el) (el as HTMLElement).style.transition = ''; }, 200);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onEnd);
+          };
+          document.addEventListener('touchmove', onMove, { passive: true });
+          document.addEventListener('touchend', onEnd, { passive: true });
+        }}
       >
         {/* Header */}
         <div className="relative bg-gradient-to-r from-teal-500 to-cyan-500 px-5 pt-5 pb-6">
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/30 rounded-full" />
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/30 rounded-full cursor-grab" />
           <button onClick={onClose} className="absolute top-4 right-4 text-white/80 active:scale-90 transition-transform">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>

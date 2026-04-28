@@ -164,7 +164,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   );
 
   const resultsEl = (
-      <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80, overflow:'hidden', maxWidth:'100%' }}>
         {busy && <div style={{ textAlign:'center', padding:20, color:'var(--text-subtle)', fontSize:12 }}>Loading...</div>}
         {!busy && results.map((r,i) => {
           if (r.type==='covered') return <IndicationCard key={'c'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
