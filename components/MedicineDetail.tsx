@@ -370,7 +370,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                 </span>
               </div>
             )}
-            <div className="flex-grow min-w-0">
+            <div className="flex-grow min-w-0 overflow-hidden">
               <h1 className="text-base font-black text-slate-800 dark:text-white leading-tight">{medicine['Trade Name']}</h1>
               {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
                 const sciNames = String(medicine['Scientific Name']).split(',').map((s: string) => s.trim()).filter(Boolean);

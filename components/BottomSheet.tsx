@@ -153,7 +153,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {/* Content — free scroll + drag-to-close when at top */}
         <div
           ref={contentRef}
-          className="flex-grow overflow-y-auto no-scrollbar bg-white dark:bg-dark-card"
+          className="flex-grow overflow-y-auto overflow-x-hidden no-scrollbar bg-white dark:bg-dark-card"
           style={{
             touchAction: 'pan-y',
             overscrollBehavior: 'contain',
@@ -163,15 +163,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           } as React.CSSProperties}
           onTouchStart={e => {
             const el = contentRef.current;
-            if (!el || el.scrollTop > 4) return;
+            if (!el || el.scrollTop > 0) return; // فقط لما في أعلى الـ scroll
             const sy = e.touches[0].clientY;
             const sx = e.touches[0].clientX;
             const sh = height;
             let dragging = false;
+            let moved = false;
             const onMove = (ev: TouchEvent) => {
+              moved = true;
               const dy = ev.touches[0].clientY - sy;
               const dx = Math.abs(ev.touches[0].clientX - sx);
-              if (!dragging && dy > 12 && dy > dx * 1.5) {
+              if (!dragging && dy > 16 && dy > dx * 2) { // vertical intent clear
                 dragging = true;
                 if (sheetRef.current) sheetRef.current.style.transition = 'none';
               }
@@ -182,13 +184,13 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               }
             };
             const onEnd = (ev: TouchEvent) => {
+              document.removeEventListener('touchmove', onMove);
+              document.removeEventListener('touchend', onEnd);
               if (!dragging) return;
               if (sheetRef.current) sheetRef.current.style.transition = '';
               const dy = ev.changedTouches[0].clientY - sy;
               if (sh - dy < minH * 0.75) onClose();
               else setHeight(dy > 0 ? minH : maxH);
-              document.removeEventListener('touchmove', onMove);
-              document.removeEventListener('touchend', onEnd);
             };
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onEnd, { passive: true });

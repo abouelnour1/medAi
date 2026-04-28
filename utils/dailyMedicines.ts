@@ -199,6 +199,7 @@ export interface ClinicalReference {
   scientificName: string;
   drugName: string;
   source: string;
+  // Old fields (backward compat)
   indications: string;
   mechanism: string;
   adultDose: string;
@@ -216,9 +217,20 @@ export interface ClinicalReference {
   g6pdRisk?: string;
   diabetesEffect?: string;
   hypertensionEffect?: string;
+  // New fields from pregnancy/lactation file
+  drugClass?: string;
+  dosage?: string;
+  maternalConsiderations?: string;
+  fetalConsiderations?: string;
+  breastfeedingSafety?: string;
+  drugInteractionsText?: string;
+  summaryNotes?: string;
+  lactationCategory?: string;
+  pregnancyCategoryInfo?: { label: string; color: string; bg: string; emoji: string };
+  lactationCategoryInfo?: { label: string; color: string; bg: string; emoji: string };
   descriptionCodes?: string[];
   registerNumbers?: string[];
-  mappedScientificName?: string;
+  mappedScientificName?: string; string;
 }
 
 const R2_CLINICAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';

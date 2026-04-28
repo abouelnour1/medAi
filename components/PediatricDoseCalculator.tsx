@@ -545,6 +545,7 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                   value={selectedActive}
                   onChange={e => { setSelectedActive(e.target.value); setSelectedDrugIdx(null); }}
                   className="w-full p-3 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-sm font-bold text-slate-700 dark:text-white outline-none focus:border-slate-300 dark:focus:border-slate-500 transition-colors"
+                      onFocus={e => { setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }}
                 >
                   <option value="">{ar ? '-- اختر --' : '-- Select --'}</option>
                   {activeIngredients.map(a => (
@@ -704,6 +705,10 @@ const PediatricDoseCalculator: React.FC<Props> = ({ onClose, initialDrugName, la
                       placeholder={ar ? 'مثال: 12.5' : 'e.g. 12.5'}
                       className="w-full py-4 px-4 bg-white dark:bg-dark-card border-2 border-slate-100 dark:border-dark-border rounded-xl text-lg font-black text-slate-700 dark:text-white outline-none focus:border-slate-300 dark:focus:border-slate-500 transition-colors"
                       style={{ paddingLeft: '3rem' }}
+                      onFocus={e => {
+                        // Force keyboard on Android inside fixed containers
+                        setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+                      }}
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none bg-white dark:bg-dark-card px-1">kg</span>
                   </div>

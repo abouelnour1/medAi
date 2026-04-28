@@ -129,14 +129,19 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [input]);
 
   useEffect(() => {
-    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); setClassFilter(''); return; }
+    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); setClassFilter(''); setBusy(false); return; }
     setBusy(true);
-    const tid = setTimeout(() => {
-      try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
-      catch { setResults([]); }
-      setBusy(false);
-    }, 0);
-    return () => clearTimeout(tid);
+    // Use requestAnimationFrame to let UI update first, then compute
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      const tid = setTimeout(() => {
+        if (cancelled) return;
+        try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
+        catch { setResults([]); }
+        setBusy(false);
+      }, 0);
+    });
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
   }, [searchTerm, searchMode, allMedicines, insuranceData]);
 
   const MODES = [
