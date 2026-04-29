@@ -271,7 +271,9 @@ const _SYNONYMS: Record<string, string> = {
 };
 
 function _normDrug(name: string): string {
-  return name.toLowerCase().trim().replace(/-/g, '/').replace(_SALT_RE, '').replace(/\s+/g, ' ').trim();
+  return name.toLowerCase().trim()
+    .replace(/\b\d+(\.\d+)?\s*(mg|ml|g|mcg|ug|iu|%|units?|mmol|mEq)?\b/gi, '')
+    .replace(/-/g, '/').replace(_SALT_RE, '').replace(/\s+/g, ' ').trim();
 }
 
 function _drugKeys(raw: string): string[] {
