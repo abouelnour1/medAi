@@ -19,7 +19,7 @@ type SR = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicin
 
 function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins: InsuranceDrug[]): SR[] {
   const t = term.toLowerCase().trim();
-  if (t.replace(/\*/g,'').length < 3) return [];
+  if (t.replace(/\*/g,'').length < 1) return [];
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const results: SR[] = [];
   const MAX = 80;
@@ -129,7 +129,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [input]);
 
   useEffect(() => {
-    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); setClassFilter(''); setBusy(false); return; }
+    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 1) { setResults([]); setClassFilter(''); setBusy(false); return; }
     setBusy(true);
     // Use requestAnimationFrame to let UI update first, then compute
     let cancelled = false;

@@ -3,6 +3,7 @@ import { Language } from '../types';
 import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines';
 
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
+const R2_RENAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/renal_drugs.json';
 
 interface StructuredInteraction {
   interactsWith: string;
@@ -42,6 +43,18 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
 };
 
 let _clinCache: Record<string, any> | null = null;
+let _renalCache: Record<string, any> | null = null;
+
+async function fetchRenalData(scientificName: string, tradeName?: string): Promise<any | null> {
+  if (!_renalCache) {
+    try {
+      const res = await fetch(R2_RENAL_URL);
+      if (res.ok) _renalCache = await res.json();
+      else _renalCache = {};
+    } catch { _renalCache = {}; }
+  }
+  return findInMap(_renalCache!, scientificName, tradeName ?? '') ?? null;
+}
 
 // ── Drug name normalization for matching ────────────────────────────────────
 const SALT_SUFFIXES = /\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|propionate|dipropionate|butyrate|furoate|monohydrate|trihydrate|anhydrous|dihydrate|monosodium|disodium)\b/gi;
@@ -287,6 +300,79 @@ interface Section {
   color: string;
 }
 
+// ── Renal Dosing View ────────────────────────────────────────────────────────
+function RenalDosingView({ scientificName, tradeName, language }: {
+  scientificName: string; tradeName: string; language: Language;
+}) {
+  const ar = language === 'ar';
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRenalData(scientificName, tradeName).then(d => { setData(d); setLoading(false); });
+  }, [scientificName, tradeName]);
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-3">
+      <div className="w-4 h-4 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
+      <span className="text-[11px] text-slate-400">{ar ? 'جارٍ التحميل...' : 'Loading...'}</span>
+    </div>
+  );
+
+  if (!data) return (
+    <p className="text-[11px] text-slate-400 py-2">{ar ? 'لا توجد بيانات جرعات الكلى لهذا الدواء' : 'No renal dosing data available'}</p>
+  );
+
+  const rows: { label: string; labelAr: string; field: string }[] = [
+    { label: 'Normal Dose', labelAr: 'الجرعة الطبيعية', field: 'normalDose' },
+    { label: 'GFR > 50', labelAr: 'GFR > 50', field: 'gfr_gt50' },
+    { label: 'GFR 10–50', labelAr: 'GFR 10–50', field: 'gfr_10_50' },
+    { label: 'GFR < 10', labelAr: 'GFR < 10', field: 'gfr_lt10' },
+    { label: 'HD', labelAr: 'غسيل كلى (HD)', field: 'hd' },
+    { label: 'APD/CAPD', labelAr: 'APD/CAPD', field: 'apd_capd' },
+    { label: 'HDF', labelAr: 'HDF', field: 'hdf' },
+    { label: 'CAV/VVHD', labelAr: 'CAV/VVHD', field: 'cav_vvhd' },
+    { label: 'Interactions', labelAr: 'التفاعلات', field: 'interactions' },
+    { label: 'Administration', labelAr: 'طريقة الإعطاء', field: 'administration' },
+    { label: 'Notes', labelAr: 'ملاحظات', field: 'notes' },
+    { label: 'Metabolism', labelAr: 'الاستقلاب', field: 'metabolism' },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {data.clinicalUse && (
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed italic" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+          {data.clinicalUse}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+        {data.proteinBinding && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5"><span className="text-slate-400">{ar ? 'ارتباط بروتين' : 'Protein binding'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.proteinBinding}%</span></div>}
+        {data.renalExcretion && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5"><span className="text-slate-400">{ar ? 'إطراح كلوي' : 'Renal excretion'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.renalExcretion}%</span></div>}
+        {data.halfLife && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 col-span-2"><span className="text-slate-400">{ar ? 'عمر النصف' : 'Half-life'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.halfLife}</span></div>}
+        {data.molWeight && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 col-span-2"><span className="text-slate-400">{ar ? 'الوزن الجزيئي' : 'Mol. weight'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.molWeight}</span></div>}
+      </div>
+      <div className="space-y-1.5 mt-1">
+        {rows.map(r => {
+          const val = data[r.field];
+          if (!val || String(val).trim() === '') return null;
+          return (
+            <div key={r.field} className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              <div className="flex items-start gap-2 px-3 py-2">
+                <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 flex-shrink-0 min-w-[70px]">
+                  {ar ? r.labelAr : r.label}
+                </span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  {String(val)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // SVG icon components for sections
 // Section key maps to both new JSON field AND old field (fallback)
 const SECTIONS = [
@@ -298,6 +384,7 @@ const SECTIONS = [
   { key: 'breastfeedingSafety',    newKey: 'breastfeedingSafety',    labelAr: 'الرضاعة الطبيعية',     labelEn: 'Breastfeeding Safety',    color: 'text-orange-600',  bg: 'bg-orange-50 dark:bg-orange-900/25' },
   { key: 'interactions',           newKey: 'interactions',           labelAr: 'التفاعلات الدوائية',   labelEn: 'Drug Interactions',       color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/25' },
   { key: 'summaryNotes',           newKey: 'summaryNotes',           labelAr: 'ملاحظات موجزة',        labelEn: 'Summary Notes',           color: 'text-slate-600',   bg: 'bg-slate-50 dark:bg-slate-800/25' },
+  { key: 'renalDosing',            newKey: 'renalDosing',            labelAr: 'جرعات قصور الكلى',     labelEn: 'Renal Dosing',            color: 'text-cyan-600',    bg: 'bg-cyan-50 dark:bg-cyan-900/25' },
 ];
 
 const SectionIcon: React.FC<{ k: string; cls: string }> = ({ k, cls }) => {
@@ -426,8 +513,8 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
 
         {!loading && (data || fullData) && SECTIONS.map(sec => {
           const text = getTextByKey(sec.key);
-          // Interactions section always shows (it fetches from R2 independently)
-          const hasContent = sec.key === 'interactions'
+          // Interactions and renalDosing always show (they fetch from R2 independently)
+          const hasContent = (sec.key === 'interactions' || sec.key === 'renalDosing')
             ? true
             : (text && text !== '—' && text.trim() !== '' && text !== 'nan');
           if (!hasContent) return null;
@@ -466,9 +553,11 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
                   <div className="px-4 pb-4 pt-1 border-t border-slate-50 dark:border-slate-800">
                     {sec.key === 'interactions' ? (
                       <InteractionsView scientificName={scientificName} tradeName={tradeName} fallbackText={text} language={language} />
+                    ) : sec.key === 'renalDosing' ? (
+                      <RenalDosingView scientificName={scientificName} tradeName={tradeName} language={language} />
                     ) : (
                       <p className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
-                         style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                         style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                         {text}
                       </p>
                     )}

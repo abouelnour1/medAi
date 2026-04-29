@@ -1750,28 +1750,6 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* User Guide & Privacy */}
-                  <div style={{ background: 'var(--surface)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
-                    <button onClick={() => setView('userGuide' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ width: 36, height: 36, background: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 18 }}>📖</span>
-                      </div>
-                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'دليل المستخدم' : 'User Guide'}</span>
-                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'شرح كل ميزات التطبيق' : 'Learn all app features'}</span>
-                      </div>
-                    </button>
-                    <button onClick={() => setView('privacyPolicy' as any)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                      <div style={{ width: 36, height: 36, background: '#6366f1', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 18 }}>🔒</span>
-                      </div>
-                      <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</span>
-                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{language === 'ar' ? 'كيف نتعامل مع بياناتك' : 'How we handle your data'}</span>
-                      </div>
-                    </button>
-                  </div>
-
               </div>
           );
       }
