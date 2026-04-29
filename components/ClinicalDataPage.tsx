@@ -88,9 +88,9 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
   ];
 
   return (
-    <div className="fixed inset-0 z-[80] bg-light-bg dark:bg-dark-bg flex flex-col" style={{ touchAction: 'pan-y' }}>
-      {/* Safe area spacer */}
-      <div className="flex-shrink-0 bg-white dark:bg-dark-card" style={{ height: 'calc(var(--android-status, 30px) + 8px)' }} />
+    <div className="fixed inset-0 z-[80] bg-light-bg dark:bg-dark-bg flex flex-col">
+      {/* Safe area spacer - يعوض ارتفاع status bar + الـ app header */}
+      <div className="flex-shrink-0 bg-white dark:bg-dark-card" style={{ height: 'calc(env(safe-area-inset-top, 0px) + 60px)' }} />
       
       {/* Header - تحت الـ safe area */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-dark-card flex-shrink-0 shadow-sm">
@@ -114,7 +114,7 @@ const ClinicalDataPage: React.FC<Props> = ({ registerNumber, tradeName, scientif
       </div>
 
       {/* Content */}
-      <div className="flex-grow overflow-hidden" style={{ touchAction: 'pan-y' } as any}>
+      <div className="flex-grow overflow-y-auto px-4 py-4 pb-[calc(24px+env(safe-area-inset-bottom))] overscroll-none">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"/>

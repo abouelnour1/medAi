@@ -168,6 +168,8 @@ export async function syncData(): Promise<SyncResult> {
 
   // ── كيس 1: مفيش cache خالص ────────────────────────────────────────────────
   if (!hasMeds) {
+
+
     console.log('[dataSync] 🚀 First launch — fetching all data from R2...');
     const [meds, sups, food] = await Promise.all([
       fetchJSON(STORAGE_URLS.medicines),

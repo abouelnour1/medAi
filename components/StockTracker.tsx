@@ -17,20 +17,10 @@ export interface Facility {
 }
 
 const FACILITIES_KEY = 'stock_tracker_facilities';
-const FACILITIES_CACHE = 'ps_stock_facilities_v1';
-
 const loadFacilities = async (): Promise<Facility[]> => {
-  // Try localStorage first for instant load
-  try {
-    const cached = localStorage.getItem(FACILITIES_CACHE);
-    if (cached) return JSON.parse(cached);
-  } catch {}
   try { return (await getItem<Facility[]>(FACILITIES_KEY)) || []; } catch { return []; }
 };
-const saveFacilities = async (f: Facility[]) => {
-  try { localStorage.setItem(FACILITIES_CACHE, JSON.stringify(f)); } catch {}
-  try { await setItem(FACILITIES_KEY, f); } catch {}
-};
+const saveFacilities = async (f: Facility[]) => { try { await setItem(FACILITIES_KEY, f); } catch {} };
 
 // ── Bottom Sheet (fixed to viewport, not scroll container) ────────────────────
 const Sheet: React.FC<{ onClose: () => void; children: React.ReactNode; tall?: boolean }> = ({ onClose, children, tall }) => {

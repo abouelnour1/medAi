@@ -124,7 +124,7 @@ const DrugTestChecker: React.FC<Props> = ({
   return (
     <div
       className="fixed inset-0 z-[300] flex flex-col"
-      style={{ background: 'rgba(0,0,0,0.5)', paddingTop: 'var(--android-status, 0px)' }}
+      style={{ background: 'rgba(0,0,0,0.5)', paddingTop: 'env(safe-area-inset-top)' }}
     >
       {/* Backdrop tap to close */}
       <div className="flex-1 min-h-0 max-h-16" onClick={onClose} />

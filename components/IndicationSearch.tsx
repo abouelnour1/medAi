@@ -3,10 +3,9 @@ import { Medicine, Language, TFunction } from '../types';
 import MedicineCard from './MedicineCard';
 
 type SortMode = 'alpha' | 'priceAsc' | 'priceDesc';
-type ClassGroup = { cls: string; drugs: Array<{ sci: string; subclass: string; atcCode: string; mdd: string; notes: string; medCount: number }> };
 
 interface Props {
-  indications: Record<string, { icd10Code: string; drugs: { s: string; a?: string; c?: string; sc?: string; m?: string; n?: string }[] }>;
+  indications: Record<string, { icd10Code: string; drugs: { s: string; a?: string; c?: string; m?: string; n?: string }[] }>;
   medicines: Medicine[];
   language: Language;
   t: TFunction;
@@ -15,20 +14,15 @@ interface Props {
   onFindAlternative: (m: Medicine) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
-  externalQuery?: string;
-  onExternalQueryChange?: (q: string) => void;
 }
 
 const IndicationSearch: React.FC<Props> = ({
   indications, medicines, language, t,
   onMedicineSelect, onMedicineLongPress, onFindAlternative,
-  favorites, onToggleFavorite,
-  externalQuery, onExternalQueryChange
+  favorites, onToggleFavorite
 }) => {
   const ar = language === 'ar';
-  const [_query, _setQuery] = useState('');
-  const query = externalQuery !== undefined ? externalQuery : _query;
-  const setQuery = onExternalQueryChange || _setQuery;
+  const [query, setQuery] = useState('');
   const [selectedIndication, setSelectedIndication] = useState<string | null>(null);
   const [selectedSciName, setSelectedSciName] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
@@ -45,52 +39,25 @@ const IndicationSearch: React.FC<Props> = ({
       .map(([name, data]) => ({ name, icd10Code: data.icd10Code, drugCount: (data.drugs || []).length }));
   }, [query, indications]);
 
-  // Build class-grouped structure: Class → [{ sci, subclass, atcCode, notes, medCount }]
-  const classGroups = useMemo(() => {
+  const activeIngredients = useMemo(() => {
     if (!selectedIndication) return [];
     const data = indications[selectedIndication];
     if (!data) return [];
-
-    // Precompute meds by sci name (lowercase)
-    const medsMap = new Map<string, number>();
-    medicines.forEach(m => {
-      const k = String(m['Scientific Name'] || '').toLowerCase().trim();
-      if (k) medsMap.set(k, (medsMap.get(k) || 0) + 1);
-    });
-
-    // Group by drugClass
-    const classMap = new Map<string, Array<{ sci: string; subclass: string; atcCode: string; mdd: string; notes: string; medCount: number }>>();
+    const map = new Map<string, { atcCode: string; drugClass: string; mdd: string; notes: string; medCount: number }>();
     (data.drugs || []).forEach(d => {
-      const sci      = (d.s || '').trim();
-      const cls      = (d.c || 'Other').trim();
-      const subclass = (d.sc || '').trim();
+      const sci = (d.s || '').trim();
       if (!sci) return;
-      if (!classMap.has(cls)) classMap.set(cls, []);
-      const existing = classMap.get(cls)!;
-      if (!existing.find(x => x.sci === sci)) {
-        existing.push({
-          sci, subclass,
-          atcCode: d.a || '',
-          mdd: d.m || '',
-          notes: d.n || '',
-          medCount: medsMap.get(sci.toLowerCase()) || 0,
-        });
+      const medCount = medicines.filter(m =>
+        String(m['Scientific Name'] || '').toLowerCase() === sci.toLowerCase()
+      ).length;
+      if (!map.has(sci)) {
+        map.set(sci, { atcCode: d.a || '', drugClass: d.c || '', mdd: d.m || '', notes: d.n || '', medCount });
       }
     });
-
-    return Array.from(classMap.entries())
-      .map(([cls, drugs]) => ({ cls, drugs: drugs.sort((a, b) => b.medCount - a.medCount) }))
-      .sort((a, b) => {
-        const aTotal = a.drugs.reduce((s, d) => s + d.medCount, 0);
-        const bTotal = b.drugs.reduce((s, d) => s + d.medCount, 0);
-        return bTotal - aTotal;
-      });
+    return Array.from(map.entries())
+      .map(([sci, info]) => ({ sci, ...info }))
+      .sort((a, b) => b.medCount - a.medCount);
   }, [selectedIndication, indications, medicines]);
-
-  // Keep flat list for backward compat
-  const activeIngredients = useMemo(() =>
-    classGroups.flatMap(g => g.drugs),
-  [classGroups]);
 
   const selectedMedicines = useMemo(() => {
     if (!selectedSciName) return [];
@@ -134,8 +101,8 @@ const IndicationSearch: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Search input — hidden when externalQuery provided (rendered in Header) */}
-      {!selectedIndication && !onExternalQueryChange && (
+      {/* Search input — only show when no disease selected */}
+      {!selectedIndication && (
         <div className="relative mb-4">
           <input
             type="text"
@@ -184,52 +151,34 @@ const IndicationSearch: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Step 2: Classes → Scientific Names */}
+      {/* Step 2: Active ingredients */}
       {selectedIndication && !selectedSciName && (
-        <div className="space-y-4">
-          {classGroups.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 font-black text-sm">
-              {ar ? 'لا توجد بيانات' : 'No data available'}
-            </div>
-          ) : classGroups.map(group => (
-            <div key={group.cls}>
-              {/* Class Header */}
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary truncate">
-                  {group.cls}
-                </p>
-                <div className="flex-1 h-px bg-primary/20" />
-              </div>
-              {/* Scientific Names under this class */}
-              <div className="space-y-1.5 pl-3">
-                {group.drugs.map(ing => (
-                  <button key={ing.sci} onClick={() => setSelectedSciName(ing.sci)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-left">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm text-slate-800 dark:text-white truncate">{ing.sci}</p>
-                      {ing.subclass && (
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{ing.subclass}</p>
-                      )}
-                      {ing.notes && (
-                        <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{ing.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                      {ing.medCount > 0 && (
-                        <span className="text-[10px] font-black bg-teal-100 dark:bg-teal-900/30 text-teal-600 px-2 py-0.5 rounded-full">
-                          {ing.medCount}
-                        </span>
-                      )}
-                      <svg className="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                      </svg>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">
+            {ar ? 'المواد الفعالة' : 'Active Ingredients'} · {activeIngredients.length}
+          </p>
+          <div className="space-y-2">
+            {activeIngredients.map(ing => (
+              <button key={ing.sci} onClick={() => setSelectedSciName(ing.sci)}
+                className="w-full flex items-center justify-between p-4 bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-all text-left">
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm text-slate-800 dark:text-white">{ing.sci}</p>
+                  {ing.drugClass && <p className="text-[10px] text-slate-400 truncate mt-0.5">{ing.drugClass}</p>}
+                  {ing.mdd && <p className="text-[10px] text-teal-600 mt-0.5">Max: {ing.mdd}</p>}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  {ing.medCount > 0 && (
+                    <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full">
+                      {ing.medCount} {ar ? 'دواء' : 'meds'}
+                    </span>
+                  )}
+                  <svg className="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

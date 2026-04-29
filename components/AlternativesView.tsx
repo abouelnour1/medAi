@@ -109,7 +109,7 @@ const AlternativesView: React.FC<AlternativesViewProps> = ({
     ];
 
     return (
-        <div className="space-y-6 px-4">
+        <div className="animate-fade-in space-y-6 px-4">
             {/* Sort bar */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex-shrink-0">{ar ? 'ترتيب' : 'Sort'}</span>

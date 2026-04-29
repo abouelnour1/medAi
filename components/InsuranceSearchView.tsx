@@ -14,7 +14,6 @@ interface InsuranceSearchViewProps {
   setInsuranceSearchMode: (mode: InsuranceSearchMode) => void;
   headerHeight?: number;
   isKeyboardOpen?: boolean;
-  renderPart?: 'bar' | 'results' | 'all';
 }
 
 const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
@@ -31,7 +30,6 @@ const InsuranceSearchView: React.FC<InsuranceSearchViewProps> = (props) => {
       setSearchMode={props.setInsuranceSearchMode}
       headerHeight={props.headerHeight}
       isKeyboardOpen={props.isKeyboardOpen}
-      renderPart={props.renderPart}
     />
   );
 };

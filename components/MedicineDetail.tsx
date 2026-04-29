@@ -67,7 +67,6 @@ const SafetyBadgeItem: React.FC<{ cfg: SafetyBadgeConfig; language: Language; on
   const val = cfg.value || '';
   const s = getSafetyStyle(val);
   const ar = language === 'ar';
-
   const dispVal = val ? (ar ? (AR_SAFETY_LABELS[val] || val) : val) : (ar ? 'لا بيانات' : 'No Data');
   const hasData = !!val;
   return (
@@ -90,7 +89,6 @@ const SafetyBadgesCard: React.FC<{
   onOpenRef: () => void;
 }> = ({ clinicalRef, language, onOpenRef }) => {
   const ar = language === 'ar';
-
   const badges: SafetyBadgeConfig[] = [
     { key: 'pregnancy',    labelAr: 'حمل',        labelEn: 'Pregnancy',    icon: '🤰', value: clinicalRef.pregnancyStatus },
     { key: 'lactation',    labelAr: 'رضاعة',      labelEn: 'Lactation',    icon: '🍼', value: clinicalRef.lactationStatus },
@@ -118,7 +116,6 @@ const SafetyBadgesCard: React.FC<{
 
 const ClinicalAccordion: React.FC<{ clinicalData: ClinicalData; language: Language; onViewAll: () => void }> = ({ clinicalData, language, onViewAll }) => {
   const ar = language === 'ar';
-
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
   const toggle = (k: string) => setExpanded(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
   const visible = CLINICAL_FIELDS.filter(f => (clinicalData as any)[f.key]);
@@ -213,11 +210,6 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   }, [medicine.RegisterNumber]);
 
   const ar = language === 'ar';
-  const productType = String(medicine['Product type'] || '').toLowerCase();
-  const isFood = productType === 'food';
-  const isSupplement = productType === 'supplement';
-  const isFoodOrSupplement = isFood || isSupplement;
-
   const [showInsuranceSheet, setShowInsuranceSheet] = useState(false);
 
   // Insurance matching
@@ -225,8 +217,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     () => getInsurancePolicies(medicine, insuranceData),
     [medicine, insuranceData]
   );
-  const isCovered = !isFoodOrSupplement && insurancePolicies.length > 0;
-  const showInsuranceBadge = !isFoodOrSupplement;
+  const isCovered = insurancePolicies.length > 0;
 
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [clinicalRef, setClinicalRef]   = useState<ClinicalReference | null>(null);
@@ -265,12 +256,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
     if (medicine?.RegisterNumber && medicine.RegisterNumber !== prevRegNumRef.current) {
       prevRegNumRef.current = medicine.RegisterNumber;
       getClinicalData(medicine.RegisterNumber).then(setClinicalData);
-      // بنبعت Scientific Name + Trade Name + RegisterNumber + DescriptionCode للـ lookup
-      const sciName = String(medicine['Scientific Name'] || '').split(',')[0].trim(); // أول مادة فعالة بس
-      const tradeName = String(medicine['Trade Name'] || '');
-      const regNum = String(medicine.RegisterNumber || '');
-      const descCode = String(medicine['Description Code'] || '');
-      getClinicalReference(sciName, tradeName, descCode, regNum).then(setClinicalRef);
+      getClinicalReference(String(medicine['Scientific Name'] || '')).then(setClinicalRef);
     }
   }, [medicine?.RegisterNumber]);
 
@@ -375,7 +361,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
                 </span>
               </div>
             )}
-            <div className="flex-grow min-w-0 overflow-hidden">
+            <div className="flex-grow min-w-0">
               <h1 className="text-base font-black text-slate-800 dark:text-white leading-tight">{medicine['Trade Name']}</h1>
               {medicine['Scientific Name'] && medicine['Scientific Name'].toUpperCase() !== 'N/A' && (() => {
                 const sciNames = String(medicine['Scientific Name']).split(',').map((s: string) => s.trim()).filter(Boolean);
@@ -421,49 +407,49 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
       <div className="grid grid-cols-3 gap-2 px-0.5">
           {/* Alternatives */}
-          {!isFoodOrSupplement && <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
+          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
               <div className="w-4 h-4 text-primary flex-shrink-0"><AlternativeIcon /></div>
               <span className="font-black text-[9px] uppercase text-primary">{t('directAlternatives')}</span>
-          </button>}
+          </button>
           {/* Ask Gemini */}
           <button onClick={() => onAskGemini?.(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200/50 dark:border-blue-800/30 p-3 rounded-2xl active:scale-95 transition-all">
               <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span className="font-black text-[9px] uppercase text-blue-500">Ask Gemini</span>
           </button>
 
-          {/* ── Insurance Badge ──────────────────────────────── */}
-          {showInsuranceBadge && <div
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 4, padding: '10px 8px', borderRadius: 16,
-              background: isCovered
-                ? 'linear-gradient(135deg, rgba(21,128,61,0.07), rgba(21,128,61,0.12))'
-                : 'linear-gradient(135deg, rgba(190,18,60,0.06), rgba(190,18,60,0.1))',
-              outline: `1.5px solid ${isCovered ? 'rgba(21,128,61,0.2)' : 'rgba(190,18,60,0.18)'}`,
-            }}
-          >
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: isCovered ? 'rgba(21,128,61,0.12)' : 'rgba(190,18,60,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke={isCovered ? '#15803d' : '#be123c'} strokeWidth="2.2"
-                strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                {isCovered && <path d="M9 12l2 2 4-4"/>}
-                {!isCovered && <path d="M15 9l-6 6M9 9l6 6"/>}
-              </svg>
-            </div>
-            <span style={{
-              fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
-              color: isCovered ? '#15803d' : '#be123c',
-            }}>
-              {isCovered
-                ? (ar ? 'مغطى' : 'Covered')
-                : (ar ? 'غير مغطى' : 'Not Covered')}
-            </span>
-          </div>}
+      {/* ── Insurance Card ──────────────────────────────────── */}
+      <div
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 4, padding: '10px 8px', borderRadius: 16,
+          background: isCovered
+            ? 'linear-gradient(135deg, rgba(21,128,61,0.07), rgba(21,128,61,0.12))'
+            : 'linear-gradient(135deg, rgba(190,18,60,0.06), rgba(190,18,60,0.1))',
+          outline: `1.5px solid ${isCovered ? 'rgba(21,128,61,0.2)' : 'rgba(190,18,60,0.18)'}`,
+        }}
+      >
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: isCovered ? 'rgba(21,128,61,0.12)' : 'rgba(190,18,60,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke={isCovered ? '#15803d' : '#be123c'} strokeWidth="2.2"
+            strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            {isCovered && <path d="M9 12l2 2 4-4"/>}
+            {!isCovered && <path d="M15 9l-6 6M9 9l6 6"/>}
+          </svg>
+        </div>
+        <span style={{
+          fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
+          color: isCovered ? '#15803d' : '#be123c',
+        }}>
+          {isCovered
+            ? (ar ? 'مغطى' : 'Covered')
+            : (ar ? 'غير مغطى' : 'Not Covered')}
+        </span>
+      </div>
       </div>
 
       {/* ── Insurance Bottom Sheet ─────────────────────────── */}
@@ -748,7 +734,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       {/* Clinical Reference Full Page — from R2 */}
       {showClinicalRef && clinicalRef && (
         <ClinicalReferencePage
-          scientificName={String(medicine['Scientific Name'] || '').split(',')[0].trim()}
+          scientificName={String(medicine['Scientific Name'] || '')}
           tradeName={String(medicine['Trade Name'] || '')}
           language={language}
           onClose={() => setShowClinicalRef(false)}
