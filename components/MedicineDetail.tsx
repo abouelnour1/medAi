@@ -838,7 +838,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
 
       {/* Clinical Reference Full Page — from R2 */}
-      {showClinicalRef && clinicalRef && (
+      {showClinicalRef && (clinicalRef || pregRef) && (
         <ClinicalReferencePage
           scientificName={String(medicine['Scientific Name'] || '').split(',')[0].trim()}
           tradeName={String(medicine['Trade Name'] || '')}
