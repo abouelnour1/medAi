@@ -8,11 +8,10 @@ import BrandHeader from '../BrandHeader';
 interface LoginViewProps {
   onSwitchToRegister: () => void;
   onLoginSuccess: () => void;
-  onContinueAsGuest?: () => void;
   t: TFunction;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLoginSuccess, onContinueAsGuest, t }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLoginSuccess, t }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -165,13 +164,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onLogi
           <p className="text-xs text-slate-400">
             {t('loginPrompt')}{' '}
             <button onClick={onSwitchToRegister} className="text-teal-500 font-black hover:text-teal-600 transition-colors">{t('register')}</button>
-          {onContinueAsGuest && (
-            <div className="mt-4 text-center">
-              <button onClick={onContinueAsGuest} className="text-xs text-slate-400 font-bold underline underline-offset-2">
-                {ar ? 'متابعة بدون تسجيل دخول' : 'Continue without login'}
-              </button>
-            </div>
-          )}
           </p>
         </div>
 

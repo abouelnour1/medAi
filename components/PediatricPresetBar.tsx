@@ -200,15 +200,14 @@ const PediatricPresetBar: React.FC<Props> = ({ language, onOpenCalc, medicines }
               <div className="flex items-center gap-2 px-3 pb-3">
                 {/* Weight */}
                 <div className="flex-shrink-0 w-24">
-                  <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl overflow-hidden focus-within:border-slate-200 dark:focus-within:border-slate-600 transition-colors">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-dark-border rounded-xl overflow-hidden focus-within:border-slate-300 dark:focus-within:border-slate-500 transition-colors">
                     <input
                       type="number"
                       inputMode="decimal"
                       value={weights[p.id] || ''}
                       onChange={e => setWeights(prev => ({ ...prev, [p.id]: e.target.value }))}
                       placeholder="0.0"
-                      className="w-0 flex-1 py-2 px-2 bg-transparent text-sm font-black text-slate-700 dark:text-white outline-none text-center appearance-none"
-                      style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' } as any}
+                      className="w-0 flex-1 py-2 px-2 bg-transparent text-sm font-black text-slate-700 dark:text-white outline-none text-center"
                     />
                     <span className="pr-2 text-[10px] font-black text-slate-400 flex-shrink-0">kg</span>
                   </div>

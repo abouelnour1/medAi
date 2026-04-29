@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -19,7 +19,7 @@ type SR = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicin
 
 function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins: InsuranceDrug[]): SR[] {
   const t = term.toLowerCase().trim();
-  if (t.replace(/\*/g,'').length < 1) return [];
+  if (t.replace(/\*/g,'').length < 3) return [];
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const results: SR[] = [];
   const MAX = 80;
@@ -59,14 +59,8 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
     });
     food.forEach(med => results.push({ type:'not-covered', medicine:med }));
   } else {
-    // precompute meds lookup by normalized scientific name
-    const medsMap = new Map<string, Medicine[]>();
-    meds.forEach(m => {
-      const k = normStr(m['Scientific Name']||'');
-      if (k) { if (!medsMap.has(k)) medsMap.set(k,[]); medsMap.get(k)!.push(m); }
-    });
-    const field = mode === 'indication' ? 'indication' : 'icd10Code';
-    const matching = ins.filter(p => (p[field as keyof InsuranceDrug]||'').toString().toLowerCase().includes(t)).slice(0,80);
+    const regex = new RegExp(esc(t),'i');
+    const matching = ins.filter(p => regex.test((mode==='indication' ? p.indication||'' : p.icd10Code||'').toLowerCase())).slice(0,80);
     const byInd = new Map<string, InsuranceDrug[]>();
     matching.forEach(p => {
       const k = p.indication||'General';
@@ -76,7 +70,7 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
     byInd.forEach((policies, indication) => {
       const sm = new Map<string, ScientificGroupData>();
       policies.forEach(p => {
-        if (!sm.has(p.scientificName)) sm.set(p.scientificName,{ scientificName:p.scientificName, policies:[], availableMedicines:(medsMap.get(normStr(p.scientificName))||[]).slice(0,5) });
+        if (!sm.has(p.scientificName)) sm.set(p.scientificName,{ scientificName:p.scientificName, policies:[], availableMedicines:meds.filter(m=>normStr(m['Scientific Name'])===normStr(p.scientificName)).slice(0,10) });
         sm.get(p.scientificName)!.policies.push(p);
       });
       results.push({ type:'covered', indication, icd10Codes:Array.from(new Set(policies.map(p=>p.icd10Code))).filter(Boolean) as string[], scientificGroups:Array.from(sm.values()) });
@@ -93,55 +87,27 @@ interface Props {
   searchMode: InsuranceSearchMode; setSearchMode: (m: InsuranceSearchMode) => void;
   headerHeight?: number;
   isKeyboardOpen?: boolean;
-  renderPart?: 'bar' | 'results' | 'all';
 }
 
-const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
+const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false }) => {
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);
-  const [classFilter, setClassFilter] = useState<string>('');
-
-  // Build unique classes from results
-  const availableClasses = useMemo(() => {
-    const classes = new Set<string>();
-    results.forEach(r => {
-      if (r.type === 'drug-grouped') r.policies?.forEach(p => p.drugClass && classes.add(p.drugClass));
-      if (r.type === 'covered') r.scientificGroups?.forEach(sg => sg.policies?.forEach(p => p.drugClass && classes.add(p.drugClass)));
-    });
-    classes.delete('');
-    return Array.from(classes).sort();
-  }, [results]);
-
-  const filteredResults = useMemo(() => {
-    if (!classFilter) return results;
-    return results.filter(r => {
-      if (r.type === 'drug-grouped') return r.policies?.some(p => p.drugClass === classFilter || p.drugSubclass === classFilter);
-      if (r.type === 'covered') return r.scientificGroups?.some(sg => sg.policies?.some(p => p.drugClass === classFilter || p.drugSubclass === classFilter));
-      if (r.type === 'not-covered') return String(r.medicine?.['Scientific Name'] || '').includes(classFilter);
-      return true;
-    });
-  }, [results, classFilter]);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 150);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 400);
     return () => clearTimeout(h);
   }, [input]);
 
   useEffect(() => {
-    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 1) { setResults([]); setClassFilter(''); setBusy(false); return; }
+    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 3) { setResults([]); return; }
     setBusy(true);
-    // Use requestAnimationFrame to let UI update first, then compute
-    let cancelled = false;
-    const raf = requestAnimationFrame(() => {
-      const tid = setTimeout(() => {
-        if (cancelled) return;
-        try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
-        catch { setResults([]); }
-        setBusy(false);
-      }, 0);
-    });
-    return () => { cancelled = true; cancelAnimationFrame(raf); };
+    const tid = setTimeout(() => {
+      try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
+      catch { setResults([]); }
+      setBusy(false);
+    }, 0);
+    return () => clearTimeout(tid);
   }, [searchTerm, searchMode, allMedicines, insuranceData]);
 
   const MODES = [
@@ -151,8 +117,9 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
     { id:'icd10Code' as const, label: 'ICD-10' },
   ];
 
-  const barEl = (
-      <div style={{ width:'100%', paddingBottom:8 }}>
+  return (
+    <div style={{ display:'flex', flexDirection:'column', minHeight:400, paddingTop: 96 }}>
+      <div style={{ position:'fixed', top: headerHeight, left:'50%', transform:'translateX(-50%) translateZ(0)', width:'calc(100% - 32px)', maxWidth:448, zIndex:59, background:'var(--bg)', paddingBottom:8, willChange:'transform' }}>
         <div style={{ background:'var(--surface)', borderRadius:14, border:'1.5px solid var(--border)', boxShadow:'0 2px 8px rgba(0,106,96,0.07)', overflow:'hidden' }}>
           <div style={{ display:'flex', gap:6, padding:'8px 12px 0', overflowX:'auto' }} className="no-scrollbar">
             {MODES.map(m => (
@@ -166,10 +133,8 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
           </div>
         </div>
       </div>
-  );
 
-  const resultsEl = (
-      <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80, overflow:'hidden', maxWidth:'100%' }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80 }}>
         {busy && <div style={{ textAlign:'center', padding:20, color:'var(--text-subtle)', fontSize:12 }}>Loading...</div>}
         {!busy && results.map((r,i) => {
           if (r.type==='covered') return <IndicationCard key={'c'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
@@ -184,11 +149,8 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
           </div>
         )}
       </div>
+    </div>
   );
-
-  if (renderPart === 'bar') return <>{barEl}</>;
-  if (renderPart === 'results') return <div style={{ display:'flex', flexDirection:'column', minHeight:400 }}>{resultsEl}</div>;
-  return <div style={{ display:'flex', flexDirection:'column', minHeight:400 }}>{barEl}{resultsEl}</div>;
 };
 
 export default InsuranceSimpleSearch;
