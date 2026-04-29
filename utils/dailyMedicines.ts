@@ -371,6 +371,122 @@ export async function getClinicalReference(
   return null;
 }
 
+
+// ── Pregnant / Lactation Data (from R2) ─────────────────────────────────────
+const R2_PREGNANT_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pregnant_drugs.json';
+const PREGNANT_CACHE_KEY = 'easydrug_pregnant_v1';
+const PREGNANT_CACHE_TS  = 'easydrug_pregnant_ts_v1';
+const PREGNANT_TTL       = 7 * 24 * 60 * 60 * 1000;
+
+let _pregRefMap: Record<string, any> | null = null;
+
+async function getPregRefMap(): Promise<Record<string, any>> {
+  if (_pregRefMap) return _pregRefMap;
+  try {
+    const cacheAge = Date.now() - parseInt(localStorage.getItem(PREGNANT_CACHE_TS) || '0');
+    const cached   = localStorage.getItem(PREGNANT_CACHE_KEY);
+    if (cached && cacheAge < PREGNANT_TTL) {
+      _pregRefMap = JSON.parse(cached);
+      return _pregRefMap!;
+    }
+    const res = await fetch(R2_PREGNANT_URL);
+    if (res.ok) {
+      const data = await res.json();
+      _pregRefMap = data;
+      try {
+        localStorage.setItem(PREGNANT_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(PREGNANT_CACHE_TS, String(Date.now()));
+      } catch {}
+    }
+  } catch {}
+  return _pregRefMap || {};
+}
+
+// Map FDA pregnancy category (A/B/C/D/X) → SafetyBadge value
+function _pregCatToStatus(cat: string): string {
+  const c = (cat || '').replace(/[^A-Za-z]/g, '').toUpperCase();
+  if (c === 'A' || c === 'B') return 'Safe';
+  if (c === 'C') return 'Caution';
+  if (c === 'D') return 'Avoid';
+  if (c === 'X') return 'X';
+  return 'Unknown';
+}
+
+// Map lactation category (S/NS/NSC) → SafetyBadge value
+function _lactCatToStatus(cat: string): string {
+  const c = (cat || '').trim().toUpperCase();
+  if (c === 'S') return 'Safe';
+  if (c === 'NSC') return 'Caution';
+  if (c === 'NS') return 'Avoid';
+  return 'Unknown';
+}
+
+// Normalize drug name for matching (same logic as clinical ref)
+function _normPregName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s*(hydrochloride|hcl|sodium|potassium|sulfate|sulphate)\b/gi, '').replace(/\s+/g, ' ').trim();
+}
+
+export interface PregReferenceData {
+  pregnancyStatus: string;
+  lactationStatus: string;
+  pregnancyCategory: string;
+  lactationCategory: string;
+  maternalConsiderations: string;
+  fetalConsiderations: string;
+  breastfeedingSafety: string;
+  dosage: string;
+  summaryNotes: string;
+  drugInteractions: string;
+  drugClass: string;
+  indications: string;
+  mechanism: string;
+}
+
+export async function getPregReference(scientificName: string, tradeName?: string): Promise<PregReferenceData | null> {
+  const map = await getPregRefMap();
+  if (!map || Object.keys(map).length === 0) return null;
+
+  const keys = Object.keys(map);
+  const normMap: Record<string, string> = {};
+  for (const k of keys) normMap[k] = _normPregName(k);
+
+  const candidates: string[] = [];
+  for (const raw of [scientificName, tradeName ?? ''].filter(Boolean)) {
+    const n = _normPregName(raw);
+    candidates.push(n, n.split(/[\s\/,+]+/)[0]);
+  }
+
+  let entry: any = null;
+  for (const c of candidates) {
+    if (map[c]) { entry = map[c]; break; }
+    const found = keys.find(k => normMap[k] === c || normMap[k].startsWith(c) || c.startsWith(normMap[k].split(/[\s,]+/)[0]));
+    if (found) { entry = map[found]; break; }
+  }
+
+  if (!entry) return null;
+
+  return {
+    pregnancyCategory:      entry.pregnancyCategory || '',
+    lactationCategory:      entry.lactationCategory || '',
+    pregnancyStatus:        _pregCatToStatus(entry.pregnancyCategory || ''),
+    lactationStatus:        _lactCatToStatus(entry.lactationCategory || ''),
+    maternalConsiderations: entry.maternalConsiderations || '',
+    fetalConsiderations:    entry.fetalConsiderations || '',
+    breastfeedingSafety:    entry.breastfeedingSafety || '',
+    dosage:                 entry.dosage || '',
+    summaryNotes:           entry.summaryNotes || '',
+    drugInteractions:       entry.drugInteractions || '',
+    drugClass:              entry.drugClass || '',
+    indications:            entry.indications || '',
+    mechanism:              entry.mechanism || '',
+  };
+}
+
+// Pre-load in background
+export function prefetchPregRef() {
+  getPregRefMap().catch(() => {});
+}
+
 // Pre-load in background
 export function prefetchClinicalRef() {
   getClinicalRefMap().catch(() => {});

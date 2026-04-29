@@ -17,7 +17,7 @@ import ShieldIcon from './icons/ShieldIcon';
 import CameraIcon from './icons/CameraIcon';
 import PillIcon from './icons/PillIcon';
 import { getIngredientsList } from './MedicineCard';
-import { getClinicalData, ClinicalData, getClinicalReference, ClinicalReference } from '../utils/dailyMedicines';
+import { getClinicalData, ClinicalData, getClinicalReference, ClinicalReference, getPregReference, PregReferenceData } from '../utils/dailyMedicines';
 import ClinicalReferencePage from './ClinicalReferencePage';
 import ClinicalDataPage from './ClinicalDataPage';
 
@@ -230,6 +230,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [clinicalRef, setClinicalRef]   = useState<ClinicalReference | null>(null);
+  const [pregRef, setPregRef] = useState<PregReferenceData | null>(null);
   const [showClinicalRef, setShowClinicalRef] = useState(false);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
@@ -270,7 +271,12 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       const tradeName = String(medicine['Trade Name'] || '');
       const regNum = String(medicine.RegisterNumber || '');
       const descCode = String(medicine['Description Code'] || '');
-      getClinicalReference(sciName, tradeName, descCode, regNum).then(setClinicalRef);
+      getClinicalReference(sciName, tradeName, descCode, regNum).then(ref => {
+        setClinicalRef(ref);
+      });
+      getPregReference(sciName, tradeName).then(pref => {
+        if (pref) setPregRef(pref);
+      });
     }
   }, [medicine?.RegisterNumber]);
 
@@ -595,13 +601,25 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       {/* ────────────────────────────────────────────────────── */}
 
       {/* ── Clinical Data — Accordion sections ── */}
-      {clinicalRef && (
-        <SafetyBadgesCard
-          clinicalRef={clinicalRef}
-          language={language}
-          onOpenRef={() => setShowClinicalRef(true)}
-        />
-      )}
+      {(clinicalRef || pregRef) && (() => {
+        const mergedRef: ClinicalReference = {
+          ...(clinicalRef || {} as ClinicalReference),
+          pregnancyStatus: (clinicalRef?.pregnancyStatus) || pregRef?.pregnancyStatus,
+          lactationStatus: (clinicalRef?.lactationStatus) || pregRef?.lactationStatus,
+          maternalConsiderations: clinicalRef?.maternalConsiderations || pregRef?.maternalConsiderations,
+          fetalConsiderations:    clinicalRef?.fetalConsiderations    || pregRef?.fetalConsiderations,
+          breastfeedingSafety:    clinicalRef?.breastfeedingSafety    || pregRef?.breastfeedingSafety,
+          dosage:                 (clinicalRef as any)?.dosage        || pregRef?.dosage,
+          summaryNotes:           clinicalRef?.summaryNotes           || pregRef?.summaryNotes,
+        };
+        return (
+          <SafetyBadgesCard
+            clinicalRef={mergedRef}
+            language={language}
+            onOpenRef={() => setShowClinicalRef(true)}
+          />
+        );
+      })()}
 
       {clinicalData && <ClinicalAccordion clinicalData={clinicalData} language={language} onViewAll={() => { if (onOpenClinical) onOpenClinical(); else setShowClinicalPage(true); }} />}
 
