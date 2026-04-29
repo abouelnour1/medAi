@@ -4,6 +4,7 @@ import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines
 
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
 const R2_RENAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/renal_drugs.json';
+const R2_LOOKUP_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/drug_lookup.json';
 
 interface StructuredInteraction {
   interactsWith: string;
@@ -44,6 +45,36 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
 
 let _clinCache: Record<string, any> | null = null;
 let _renalCache: Record<string, any> | null = null;
+let _lookupCache: Record<string, { c?: string; r?: string }> | null = null;
+
+async function getLookup(): Promise<Record<string, { c?: string; r?: string }>> {
+  if (_lookupCache) return _lookupCache;
+  try {
+    const res = await fetch(R2_LOOKUP_URL);
+    if (res.ok) _lookupCache = await res.json();
+    else _lookupCache = {};
+  } catch { _lookupCache = {}; }
+  return _lookupCache!;
+}
+
+// Resolve the exact key in clinical/renal using the lookup table first, then fallback to fuzzy
+async function resolveKeys(scientificName: string, tradeName: string): Promise<{ clinKey: string | null; renalKey: string | null }> {
+  const lookup = await getLookup();
+  // Try exact UPPERCASE match (how medicines stores Scientific Name)
+  const upper = scientificName.toUpperCase().trim();
+  const entry = lookup[upper];
+  if (entry) {
+    return { clinKey: entry.c ?? null, renalKey: entry.r ?? null };
+  }
+  // Fallback: try first word
+  const firstWord = upper.split(/[\s,/]+/)[0];
+  const entryFirst = lookup[firstWord];
+  if (entryFirst) {
+    return { clinKey: entryFirst.c ?? null, renalKey: entryFirst.r ?? null };
+  }
+  // Final fallback: use old fuzzy logic
+  return { clinKey: null, renalKey: null };
+}
 
 async function fetchRenalData(scientificName: string, tradeName?: string): Promise<any | null> {
   if (!_renalCache) {
@@ -53,6 +84,10 @@ async function fetchRenalData(scientificName: string, tradeName?: string): Promi
       else _renalCache = {};
     } catch { _renalCache = {}; }
   }
+  // Try lookup first
+  const { renalKey } = await resolveKeys(scientificName, tradeName ?? '');
+  if (renalKey && _renalCache![renalKey]) return _renalCache![renalKey];
+  // Fallback to fuzzy
   return findInMap(_renalCache!, scientificName, tradeName ?? '') ?? null;
 }
 
@@ -145,6 +180,10 @@ async function fetchFullClinical(scientificName: string, tradeName?: string): Pr
       else _clinCache = {};
     } catch { _clinCache = {}; }
   }
+  // Try lookup first
+  const { clinKey } = await resolveKeys(scientificName, tradeName ?? '');
+  if (clinKey && _clinCache![clinKey]) return _clinCache![clinKey];
+  // Fallback to fuzzy
   return findInMap(_clinCache!, scientificName, tradeName ?? '') ?? null;
 }
 

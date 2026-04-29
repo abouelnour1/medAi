@@ -121,6 +121,7 @@ async function uploadFile(filename, localPath) {
 const FILES = [
   { filename: 'renal_drugs.json',            localPath: join(__dirname, '../data/renal_drugs.json') },
   { filename: 'clinical_reference_full.json', localPath: join(__dirname, '../data/clinical_reference_full.json') },
+  { filename: 'drug_lookup.json',             localPath: join(__dirname, '../data/drug_lookup.json') },
 ];
 
 for (const f of FILES) {
