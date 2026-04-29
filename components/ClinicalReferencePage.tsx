@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Language } from '../types';
-import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines';
+import { ClinicalReference, getClinicalReference, getPregReference } from '../utils/dailyMedicines';
 
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
 const R2_RENAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/renal_drugs.json';
 const R2_LOOKUP_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/drug_lookup.json';
-const R2_PREGNANT_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pregnant_drugs.json';
 
 interface StructuredInteraction {
   interactsWith: string;
@@ -46,7 +45,6 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
 
 let _clinCache: Record<string, any> | null = null;
 let _renalCache: Record<string, any> | null = null;
-let _pregCache: Record<string, any> | null = null;
 let _lookupCache: Record<string, { c?: string; r?: string }> | null = null;
 
 async function getLookup(): Promise<Record<string, { c?: string; r?: string }>> {
@@ -94,14 +92,7 @@ async function fetchRenalData(scientificName: string, tradeName?: string): Promi
 }
 
 async function fetchPregData(scientificName: string, tradeName?: string): Promise<any | null> {
-  if (!_pregCache) {
-    try {
-      const res = await fetch(R2_PREGNANT_URL);
-      if (res.ok) _pregCache = await res.json();
-      else _pregCache = {};
-    } catch { _pregCache = {}; }
-  }
-  return findInMap(_pregCache!, scientificName, tradeName ?? '') ?? null;
+  return getPregReference(scientificName, tradeName);
 }
 
 // ── Drug name normalization for matching ────────────────────────────────────
@@ -537,7 +528,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   const ar = language === 'ar';
   const [data, setData] = useState<ClinicalReference | null>(null);
   const [fullData, setFullData] = useState<any | null>(null);
-  const [pregData, setPregData] = useState<any | null>(null);
+  const [pregData, setPregData] = useState<import('../utils/dailyMedicines').PregReferenceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
