@@ -21,6 +21,7 @@ import FloatingAssistantButton from './components/FloatingAssistantButton';
 import AssistantModal from './components/AssistantModal';
 import ChatHistoryView from './components/ChatHistoryView';
 import InsuranceSearchView from './components/InsuranceSearchView';
+import InsuranceSimpleSearch from './components/InsuranceSimpleSearch';
 import InsuranceDetailsView from './components/InsuranceDetailsView';
 import FavoritesView from './components/FavoritesView';
 import NotificationsView from './components/NotificationsView';
@@ -44,6 +45,8 @@ import { logSearch, logShareMedicine, logFavoriteToggle, logTabSwitch, setUserSp
 import { syncAnalyticsToFirestore } from './utils/analyticsSync';
 import CompareBar from './components/CompareBar';
 import ClinicalDataPage from './components/ClinicalDataPage';
+import UserGuide from './components/UserGuide';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import CompareModal from './components/CompareModal';
 import EditMedicineModal from './components/EditMedicineModal';
 import ImageViewer from './components/ImageViewer';
@@ -547,6 +550,8 @@ const App: React.FC = () => {
 
   // إصلاح SearchBar يختفي خلف الهيدر لما الكيبورد يطلع
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [indicationQuery, setIndicationQuery] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
     let cleanupCap: (() => void) | null = null;
@@ -578,20 +583,26 @@ const App: React.FC = () => {
     return () => cleanupCap?.();
   }, []);
 
-  // useLayoutEffect: بيشتغل sync قبل ما المتصفح يرسم → الـ header height صح من أول frame
+  // useLayoutEffect: يقيس الـ header paddingTop (= android-status + 8) ويحسب header-h
   React.useLayoutEffect(() => {
     const measure = () => {
       if (!headerRef.current) return false;
-      const h = Math.ceil(headerRef.current.getBoundingClientRect().height);
-      if (h >= 40) {
-        setHeaderHeight(h);
-        setHeaderOnlyHeight(h);
-        setSearchBarTop(h);
-        setHeaderMeasured(true);
-        // حدث الـ CSS variable فوراً — الـ search bar بيستخدمه مباشرة
-        document.documentElement.style.setProperty('--header-h', h + 'px');
-        try { localStorage.setItem('_hh', String(h)); } catch {}
-        return true;
+      // نقيس من الـ paddingTop مباشرة — مش من الـ height (اللي بيشمل الـ search bar)
+      const pt = parseFloat(window.getComputedStyle(headerRef.current).paddingTop) || 0;
+      if (pt >= 8) {
+        const sbPx = Math.round(pt - 8); // android status bar height
+        const baseH = Math.round(pt) + 56 + 3; // pt + header content + bottom padding
+        if (sbPx >= 0 && baseH >= 40) {
+          setHeaderHeight(baseH);
+          setHeaderOnlyHeight(baseH);
+          setSearchBarTop(baseH);
+          setHeaderMeasured(true);
+          document.documentElement.style.setProperty('--android-status', sbPx + 'px');
+          document.documentElement.style.setProperty('--header-h', baseH + 'px');
+          document.documentElement.style.setProperty('--header-base-h', baseH + 'px');
+          try { localStorage.setItem('_sb', String(sbPx)); localStorage.setItem('_hh', String(baseH)); } catch {}
+          return true;
+        }
       }
       return false;
     };
@@ -614,11 +625,7 @@ const App: React.FC = () => {
     return () => { obs.disconnect(); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--header-h', `${headerHeight}px`);
-    root.style.setProperty('--header-only-h', `${headerOnlyHeight}px`);
-  }, [headerHeight, headerOnlyHeight]);
+  // --header-h is set by useLayoutEffect and index.html, no need for separate useEffect
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -1299,7 +1306,7 @@ const App: React.FC = () => {
       if (activeTab === tab) {
           // لو ضغط على نفس الـ tab، يرجع للأول ويعمل scroll to top
           if (tab === 'search') { setView('search'); scrollPositions.current.delete('search'); }
-          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); }
+          if (tab === 'insurance') { setView('insuranceSearch'); scrollPositions.current.delete('insuranceSearch'); } setIndicationQuery('');
           if (tab === 'settings') { setView('settings'); scrollPositions.current.delete('settings'); }
           logTabSwitch(tab);
           // scroll to top دايماً لما يضغط على نفس الـ tab
@@ -1434,8 +1441,11 @@ const App: React.FC = () => {
           }
         }}
       />;
-      if (view === 'favorites') return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
-      if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} />;
+      if (view === 'favorites') {
+            if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95 transition-all">{t('login') || 'Sign In'}</button></div>);
+            return <FavoritesView favoriteIds={favorites} allMedicines={medicines} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('favorites'); setSelectedMedicine(m); setActiveTab('search'); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} toggleFavorite={toggleFavorite} t={t} language={language} />;
+      }
+      if (view === 'indicationSearch') return <IndicationSearch indications={indications} medicines={medicines} language={language} t={t} onMedicineSelect={handleMedicineSelect} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setPreviousView('indicationSearch'); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} favorites={favorites} onToggleFavorite={toggleFavorite} externalQuery={indicationQuery} onExternalQueryChange={setIndicationQuery} />;
 
       if (view === 'pedDoseHistory') return (
         <div className="pt-2 pb-8">
@@ -1504,7 +1514,7 @@ const App: React.FC = () => {
 
       if (activeTab === 'search') {
           if (view === 'details' && selectedMedicine) return <div className="anim-slide-up" style={{minHeight:'100%'}}><MedicineDetail medicine={selectedMedicine} insuranceData={insuranceData} allMedicines={medicines} t={t} language={language} isFavorite={favorites.includes(selectedMedicine.RegisterNumber)} onToggleFavorite={toggleFavorite} user={user} onEdit={(m)=>{setSelectedMedicine(m); setIsEditModalOpen(true); }} onOpenAssistant={undefined} onOpenInteractions={undefined} onOpenDoseCalc={() => { setPedCalcDrug(selectedMedicine?.['Scientific Name'] as string || selectedMedicine?.['Trade Name'] as string || undefined); setPedCalcOpen(true); }} onImageZoom={(imgs, idx, title, flags) => { setPreviousView(view); setActiveImageViewer({images:imgs, index:idx, title, flags}); }} onFindAlternative={(m) => { if (scrollContainerRef.current) scrollPositions.current.set(view, scrollContainerRef.current.scrollTop); setPreviousView(view); setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; setView('alternatives'); }} onShare={handleShareMedicine} onAskGemini={handleAskGemini} onToggleCompare={toggleCompare} isInCompare={compareList.some(m => m.RegisterNumber === selectedMedicine.RegisterNumber)} onOpenClinical={() => setClinicalModal({ open: true, medicine: selectedMedicine })} onShowInsuranceSheet={(m) => setInsuranceSheetMedicine(m)} /></div>;
-          if (view === 'alternatives' && selectedMedicine) return <div className="anim-fade-scale" style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
+          if (view === 'alternatives' && selectedMedicine) return <div style={{minHeight:'100%', contain: 'layout'}}><AlternativesView sourceMedicine={selectedMedicine} alternatives={alternatives} onMedicineSelect={(m) => { setSheetMedicine(m); }} onMedicineLongPress={(m) => { if (pharmacistMode) setQuickViewMedicine(m); }} onFindAlternative={(m) => { setSelectedMedicine(m); scrollPositions.current.delete('alternatives'); requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; })); }} onImageClick={(m) => { if (m.imgBox) { scrollPositions.current.set('alternatives', scrollContainerRef.current?.scrollTop || 0); setPreviousView('alternatives'); setActiveImageViewer({ images: [m.imgBox, m.imgIndex1, m.imgIndex2].filter(Boolean) as string[], index: 0, title: m['Trade Name'], flags: [!!m.imgBox, !!m.imgIndex1, !!m.imgIndex2] }); } }} favorites={favorites} onToggleFavorite={toggleFavorite} t={t} language={language} /></div>;
           
           return (
               <div className="pt-1">
@@ -1739,13 +1749,14 @@ const App: React.FC = () => {
                       </span>
                     </div>
                   )}
+
               </div>
           );
       }
 
       if (activeTab === 'insurance') {
-          if (view === 'insuranceDetails' && selectedInsurance) return <InsuranceDetailsView data={selectedInsurance} t={t} />;
-          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} />;
+          if (view === 'insuranceDetails' && selectedInsurance) return <div className="anim-rtl-in" style={{minHeight:'100%'}}><InsuranceDetailsView data={selectedInsurance} t={t} /></div>;
+          return <InsuranceSearchView t={t} language={language} allMedicines={medicines} insuranceData={insuranceData} onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); if (scrollContainerRef.current) setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0; }, 50); }} insuranceSearchTerm={insuranceSearchTerm} setInsuranceSearchTerm={setInsuranceSearchTerm} insuranceSearchMode={insuranceSearchMode} setInsuranceSearchMode={setInsuranceSearchMode} headerHeight={headerHeight} isKeyboardOpen={isKeyboardOpen} renderPart="results" />;
       }
 
       if (activeTab === 'settings') {
@@ -1762,8 +1773,13 @@ const App: React.FC = () => {
             }
             return <PrescriptionView language={language} user={user} allMedicines={medicines} onBack={() => { setActiveTab('search'); setView('search'); }} />;
           }
-      if (view === 'stockTracker') return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
-          if (view === 'orderList') return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />;
+      if (view === 'stockTracker') {
+        if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95 transition-all">{t('login') || 'Sign In'}</button></div>);
+        return <StockTracker allMedicines={medicines} t={t} language={language} onBack={() => setView('settings')} isAdmin={user?.role === 'admin'} />;
+      }
+          if (view === ('userGuide' as any)) return <UserGuide language={language} onBack={() => setView('settings')} />;
+          if (view === ('privacyPolicy' as any)) return <PrivacyPolicy language={language} onBack={() => setView('settings')} />;
+          if (view === 'orderList') { if (isGuest) return (<div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center"><svg className="w-16 h-16 text-slate-200 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><p className="text-slate-400 font-black text-base">{language === 'ar' ? 'يلزم تسجيل الدخول' : 'Sign in required'}</p><button onClick={() => setView('login')} className="bg-primary text-white font-black px-8 py-3 rounded-2xl active:scale-95">{t('login') || 'Sign In'}</button></div>); return <OrderList allMedicines={medicines} t={t} language={language} onCountChange={setOrderCount} isAdmin={user?.role === 'admin'} />; }
           return (
               <div className="space-y-4 anim-slide-up">
                   {/* Profile Card */}
@@ -1879,6 +1895,8 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   )}
+
+
               </div>
           );
       }
@@ -1914,14 +1932,31 @@ const App: React.FC = () => {
 
   // لو auth لسه بيتحقق بس مفيش medicine خالص نكتفي بـ spinner صغير في الـ header
 
-  // ✅ Auth Gate — مش مسجّل → Login مباشرة بدون أي تعديل تاني في الكود
-  if (!user) {
+  // ✅ Auth Gate — لو مش مسجّل بيظهر صفحة Login/Register
+  // لو في guest mode بيكمل للـ app بس بعض الـ features مقفولة
+  const isGuest = !user;
+
+  // أول فتح: لو مش مسجل ومش اختار Guest → ابدأ بالـ login screen
+  if (!user && view !== 'login' && view !== 'register' && !localStorage.getItem('pharma_guest_mode')) {
+    // لو مفيش guest_mode flag → redirect للـ login
+    if (view === 'search') {
+      // أول مرة → ابعت للـ login
+    }
+  }
+
+  if (!user && (view === 'login' || view === 'register' || !localStorage.getItem('pharma_guest_mode'))) {
     return (
       <div className="bg-light-bg dark:bg-dark-bg text-slate-900 dark:text-slate-100 h-full flex flex-col overflow-hidden" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
         {specialtyModalEl}
-      {view === 'register'
+        <div
+          ref={headerRef as React.RefObject<HTMLDivElement>}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', paddingTop: 'calc(var(--android-status, 30px) + 8px)', paddingBottom: 8, zIndex: -1, pointerEvents: 'none' }}
+        >
+          <div style={{ height: 56 }} />
+        </div>
+        {view === 'register'
           ? <RegisterView t={t} onSwitchToLogin={() => setView('login')} onRegisterSuccess={() => setView('login')} />
-          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} />
+          : <LoginView t={t} onSwitchToRegister={() => setView('register')} onLoginSuccess={() => { setActiveTab('search'); setView('search'); }} onContinueAsGuest={() => { try { localStorage.setItem('pharma_guest_mode', '1'); } catch {} setView('search'); }} />
         }
       </div>
     );
@@ -1959,14 +1994,11 @@ const App: React.FC = () => {
         unreadCount={notifications.filter(n => !n.isRead).length}
         isLoading={authLoading || (isMedicinesLoading && medicines.length === 0)}
         searchBarVisible={activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView'].includes(view)}
-      />
-
-      {/* Search bar — fixed, يقعد تحت الـ header مباشرة */}
+      >
       {activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view) && (
         <div
           ref={searchBarRef}
-          className="fixed left-1/2 z-[59] px-3 w-full max-w-[480px] bg-light-bg dark:bg-dark-bg pb-1"
-          style={{ top: 'var(--header-h)', transform: 'translateX(-50%) translateZ(0)', willChange: 'transform' }}
+          className="w-full pt-1.5"
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -1993,11 +2025,69 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={() => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: activeTab === 'insurance' && !['insuranceDetails'].includes(view) ? headerHeight + 96 : (activeTab === 'search' && !['details', 'alternatives', 'login', 'register', 'admin', 'imageView', 'notifications', 'favorites', 'settings', 'stockTracker', 'orderList', 'aiHistory', 'indicationSearch', 'pedDoseHistory', 'recentlyViewed'].includes(view)) ? headerHeight + 56 : headerHeight + 8, paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
+      {activeTab === 'insurance' && !['insuranceDetails'].includes(view) && (
+        <div className="w-full pt-1.5">
+          <InsuranceSimpleSearch
+            t={t}
+            language={language}
+            insuranceData={insuranceData}
+            allMedicines={medicines}
+            onSelectInsuranceData={(d) => { if (scrollContainerRef.current) scrollPositions.current.set('insuranceSearch', scrollContainerRef.current.scrollTop); setSelectedInsurance(d); setView('insuranceDetails'); }}
+            searchTerm={insuranceSearchTerm}
+            setSearchTerm={setInsuranceSearchTerm}
+            searchMode={insuranceSearchMode}
+            setSearchMode={setInsuranceSearchMode}
+            renderPart="bar"
+          />
+        </div>
+      )}
+
+      {view === 'indicationSearch' && (
+        <div className="w-full pt-1.5 pb-1 px-0">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input
+              type="text"
+              value={indicationQuery}
+              onChange={e => setIndicationQuery(e.target.value)}
+              placeholder={language === 'ar' ? 'ابحث عن مرض...' : 'Search disease... e.g. Hypertension'}
+              className="w-full h-11 pl-10 pr-9 bg-white dark:bg-dark-card border border-slate-100 dark:border-dark-border rounded-2xl text-sm font-semibold text-slate-700 dark:text-white outline-none placeholder-slate-300"
+            />
+            {indicationQuery && (
+              <button onClick={() => setIndicationQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      </Header>
+
+      <main id="main-scroll-container" ref={scrollContainerRef} onScroll={(e) => { const el = document.activeElement as HTMLElement; if (el?.tagName !== "INPUT" && el?.tagName !== "TEXTAREA") el?.blur?.(); const t = (e.currentTarget as HTMLDivElement).scrollTop; setShowScrollTop(t > 400); }} className="flex-grow min-h-0 mx-auto px-4 overflow-y-auto w-full max-w-[480px] no-scrollbar" style={{ paddingTop: (activeTab === 'search' && !['details','alternatives','login','register','admin','imageView','notifications','favorites','settings','stockTracker','orderList','aiHistory','pedDoseHistory','recentlyViewed'].includes(view)) ? 'calc(var(--header-h) + 48px)' : (view === 'indicationSearch') ? 'calc(var(--header-h) + 52px)' : (activeTab === 'insurance' && !['insuranceDetails'].includes(view)) ? 'calc(var(--header-h) + 92px)' : 'calc(var(--header-h) + 8px)', paddingBottom: isKeyboardOpen ? `${Math.max(keyboardHeight, 16) + 16}px` : (compareList.length > 0 && !showCompare ? 'calc(120px + env(safe-area-inset-bottom))' : 'calc(24px + env(safe-area-inset-bottom))'), WebkitOverflowScrolling: "touch", overscrollBehavior: "none" } as any} >
           <div key={skipNextViewKey ? 'stable' : view}>
               {renderContent()}
             </div>
       </main>
+      {/* Scroll to top button */}
+      {showScrollTop && activeTab === 'search' && !['details','alternatives','imageView'].includes(view) && (
+        <button
+          onClick={() => { scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          className="fixed z-[58] rounded-2xl shadow-lg active:scale-90 transition-all"
+          style={{
+            bottom: 'calc(24px + env(safe-area-inset-bottom))',
+            right: 16,
+            width: 44, height: 44,
+            background: 'linear-gradient(135deg, #006a60, #00897b)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 200ms ease',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 15l-6-6-6 6"/>
+          </svg>
+        </button>
+      )}
       {/* Pharmacist Quick View */}
       {quickViewMedicine && (
         <PharmacistQuickView
@@ -2153,13 +2243,16 @@ const App: React.FC = () => {
             if (isListView) {
               setSkipNextViewKey(true);
               setView(targetView);
+              // منع أي animation لما نرجع من الصورة
+              document.documentElement.classList.add('no-anim');
               setTimeout(() => {
                 const savedPos = scrollPositions.current.get(targetView);
                 if (scrollContainerRef.current && savedPos !== undefined) {
                   scrollContainerRef.current.scrollTop = savedPos;
                 }
                 setSkipNextViewKey(false);
-              }, 80);
+                document.documentElement.classList.remove('no-anim');
+              }, 100);
             } else {
               setSkipNextViewKey(false);
               setView(targetView);
