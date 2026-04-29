@@ -199,6 +199,7 @@ export interface ClinicalReference {
   scientificName: string;
   drugName: string;
   source: string;
+  // Old fields (backward compat)
   indications: string;
   mechanism: string;
   adultDose: string;
@@ -216,23 +217,32 @@ export interface ClinicalReference {
   g6pdRisk?: string;
   diabetesEffect?: string;
   hypertensionEffect?: string;
+  // New fields from pregnancy/lactation file
+  drugClass?: string;
+  dosage?: string;
+  maternalConsiderations?: string;
+  fetalConsiderations?: string;
+  breastfeedingSafety?: string;
+  drugInteractionsText?: string;
+  summaryNotes?: string;
+  lactationCategory?: string;
+  pregnancyCategoryInfo?: { label: string; color: string; bg: string; emoji: string };
+  lactationCategoryInfo?: { label: string; color: string; bg: string; emoji: string };
   descriptionCodes?: string[];
   registerNumbers?: string[];
-  mappedScientificName?: string;
+  mappedScientificName?: string; string;
 }
 
 const R2_CLINICAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
 const CLINICAL_CACHE_KEY = 'easydrug_clinical_ref_v3';
 const CLINICAL_CACHE_TS  = 'easydrug_clinical_ref_ts_v3';
-const CLINICAL_TTL       = 7 * 24 * 60 * 60 * 1000; // أسبوع
+const CLINICAL_TTL       = 7 * 24 * 60 * 60 * 1000;
 
 let _clinicalRefMap: Record<string, ClinicalReference> | null = null;
 
 async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
   if (_clinicalRefMap) return _clinicalRefMap;
 
-  // استخدم الـ fallback المدمج فوراً بدون network
-  // في الخلفية: حاول تحميل النسخة الكاملة من R2 أو localStorage
   try {
     const cacheAge = Date.now() - parseInt(localStorage.getItem(CLINICAL_CACHE_TS) || '0');
     const cached   = localStorage.getItem(CLINICAL_CACHE_KEY);
@@ -240,7 +250,6 @@ async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
       _clinicalRefMap = JSON.parse(cached);
       return _clinicalRefMap!;
     }
-    // جيب من R2 (await)
     const res = await fetch(R2_CLINICAL_URL);
     if (res.ok) {
       const data = await res.json();
@@ -254,7 +263,7 @@ async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
     }
   } catch {}
 
-  return _clinicalRefMap!;
+  return _clinicalRefMap || {};
 }
 
 // ── Drug name normalization (same logic as ClinicalReferencePage) ────────────

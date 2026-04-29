@@ -35,7 +35,7 @@ const ScientificInfo: React.FC<{ group: ScientificGroupData, t: TFunction, onCli
                     </p>
                 )}
                 <p className={`${hasMatchingTradeNames ? "text-xs text-primary font-bold" : "font-black text-sm text-primary"} uppercase tracking-tight break-words`}>
-                    {group.scientificName}
+                    {String(group.scientificName || '').length > 60 ? String(group.scientificName).substring(0, 60) + '…' : group.scientificName}
                 </p>
                 <p className="text-[10px] text-slate-400 dark:text-dark-muted mt-1 font-medium " style={{wordBreak:"break-word",overflowWrap:"break-word"}}>{commonPolicy.drugClass}</p>
              </div>

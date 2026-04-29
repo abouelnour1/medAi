@@ -3,29 +3,6 @@ import { Language } from '../types';
 import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines';
 
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
-const R2_RENAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/renal_drugs.json';
-
-let _renalCache: Record<string, any> | null = null;
-
-async function fetchRenalData(name: string): Promise<any | null> {
-  if (!_renalCache) {
-    try {
-      const res = await fetch(R2_RENAL_URL);
-      if (res.ok) _renalCache = await res.json();
-      else _renalCache = {};
-    } catch { _renalCache = {}; }
-  }
-  const key = name.toLowerCase().trim();
-  // Try direct match
-  if (_renalCache![key]) return _renalCache![key];
-  // Try first word match
-  const firstWord = key.split(/[\s\/,]+/)[0];
-  if (firstWord.length >= 4) {
-    const found = Object.keys(_renalCache!).find(k => k.startsWith(firstWord) || firstWord.startsWith(k.split(/[\s\/,]+/)[0]));
-    if (found) return _renalCache![found];
-  }
-  return null;
-}
 
 interface StructuredInteraction {
   interactsWith: string;
@@ -79,6 +56,13 @@ const DRUG_SYNONYMS: Record<string, string> = {
   'miconazole': 'clotrimazole',
   'folic acid': 'folate',
   'vitamin c': 'ascorbic acid',
+  'amoxicillin/clavulanate': 'amoxicillin-clavulanate potassium',
+  'amoxicillin-clavulanate': 'amoxicillin-clavulanate potassium',
+  'co-amoxiclav': 'amoxicillin-clavulanate potassium',
+  'aspirin': 'aspirin',
+  'ibuprofen': 'ibuprofen',
+  'omeprazole': 'omeprazole',
+  'metformin': 'metformin',
 };
 
 function normalizeDrug(name: string): string {
@@ -86,6 +70,7 @@ function normalizeDrug(name: string): string {
     .toLowerCase()
     .trim()
     .replace(/-/g, '/')
+    .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|ug|iu|%|units?|mmol)\b/gi, '') // remove dosage numbers
     .replace(SALT_SUFFIXES, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -303,50 +288,58 @@ interface Section {
 }
 
 // SVG icon components for sections
-const SectionIcons: Record<string, React.ReactNode> = {
-  indications:       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-  mechanism:         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
-  adultDose:         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>,
-  pediatricDose:     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
-  contraindications: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>,
-  interactions:      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>,
-  pregnancy:         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>,
-  lactation:         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-  renalDosing:       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>,
-  hepaticDosing:     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>,
-  g6pd:              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>,
-};
-
-const SECTIONS: Section[] = [
-  { key: 'indications',       labelAr: 'الاستخدامات',           labelEn: 'Indications',         icon: '', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
-  { key: 'mechanism',         labelAr: 'آلية العمل',             labelEn: 'Mechanism',           icon: '', color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-  { key: 'adultDose',         labelAr: 'جرعة البالغين',          labelEn: 'Adult Dose',          icon: '', color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20' },
-  { key: 'pediatricDose',     labelAr: 'جرعة الأطفال',           labelEn: 'Pediatric Dose',      icon: '', color: 'text-pink-600 bg-pink-50 dark:bg-pink-900/20' },
-  { key: 'contraindications', labelAr: 'موانع الاستخدام',        labelEn: 'Contraindications',   icon: '', color: 'text-red-600 bg-red-50 dark:bg-red-900/20' },
-  { key: 'interactions',      labelAr: 'التفاعلات الدوائية',     labelEn: 'Drug Interactions',   icon: '', color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
-  { key: 'pregnancy',         labelAr: 'الحمل',                  labelEn: 'Pregnancy',           icon: '', color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20' },
-  { key: 'lactation',         labelAr: 'الرضاعة',                labelEn: 'Lactation',           icon: '', color: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20' },
-  { key: 'renalDosing',       labelAr: 'جرعة الفشل الكلوي',      labelEn: 'Renal Dosing',        icon: '', color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20' },
-  { key: 'hepaticDosing',     labelAr: 'جرعة الفشل الكبدي',      labelEn: 'Hepatic Dosing',      icon: '', color: 'text-teal-600 bg-teal-50 dark:bg-teal-900/20' },
-  { key: 'g6pd',              labelAr: 'نقص G6PD',               labelEn: 'G6PD',                icon: '', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' },
+// Section key maps to both new JSON field AND old field (fallback)
+const SECTIONS = [
+  { key: 'indications',            newKey: 'indications',            labelAr: 'دواعي الاستخدام',       labelEn: 'Indications',             color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-900/25' },
+  { key: 'mechanism',              newKey: 'mechanism',              labelAr: 'آلية العمل',            labelEn: 'Mechanism',               color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/25' },
+  { key: 'dosage',                 newKey: 'dosage',                 labelAr: 'الجرعة',               labelEn: 'Dosage',                  color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/25' },
+  { key: 'maternalConsiderations', newKey: 'maternalConsiderations', labelAr: 'اعتبارات الأم الحامل', labelEn: 'Maternal Considerations', color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-900/25' },
+  { key: 'fetalConsiderations',    newKey: 'fetalConsiderations',    labelAr: 'اعتبارات الجنين',      labelEn: 'Fetal Considerations',    color: 'text-pink-600',    bg: 'bg-pink-50 dark:bg-pink-900/25' },
+  { key: 'breastfeedingSafety',    newKey: 'breastfeedingSafety',    labelAr: 'الرضاعة الطبيعية',     labelEn: 'Breastfeeding Safety',    color: 'text-orange-600',  bg: 'bg-orange-50 dark:bg-orange-900/25' },
+  { key: 'interactions',           newKey: 'interactions',           labelAr: 'التفاعلات الدوائية',   labelEn: 'Drug Interactions',       color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/25' },
+  { key: 'summaryNotes',           newKey: 'summaryNotes',           labelAr: 'ملاحظات موجزة',        labelEn: 'Summary Notes',           color: 'text-slate-600',   bg: 'bg-slate-50 dark:bg-slate-800/25' },
 ];
+
+const SectionIcon: React.FC<{ k: string; cls: string }> = ({ k, cls }) => {
+  const s = { className: `w-[18px] h-[18px] ${cls}`, fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const icons: Record<string, React.ReactNode> = {
+    indications:       <svg {...s}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>,
+    mechanism:         <svg {...s}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
+    adultDose:         <svg {...s}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    pediatricDose:     <svg {...s}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+    contraindications: <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
+    interactions:      <svg {...s}><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>,
+    pregnancy:         <svg {...s}><path d="M12 2a5 5 0 015 5c0 5-5 13-5 13S7 12 7 7a5 5 0 015-5z"/><circle cx="12" cy="7" r="2"/></svg>,
+    lactation:         <svg {...s}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+    renalDosing:       <svg {...s}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>,
+    hepaticDosing:     <svg {...s}><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>,
+    g6pd:              <svg {...s}><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>,
+  };
+  return <>{icons[k] ?? icons['indications']}</>;
+};
 
 const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, language, onClose }) => {
   const ar = language === 'ar';
   const [data, setData] = useState<ClinicalReference | null>(null);
   const [fullData, setFullData] = useState<any | null>(null);
-  const [renalData, setRenalData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Load both sources in parallel, show content as soon as fullData arrives
+    let done = false;
+    const finish = () => { if (!done) { done = true; setLoading(false); } };
+
     getClinicalReference(scientificName, tradeName)
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => { setData(d); finish(); })
+      .catch(finish);
+
     fetchFullClinical(scientificName, tradeName)
-      .then(d => { if (d) setFullData(d); });
-    fetchRenalData(scientificName.split(',')[0].trim())
-      .then(d => { if (d) setRenalData(d); });
+      .then(d => {
+        if (d) { setFullData(d); finish(); }
+        else finish();
+      })
+      .catch(finish);
   }, [scientificName, tradeName]);
 
   const toggle = (key: string) => {
@@ -358,14 +351,30 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   };
 
   // merge: prefer fullData fields over fallback data
-  const getText = (key: keyof ClinicalReference): string => {
-    const fullVal = fullData?.[key as string];
-    if (fullVal && typeof fullVal === 'string' && fullVal.trim()) return fullVal.trim();
-    return (data?.[key] as string) || '';
+  const getTextByKey = (sectionKey: string): string => {
+    // Try fullData first (new JSON format)
+    if (fullData) {
+      const v = (fullData as any)[sectionKey];
+      if (v && typeof v === 'string' && v.trim()) return v.trim();
+    }
+    // Fallback to old data
+    if (data) {
+      const v = (data as any)[sectionKey];
+      if (v && typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return '';
   };
 
+  // Keep backward compat
+  const getText = (key: keyof ClinicalReference): string => getTextByKey(key as string);
+
   return (
-    <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" style={{ direction: ar ? 'rtl' : 'ltr' }}>
+    <div className="fixed inset-0 z-[500] bg-white dark:bg-dark-bg flex flex-col" data-overlay="true"
+      style={{ direction: ar ? 'rtl' : 'ltr' }}
+      onTouchStart={e => e.stopPropagation()}
+      onTouchMove={e => e.stopPropagation()}
+      onTouchEnd={e => e.stopPropagation()}
+    >
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
@@ -397,7 +406,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 overscroll-none"
-           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
+           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' } as any}>
 
         {loading && (
           <div className="flex items-center justify-center py-20">
@@ -416,24 +425,25 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
         )}
 
         {!loading && (data || fullData) && SECTIONS.map(sec => {
-          const text = getText(sec.key);
+          const text = getTextByKey(sec.key);
           // Interactions section always shows (it fetches from R2 independently)
           const hasContent = sec.key === 'interactions'
             ? true
-            : (sec.key === 'renalDosing' ? !!renalData : (!!text && text !== '—' && text.trim() !== '' && text !== 'nan'));
+            : (text && text !== '—' && text.trim() !== '' && text !== 'nan');
           if (!hasContent) return null;
           const isOpen = expanded.has(sec.key);
 
           return (
             <div key={sec.key}
-              className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+              className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden"
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <button
                 onClick={() => toggle(sec.key)}
-                className="w-full flex items-center gap-3 px-4 py-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${sec.color}`}>
-                  {SectionIcons[sec.key as string]}
+                className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
+                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${sec.bg}`}>
+                  <SectionIcon k={sec.key} cls={sec.color} />
                 </div>
-                <span className="flex-1 text-left font-black text-sm text-slate-700 dark:text-slate-200">
+                <span className="flex-1 font-black text-[13px] text-slate-700 dark:text-slate-200">
                   {ar ? sec.labelAr : sec.labelEn}
                 </span>
                 <svg

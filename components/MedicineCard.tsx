@@ -243,6 +243,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
             <p style={{
               fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: '100%',
             }} dir="ltr">
               {ingredientsString}
             </p>

@@ -150,7 +150,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ title, showBack, onBack, 
 
               <div className={`fixed right-4 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-[9990] overflow-hidden origin-top-right
                     ${isMenuOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}
-                style={{ top: (ref as any)?.current?.getBoundingClientRect?.()?.bottom + 6 || 80 }}>
+                style={{ top: (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 80) + 6 }}>
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                   <p className="font-black text-sm text-slate-800 dark:text-white truncate">{user.username}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
