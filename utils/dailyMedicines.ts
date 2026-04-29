@@ -234,17 +234,15 @@ export interface ClinicalReference {
 }
 
 const R2_CLINICAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
-const CLINICAL_CACHE_KEY = 'easydrug_clinical_ref_v2';
-const CLINICAL_CACHE_TS  = 'easydrug_clinical_ref_ts';
-const CLINICAL_TTL       = 7 * 24 * 60 * 60 * 1000; // أسبوع
+const CLINICAL_CACHE_KEY = 'easydrug_clinical_ref_v3';
+const CLINICAL_CACHE_TS  = 'easydrug_clinical_ref_ts_v3';
+const CLINICAL_TTL       = 7 * 24 * 60 * 60 * 1000;
 
 let _clinicalRefMap: Record<string, ClinicalReference> | null = null;
 
 async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
   if (_clinicalRefMap) return _clinicalRefMap;
 
-  // استخدم الـ fallback المدمج فوراً بدون network
-  // في الخلفية: حاول تحميل النسخة الكاملة من R2 أو localStorage
   try {
     const cacheAge = Date.now() - parseInt(localStorage.getItem(CLINICAL_CACHE_TS) || '0');
     const cached   = localStorage.getItem(CLINICAL_CACHE_KEY);
@@ -252,21 +250,20 @@ async function getClinicalRefMap(): Promise<Record<string, ClinicalReference>> {
       _clinicalRefMap = JSON.parse(cached);
       return _clinicalRefMap!;
     }
-    // جيب النسخة الكاملة من R2 في الخلفية
-    fetch(R2_CLINICAL_URL).then(res => {
-      if (res.ok) res.json().then(data => {
-        _clinicalRefMap = data;
-        _descCodeIndex = null;  // reset indexes for new data
-        _regNumIndex = null;
-        try {
-          localStorage.setItem(CLINICAL_CACHE_KEY, JSON.stringify(data));
-          localStorage.setItem(CLINICAL_CACHE_TS, String(Date.now()));
-        } catch {}
-      });
-    }).catch(() => {});
+    const res = await fetch(R2_CLINICAL_URL);
+    if (res.ok) {
+      const data = await res.json();
+      _clinicalRefMap = data;
+      _descCodeIndex = null;
+      _regNumIndex = null;
+      try {
+        localStorage.setItem(CLINICAL_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CLINICAL_CACHE_TS, String(Date.now()));
+      } catch {}
+    }
   } catch {}
 
-  return _clinicalRefMap!;
+  return _clinicalRefMap || {};
 }
 
 // ── Drug name normalization (same logic as ClinicalReferencePage) ────────────
