@@ -384,10 +384,11 @@ function RenalDosingView({ scientificName, tradeName, language }: {
     { label: 'APD/CAPD', labelAr: 'APD/CAPD', field: 'apd_capd' },
     { label: 'HDF', labelAr: 'HDF', field: 'hdf' },
     { label: 'CAV/VVHD', labelAr: 'CAV/VVHD', field: 'cav_vvhd' },
-    { label: 'Interactions', labelAr: 'التفاعلات', field: 'interactions' },
-    { label: 'Administration', labelAr: 'طريقة الإعطاء', field: 'administration' },
-    { label: 'Notes', labelAr: 'ملاحظات', field: 'notes' },
+    { label: 'Volume of Distribution', labelAr: 'حجم التوزيع (Vd)', field: 'vd' },
     { label: 'Metabolism', labelAr: 'الاستقلاب', field: 'metabolism' },
+    { label: 'Interactions', labelAr: 'التفاعلات', field: 'drugInteractions' },
+    { label: 'Administration', labelAr: 'طريقة الإعطاء', field: 'administration' },
+    { label: 'Other Info', labelAr: 'معلومات إضافية', field: 'otherInfo' },
   ];
 
   return (
@@ -401,7 +402,7 @@ function RenalDosingView({ scientificName, tradeName, language }: {
         {data.proteinBinding && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5"><span className="text-slate-400">{ar ? 'ارتباط بروتين' : 'Protein binding'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.proteinBinding}%</span></div>}
         {data.renalExcretion && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5"><span className="text-slate-400">{ar ? 'إطراح كلوي' : 'Renal excretion'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.renalExcretion}%</span></div>}
         {data.halfLife && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 col-span-2"><span className="text-slate-400">{ar ? 'عمر النصف' : 'Half-life'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.halfLife}</span></div>}
-        {data.molWeight && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 col-span-2"><span className="text-slate-400">{ar ? 'الوزن الجزيئي' : 'Mol. weight'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.molWeight}</span></div>}
+        {data.molecularWeight && <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-2 py-1.5 col-span-2"><span className="text-slate-400">{ar ? 'الوزن الجزيئي' : 'Mol. weight'}: </span><span className="font-bold text-slate-700 dark:text-slate-200">{data.molecularWeight}</span></div>}
       </div>
       <div className="space-y-1.5 mt-1">
         {rows.map(r => {
@@ -456,6 +457,81 @@ const SectionIcon: React.FC<{ k: string; cls: string }> = ({ k, cls }) => {
   };
   return <>{icons[k] ?? icons['indications']}</>;
 };
+
+
+// ── Dosage View — parses "Disease—dose\nContraindications—..." ───────────────
+function DosageView({ text, language }: { text: string; language: Language }) {
+  const ar = language === 'ar';
+  if (!text) return null;
+
+  // Split on long dashes (—) or double-dash (--) that separate condition from dose
+  // Lines like: "Diabetes mellitus, type 2—begin 25 mg..."
+  // Or plain text blocks with no dashes
+  const EM_DASH = /\u2014|\u2013|—|–/;
+  const lines = text.split(/\n+/).filter(l => l.trim());
+
+  interface DosageEntry { condition: string; dose: string; isContra: boolean; }
+  const entries: DosageEntry[] = [];
+  let plainLines: string[] = [];
+
+  for (const line of lines) {
+    const dashIdx = line.search(EM_DASH);
+    if (dashIdx > 0 && dashIdx < 80) {
+      if (plainLines.length) {
+        // flush plain
+        entries.push({ condition: '', dose: plainLines.join(' '), isContra: false });
+        plainLines = [];
+      }
+      const condition = line.slice(0, dashIdx).trim();
+      const dose = line.slice(dashIdx + 1).trim();
+      const isContra = /contraindic/i.test(condition) || /caution/i.test(condition);
+      entries.push({ condition, dose, isContra });
+    } else {
+      plainLines.push(line.trim());
+    }
+  }
+  if (plainLines.length) entries.push({ condition: '', dose: plainLines.join(' '), isContra: false });
+
+  // If no structured entries, just render plain
+  if (entries.length === 1 && !entries[0].condition) {
+    return (
+      <p className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
+         style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {text}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {entries.map((e, i) => {
+        if (!e.condition) return (
+          <p key={i} className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
+             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {e.dose}
+          </p>
+        );
+        const bg = e.isContra
+          ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800'
+          : 'bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-800';
+        const condColor = e.isContra ? 'text-red-600 dark:text-red-400' : 'text-violet-600 dark:text-violet-400';
+        return (
+          <div key={i} className={`rounded-xl border overflow-hidden ${bg}`}>
+            <div className={`px-3 py-1.5 border-b ${e.isContra ? 'border-red-100 dark:border-red-800' : 'border-violet-100 dark:border-violet-800'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-wide ${condColor}`}>
+                {e.isContra ? (ar ? '⛔ ' : '⛔ ') : '💊 '}{e.condition}
+              </span>
+            </div>
+            <p className="px-3 py-2 text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
+               style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {e.dose}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, language, onClose }) => {
   const ar = language === 'ar';
@@ -550,7 +626,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
       </div>
 
       {/* Source */}
-      {(data || fullData) && (
+      {(data || fullData || pregData) && (
         <div className="px-4 py-1.5 flex-shrink-0 border-b border-slate-50 dark:border-slate-800/50">
           <span className="text-[10px] font-bold text-slate-400">
             {ar ? 'المصدر:' : 'Source:'} {fullData?.source || data?.source || 'Micromedex DRUGDEX'}
@@ -604,7 +680,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
           </div>
         )}
 
-        {!loading && !data && !fullData && (
+        {!loading && !data && !fullData && !pregData && (
           <div className="text-center py-20">
             <div className="text-4xl mb-3">📋</div>
             <p className="font-black text-slate-500 text-sm">
@@ -614,7 +690,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
           </div>
         )}
 
-        {!loading && (data || fullData) && SECTIONS.map(sec => {
+        {!loading && (data || fullData || pregData) && SECTIONS.map(sec => {
           const text = getTextByKey(sec.key);
           // Interactions and renalDosing always show (they fetch from R2 independently)
           const hasContent = (sec.key === 'interactions' || sec.key === 'renalDosing')
@@ -658,6 +734,8 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
                       <InteractionsView scientificName={scientificName} tradeName={tradeName} fallbackText={text} language={language} />
                     ) : sec.key === 'renalDosing' ? (
                       <RenalDosingView scientificName={scientificName} tradeName={tradeName} language={language} />
+                    ) : sec.key === 'dosage' ? (
+                      <DosageView text={text} language={language} />
                     ) : (
                       <p className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium"
                          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
@@ -671,7 +749,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
           );
         })}
 
-        {!loading && (data || fullData) && (
+        {!loading && (data || fullData || pregData) && (
           <p className="text-[9px] text-slate-400 text-center pt-2 leading-relaxed">
             {ar
               ? '⚠️ للمرجعية السريرية فقط. راجع دائماً المصادر الرسمية.'
