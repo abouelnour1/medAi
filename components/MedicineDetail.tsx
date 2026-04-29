@@ -84,21 +84,46 @@ const SafetyBadgeItem: React.FC<{ cfg: SafetyBadgeConfig; language: Language; on
   );
 };
 
+const PREG_CAT_STYLE: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  A:   { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-700', dot: 'bg-emerald-500' },
+  B:   { bg: 'bg-blue-50 dark:bg-blue-900/20',       text: 'text-blue-700 dark:text-blue-400',       border: 'border-blue-200 dark:border-blue-700',       dot: 'bg-blue-500' },
+  C:   { bg: 'bg-amber-50 dark:bg-amber-900/20',     text: 'text-amber-700 dark:text-amber-400',     border: 'border-amber-200 dark:border-amber-700',     dot: 'bg-amber-500' },
+  D:   { bg: 'bg-orange-50 dark:bg-orange-900/20',   text: 'text-orange-700 dark:text-orange-400',   border: 'border-orange-200 dark:border-orange-700',   dot: 'bg-orange-500' },
+  X:   { bg: 'bg-red-50 dark:bg-red-900/20',         text: 'text-red-700 dark:text-red-400',         border: 'border-red-200 dark:border-red-700',         dot: 'bg-red-600' },
+};
+const LACT_CAT_STYLE: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  S:   { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-700', dot: 'bg-emerald-500' },
+  NSC: { bg: 'bg-amber-50 dark:bg-amber-900/20',     text: 'text-amber-700 dark:text-amber-400',     border: 'border-amber-200 dark:border-amber-700',     dot: 'bg-amber-500' },
+  NS:  { bg: 'bg-red-50 dark:bg-red-900/20',         text: 'text-red-700 dark:text-red-400',         border: 'border-red-200 dark:border-red-700',         dot: 'bg-red-600' },
+};
+const PREG_LABELS_AR: Record<string, string> = { A: 'آمن', B: 'آمن', C: 'احتياط', D: 'تجنب', X: 'ممنوع' };
+const LACT_LABELS_AR: Record<string, string> = { S: 'آمن', NSC: 'احتياط', NS: 'تجنب' };
+const PREG_LABELS_EN: Record<string, string> = { A: 'Safe', B: 'Safe', C: 'Caution', D: 'Avoid', X: 'Contraind.' };
+const LACT_LABELS_EN: Record<string, string> = { S: 'Safe', NSC: 'Caution', NS: 'Avoid' };
+
 const SafetyBadgesCard: React.FC<{
   clinicalRef: import('../utils/dailyMedicines').ClinicalReference;
+  pregRef: import('../utils/dailyMedicines').PregReferenceData | null;
   language: Language;
   onOpenRef: () => void;
-}> = ({ clinicalRef, language, onOpenRef }) => {
+}> = ({ clinicalRef, pregRef, language, onOpenRef }) => {
   const ar = language === 'ar';
 
-  const badges: SafetyBadgeConfig[] = [
-    { key: 'pregnancy',    labelAr: 'حمل',        labelEn: 'Pregnancy',    icon: '🤰', value: clinicalRef.pregnancyStatus },
-    { key: 'lactation',    labelAr: 'رضاعة',      labelEn: 'Lactation',    icon: '🍼', value: clinicalRef.lactationStatus },
-    { key: 'diabetes',     labelAr: 'سكري',       labelEn: 'Diabetes',     icon: '🩸', value: clinicalRef.diabetesEffect },
-    { key: 'hypertension', labelAr: 'ضغط',        labelEn: 'Hypertension', icon: '💓', value: clinicalRef.hypertensionEffect },
-    { key: 'g6pd',         labelAr: 'أنيميا/فول', labelEn: 'G6PD/Anemia',  icon: '🧬', value: clinicalRef.g6pdRisk },
-  ];
-  if (!badges.some(b => b.value !== undefined)) return null; // only hide if clinicalRef is totally missing
+  const pregCat = (pregRef?.pregnancyCategory || '').replace(/[^A-Za-z]/g, '').toUpperCase() as string;
+  const lactCat = (pregRef?.lactationCategory || '').trim().toUpperCase() as string;
+
+  // Only show old-style badges if no pregRef data
+  const oldBadges: SafetyBadgeConfig[] = [
+    { key: 'diabetes',     labelAr: 'سكري',       labelEn: 'Diabetes',    icon: '🩸', value: clinicalRef.diabetesEffect },
+    { key: 'hypertension', labelAr: 'ضغط',        labelEn: 'Hypertension',icon: '💓', value: clinicalRef.hypertensionEffect },
+    { key: 'g6pd',         labelAr: 'أنيميا/فول', labelEn: 'G6PD/Anemia', icon: '🧬', value: clinicalRef.g6pdRisk },
+  ].filter(b => b.value !== undefined);
+
+  const hasPregCat = !!pregCat && !!PREG_CAT_STYLE[pregCat];
+  const hasLactCat = !!lactCat && !!LACT_CAT_STYLE[lactCat];
+  const hasAny = hasPregCat || hasLactCat || oldBadges.length > 0;
+  if (!hasAny) return null;
+
   return (
     <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-100/80 dark:border-dark-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60">
@@ -110,7 +135,55 @@ const SafetyBadgesCard: React.FC<{
         </button>
       </div>
       <div className="px-3 py-3 flex gap-2 overflow-x-auto no-scrollbar">
-        {badges.map(b => <SafetyBadgeItem key={b.key} cfg={b} language={language} onPress={onOpenRef} />)}
+        {/* Pregnancy Category Badge */}
+        {hasPregCat && (() => {
+          const s = PREG_CAT_STYLE[pregCat];
+          return (
+            <button onClick={onOpenRef}
+              className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl border active:scale-95 transition-all flex-shrink-0 min-w-[64px] ${s.bg} ${s.border}`}>
+              <svg className={`w-4 h-4 ${s.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a5 5 0 015 5c0 5-5 13-5 13S7 12 7 7a5 5 0 015-5z"/>
+                <circle cx="12" cy="7" r="2"/>
+              </svg>
+              <span className={`text-[8px] font-black uppercase tracking-wide text-center ${s.text}`}>
+                {ar ? 'حمل' : 'Pregnancy'}
+              </span>
+              <div className="flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>
+                <span className={`text-[10px] font-black ${s.text}`}>{pregCat}</span>
+              </div>
+              <span className={`text-[8px] font-bold ${s.text} opacity-80`}>
+                {ar ? PREG_LABELS_AR[pregCat] : PREG_LABELS_EN[pregCat]}
+              </span>
+            </button>
+          );
+        })()}
+
+        {/* Lactation Category Badge */}
+        {hasLactCat && (() => {
+          const s = LACT_CAT_STYLE[lactCat];
+          return (
+            <button onClick={onOpenRef}
+              className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl border active:scale-95 transition-all flex-shrink-0 min-w-[64px] ${s.bg} ${s.border}`}>
+              <svg className={`w-4 h-4 ${s.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+              </svg>
+              <span className={`text-[8px] font-black uppercase tracking-wide text-center ${s.text}`}>
+                {ar ? 'رضاعة' : 'Lactation'}
+              </span>
+              <div className="flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>
+                <span className={`text-[10px] font-black ${s.text}`}>{lactCat}</span>
+              </div>
+              <span className={`text-[8px] font-bold ${s.text} opacity-80`}>
+                {ar ? LACT_LABELS_AR[lactCat] : LACT_LABELS_EN[lactCat]}
+              </span>
+            </button>
+          );
+        })()}
+
+        {/* Old-style badges (diabetes, hypertension, g6pd) — only if data exists */}
+        {oldBadges.map(b => <SafetyBadgeItem key={b.key} cfg={b} language={language} onPress={onOpenRef} />)}
       </div>
     </div>
   );
@@ -615,6 +688,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
         return (
           <SafetyBadgesCard
             clinicalRef={mergedRef}
+            pregRef={pregRef}
             language={language}
             onOpenRef={() => setShowClinicalRef(true)}
           />
