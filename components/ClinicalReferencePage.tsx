@@ -5,6 +5,7 @@ import { ClinicalReference, getClinicalReference } from '../utils/dailyMedicines
 const R2_CLINICAL_FULL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/clinical_reference_full.json';
 const R2_RENAL_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/renal_drugs.json';
 const R2_LOOKUP_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/drug_lookup.json';
+const R2_PREGNANT_URL = 'https://pub-7c54b481a078437e9de193eb2048a2c1.r2.dev/pregnant_drugs.json';
 
 interface StructuredInteraction {
   interactsWith: string;
@@ -45,6 +46,7 @@ const SEVERITY_STYLE: Record<string, { card: string; badge: string; btn: string 
 
 let _clinCache: Record<string, any> | null = null;
 let _renalCache: Record<string, any> | null = null;
+let _pregCache: Record<string, any> | null = null;
 let _lookupCache: Record<string, { c?: string; r?: string }> | null = null;
 
 async function getLookup(): Promise<Record<string, { c?: string; r?: string }>> {
@@ -89,6 +91,17 @@ async function fetchRenalData(scientificName: string, tradeName?: string): Promi
   if (renalKey && _renalCache![renalKey]) return _renalCache![renalKey];
   // Fallback to fuzzy
   return findInMap(_renalCache!, scientificName, tradeName ?? '') ?? null;
+}
+
+async function fetchPregData(scientificName: string, tradeName?: string): Promise<any | null> {
+  if (!_pregCache) {
+    try {
+      const res = await fetch(R2_PREGNANT_URL);
+      if (res.ok) _pregCache = await res.json();
+      else _pregCache = {};
+    } catch { _pregCache = {}; }
+  }
+  return findInMap(_pregCache!, scientificName, tradeName ?? '') ?? null;
 }
 
 // ── Drug name normalization for matching ────────────────────────────────────
@@ -448,6 +461,7 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
   const ar = language === 'ar';
   const [data, setData] = useState<ClinicalReference | null>(null);
   const [fullData, setFullData] = useState<any | null>(null);
+  const [pregData, setPregData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -466,6 +480,10 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
         else finish();
       })
       .catch(finish);
+
+    fetchPregData(scientificName, tradeName)
+      .then(d => { if (d) setPregData(d); })
+      .catch(() => {});
   }, [scientificName, tradeName]);
 
   const toggle = (key: string) => {
@@ -482,6 +500,16 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
     if (fullData) {
       const v = (fullData as any)[sectionKey];
       if (v && typeof v === 'string' && v.trim()) return v.trim();
+    }
+    // Fallback to pregnant data (dosage, maternal, fetal, breastfeeding, summaryNotes, drugInteractions)
+    if (pregData) {
+      const v = (pregData as any)[sectionKey];
+      if (v && typeof v === 'string' && v.trim()) return v.trim();
+      // also check drugInteractions field from preg data
+      if (sectionKey === 'interactions') {
+        const vi = (pregData as any)['drugInteractions'];
+        if (vi && typeof vi === 'string' && vi.trim()) return vi.trim();
+      }
     }
     // Fallback to old data
     if (data) {
@@ -529,6 +557,42 @@ const ClinicalReferencePage: React.FC<Props> = ({ scientificName, tradeName, lan
           </span>
         </div>
       )}
+
+      {/* Pregnancy & Lactation Category Badges */}
+      {pregData && (pregData.pregnancyCategory || pregData.lactationCategory) && (() => {
+        const PREG_COLORS: Record<string, string> = {
+          A: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+          B: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
+          C: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
+          D: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
+          X: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
+        };
+        const LACT_COLORS: Record<string, string> = {
+          S: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+          NS: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300',
+          NSC: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
+        };
+        const pregCat = (pregData.pregnancyCategory || '').replace(/[^A-Z]/gi, '').toUpperCase();
+        const lactCat = (pregData.lactationCategory || '').trim().toUpperCase();
+        const pregColor = PREG_COLORS[pregCat] || 'bg-slate-100 text-slate-600 border-slate-300';
+        const lactColor = LACT_COLORS[lactCat] || 'bg-slate-100 text-slate-600 border-slate-300';
+        return (
+          <div className="px-4 py-2 flex-shrink-0 border-b border-slate-50 dark:border-slate-800/50 flex items-center gap-2 flex-wrap">
+            {pregCat && (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] font-black ${pregColor}`}>
+                <span>🤰</span>
+                <span>{ar ? 'حمل' : 'Pregnancy'}: {pregCat}</span>
+              </div>
+            )}
+            {lactCat && (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] font-black ${lactColor}`}>
+                <span>🍼</span>
+                <span>{ar ? 'رضاعة' : 'Lactation'}: {lactCat}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 overscroll-none"
