@@ -243,25 +243,28 @@ const App: React.FC = () => {
   const coveredAtcSet = useMemo(() => {
     const s = new Set<string>();
     insuranceData.forEach(p => {
-      if (!p.atcCode) return;
-      const atc = p.atcCode.trim();
-      s.add(atc);
-      // أضف أول 4 حروف كـ prefix لمطابقة أوسع (زي InsuranceSimpleSearch)
-      if (atc.length >= 4) s.add(atc.substring(0, 4));
+      if (p.atcCode) s.add(p.atcCode.trim().toUpperCase());
     });
     return s;
   }, [insuranceData]);
 
   const coveredSciNorms = useMemo(() => {
+    const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule']);
+    const normSci = (s: string) => s.toLowerCase()
+      .replace(/[,\/+&]/g, ' ')
+      .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|iu|kg|%)\b/gi, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/).filter(t => t.length > 1 && !JUNK.has(t)).join(' ').trim();
     const s = new Set<string>();
     insuranceData.forEach(p => {
-      if (!p.scientificName) return;
-      const norm = p.scientificName.toLowerCase()
-        .replace(/\d+\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel)\b/g, ' ')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .split(/\s+/).filter(t => t.length > 1 && !['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule'].includes(t))
-        .join(' ').trim();
-      if (norm) s.add(norm);
+      if (p.scientificName) {
+        const norm = normSci(p.scientificName);
+        if (norm) s.add(norm);
+        // also add first ingredient
+        const first = normSci(p.scientificName.split(/[,/+&]/)[0]);
+        if (first && first.length >= 4) s.add(first);
+      }
+      if (p.descriptionCode) s.add('desc:' + p.descriptionCode.trim());
     });
     return s;
   }, [insuranceData]);

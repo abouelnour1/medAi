@@ -128,12 +128,37 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           willChange: 'transform, height',
         }}
       >
-        {/* Handle — ONLY drag zone */}
+        {/* Handle — drag zone (touch + mouse) */}
         <div
           ref={handleRef}
           className="flex-shrink-0 flex flex-col items-center pt-2 pb-0 cursor-grab active:cursor-grabbing select-none"
           style={{ touchAction: 'none' }}
           onMouseDown={onHandleMouseDown}
+          onTouchStart={e => {
+            const sy = e.touches[0].clientY;
+            const sx = e.touches[0].clientX;
+            const sh = height;
+            if (sheetRef.current) sheetRef.current.style.transition = 'none';
+            const onMove = (ev: TouchEvent) => {
+              ev.preventDefault();
+              const dy = ev.touches[0].clientY - sy;
+              const dx = Math.abs(ev.touches[0].clientX - sx);
+              if (dx > Math.abs(dy) * 1.5) return;
+              const newH = Math.min(maxH, Math.max(80, sh - dy * 0.8));
+              setHeight(newH);
+            };
+            const onEnd = (ev: TouchEvent) => {
+              document.removeEventListener('touchmove', onMove);
+              document.removeEventListener('touchend', onEnd);
+              if (sheetRef.current) sheetRef.current.style.transition = '';
+              const dy = ev.changedTouches[0].clientY - sy;
+              const cur = sh - dy;
+              if (cur < minH * 0.75) onClose();
+              else setHeight(dy > 0 ? minH : maxH);
+            };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd, { passive: true });
+          }}
         >
           <div className="w-10 h-1 rounded-full" style={{ background: 'linear-gradient(90deg,#14b8a6,#0ea5e9)' }} />
           <div className="w-full flex justify-between items-center px-4 pt-1.5">

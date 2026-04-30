@@ -7,6 +7,7 @@ import DrugPolicyCard, { DrugGroup } from './DrugPolicyCard';
 const JUNK = new Set(['mg','ml','g','mcg','iu','kg','tab','caps','solution','suspension','oral','vial','ampoule','tablet','capsule']);
 
 function normStr(name: string): string {
+  // Fast path for short strings
   if (!name) return '';
   return name.toLowerCase()
     .replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|iu|kg|tablet|capsule|cap|tab|softgel|%)\b/g, ' ')
@@ -26,6 +27,7 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
 
   if (mode === 'tradeName' || mode === 'scientificName') {
     const field = mode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
+    if(t.length < 2) return [];
     const sw = meds.filter(m => String(m[field]||'').toLowerCase().startsWith(t)).slice(0,MAX);
     let matched: Medicine[] = sw;
     if (matched.length < MAX) {
@@ -47,9 +49,17 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
       const sn = normStr(sci);
       const policies = ins.filter(p => {
         const pn = normStr(p.scientificName||'');
-        const atc = ms[0]?.AtcCode1;
-        if (atc && p.atcCode && atc.substring(0,4) === p.atcCode.substring(0,4)) return true;
-        return sn.length > 3 && pn === sn;
+        const pFirst = normStr((p.scientificName||'').split(/[,\/+&]/)[0]);
+        const atc = (ms[0]?.AtcCode1||'').trim().toUpperCase();
+        const pAtc = (p.atcCode||'').trim().toUpperCase();
+        const medDesc = String((ms[0] as any)?.['Description Code']||'').trim();
+        // Priority 1: exact description code
+        if (medDesc && p.descriptionCode && p.descriptionCode.trim() === medDesc) return true;
+        // Priority 2: exact full ATC match
+        if (atc && pAtc && atc === pAtc) return true;
+        // Priority 3: normalized scientific name (full or first ingredient)
+        const snFirst = normStr(sn.split(/\s/)[0]);
+        return sn.length > 3 && (pn === sn || (snFirst.length >= 4 && pFirst === snFirst));
       });
       if (policies.length > 0) {
         results.push({ type:'drug-grouped', scientificName:sci, tradeNames:ms.map(m=>m['Trade Name']), policies, availableMedicines:ms });
@@ -124,7 +134,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [results, classFilter]);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 80);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, input.length < 2 ? 0 : 80);
     return () => clearTimeout(h);
   }, [input]);
 

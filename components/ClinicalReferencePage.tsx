@@ -124,6 +124,59 @@ function RenalSheet({scientificName,tradeName,language,onClose}:{scientificName:
   );
 }
 
+
+// ── Renal Content (inline accordion) ─────────────────────────────────────────
+function RenalContent({scientificName,tradeName,language}:{scientificName:string;tradeName:string;language:Language}){
+  const ar=language==='ar';
+  const[data,setData]=useState<any|null>(null);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{fetchRenalData(scientificName,tradeName).then(d=>{setData(d);setLoading(false);});},[]);
+  const gfrRows=[
+    {label:'Normal Dose',labelAr:'الجرعة الطبيعية',field:'normalDose',color:'text-teal-700 dark:text-teal-400',bg:'bg-teal-50 dark:bg-teal-900/20',border:'border-teal-100 dark:border-teal-800'},
+    {label:'GFR > 50',labelAr:'GFR > 50',field:'gfr_gt50',color:'text-emerald-700 dark:text-emerald-400',bg:'bg-emerald-50 dark:bg-emerald-900/20',border:'border-emerald-100 dark:border-emerald-800'},
+    {label:'GFR 10–50',labelAr:'GFR 10–50',field:'gfr_10_50',color:'text-amber-700 dark:text-amber-400',bg:'bg-amber-50 dark:bg-amber-900/20',border:'border-amber-100 dark:border-amber-800'},
+    {label:'GFR < 10',labelAr:'GFR < 10',field:'gfr_lt10',color:'text-orange-700 dark:text-orange-400',bg:'bg-orange-50 dark:bg-orange-900/20',border:'border-orange-100 dark:border-orange-800'},
+    {label:'HD',labelAr:'غسيل كلى (HD)',field:'hd',color:'text-red-700 dark:text-red-400',bg:'bg-red-50 dark:bg-red-900/20',border:'border-red-100 dark:border-red-800'},
+    {label:'APD/CAPD',labelAr:'APD/CAPD',field:'apd_capd',color:'text-purple-700 dark:text-purple-400',bg:'bg-purple-50 dark:bg-purple-900/20',border:'border-purple-100 dark:border-purple-800'},
+    {label:'HDF',labelAr:'HDF',field:'hdf',color:'text-purple-700 dark:text-purple-400',bg:'bg-purple-50 dark:bg-purple-900/20',border:'border-purple-100 dark:border-purple-800'},
+    {label:'CAV/VVHD',labelAr:'CAV/VVHD',field:'cav_vvhd',color:'text-slate-600 dark:text-slate-400',bg:'bg-slate-50 dark:bg-slate-800',border:'border-slate-100 dark:border-slate-700'},
+  ];
+  if(loading)return<div className="flex items-center gap-2 py-3"><div className="w-4 h-4 border-2 border-cyan-200 border-t-cyan-500 rounded-full animate-spin"/><span className="text-[13px] text-slate-400">{ar?'جارٍ التحميل...':'Loading...'}</span></div>;
+  if(!data)return<p className="text-[13px] text-slate-400 py-2">{ar?'لا توجد بيانات جرعات الكلى':'No renal dosing data'}</p>;
+  return(
+    <div className="space-y-3">
+      <p className="text-[10px] text-slate-400">{ar?'المصدر: Ashley Publications':'Source: Ashley Publications'}</p>
+      {data.clinicalUse&&<p className="text-[13px] text-slate-500 italic leading-relaxed">{data.clinicalUse}</p>}
+      {(data.proteinBinding||data.renalExcretion||data.halfLife||data.molecularWeight||data.vd||data.metabolism)&&(
+        <div className="grid grid-cols-2 gap-1.5">
+          {[{f:'proteinBinding',l:'Protein Binding',la:'ارتباط البروتين',u:'%'},{f:'renalExcretion',l:'Renal Excretion',la:'إطراح كلوي',u:'%'},{f:'halfLife',l:'Half-life',la:'عمر النصف',u:''},{f:'molecularWeight',l:'Mol. Weight',la:'الوزن الجزيئي',u:''},{f:'vd',l:'Vd',la:'حجم التوزيع',u:''},{f:'metabolism',l:'Metabolism',la:'الاستقلاب',u:''}].map(r=>!data[r.f]?null:(
+            <div key={r.f} className="bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
+              <p className="text-[9px] font-black uppercase text-slate-400">{ar?r.la:r.l}</p>
+              <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200 mt-0.5">{data[r.f]}{r.u&&!String(data[r.f]).includes(r.u.trim())?r.u:''}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="space-y-1.5">
+        {gfrRows.map(r=>!data[r.field]?null:(
+          <div key={r.field} className={`rounded-xl border overflow-hidden ${r.bg} ${r.border}`}>
+            <div className="flex items-start gap-3 px-3 py-2.5">
+              <span className={`text-[10px] font-black flex-shrink-0 w-[72px] pt-0.5 ${r.color}`}>{ar?r.labelAr:r.label}</span>
+              <span className="text-[13px] text-slate-700 dark:text-slate-200 leading-snug font-medium" style={{wordBreak:'break-word'}}>{String(data[r.field])}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {[{f:'administration',l:'Administration',la:'طريقة الإعطاء'},{f:'drugInteractions',l:'Interactions',la:'التفاعلات'},{f:'otherInfo',l:'Other Info',la:'معلومات إضافية'}].map(r=>!data[r.f]?null:(
+        <div key={r.f} className="rounded-xl border border-slate-100 dark:border-slate-800">
+          <p className="px-3 pt-2 text-[10px] font-black uppercase text-slate-400">{ar?r.la:r.l}</p>
+          <p className="px-3 pb-2.5 pt-1 text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed" style={{whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{String(data[r.f])}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Preg/Lact Bottom Sheet ────────────────────────────────────────────────────
 function PregLactSheet({pregData,mode,language,onClose}:{pregData:PregReferenceData;mode:'preg'|'lact';language:Language;onClose:()=>void}){
   const ar=language==='ar';
@@ -291,6 +344,7 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
   const[pregData,setPregData]=useState<PregReferenceData|null>(null);
   const[loading,setLoading]=useState(true);
   const[sheet,setSheet]=useState<null|'preg'|'lact'|'renal'>(null);
+  const[expanded,setExpanded]=useState<Set<string>>(new Set());
 
   // Multi-ingredient supplements
   const allIngredients=medicine?String(medicine['Scientific Name']||'').split(',').map(s=>s.trim()).filter(Boolean):[];
@@ -311,17 +365,35 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
 
   const indications=get('indications'); const mechanism=get('mechanism'); const dosage=get('dosage');
   const interactions=get('interactions');
+  const maternalConsiderations=get('maternalConsiderations');
+  const fetalConsiderations=get('fetalConsiderations');
+  const breastfeedingSafety=get('breastfeedingSafety');
+  const summaryNotes=get('summaryNotes');
   const hasMain=!loading&&(data||fullData||pregData);
 
-  // Regulations from medicine prop
-  const regs=medicine?[
-    {l:'Trade Name',la:'الاسم التجاري',v:String(medicine['Trade Name']||'')},
-    {l:'Scientific Name',la:'الاسم العلمي',v:String(medicine['Scientific Name']||'')},
-    {l:'Registration No.',la:'رقم التسجيل',v:String(medicine['Registration Number']||medicine['RegisterNumber']||'')},
-    {l:'Manufacturer',la:'الشركة المصنعة',v:String(medicine['Manufacturer']||medicine['Company Name']||'')},
-    {l:'ATC Code',la:'كود ATC',v:String(medicine['ATC Code']||'')},
-    {l:'Country of Origin',la:'بلد المنشأ',v:String(medicine['Country of Manufacturing']||'')},
-  ].filter(r=>r.v&&r.v!=='undefined'&&r.v.trim()):[];
+  const SECTIONS_LIST=[
+    {key:'indications',labelEn:'Indications',labelAr:'دواعي الاستخدام',color:'text-teal-700 dark:text-teal-400',bg:'bg-teal-50 dark:bg-teal-900/20',iconKey:'indications',text:indications},
+    {key:'mechanism',labelEn:'Mechanism',labelAr:'آلية العمل',color:'text-blue-700 dark:text-blue-400',bg:'bg-blue-50 dark:bg-blue-900/20',iconKey:'mechanism',text:mechanism},
+    {key:'dosage',labelEn:'Dosage',labelAr:'الجرعة',color:'text-violet-700 dark:text-violet-400',bg:'bg-violet-50 dark:bg-violet-900/20',iconKey:'dosage',text:dosage},
+    {key:'maternalConsiderations',labelEn:'Maternal Considerations',labelAr:'اعتبارات الأم الحامل',color:'text-rose-700 dark:text-rose-400',bg:'bg-rose-50 dark:bg-rose-900/20',iconKey:'maternal',text:maternalConsiderations},
+    {key:'fetalConsiderations',labelEn:'Fetal Considerations',labelAr:'اعتبارات الجنين',color:'text-pink-700 dark:text-pink-400',bg:'bg-pink-50 dark:bg-pink-900/20',iconKey:'fetal',text:fetalConsiderations},
+    {key:'breastfeedingSafety',labelEn:'Breastfeeding Safety',labelAr:'الرضاعة الطبيعية',color:'text-orange-700 dark:text-orange-400',bg:'bg-orange-50 dark:bg-orange-900/20',iconKey:'lactation',text:breastfeedingSafety},
+    {key:'summaryNotes',labelEn:'Summary Notes',labelAr:'ملاحظات موجزة',color:'text-slate-600 dark:text-slate-400',bg:'bg-slate-100 dark:bg-slate-800',iconKey:'summary',text:summaryNotes},
+    {key:'interactions',labelEn:'Drug Interactions',labelAr:'التفاعلات الدوائية',color:'text-amber-700 dark:text-amber-400',bg:'bg-amber-50 dark:bg-amber-900/20',iconKey:'interactions',text:interactions},
+    {key:'renalDosing',labelEn:'Renal Dosing',labelAr:'جرعات قصور الكلى',color:'text-cyan-700 dark:text-cyan-400',bg:'bg-cyan-50 dark:bg-cyan-900/20',iconKey:'renal',text:''},
+  ];
+
+  const sectionIcons:Record<string,React.ReactNode>={
+    indications:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>,
+    mechanism:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>,
+    dosage:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>,
+    maternal:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2a5 5 0 015 5c0 5-5 13-5 13S7 12 7 7a5 5 0 015-5z"/><circle cx="12" cy="7" r="2"/></svg>,
+    fetal:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>,
+    lactation:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+    summary:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    interactions:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>,
+    renal:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>,
+  };
 
   return(
     <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-dark-bg flex flex-col" data-overlay="true" style={{direction:ar?'rtl':'ltr'}}>
@@ -337,35 +409,31 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
         <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 px-2.5 py-1 rounded-xl flex-shrink-0">{ar?'المرجع السريري':'Clinical Ref'}</span>
       </div>
 
-      {/* Category badges + Renal badge */}
-      {(pregData||(hasMain))&&(pregCat||lactCat)&&(
+      {/* Category badges */}
+      {pregData&&(pregCat||lactCat)&&(
         <div className="flex-shrink-0 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 px-4 py-2.5 flex items-center gap-2 flex-wrap">
           {pregCat&&pi&&(
-            <button onClick={()=>setSheet('preg')} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${pi.bg} ${pi.border}`}>
+            <button onClick={()=>setSheet('preg')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${pi.bg} ${pi.border}`}>
               <span className={`text-[12px] font-black ${pi.color}`}>🤰 {ar?'حمل':'Preg'}: <span className="text-[15px]">{pregCat}</span></span>
               <svg className={`w-3 h-3 ${pi.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
           )}
           {lactCat&&li&&(
-            <button onClick={()=>setSheet('lact')} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${li.bg} ${li.border}`}>
+            <button onClick={()=>setSheet('lact')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${li.bg} ${li.border}`}>
               <span className={`text-[12px] font-black ${li.color}`}>🍼 {ar?'رضاعة':'Lact'}: <span className="text-[15px]">{lactCat}</span></span>
               <svg className={`w-3 h-3 ${li.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
           )}
-          <button onClick={()=>setSheet('renal')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-200 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-900/20 active:scale-95 transition-all">
-            <svg className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>
-            <span className="text-[12px] font-black text-cyan-600 dark:text-cyan-400">🫘 {ar?'الكلى':'Renal'}</span>
-          </button>
         </div>
       )}
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{paddingBottom:'calc(env(safe-area-inset-bottom)+24px)'}}>
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2" style={{paddingBottom:'calc(env(safe-area-inset-bottom)+24px)'}}>
 
-        {loading&&<div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-[3px] border-teal-200 border-t-teal-500 rounded-full animate-spin"/></div>}
+        {loading&&<div className="flex items-center justify-center py-16"><div className="w-8 h-8 border-[3px] border-teal-200 border-t-teal-500 rounded-full animate-spin"/></div>}
 
         {!loading&&!data&&!fullData&&!pregData&&(
-          <div className="text-center py-20">
+          <div className="text-center py-16">
             <div className="text-4xl mb-3">📋</div>
             <p className="font-black text-slate-500 text-[14px]">{ar?'لا توجد بيانات سريرية':'No clinical data available'}</p>
           </div>
@@ -374,69 +442,43 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
         {/* Multi-ingredient supplement view */}
         {!loading&&isMulti&&(
           <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{ar?'البيانات السريرية لكل مكوّن':'Clinical Data Per Ingredient'}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1 pb-1">{ar?'البيانات السريرية لكل مكوّن':'Clinical Data Per Ingredient'}</p>
             {allIngredients.map(ing=><IngredientClinical key={ing} name={ing} language={language}/>)}
           </div>
         )}
 
-        {/* Single ingredient main content */}
-        {hasMain&&!isMulti&&(<>
-          {/* Indications */}
-          {indications&&(
-            <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 p-4" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center"><svg className="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg></div>
-                <span className="font-black text-[13px] text-teal-700 dark:text-teal-400 uppercase tracking-wide">{ar?'دواعي الاستخدام':'Indications'}</span>
+        {/* Single ingredient: accordion list */}
+        {hasMain&&!isMulti&&SECTIONS_LIST.map(sec=>{
+          const hasContent=sec.key==='interactions'||sec.key==='renalDosing'||(sec.text&&sec.text.trim()&&sec.text!=='nan'&&sec.text!=='—');
+          if(!hasContent)return null;
+          const isOpen=expanded.has(sec.key);
+          return(
+            <div key={sec.key} className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+              <button onClick={()=>setExpanded(p=>{const n=new Set(p);n.has(sec.key)?n.delete(sec.key):n.add(sec.key);return n;})} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
+                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${sec.bg}`}>
+                  <span className={sec.color}>{sectionIcons[sec.iconKey]}</span>
+                </div>
+                <span className="flex-1 font-black text-[14px] text-slate-700 dark:text-slate-200">{ar?sec.labelAr:sec.labelEn}</span>
+                <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${isOpen?'rotate-180':''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div style={{display:'grid',gridTemplateRows:isOpen?'1fr':'0fr',transition:'grid-template-rows 0.15s ease-out',contain:'layout'}}>
+                <div style={{overflow:'hidden'}}>
+                  <div className="px-4 pb-4 pt-1 border-t border-slate-50 dark:border-slate-800">
+                    {sec.key==='interactions'?<InteractionsView scientificName={scientificName} tradeName={tradeName} fallbackText={interactions} language={language}/>
+                    :sec.key==='renalDosing'?<RenalContent scientificName={scientificName} tradeName={tradeName} language={language}/>
+                    :sec.key==='dosage'?<DosageView text={sec.text}/>
+                    :<TextBlock text={sec.text}/>}
+                  </div>
+                </div>
               </div>
-              <TextBlock text={indications}/>
             </div>
-          )}
+          );
+        })}
 
-          {/* Mechanism */}
-          {mechanism&&(
-            <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 p-4" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg></div>
-                <span className="font-black text-[13px] text-blue-700 dark:text-blue-400 uppercase tracking-wide">{ar?'آلية العمل':'Mechanism'}</span>
-              </div>
-              <TextBlock text={mechanism}/>
-            </div>
-          )}
-
-          {/* Dosage */}
-          {dosage&&(
-            <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 p-4" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
-              <div className="flex items-center gap-2 mb-2.5">
-                <div className="w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center"><svg className="w-4 h-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></div>
-                <span className="font-black text-[13px] text-violet-700 dark:text-violet-400 uppercase tracking-wide">{ar?'الجرعة':'Dosage'}</span>
-              </div>
-              <DosageView text={dosage}/>
-            </div>
-          )}
-
-          {/* Interactions accordion */}
-          <SectionCard labelEn="Drug Interactions" labelAr="التفاعلات الدوائية" bg="bg-amber-50 dark:bg-amber-900/25" color="text-amber-600" iconKey="interactions" language={language}>
-            <InteractionsView scientificName={scientificName} tradeName={tradeName} fallbackText={interactions} language={language}/>
-          </SectionCard>
-
-          {/* Regulations accordion */}
-          {regs.length>0&&(
-            <SectionCard labelEn="Regulations" labelAr="التسجيل والتراخيص" bg="bg-slate-100 dark:bg-slate-800" color="text-slate-500" iconKey="regulations" language={language}>
-              <div className="space-y-2 pt-1">
-                {regs.map(r=><div key={r.l} className="flex items-start gap-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase w-[90px] flex-shrink-0 pt-0.5">{ar?r.la:r.l}</span>
-                  <span className="text-[13px] text-slate-700 dark:text-slate-200 font-medium leading-snug" style={{wordBreak:'break-word'}}>{r.v}</span>
-                </div>)}
-              </div>
-            </SectionCard>
-          )}
-        </>)}
-
-        {hasMain&&<p className="text-[10px] text-slate-400 text-center pt-1">{ar?'⚠️ للمرجعية السريرية فقط. راجع دائماً المصادر الرسمية.':'⚠️ For clinical reference only. Always consult official sources.'}</p>}
+        {hasMain&&!loading&&<p className="text-[10px] text-slate-400 text-center pt-1 pb-2">{ar?'⚠️ للمرجعية السريرية فقط. راجع دائماً المصادر الرسمية.':'⚠️ For clinical reference only. Always consult official sources.'}</p>}
       </div>
 
       {/* Bottom sheets */}
-      {sheet==='renal'&&<RenalSheet scientificName={scientificName} tradeName={tradeName} language={language} onClose={()=>setSheet(null)}/>}
       {sheet==='preg'&&pregData&&<PregLactSheet pregData={pregData} mode="preg" language={language} onClose={()=>setSheet(null)}/>}
       {sheet==='lact'&&pregData&&<PregLactSheet pregData={pregData} mode="lact" language={language} onClose={()=>setSheet(null)}/>}
     </div>
