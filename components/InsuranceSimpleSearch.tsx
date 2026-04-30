@@ -124,7 +124,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [results, classFilter]);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 150);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 80);
     return () => clearTimeout(h);
   }, [input]);
 

@@ -844,6 +844,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           tradeName={String(medicine['Trade Name'] || '')}
           language={language}
           onClose={() => setShowClinicalRef(false)}
+          medicine={medicine}
         />
       )}
 
