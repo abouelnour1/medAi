@@ -414,13 +414,13 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
         <div className="flex-shrink-0 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 px-4 py-2.5 flex items-center gap-2 flex-wrap">
           {pregCat&&pi&&(
             <button onClick={()=>setSheet('preg')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${pi.bg} ${pi.border}`}>
-              <span className={`text-[12px] font-black ${pi.color}`}>🤰 {ar?'حمل':'Preg'}: <span className="text-[15px]">{pregCat}</span></span>
+              <span className={`text-[12px] font-black ${pi.color}`}>{ar?'حمل':'Preg'}: <span className="text-[15px]">{pregCat}</span></span>
               <svg className={`w-3 h-3 ${pi.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
           )}
           {lactCat&&li&&(
             <button onClick={()=>setSheet('lact')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${li.bg} ${li.border}`}>
-              <span className={`text-[12px] font-black ${li.color}`}>🍼 {ar?'رضاعة':'Lact'}: <span className="text-[15px]">{lactCat}</span></span>
+              <span className={`text-[12px] font-black ${li.color}`}>{ar?'رضاعة':'Lact'}: <span className="text-[15px]">{lactCat}</span></span>
               <svg className={`w-3 h-3 ${li.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
           )}
@@ -430,7 +430,13 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2" style={{paddingBottom:'calc(env(safe-area-inset-bottom)+24px)'}}>
 
-        {loading&&<div className="flex items-center justify-center py-16"><div className="w-8 h-8 border-[3px] border-teal-200 border-t-teal-500 rounded-full animate-spin"/></div>}
+        {loading&&(
+          <div className="space-y-2">
+            {[1,2,3,4].map(i=>(
+              <div key={i} className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 h-14 animate-pulse" style={{opacity:1-i*0.15}}/>
+            ))}
+          </div>
+        )}
 
         {!loading&&!data&&!fullData&&!pregData&&(
           <div className="text-center py-16">
@@ -449,7 +455,8 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
 
         {/* Single ingredient: accordion list */}
         {hasMain&&!isMulti&&SECTIONS_LIST.map(sec=>{
-          const hasContent=sec.key==='interactions'||sec.key==='renalDosing'||(sec.text&&sec.text.trim()&&sec.text!=='nan'&&sec.text!=='—');
+          const alwaysShow = !loading && (sec.key==='interactions'||sec.key==='renalDosing');
+          const hasContent=alwaysShow||(sec.text&&sec.text.trim()&&sec.text!=='nan'&&sec.text!=='—');
           if(!hasContent)return null;
           const isOpen=expanded.has(sec.key);
           return(

@@ -33,6 +33,12 @@ const IndicationSearch: React.FC<Props> = ({
   const [selectedSciName, setSelectedSciName] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
 
+  // Scroll outer container to top when drilling into indication/drug
+  React.useEffect(() => {
+    const el = document.getElementById('main-scroll-container') as HTMLElement | null;
+    if (el) el.scrollTop = 0;
+  }, [selectedIndication, selectedSciName]);
+
   const matchedIndications = useMemo(() => {
     if (!query.trim() || Object.keys(indications).length === 0) return [];
     const q = query.toLowerCase();

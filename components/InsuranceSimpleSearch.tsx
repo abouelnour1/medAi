@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { TFunction, Language, InsuranceDrug, Medicine, SelectedInsuranceData, ScientificGroupData, InsuranceSearchMode } from '../types';
 import IndicationCard, { IndicationGroup } from './IndicationCard';
 import NotCoveredCard from './NotCoveredCard';
@@ -107,6 +107,7 @@ interface Props {
 }
 
 const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
+  const deferredSearch = useDeferredValue(searchTerm);
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);

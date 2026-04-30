@@ -2,112 +2,87 @@ import React from 'react';
 import { SelectedInsuranceData, TFunction, InsuranceDrug } from '../types';
 import PillIcon from './icons/PillIcon';
 
-const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
-  const displayValue = value === null || value === undefined || String(value).trim() === '' ? '-' : value;
+const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction }> = ({ data, t }) => {
+  const { indication, scientificGroup } = data;
+
+  if (!scientificGroup || scientificGroup.policies.length === 0) {
+    return <div className="p-4 text-center"><p className="text-slate-400">{t('noInsuranceInfo')}</p></div>;
+  }
+
+  const policies = scientificGroup.policies;
+  const rep = policies[0];
+
+  const uniq = (key: keyof InsuranceDrug): string =>
+    [...new Set(policies.map(p => p[key]).filter((v): v is string => typeof v === 'string' && v.trim() !== ''))].join(' | ') || '';
+
+  const rows: { label: string; value: string }[] = [
+    { label: t('drugClass'),              value: rep.drugClass || '' },
+    { label: t('drugSubclass'),           value: uniq('drugSubclass') },
+    { label: t('icd10Code'),              value: uniq('icd10Code') },
+    { label: t('atcCode'),                value: rep.atcCode || '' },
+    { label: t('administrationRoute'),    value: uniq('administrationRoute') },
+    { label: t('substitutable'),          value: uniq('substitutable') },
+    { label: t('prescribingEdits'),       value: uniq('prescribingEdits') },
+    { label: t('mddAdults'),              value: uniq('mddAdults') },
+    { label: t('mddPediatrics'),          value: uniq('mddPediatrics') },
+    { label: t('patientType'),            value: uniq('patientType') },
+    { label: t('sfdaRegistrationStatus'), value: uniq('sfdaRegistrationStatus') },
+    { label: t('notes'),                  value: uniq('notes') },
+  ].filter(r => r.value && r.value !== '-');
+
+  const meds = scientificGroup.availableMedicines || [];
+
   return (
-    <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-      <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-text-secondary">{label}</dt>
-      <dd className="mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0">{displayValue}</dd>
+    <div className="space-y-4 animate-fade-in">
+      {/* Header */}
+      <div className="px-1">
+        <p className="text-[12px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-wide">{indication}</p>
+        <h2 className="text-[18px] font-black text-slate-800 dark:text-white mt-0.5">{scientificGroup.scientificName}</h2>
+      </div>
+
+      {/* Coverage details */}
+      {rows.length > 0 && (
+        <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('insuranceCoverageDetails')}</p>
+          </div>
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            {rows.map(r => (
+              <div key={r.label} className="flex items-start gap-3 px-4 py-2.5">
+                <span className="text-[11px] text-slate-400 font-bold flex-shrink-0 w-[120px] pt-0.5">{r.label}</span>
+                <span className="text-[13px] text-slate-700 dark:text-slate-200 font-medium leading-snug" style={{wordBreak:'break-word'}}>{r.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Available medicines */}
+      {meds.length > 0 && (
+        <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800 flex items-center gap-2">
+            <div className="w-4 h-4 text-teal-600 flex-shrink-0"><PillIcon /></div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('availableProducts')}</p>
+          </div>
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            {meds.map(med => (
+              <div key={med.RegisterNumber} className="flex items-center justify-between px-4 py-3 gap-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-black text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{med.Strength} {med.StrengthUnit} · {med.PharmaceuticalForm}</p>
+                </div>
+                {!isNaN(parseFloat(med['Public price'])) && (
+                  <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 flex-shrink-0">
+                    {parseFloat(med['Public price']).toFixed(2)} ر.س
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction; }> = ({ data, t }) => {
-    const { indication, scientificGroup } = data;
-
-    if (!scientificGroup || scientificGroup.policies.length === 0) {
-        return (
-            <div className="p-4 text-center">
-                 <p className="text-light-text-secondary dark:text-dark-text-secondary">{t('noInsuranceInfo')}</p>
-            </div>
-        );
-    }
-
-    const policies = scientificGroup.policies;
-    const representativePolicy = policies[0];
-
-    const getUniqueValues = (key: keyof InsuranceDrug): string => {
-        const values = new Set(
-            policies
-                .map(p => p[key])
-                .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
-        );
-        return Array.from(values).join(' | ') || '-';
-    };
-
-    const availableStrengths = Array.from(new Set(
-        policies.map(p => `${p.strength} ${p.strengthUnit} (${p.form})`)
-    ));
-    
-    return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Header Section */}
-            <div className="px-1">
-                 <p className="text-sm font-semibold text-secondary dark:text-green-400">{indication}</p>
-                 <h2 className="text-2xl md:text-3xl font-bold leading-7 text-light-text dark:text-dark-text">{scientificGroup.scientificName}</h2>
-            </div>
-
-            {/* Unified Policy Details Section */}
-            <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm">
-                <h3 className="text-lg font-bold text-primary dark:text-primary-light mb-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                   {t('insuranceCoverageDetails')}
-                </h3>
-                <dl className="divide-y divide-slate-100 dark:divide-slate-800">
-                    <DetailRow label={t('drugClass')} value={representativePolicy.drugClass} />
-                    <DetailRow label={t('drugSubclass')} value={getUniqueValues('drugSubclass')} />
-                    <DetailRow label={t('icd10Code')} value={getUniqueValues('icd10Code')} />
-                    <DetailRow label={t('atcCode')} value={representativePolicy.atcCode} />
-                    <DetailRow label={t('descriptiveCode')} value={getUniqueValues('descriptionCode')} />
-                    
-                    <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                      <dt className="text-sm font-medium leading-6 text-light-text-secondary dark:text-dark-muted">{t('availableStrengthsForms')}</dt>
-                      <dd className="mt-1 text-sm leading-6 text-light-text dark:text-dark-text sm:col-span-2 sm:mt-0">
-                        {availableStrengths.length > 0 ? (
-                           <ul className="space-y-1">
-                                {availableStrengths.map((strength, index) => <li key={index} className="bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-md">{strength}</li>)}
-                           </ul>
-                        ) : '-'}
-                      </dd>
-                    </div>
-
-                    <DetailRow label={t('administrationRoute')} value={getUniqueValues('administrationRoute')} />
-                    <DetailRow label={t('substitutable')} value={getUniqueValues('substitutable')} />
-                    <DetailRow label={t('prescribingEdits')} value={getUniqueValues('prescribingEdits')} />
-                    <DetailRow label={t('mddAdults')} value={getUniqueValues('mddAdults')} />
-                    <DetailRow label={t('mddPediatrics')} value={getUniqueValues('mddPediatrics')} />
-                    <DetailRow label={t('appendix')} value={getUniqueValues('appendix')} />
-                    <DetailRow label={t('patientType')} value={getUniqueValues('patientType')} />
-                    <DetailRow label={t('sfdaRegistrationStatus')} value={getUniqueValues('sfdaRegistrationStatus')} />
-                    <DetailRow label={t('notes')} value={getUniqueValues('notes')} />
-                </dl>
-            </div>
-            
-            {/* Available Products Section */}
-            <div className="bg-light-card dark:bg-dark-card p-4 rounded-xl shadow-sm">
-                <h3 className="flex items-center gap-2 text-base font-black text-slate-700 dark:text-dark-text mb-3">
-                    <div className="w-5 h-5 text-primary flex-shrink-0"><PillIcon /></div>
-                    <span>{t('availableProducts')}</span>
-                </h3>
-                 {scientificGroup.availableMedicines.length > 0 ? (
-                    <div className="space-y-2">
-                        {scientificGroup.availableMedicines.map(med => (
-                          <div key={med.RegisterNumber} className="flex justify-between items-center text-sm p-2 rounded-md bg-slate-50 dark:bg-slate-900/50">
-                            <div>
-                              <p className="font-semibold">{med['Trade Name']}</p>
-                              <p className="text-xs text-light-text-secondary dark:text-dark-muted">{`${med.Strength} ${med.StrengthUnit} | ${med.PharmaceuticalForm}`}</p>
-                            </div>
-                            <p className="font-bold text-accent whitespace-nowrap">
-                              {isNaN(parseFloat(med['Public price'])) ? 'N/A' : `${parseFloat(med['Public price']).toFixed(2)} ر.س`}
-                            </p>
-                          </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary italic">{t('noProductsFound')}</p>
-                )}
-            </div>
-        </div>
-    );
 };
 
 export default InsuranceDetailsView;

@@ -23,12 +23,12 @@ import ClinicalDataPage from './ClinicalDataPage';
 
 // ── ClinicalAccordion ────────────────────────────────────────────────────────
 const CLINICAL_FIELDS = [
-  { key: 'indication'     as const, icon: '🩺', labelAr: 'الاستخدامات',        labelEn: 'Indications',      bg: 'bg-teal-50 dark:bg-teal-900/20',   border: 'border-teal-100 dark:border-teal-800',   label: 'text-teal-600 dark:text-teal-400'   },
-  { key: 'dosage'         as const, icon: '💊', labelAr: 'الجرعة',              labelEn: 'Dosage',           bg: 'bg-blue-50 dark:bg-blue-900/20',   border: 'border-blue-100 dark:border-blue-800',   label: 'text-blue-600 dark:text-blue-400'   },
-  { key: 'sideEffects'    as const, icon: '⚠️', labelAr: 'الآثار الجانبية',    labelEn: 'Side Effects',     bg: 'bg-red-50 dark:bg-red-900/10',     border: 'border-red-100 dark:border-red-900/30',  label: 'text-red-500 dark:text-red-400'     },
-  { key: 'pharmacistNote' as const, icon: '👨‍⚕️', labelAr: 'تنبيه الصيدلاني',  labelEn: 'Pharmacist Note',  bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-100 dark:border-amber-800', label: 'text-amber-600 dark:text-amber-400' },
-  { key: 'mechanism'      as const, icon: '🔬', labelAr: 'آلية العمل',          labelEn: 'Mechanism',        bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-100 dark:border-violet-800', label: 'text-violet-600 dark:text-violet-400' },
-  { key: 'keyPoints'      as const, icon: '⭐', labelAr: 'نقاط مميزة',          labelEn: 'Key Points',       bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-200 dark:border-amber-700', label: 'text-amber-500 dark:text-amber-400' },
+  { key: 'indication'     as const, icon: '', labelAr: 'الاستخدامات',        labelEn: 'Indications',      bg: 'bg-teal-50 dark:bg-teal-900/20',   border: 'border-teal-100 dark:border-teal-800',   label: 'text-teal-600 dark:text-teal-400'   },
+  { key: 'dosage'         as const, icon: '', labelAr: 'الجرعة',              labelEn: 'Dosage',           bg: 'bg-blue-50 dark:bg-blue-900/20',   border: 'border-blue-100 dark:border-blue-800',   label: 'text-blue-600 dark:text-blue-400'   },
+  { key: 'sideEffects'    as const, icon: '', labelAr: 'الآثار الجانبية',    labelEn: 'Side Effects',     bg: 'bg-red-50 dark:bg-red-900/10',     border: 'border-red-100 dark:border-red-900/30',  label: 'text-red-500 dark:text-red-400'     },
+  { key: 'pharmacistNote' as const, icon: '', labelAr: 'تنبيه الصيدلاني',  labelEn: 'Pharmacist Note',  bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-100 dark:border-amber-800', label: 'text-amber-600 dark:text-amber-400' },
+  { key: 'mechanism'      as const, icon: '', labelAr: 'آلية العمل',          labelEn: 'Mechanism',        bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-100 dark:border-violet-800', label: 'text-violet-600 dark:text-violet-400' },
+  { key: 'keyPoints'      as const, icon: '', labelAr: 'نقاط مميزة',          labelEn: 'Key Points',       bg: 'bg-amber-50 dark:bg-amber-900/15', border: 'border-amber-200 dark:border-amber-700', label: 'text-amber-500 dark:text-amber-400' },
 ];
 const PREVIEW_LEN = 140;
 
@@ -215,7 +215,7 @@ const ClinicalAccordion: React.FC<{ clinicalData: ClinicalData; language: Langua
           <div key={f.key} className={`rounded-2xl border overflow-hidden ${f.bg} ${f.border}`}>
             <div className="px-4 py-3">
               <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${f.label}`}>
-                {f.icon} {ar ? f.labelAr : f.labelEn}
+                {ar ? f.labelAr : f.labelEn}
               </p>
               <p className="text-[13.5px] leading-relaxed font-medium text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
                 {displayed}

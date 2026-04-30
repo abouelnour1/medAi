@@ -152,8 +152,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               document.removeEventListener('touchend', onEnd);
               if (sheetRef.current) sheetRef.current.style.transition = '';
               const dy = ev.changedTouches[0].clientY - sy;
-              const cur = sh - dy;
-              if (cur < minH * 0.75) onClose();
+              const elapsed = Date.now() - Date.now(); // placeholder
+              // Only close if deliberate downward drag
+              if (dy > 40) onClose();
               else setHeight(dy > 0 ? minH : maxH);
             };
             document.addEventListener('touchmove', onMove, { passive: false });
@@ -208,16 +209,21 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                 setHeight(newH);
               }
             };
+            let lastY = sy; let lastT = Date.now();
             const onEnd = (ev: TouchEvent) => {
               document.removeEventListener('touchmove', onMove);
               document.removeEventListener('touchend', onEnd);
               if (!dragging) return;
               if (sheetRef.current) sheetRef.current.style.transition = '';
               const dy = ev.changedTouches[0].clientY - sy;
-              if (sh - dy < minH * 0.75) onClose();
+              const elapsed = Date.now() - lastT;
+              const velocity = elapsed > 0 ? Math.abs(dy) / elapsed : 0; // px/ms
+              // Only close on slow deliberate drag, NOT fast swipe up
+              if (dy > 0 && (sh - dy < minH * 0.75)) onClose();
+              else if (velocity > 0.5 && dy > 0) onClose(); // fast downward swipe → close
               else setHeight(dy > 0 ? minH : maxH);
             };
-            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchmove', (ev: TouchEvent) => { lastY = ev.touches[0].clientY; lastT = Date.now(); onMove(ev); }, { passive: false });
             document.addEventListener('touchend', onEnd, { passive: true });
           }}
         >
