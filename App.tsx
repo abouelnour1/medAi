@@ -352,6 +352,7 @@ const App: React.FC = () => {
   const recentSearches = React.useMemo(() => recentSearchIds.map(id => medicines.find(m => m.RegisterNumber === id)).filter(Boolean) as Medicine[], [recentSearchIds, medicines]);
   const [compareList, setCompareList] = useState<Medicine[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [quickToolsOpen, setQuickToolsOpen] = useState(false);
   const pharmacistMode = true; // شغال دايماً — الضغط الطويل متاح للكل
   const [orderCount, setOrderCount] = useState<number>(() => {
     try { const r = localStorage.getItem('pharma_order_list'); return r ? JSON.parse(r).length : 0; } catch { return 0; }
@@ -1594,10 +1595,18 @@ const App: React.FC = () => {
                   {/* ── Quick Tools ── */}
                   {searchTerm.length === 0 && activeFiltersCount === 0 && (
                     <div className="mb-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest mb-3 px-1" style={{ color: '#8a938f' }}>
-                        {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
+                      <button
+                        onClick={() => setQuickToolsOpen((v: boolean) => !v)}
+                        className="w-full flex items-center justify-between px-1 mb-2 active:opacity-70 transition-opacity"
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#8a938f' }}>
+                          {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
+                        </p>
+                        <svg className={`w-3.5 h-3.5 transition-transform ${quickToolsOpen ? '' : '-rotate-90'}`} style={{color:'#8a938f'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </button>
+                      {quickToolsOpen && <div className="grid grid-cols-3 gap-3">
                         {[
                           { labelAr:'الجرعات',    labelEn:'Dosing',       sub_ar:'احسب الجرعة',   sub_en:'Calculate dose',    bg:'#eef9f6', border:'#b2e6da', color:'#006a60', onClick:()=>{setPedCalcDrug(undefined);setPedCalcOpen(true);},
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> },
@@ -1635,7 +1644,7 @@ const App: React.FC = () => {
                             </div>
                           </button>
                         ))}
-                      </div>
+                      </div>}
                     </div>
                   )}                  <div className="mt-2">
                       {/* Pediatric Preset Bar — بره الحاسبة في الهوم */}

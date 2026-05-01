@@ -91,7 +91,7 @@ const BottomSheet: React.FC<Props> = ({ onClose, children }) => {
       >
         {/* ── Handle ── */}
         <div
-          className="flex-shrink-0 select-none"
+          className="flex-shrink-0 select-none pt-2 pb-0"
           style={{ touchAction: 'none' }}
           onTouchStart={e => { e.stopPropagation(); drag(e.touches[0].clientY, height, true); }}
           onMouseDown={e => {
@@ -107,21 +107,20 @@ const BottomSheet: React.FC<Props> = ({ onClose, children }) => {
             window.addEventListener('mouseup', onUp);
           }}
         >
-          {/* Drag indicator */}
-          <div className="flex justify-center pt-2.5 pb-1">
-            <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700"/>
-          </div>
-          {/* Collapse / Expand buttons */}
-          <div className="flex justify-between items-center px-4 pb-1">
+          {/* Drag indicator + buttons in one row */}
+          <div className="flex items-center px-3">
             <button onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 active:bg-slate-100 dark:active:bg-slate-800 active:scale-90 transition-all">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              className="w-7 h-7 flex items-center justify-center rounded-xl text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 active:scale-90 transition-all flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
+            <div className="flex-1 flex justify-center">
+              <div className="w-8 h-[3px] rounded-full bg-slate-200 dark:bg-slate-700"/>
+            </div>
             <button onClick={() => setHeight(isExpanded ? minH : maxH)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 active:bg-slate-100 dark:active:bg-slate-800 active:scale-90 transition-all">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              className="w-7 h-7 flex items-center justify-center rounded-xl text-slate-300 active:bg-slate-100 dark:active:bg-slate-800 active:scale-90 transition-all flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'}/>
               </svg>
             </button>
