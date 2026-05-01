@@ -339,7 +339,7 @@ function IngredientClinical({name,language}:{name:string;language:Language}){
 }
 
 
-// ── Per-ingredient sections (same accordion style) ───────────────────────────
+// ── Per-ingredient sections (full accordion — same as single drug) ────────────
 function IngredientSections({name,language}:{name:string;language:Language}){
   const ar=language==='ar';
   const[full,setFull]=useState<any|null>(null);
@@ -365,44 +365,63 @@ function IngredientSections({name,language}:{name:string;language:Language}){
 
   const pregCat=(preg?.pregnancyCategory||'').replace(/[^A-Za-z]/g,'').toUpperCase();
   const lactCat=(preg?.lactationCategory||'').trim().toUpperCase();
-  const pi=PREG_INFO[pregCat];const li=LACT_INFO[lactCat];
+  const pi=PREG_INFO[pregCat]; const li=LACT_INFO[lactCat];
 
   if(loading)return<div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse"/>;
 
   const SECS=[
-    {key:'indications',labelEn:'Indications',labelAr:'دواعي الاستخدام',color:'text-teal-700 dark:text-teal-400',bg:'bg-teal-50 dark:bg-teal-900/20',icon:'indications'},
-    {key:'mechanism',labelEn:'Mechanism',labelAr:'آلية العمل',color:'text-blue-700 dark:text-blue-400',bg:'bg-blue-50 dark:bg-blue-900/20',icon:'mechanism'},
-    {key:'dosage',labelEn:'Dosage',labelAr:'الجرعة',color:'text-violet-700 dark:text-violet-400',bg:'bg-violet-50 dark:bg-violet-900/20',icon:'dosage'},
-  ].filter(s=>get(s.key));
+    {key:'indications',          labelEn:'Indications',           labelAr:'دواعي الاستخدام',       color:'text-teal-700 dark:text-teal-400',   bg:'bg-teal-50 dark:bg-teal-900/20',    icon:'indications'},
+    {key:'mechanism',            labelEn:'Mechanism',             labelAr:'آلية العمل',             color:'text-blue-700 dark:text-blue-400',   bg:'bg-blue-50 dark:bg-blue-900/20',    icon:'mechanism'},
+    {key:'dosage',               labelEn:'Dosage',                labelAr:'الجرعة',                 color:'text-violet-700 dark:text-violet-400',bg:'bg-violet-50 dark:bg-violet-900/20',icon:'dosage'},
+    {key:'maternalConsiderations',labelEn:'Maternal',             labelAr:'اعتبارات الأم',          color:'text-rose-700 dark:text-rose-400',   bg:'bg-rose-50 dark:bg-rose-900/20',    icon:'maternal'},
+    {key:'fetalConsiderations',  labelEn:'Fetal',                 labelAr:'اعتبارات الجنين',        color:'text-pink-700 dark:text-pink-400',   bg:'bg-pink-50 dark:bg-pink-900/20',    icon:'fetal'},
+    {key:'breastfeedingSafety',  labelEn:'Breastfeeding',         labelAr:'الرضاعة',                color:'text-orange-700 dark:text-orange-400',bg:'bg-orange-50 dark:bg-orange-900/20',icon:'lactation'},
+    {key:'summaryNotes',         labelEn:'Summary',               labelAr:'ملاحظات',                color:'text-slate-600 dark:text-slate-400', bg:'bg-slate-100 dark:bg-slate-800',    icon:'summary'},
+    {key:'interactions',         labelEn:'Drug Interactions',     labelAr:'التفاعلات الدوائية',     color:'text-amber-700 dark:text-amber-400', bg:'bg-amber-50 dark:bg-amber-900/20',  icon:'interactions'},
+    {key:'renalDosing',          labelEn:'Renal Dosing',          labelAr:'جرعات الكلى',            color:'text-cyan-700 dark:text-cyan-400',   bg:'bg-cyan-50 dark:bg-cyan-900/20',    icon:'renal'},
+  ].filter(s=>s.key==='interactions'||s.key==='renalDosing'||get(s.key));
 
   if(!SECS.length&&!pregCat&&!lactCat) return<p className="text-[12px] text-slate-400 px-1">{ar?'لا توجد بيانات':'No data'}</p>;
+
+  const sectionIcons:Record<string,React.ReactNode>={
+    indications:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>,
+    mechanism:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>,
+    dosage:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>,
+    maternal:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 2a5 5 0 015 5c0 5-5 13-5 13S7 12 7 7a5 5 0 015-5z"/><circle cx="12" cy="7" r="2"/></svg>,
+    fetal:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>,
+    lactation:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+    summary:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    interactions:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>,
+    renal:<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>,
+  };
 
   return(
     <div className="space-y-1.5">
       {(pregCat||lactCat)&&(
-        <div className="flex gap-2 flex-wrap px-1">
-          {pregCat&&pi&&<span className={`text-[11px] font-black px-2 py-0.5 rounded-lg border ${pi.bg} ${pi.border} ${pi.color}`}>{ar?'حمل':'Preg'}: {pregCat}</span>}
-          {lactCat&&li&&<span className={`text-[11px] font-black px-2 py-0.5 rounded-lg border ${li.bg} ${li.border} ${li.color}`}>{ar?'رضاعة':'Lact'}: {lactCat}</span>}
+        <div className="flex gap-2 flex-wrap px-1 pb-1">
+          {pregCat&&pi&&<span className={`text-[11px] font-black px-2.5 py-1 rounded-lg border ${pi.bg} ${pi.border} ${pi.color}`}>{ar?'حمل':'Preg'}: {pregCat}</span>}
+          {lactCat&&li&&<span className={`text-[11px] font-black px-2.5 py-1 rounded-lg border ${li.bg} ${li.border} ${li.color}`}>{ar?'رضاعة':'Lact'}: {lactCat}</span>}
         </div>
       )}
       {SECS.map(sec=>{
         const text=get(sec.key);
         const isOpen=expanded.has(sec.key);
-        const icons:Record<string,React.ReactNode>={
-          indications:<svg className={`w-4 h-4 ${sec.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>,
-          mechanism:<svg className={`w-4 h-4 ${sec.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>,
-          dosage:<svg className={`w-4 h-4 ${sec.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>,
-        };
         return(
           <div key={sec.key} className="bg-white dark:bg-dark-card rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button onClick={()=>setExpanded(p=>{const n=new Set(p);n.has(sec.key)?n.delete(sec.key):n.add(sec.key);return n;})}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 active:bg-slate-50 dark:active:bg-slate-800/50">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${sec.bg}`}>{icons[sec.icon]}</div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${sec.bg} ${sec.color}`}>{sectionIcons[sec.icon]}</div>
               <span className="flex-1 font-black text-[13px] text-slate-700 dark:text-slate-200">{ar?sec.labelAr:sec.labelEn}</span>
               <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen?'rotate-180':''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
             {isOpen&&<div className="px-3 pb-3 pt-1 border-t border-slate-50 dark:border-slate-800">
-              {sec.key==='dosage'?<DosageView text={text}/>:<TextBlock text={text}/>}
+              {sec.key==='interactions'
+                ?<InteractionsView scientificName={name} tradeName="" fallbackText={text} language={language}/>
+                :sec.key==='renalDosing'
+                ?<RenalContent scientificName={name} tradeName="" language={language}/>
+                :sec.key==='dosage'
+                ?<DosageView text={text}/>
+                :<TextBlock text={text}/>}
             </div>}
           </div>
         );
@@ -480,19 +499,9 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
     renal:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>,
   };
 
-  // Swipe down to close ClinicalReferencePage
-  const touchStartY = React.useRef(0);
-  const handlePageTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
-  const handlePageTouchEnd = (e: React.TouchEvent) => {
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (dy > 80) onClose(); // swipe down 80px → close
-  };
-
   return(
     <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-dark-bg flex flex-col" data-overlay="true"
       style={{direction:ar?'rtl':'ltr'}}
-      onTouchStart={handlePageTouchStart}
-      onTouchEnd={handlePageTouchEnd}
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 flex-shrink-0">

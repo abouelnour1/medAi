@@ -29,11 +29,21 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
   if (mode === 'tradeName' || mode === 'scientificName') {
     const field = mode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     if(t.length < 2) return [];
-    const sw = meds.filter(m => String(m[field]||'').toLowerCase().startsWith(t)).slice(0,MAX);
+    // Use pre-built index if available - O(1) vs O(n) scan
+    let sw: Medicine[] = [];
+    if (idx) {
+      const map = mode === 'tradeName' ? idx.byTrade : idx.bySciNorm;
+      // Find all keys starting with t
+      map.forEach((meds, key) => { if (key.startsWith(t)) sw.push(...meds); });
+      sw = sw.slice(0, MAX);
+    } else {
+      sw = meds.filter(m => String(m[field]||'').toLowerCase().startsWith(t)).slice(0,MAX);
+    }
     let matched: Medicine[] = sw;
     if (matched.length < MAX) {
-      const swSet = new Set(sw.map(m => m.RegisterNumber));
-      const rest = meds.filter(m => !swSet.has(m.RegisterNumber) && String(m[field]||'').toLowerCase().includes(t)).slice(0, MAX - matched.length);
+      const swSet = new Set(sw.map((m:Medicine) => m.RegisterNumber));
+      // For includes - still need linear scan but limit scope
+      const rest = meds.filter((m:Medicine) => !swSet.has(m.RegisterNumber) && String(m[field]||'').toLowerCase().includes(t)).slice(0, MAX - matched.length);
       matched = [...matched, ...rest];
     }
     const food = matched.filter(m => String(m['Product type']||'').toLowerCase() === 'food').slice(0,20);

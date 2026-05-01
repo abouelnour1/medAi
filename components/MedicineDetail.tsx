@@ -738,7 +738,47 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
       {/* ────────────────────────────────────────────────────── */}
 
-      {/* ── Clinical Data — Accordion sections ── */}
+      {/* ── Clinical Safety Badges — prominent, outside card ── */}
+      {pregRef && (() => {
+        const pCat = normPregCat(pregRef.pregnancyCategory || '');
+        const lCat = normLactCat(pregRef.lactationCategory || '');
+        const pStyle = PREG_CAT_STYLE[pCat];
+        const lStyle = LACT_CAT_STYLE[lCat];
+        if (!pStyle && !lStyle) return null;
+        return (
+          <div className="flex gap-2 px-4">
+            {pStyle && (
+              <button onClick={() => setShowClinicalRef(true)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-2xl border active:scale-95 transition-all ${pStyle.bg} ${pStyle.border}`}>
+                <svg className={`w-4 h-4 ${pStyle.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a5 5 0 015 5c0 5-5 13-5 13S7 12 7 7a5 5 0 015-5z"/>
+                  <circle cx="12" cy="7" r="2"/>
+                </svg>
+                <div className="text-left">
+                  <p className={`text-[9px] font-black uppercase ${pStyle.text} opacity-70`}>{ar ? 'حمل' : 'Pregnancy'}</p>
+                  <p className={`text-[16px] font-black leading-none ${pStyle.text}`}>{pCat}</p>
+                  <p className={`text-[9px] font-bold ${pStyle.text} opacity-70`}>{ar ? PREG_LABELS_AR[pCat] : PREG_LABELS_EN[pCat]}</p>
+                </div>
+              </button>
+            )}
+            {lStyle && (
+              <button onClick={() => setShowClinicalRef(true)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-2xl border active:scale-95 transition-all ${lStyle.bg} ${lStyle.border}`}>
+                <svg className={`w-4 h-4 ${lStyle.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+                </svg>
+                <div className="text-left">
+                  <p className={`text-[9px] font-black uppercase ${lStyle.text} opacity-70`}>{ar ? 'رضاعة' : 'Lactation'}</p>
+                  <p className={`text-[16px] font-black leading-none ${lStyle.text}`}>{lCat}</p>
+                  <p className={`text-[9px] font-bold ${lStyle.text} opacity-70`}>{ar ? LACT_LABELS_AR[lCat] : LACT_LABELS_EN[lCat]}</p>
+                </div>
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Clinical Safety Card (old style for diabetes/htn/g6pd) ── */}
       {(clinicalRef || pregRef) && (() => {
         const mergedRef: ClinicalReference = {
           ...(clinicalRef || {} as ClinicalReference),
@@ -750,6 +790,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           dosage:                 (clinicalRef as any)?.dosage        || pregRef?.dosage,
           summaryNotes:           clinicalRef?.summaryNotes           || pregRef?.summaryNotes,
         };
+        const oldBadges = [mergedRef.diabetesEffect, mergedRef.hypertensionEffect, mergedRef.g6pdRisk].filter(Boolean);
+        if (!oldBadges.length) return null; // hide if only showing preg/lact (already shown above)
         return (
           <SafetyBadgesCard
             clinicalRef={mergedRef}

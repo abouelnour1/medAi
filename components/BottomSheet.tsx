@@ -163,11 +163,7 @@ const BottomSheet: React.FC<Props> = ({ onClose, children, minH: _minH, maxH: _m
             WebkitOverflowScrolling: 'touch',
             paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
           } as React.CSSProperties}
-          onTouchStart={e => {
-            const el = contentRef.current;
-            if (el && el.scrollTop > 2) return; // only act when at very top
-            startDrag(e.touches[0].clientY, height, false);
-          }}
+
         >
           {children}
         </div>
