@@ -59,10 +59,12 @@ export function getInsurancePolicies(medicine: Medicine, insuranceData: Insuranc
       if (pSci === medSci) return true;
     }
 
-    // 4. First active ingredient exact match (for combo drugs)
-    if (medFirst.length >= 4 && p.scientificName) {
+    // 4. First active ingredient ONLY if BOTH are single-ingredient (no combo matching)
+    const medIsCombo = String((medicine as any)['Scientific Name']||'').includes(',') || String((medicine as any)['Scientific Name']||'').includes('/');
+    const insIsCombo = (p.scientificName||'').includes(',') || (p.scientificName||'').includes('/');
+    if (!medIsCombo && !insIsCombo && medFirst.length >= 5 && p.scientificName) {
       const pFirst = firstIngredient(p.scientificName);
-      if (pFirst === medFirst && pFirst.length >= 4) return true;
+      if (pFirst === medFirst && pFirst.length >= 5) return true;
     }
 
     return false;

@@ -260,9 +260,12 @@ const App: React.FC = () => {
       if (p.scientificName) {
         const norm = normSci(p.scientificName);
         if (norm) s.add(norm);
-        // also add first ingredient
-        const first = normSci(p.scientificName.split(/[,/+&]/)[0]);
-        if (first && first.length >= 4) s.add(first);
+        // first ingredient ONLY for single-ingredient drugs (no combo matching)
+        const isCombo = /[,/+&]/.test(p.scientificName);
+        if (!isCombo) {
+          const first = normSci(p.scientificName.split(/[,\/+&]/)[0]);
+          if (first && first.length >= 5) s.add(first);
+        }
       }
       if (p.descriptionCode) s.add('desc:' + p.descriptionCode.trim());
     });

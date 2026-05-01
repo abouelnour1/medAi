@@ -57,9 +57,17 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
         if (medDesc && p.descriptionCode && p.descriptionCode.trim() === medDesc) return true;
         // Priority 2: exact full ATC match
         if (atc && pAtc && atc === pAtc) return true;
-        // Priority 3: normalized scientific name (full or first ingredient)
-        const snFirst = normStr(sn.split(/\s/)[0]);
-        return sn.length > 3 && (pn === sn || (snFirst.length >= 4 && pFirst === snFirst));
+        // Priority 3: full normalized scientific name match only (no partial ingredient match)
+        // This prevents amoxicillin from matching amoxicillin/clavulanate policies
+        if (sn.length > 3 && pn === sn) return true;
+        // First ingredient only if BOTH drugs are single-ingredient (no comma/slash in name)
+        const medIsCombo = sci.includes(',') || sci.includes('/') || sci.includes('+');
+        const insIsCombo = (p.scientificName||'').includes(',') || (p.scientificName||'').includes('/') || (p.scientificName||'').includes('+');
+        if (!medIsCombo && !insIsCombo) {
+          const snFirst = normStr(sn.split(/\s/)[0]);
+          if (snFirst.length >= 5 && pFirst === snFirst) return true;
+        }
+        return false;
       });
       if (policies.length > 0) {
         results.push({ type:'drug-grouped', scientificName:sci, tradeNames:ms.map(m=>m['Trade Name']), policies, availableMedicines:ms });
@@ -108,6 +116,22 @@ interface Props {
 
 const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
   const deferredSearch = useDeferredValue(searchTerm);
+
+  // Pre-index for fast lookups — only recomputes when medicines change
+  const medsIndex = useMemo(() => {
+    const byTrade   = new Map<string, Medicine[]>();
+    const bySci     = new Map<string, Medicine[]>();
+    const bySciNorm = new Map<string, Medicine[]>();
+    allMedicines.forEach(m => {
+      const trade = String(m['Trade Name']   || '').toLowerCase();
+      const sci   = String(m['Scientific Name'] || '');
+      const sciN  = normStr(sci);
+      if (trade) { if (!byTrade.has(trade)) byTrade.set(trade, []); byTrade.get(trade)!.push(m); }
+      if (sci)   { if (!bySci.has(sci))     bySci.set(sci, []);     bySci.get(sci)!.push(m);    }
+      if (sciN)  { if (!bySciNorm.has(sciN)) bySciNorm.set(sciN, []); bySciNorm.get(sciN)!.push(m); }
+    });
+    return { byTrade, bySci, bySciNorm };
+  }, [allMedicines]);
   const [input, setInput] = useState(searchTerm);
   const [results, setResults] = useState<SR[]>([]);
   const [busy, setBusy] = useState(false);

@@ -370,6 +370,8 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
   const breastfeedingSafety=get('breastfeedingSafety');
   const summaryNotes=get('summaryNotes');
   const hasMain=!loading&&(data||fullData||pregData);
+  // Check if any text section has real content
+  const hasAnyText = !!(indications||mechanism||dosage||maternalConsiderations||fetalConsiderations||breastfeedingSafety||summaryNotes||interactions);
 
   const SECTIONS_LIST=[
     {key:'indications',labelEn:'Indications',labelAr:'دواعي الاستخدام',color:'text-teal-700 dark:text-teal-400',bg:'bg-teal-50 dark:bg-teal-900/20',iconKey:'indications',text:indications},
@@ -454,9 +456,15 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
         )}
 
         {/* Single ingredient: accordion list */}
+        {hasMain&&!isMulti&&!hasAnyText&&!loading&&(
+          <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-slate-800 p-4 text-center">
+            <p className="text-[13px] text-slate-400">{ar?'لا توجد بيانات سريرية نصية — راجع بيانات الكلى أدناه':'No text clinical data — see Renal Dosing below'}</p>
+          </div>
+        )}
         {hasMain&&!isMulti&&SECTIONS_LIST.map(sec=>{
-          const alwaysShow = !loading && (sec.key==='interactions'||sec.key==='renalDosing');
-          const hasContent=alwaysShow||(sec.text&&sec.text.trim()&&sec.text!=='nan'&&sec.text!=='—');
+          const alwaysShow = !loading && sec.key==='renalDosing';
+          const showInteractions = !loading && sec.key==='interactions' && (interactions||fullData);
+          const hasContent=alwaysShow||showInteractions||(sec.text&&sec.text.trim()&&sec.text!=='nan'&&sec.text!=='—');
           if(!hasContent)return null;
           const isOpen=expanded.has(sec.key);
           return(

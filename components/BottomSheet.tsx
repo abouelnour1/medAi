@@ -1,174 +1,151 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-interface BottomSheetProps {
-  isOpen: boolean;
+interface Props {
   onClose: () => void;
   children: React.ReactNode;
-  snapPoints?: number[];
+  minH?: number;
+  maxH?: number;
+  initialH?: number;
+  isOpen?: boolean;
   skipOpenAnimation?: boolean;
 }
 
-const BottomSheet: React.FC<BottomSheetProps> = ({
-  isOpen, onClose, children,
-  snapPoints = [0.93, 0.93],
-  skipOpenAnimation = false,
-}) => {
-  const sheetRef   = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const handleRef  = useRef<HTMLDivElement>(null);
-  const dragStartY = useRef(0);
-  const dragStartX = useRef(0);
-  const dragStartH = useRef(0);
-  const isDragging = useRef(false);
+const BottomSheet: React.FC<Props> = ({ onClose, children, minH: _minH, maxH: _maxH, initialH }) => {
+  const winH = window.innerHeight;
+  const minH  = _minH  ?? Math.round(winH * 0.45);
+  const maxH  = _maxH  ?? Math.round(winH * 0.92);
+  const initH = initialH ?? Math.round(winH * 0.65);
 
-  const vh   = window.innerHeight;
-  const minH = Math.round(vh * snapPoints[0]);
-  const maxH = Math.round(vh * snapPoints[1]);
+  const [height, setHeight]       = useState(initH);
+  const sheetRef                   = useRef<HTMLDivElement>(null);
+  const contentRef                 = useRef<HTMLDivElement>(null);
+  const handleRef                  = useRef<HTMLDivElement>(null);
+  const isExpanded                 = height > (minH + maxH) / 2;
 
-  const [height, setHeight]   = useState(minH);
-  const [visible, setVisible] = useState(false);
-  const [animate, setAnimate] = useState(false);
+  // ── Unified drag helper ───────────────────────────────────────────────────
+  const startDrag = useCallback((startY: number, startH: number, fromHandle: boolean) => {
+    let dragging = false;
+    let lastDy   = 0;
+    let lastTime = Date.now();
 
-  // ── open/close ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (isOpen) {
-      setHeight(minH);
-      setVisible(true);
-      if (skipOpenAnimation) {
-        setAnimate(true);
+    const onTouchMove = (ev: TouchEvent) => {
+      const dy = ev.touches[0].clientY - startY;
+      lastDy = dy;
+      lastTime = Date.now();
+
+      if (fromHandle) {
+        // Handle: always drag
+        ev.preventDefault();
+        const newH = Math.min(maxH, Math.max(60, startH - dy));
+        setHeight(newH);
+        dragging = true;
+        if (sheetRef.current) sheetRef.current.style.transition = 'none';
       } else {
-        setAnimate(false);
-        const id = requestAnimationFrame(() => requestAnimationFrame(() => setAnimate(true)));
-        return () => cancelAnimationFrame(id);
+        // Content area: only when scrolled to top AND moving down
+        const el = contentRef.current;
+        const atTop = !el || el.scrollTop <= 0;
+        const dxAbs = Math.abs(ev.touches[0].clientX - (ev.touches[0].clientX));
+        if (!dragging && atTop && dy > 12) {
+          dragging = true;
+          if (sheetRef.current) sheetRef.current.style.transition = 'none';
+        }
+        if (dragging) {
+          ev.preventDefault();
+          const newH = Math.min(maxH, Math.max(60, startH - dy));
+          setHeight(newH);
+        }
       }
-    } else {
-      setAnimate(false);
-      const t = setTimeout(() => setVisible(false), 200);
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, minH, skipOpenAnimation]);
-
-  // ── drag helpers ───────────────────────────────────────────────────────────
-  const startDrag = useCallback((y: number, x: number) => {
-    isDragging.current = true;
-    dragStartY.current = y;
-    dragStartX.current = x;
-    dragStartH.current = height;
-    if (sheetRef.current) sheetRef.current.style.transition = 'none';
-  }, [height]);
-
-  const moveDrag = useCallback((y: number, x: number) => {
-    if (!isDragging.current) return;
-    const dy = y - dragStartY.current;
-    const dx = Math.abs(x - dragStartX.current);
-    if (dx > Math.abs(dy) * 1.5) return; // horizontal swipe → ignore
-    const newH = Math.min(maxH, Math.max(80, dragStartH.current - dy * 0.8));
-    setHeight(newH);
-  }, [maxH]);
-
-  const endDrag = useCallback((y: number) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    if (sheetRef.current) sheetRef.current.style.transition = '';
-    const delta = dragStartY.current - y;
-    const cur   = dragStartH.current + delta;
-    if (cur < minH * 0.75) { onClose(); return; }
-    const mid = (minH + maxH) / 2;
-    setHeight(cur > mid ? maxH : minH);
-  }, [minH, maxH, onClose]);
-
-  // ── handle bar touch (the ONLY drag zone) ──────────────────────────────────
-  useEffect(() => {
-    const el = handleRef.current;
-    if (!el) return;
-    const onStart = (e: TouchEvent) => { startDrag(e.touches[0].clientY, e.touches[0].clientX); };
-    const onMove  = (e: TouchEvent) => { e.preventDefault(); moveDrag(e.touches[0].clientY, e.touches[0].clientX); };
-    const onEnd   = (e: TouchEvent) => { endDrag(e.changedTouches[0].clientY); };
-    el.addEventListener('touchstart', onStart, { passive: true });
-    el.addEventListener('touchmove',  onMove,  { passive: false });
-    el.addEventListener('touchend',   onEnd,   { passive: true });
-    return () => {
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove',  onMove);
-      el.removeEventListener('touchend',   onEnd);
     };
-  }, [startDrag, moveDrag, endDrag]);
 
-  // mouse (web)
-  const onHandleMouseDown = (e: React.MouseEvent) => {
-    startDrag(e.clientY, e.clientX);
-    const move = (ev: MouseEvent) => moveDrag(ev.clientY, ev.clientX);
-    const up   = (ev: MouseEvent) => { endDrag(ev.clientY); window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
+    const onTouchEnd = (ev: TouchEvent) => {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend',  onTouchEnd);
+      if (sheetRef.current) sheetRef.current.style.transition = '';
 
-  if (!visible) return null;
-  const isExpanded = height > (minH + maxH) / 2;
+      if (!dragging) return;
+
+      const dy       = lastDy;
+      const elapsed  = Date.now() - lastTime + 1;
+      const velocity = Math.abs(dy) / elapsed; // px/ms
+
+      // Close: dragged down significantly OR fast downward flick
+      if (dy > 60 || (dy > 20 && velocity > 0.6)) {
+        onClose();
+      } else {
+        setHeight(dy > 0 ? minH : maxH);
+      }
+    };
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend',  onTouchEnd,  { passive: true });
+  }, [maxH, minH, onClose]);
+
+  // ── Handle mouse drag ─────────────────────────────────────────────────────
+  const onHandleMouseDown = useCallback((e: React.MouseEvent) => {
+    const sy = e.clientY;
+    const sh = height;
+    const onMove = (ev: MouseEvent) => {
+      const newH = Math.min(maxH, Math.max(60, sh - (ev.clientY - sy)));
+      setHeight(newH);
+    };
+    const onUp = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+      const dy = ev.clientY - sy;
+      if (dy > 60) onClose(); else setHeight(dy > 0 ? minH : maxH);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+  }, [height, maxH, minH, onClose]);
+
+  // ── Backdrop click ────────────────────────────────────────────────────────
+  const onBackdropClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[200]" style={{ direction: 'ltr' }}>
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        style={{ opacity: animate ? 0.45 : 0, transition: 'opacity 0.18s ease' }}
-        onClick={onClose}
-      />
-      {/* Sheet */}
+    <div
+      className="fixed inset-0 z-[400]"
+      style={{ background: 'rgba(0,0,0,0.45)', touchAction: 'none' }}
+      onClick={onBackdropClick}
+    >
       <div
         ref={sheetRef}
-        className="absolute left-0 right-0 bottom-0 bg-white dark:bg-dark-card flex flex-col overflow-hidden"
+        className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-[1.75rem] overflow-hidden"
         style={{
           height,
-          borderRadius: isExpanded ? '1.5rem 1.5rem 0 0' : '2rem 2rem 0 0',
-          transform: animate ? 'translateY(0)' : 'translateY(100%)',
-          opacity: animate ? 1 : 0,
-          transition: 'transform 0.18s cubic-bezier(0.22,1,0.36,1), height 0.15s cubic-bezier(0.22,1,0.36,1), opacity 0.12s ease',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
-          willChange: 'transform, height',
+          background: 'var(--surface)',
+          boxShadow: '0 -4px 32px rgba(0,0,0,0.18)',
+          transition: 'height 0.2s cubic-bezier(0.4,0,0.2,1)',
+          willChange: 'height',
         }}
+        onClick={e => e.stopPropagation()}
       >
-        {/* Handle — drag zone (touch + mouse) */}
+        {/* ── Handle bar ───────────────────────────────────────────── */}
         <div
           ref={handleRef}
           className="flex-shrink-0 flex flex-col items-center pt-2 pb-0 cursor-grab active:cursor-grabbing select-none"
           style={{ touchAction: 'none' }}
           onMouseDown={onHandleMouseDown}
           onTouchStart={e => {
-            const sy = e.touches[0].clientY;
-            const sx = e.touches[0].clientX;
-            const sh = height;
-            if (sheetRef.current) sheetRef.current.style.transition = 'none';
-            const onMove = (ev: TouchEvent) => {
-              ev.preventDefault();
-              const dy = ev.touches[0].clientY - sy;
-              const dx = Math.abs(ev.touches[0].clientX - sx);
-              if (dx > Math.abs(dy) * 1.5) return;
-              const newH = Math.min(maxH, Math.max(80, sh - dy * 0.8));
-              setHeight(newH);
-            };
-            const onEnd = (ev: TouchEvent) => {
-              document.removeEventListener('touchmove', onMove);
-              document.removeEventListener('touchend', onEnd);
-              if (sheetRef.current) sheetRef.current.style.transition = '';
-              const dy = ev.changedTouches[0].clientY - sy;
-              const elapsed = Date.now() - Date.now(); // placeholder
-              // Only close if deliberate downward drag
-              if (dy > 40) onClose();
-              else setHeight(dy > 0 ? minH : maxH);
-            };
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onEnd, { passive: true });
+            e.stopPropagation();
+            startDrag(e.touches[0].clientY, height, true);
           }}
         >
           <div className="w-10 h-1 rounded-full" style={{ background: 'linear-gradient(90deg,#14b8a6,#0ea5e9)' }} />
           <div className="w-full flex justify-between items-center px-4 pt-1.5">
-            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full">
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            <button onClick={() => setHeight(isExpanded ? minH : maxH)} className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full">
+            <button
+              onClick={() => setHeight(isExpanded ? minH : maxH)}
+              className="w-7 h-7 flex items-center justify-center text-slate-400 active:scale-90 rounded-full"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? 'M19 15l-7-7-7 7' : 'M5 15l7-7 7 7'}/>
               </svg>
@@ -176,7 +153,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </div>
         </div>
 
-        {/* Content — free scroll + drag-to-close when at top */}
+        {/* ── Scrollable content ───────────────────────────────────── */}
         <div
           ref={contentRef}
           className="flex-grow overflow-y-auto overflow-x-hidden no-scrollbar bg-white dark:bg-dark-card"
@@ -185,46 +162,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
             paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
-            direction: 'ltr',
           } as React.CSSProperties}
           onTouchStart={e => {
             const el = contentRef.current;
-            if (!el || el.scrollTop > 0) return; // فقط لما في أعلى الـ scroll
-            const sy = e.touches[0].clientY;
-            const sx = e.touches[0].clientX;
-            const sh = height;
-            let dragging = false;
-            let moved = false;
-            const onMove = (ev: TouchEvent) => {
-              moved = true;
-              const dy = ev.touches[0].clientY - sy;
-              const dx = Math.abs(ev.touches[0].clientX - sx);
-              if (!dragging && dy > 16 && dy > dx * 2) { // vertical intent clear
-                dragging = true;
-                if (sheetRef.current) sheetRef.current.style.transition = 'none';
-              }
-              if (dragging) {
-                ev.preventDefault();
-                const newH = Math.min(maxH, Math.max(80, sh - dy * 0.7));
-                setHeight(newH);
-              }
-            };
-            let lastY = sy; let lastT = Date.now();
-            const onEnd = (ev: TouchEvent) => {
-              document.removeEventListener('touchmove', onMove);
-              document.removeEventListener('touchend', onEnd);
-              if (!dragging) return;
-              if (sheetRef.current) sheetRef.current.style.transition = '';
-              const dy = ev.changedTouches[0].clientY - sy;
-              const elapsed = Date.now() - lastT;
-              const velocity = elapsed > 0 ? Math.abs(dy) / elapsed : 0; // px/ms
-              // Only close on slow deliberate drag, NOT fast swipe up
-              if (dy > 0 && (sh - dy < minH * 0.75)) onClose();
-              else if (velocity > 0.5 && dy > 0) onClose(); // fast downward swipe → close
-              else setHeight(dy > 0 ? minH : maxH);
-            };
-            document.addEventListener('touchmove', (ev: TouchEvent) => { lastY = ev.touches[0].clientY; lastT = Date.now(); onMove(ev); }, { passive: false });
-            document.addEventListener('touchend', onEnd, { passive: true });
+            if (el && el.scrollTop > 2) return; // only act when at very top
+            startDrag(e.touches[0].clientY, height, false);
           }}
         >
           {children}
