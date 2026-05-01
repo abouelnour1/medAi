@@ -2120,7 +2120,7 @@ const App: React.FC = () => {
         <CompareModal medicines={compareList} onClose={() => setShowCompare(false)} language={language} />
       )}
       {/* ── Bottom Sheet للدواء ── */}
-      <BottomSheet
+      {!!sheetMedicine && <BottomSheet
         isOpen={!!sheetMedicine}
         skipOpenAnimation={sheetSkipAnim}
         onClose={() => setSheetMedicine(null)}
@@ -2150,7 +2150,7 @@ const App: React.FC = () => {
           />
           </React.Suspense>
         )}
-      </BottomSheet>
+      </BottomSheet>}
 
       <GeminiPromptModal isOpen={geminiModal.open} prompt={geminiModal.prompt} onClose={() => setGeminiModal({ open: false, prompt: '' })} />
 
