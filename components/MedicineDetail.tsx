@@ -96,7 +96,27 @@ const LACT_CAT_STYLE: Record<string, { bg: string; text: string; border: string;
   S:   { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-700', dot: 'bg-emerald-500' },
   NSC: { bg: 'bg-amber-50 dark:bg-amber-900/20',     text: 'text-amber-700 dark:text-amber-400',     border: 'border-amber-200 dark:border-amber-700',     dot: 'bg-amber-500' },
   NS:  { bg: 'bg-red-50 dark:bg-red-900/20',         text: 'text-red-700 dark:text-red-400',         border: 'border-red-200 dark:border-red-700',         dot: 'bg-red-600' },
+  U:   { bg: 'bg-slate-50 dark:bg-slate-800/40',     text: 'text-slate-500 dark:text-slate-400',     border: 'border-slate-200 dark:border-slate-700',     dot: 'bg-slate-400' },
 };
+// Normalize lactation category variants to canonical key
+function normLactCat(raw: string): string {
+  const r = (raw||'').trim().toUpperCase();
+  if (r.startsWith('S')) return 'S';   // S, S (probably), S (conditionally)
+  if (r.startsWith('NSC')) return 'NSC';
+  if (r.startsWith('NS')) return 'NS'; // NS, NS (possibly), NS (potentially)
+  if (r === 'U') return 'U';
+  return r;
+}
+// Normalize pregnancy category variants
+function normPregCat(raw: string): string {
+  const r = (raw||'').replace(/[^A-Za-z]/g,'').toUpperCase();
+  if (r === 'X') return 'X';
+  if (r.startsWith('D')) return 'D';
+  if (r.startsWith('C')) return 'C';
+  if (r.startsWith('B')) return 'B';
+  if (r.startsWith('A')) return 'A';
+  return r;
+}
 const PREG_LABELS_AR: Record<string, string> = { A: 'آمن', B: 'آمن', C: 'احتياط', D: 'تجنب', X: 'ممنوع' };
 const LACT_LABELS_AR: Record<string, string> = { S: 'آمن', NSC: 'احتياط', NS: 'تجنب' };
 const PREG_LABELS_EN: Record<string, string> = { A: 'Safe', B: 'Safe', C: 'Caution', D: 'Avoid', X: 'Contraind.' };
@@ -110,8 +130,8 @@ const SafetyBadgesCard: React.FC<{
 }> = ({ clinicalRef, pregRef, language, onOpenRef }) => {
   const ar = language === 'ar';
 
-  const pregCat = (pregRef?.pregnancyCategory || '').replace(/[^A-Za-z]/g, '').toUpperCase() as string;
-  const lactCat = (pregRef?.lactationCategory || '').trim().toUpperCase() as string;
+  const pregCat = normPregCat(pregRef?.pregnancyCategory || '');
+  const lactCat = normLactCat(pregRef?.lactationCategory || '');
 
   // Only show old-style badges if no pregRef data
   const oldBadges: SafetyBadgeConfig[] = [
@@ -501,10 +521,11 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
       <div className="grid grid-cols-3 gap-2 px-0.5">
           {/* Alternatives */}
-          {!isFoodOrSupplement && <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
+          <button onClick={() => onFindAlternative(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border border-primary/15 p-3 rounded-2xl active:scale-95 transition-all">
               <div className="w-4 h-4 text-primary flex-shrink-0"><AlternativeIcon /></div>
               <span className="font-black text-[9px] uppercase text-primary">{t('directAlternatives')}</span>
-          </button>}
+          </button>
+
           {/* Ask Gemini */}
           <button onClick={() => onAskGemini?.(medicine)} className="flex items-center justify-center gap-1.5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200/50 dark:border-blue-800/30 p-3 rounded-2xl active:scale-95 transition-all">
               <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>

@@ -116,7 +116,7 @@ interface Props {
 }
 
 const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
-  const deferredSearch = useDeferredValue(searchTerm);
+  const deferredSearch = searchTerm; // direct - no defer overhead
 
   // Pre-index for fast lookups — only recomputes when medicines change
   const medsIndex = useMemo(() => {
@@ -165,7 +165,7 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [results, classFilter]);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 60);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 30);
     return () => clearTimeout(h);
   }, [input]);
 

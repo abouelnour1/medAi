@@ -275,6 +275,20 @@ const _SYNONYMS: Record<string, string> = {
   'paracetamol': 'acetaminophen',
   'acetaminophen': 'paracetamol',
   'albuterol': 'salbutamol',
+  // combo drugs
+  'co-amoxiclav': 'amoxicillin-clavulanate',
+  'augmentin': 'amoxicillin-clavulanate',
+  'amoxicillin/clavulanic acid': 'amoxicillin-clavulanate',
+  'amoxicillin/clavulanate': 'amoxicillin-clavulanate',
+  'amoxicillin clavulanate': 'amoxicillin-clavulanate',
+  'amoxicillin,clavulanic acid': 'amoxicillin-clavulanate',
+  'co-trimoxazole': 'sulfamethoxazole-trimethoprim',
+  'cotrimoxazole': 'sulfamethoxazole-trimethoprim',
+  'bactrim': 'sulfamethoxazole-trimethoprim',
+  'septrin': 'sulfamethoxazole-trimethoprim',
+  'sulfamethoxazole trimethoprim': 'sulfamethoxazole-trimethoprim',
+  'trimethoprim sulfamethoxazole': 'sulfamethoxazole-trimethoprim',
+  'sulfamethoxazole,trimethoprim': 'sulfamethoxazole-trimethoprim',
   // miconazole → clotrimazole (same azole antifungal class, similar clinical data)
   'miconazole': 'clotrimazole',
 };
@@ -449,11 +463,17 @@ export async function getPregReference(scientificName: string, tradeName?: strin
 
   if (!entry) return null;
 
+  // Normalize category variants
+  const rawPreg = entry.pregnancyCategory || '';
+  const rawLact = entry.lactationCategory || '';
+  const pregCat = rawPreg.replace(/[^A-Za-z]/g,'').toUpperCase().charAt(0) || rawPreg.charAt(0).toUpperCase();
+  const lactCat = rawLact.trim().toUpperCase().startsWith('S') ? 'S' : rawLact.trim().toUpperCase().startsWith('NSC') ? 'NSC' : rawLact.trim().toUpperCase().startsWith('NS') ? 'NS' : rawLact.trim().toUpperCase();
+
   return {
-    pregnancyCategory:      entry.pregnancyCategory || '',
-    lactationCategory:      entry.lactationCategory || '',
-    pregnancyStatus:        _pregCatToStatus(entry.pregnancyCategory || ''),
-    lactationStatus:        _lactCatToStatus(entry.lactationCategory || ''),
+    pregnancyCategory:      pregCat || rawPreg,
+    lactationCategory:      lactCat || rawLact,
+    pregnancyStatus:        _pregCatToStatus(pregCat || rawPreg),
+    lactationStatus:        _lactCatToStatus(lactCat || rawLact),
     maternalConsiderations: entry.maternalConsiderations || '',
     fetalConsiderations:    entry.fetalConsiderations || '',
     breastfeedingSafety:    entry.breastfeedingSafety || '',

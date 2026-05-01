@@ -61,7 +61,7 @@ const GeminiPromptModal: React.FC<GeminiPromptModalProps> = ({ isOpen, prompt, o
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[600] flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
         className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] p-6 pb-10"

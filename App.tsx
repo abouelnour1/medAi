@@ -698,6 +698,10 @@ const App: React.FC = () => {
               // جاي من نتائج البحث → ارجع للنتائج وافتح الكارت
               setView('results');
               restoreScroll('results');
+              // Reopen the sheet medicine if we came from a bottom sheet
+              if (selectedMedicine && !['details','favorites','indicationSearch'].includes(previousView)) {
+                requestAnimationFrame(() => setSheetMedicine(selectedMedicine));
+              }
           }
       } else if (view === 'details') {
           const target = previousView === 'alternatives' ? 'alternatives' : previousView === 'search' ? 'search' : 'results';
@@ -1067,23 +1071,23 @@ const App: React.FC = () => {
     // ── منطق خاص للـ Food ─────────────────────────────────────────────────
     if (selectedMedicine['Product type'] === 'Food') {
       // استخراج مكونات منتج غذائي من الاسم العلمي
-      const STOP = new Set(['and','or','with','plus','acid','salt','base','form','free','as','in','of','the','a']);
+      const STOP = new Set(['and','or','with','plus','acid','salt','base','form','free','as','in','of','the','a','extract','powder','oil','complex','blend','natural','hydrate']);
       const extractIngredients = (sciName: string): string[] =>
         sciName
-          .split(/[,،+&\/|;]+/)
+          .split(/[,،+&\/|;()]+/)
           .map(s =>
             s.toLowerCase()
               .replace(/[-_]/g, ' ')
-              .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit|unit[s]?)?/gi, '')
+              .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit|unit[s]?|mcg\/tab|per\s*tab)?/gi, '')
               .replace(/\s+/g, ' ')
               .trim()
           )
           .map(s => {
-            // Use full ingredient name (cleaned), not just first 2 chars
+            // Keep full meaningful ingredient name
             const words = s.split(/\s+/).filter(w => w.length >= 3 && !STOP.has(w));
             return words.join(' ').trim();
           })
-          .filter(s => s.length >= 4); // minimum 4 chars for a valid ingredient name
+          .filter(s => s.length >= 4);
 
       const countShared = (a: string[], b: string[]): number => {
         // Full ingredient name match only (both must be identical normalized strings)
@@ -1091,11 +1095,15 @@ const App: React.FC = () => {
         return a.filter(x => setB.has(x.toLowerCase().trim())).length;
       };
       const isFullMatch = (a: string[], b: string[]): boolean => {
-        // 100% match: every ingredient in smaller list exists in larger list
-        const larger  = a.length >= b.length ? a : b;
-        const smaller = a.length <  b.length ? a : b;
-        const setL = new Set(larger.map(s => s.toLowerCase().trim()));
-        return smaller.every(s => setL.has(s.toLowerCase().trim()));
+        // 100% exact match: ALL ingredients of BOTH lists must match each other
+        // (not just subset — prevents calcium matching calcium+vitamin D)
+        if (a.length === 0 || b.length === 0) return false;
+        const setA = new Set(a.map(s => s.toLowerCase().trim()));
+        const setB = new Set(b.map(s => s.toLowerCase().trim()));
+        // Every item in A must be in B AND every item in B must be in A
+        const allAinB = [...setA].every(s => setB.has(s));
+        const allBinA = [...setB].every(s => setA.has(s));
+        return allAinB && allBinA;
       };
 
       const myIngredients = extractIngredients(String(selectedMedicine['Scientific Name'] || ''));
@@ -1165,7 +1173,7 @@ const App: React.FC = () => {
         .filter((p:string)=>p.length>=4);
       const myI = extractI(String(selectedMedicine['Scientific Name']||''));
       if (!myI.length) return { direct:[], therapeutic:[] };
-      const isFullM = (a:string[],b:string[]) => { const lg=a.length>=b.length?a:b,sm=a.length<b.length?a:b,sL=new Set(lg.map((s:string)=>s.toLowerCase().trim())); return sm.every((s:string)=>sL.has(s.toLowerCase().trim())); };
+      const isFullM = (a:string[],b:string[]) => { if(!a.length||!b.length)return false; const sA=new Set(a.map((s:string)=>s.toLowerCase().trim())),sB=new Set(b.map((s:string)=>s.toLowerCase().trim())); return [...sA].every((s:string)=>sB.has(s))&&[...sB].every((s:string)=>sA.has(s)); };
       const direct:Medicine[]=[],therapeutic:Medicine[]=[],dirIds=new Set<string>();
       for(const m of medicines.filter((x:Medicine)=>x.RegisterNumber!==selectedMedicine.RegisterNumber&&x['Product type']==='Supplement'&&String(x['Scientific Name']||'').length>2)){
         const thI=extractI(String(m['Scientific Name']||''));

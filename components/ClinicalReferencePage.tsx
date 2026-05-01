@@ -14,13 +14,17 @@ async function getLookup(){ if(_lookupCache)return _lookupCache; try{const r=awa
 async function resolveKeys(sci:string,trade:string){const lk=await getLookup();const u=sci.toUpperCase().trim();const e=lk[u]||lk[u.split(/[\s,/]+/)[0]];return{clinKey:e?.c??null,renalKey:e?.r??null};}
 
 const SALT=/\s+(hydrochloride|hcl|sodium|potassium|sulfate|sulphate|maleate|fumarate|tartrate|acetate|phosphate|citrate|gluconate|mesylate|besylate|oxalate|bromide|chloride|nitrate|succinate|valerate|monohydrate|trihydrate|anhydrous|dihydrate)\b/gi;
-const SYN:Record<string,string>={hyoscine:'scopolamine',salbutamol:'albuterol',paracetamol:'acetaminophen',acetaminophen:'paracetamol',albuterol:'salbutamol',miconazole:'clotrimazole','folic acid':'folate','vitamin c':'ascorbic acid','co-amoxiclav':'amoxicillin-clavulanate potassium','amoxicillin/clavulanate':'amoxicillin-clavulanate potassium'};
+const SYN:Record<string,string>={hyoscine:'scopolamine',salbutamol:'albuterol',paracetamol:'acetaminophen',acetaminophen:'paracetamol',albuterol:'salbutamol',miconazole:'clotrimazole','folic acid':'folate','vitamin c':'ascorbic acid','co-amoxiclav':'amoxicillin-clavulanate','augmentin':'amoxicillin-clavulanate','amoxicillin/clavulanic acid':'amoxicillin-clavulanate','amoxicillin/clavulanate':'amoxicillin-clavulanate','amoxicillin clavulanate':'amoxicillin-clavulanate','amoxicillin,clavulanic acid':'amoxicillin-clavulanate','co-trimoxazole':'sulfamethoxazole-trimethoprim','cotrimoxazole':'sulfamethoxazole-trimethoprim','bactrim':'sulfamethoxazole-trimethoprim','septrin':'sulfamethoxazole-trimethoprim','sulfamethoxazole trimethoprim':'sulfamethoxazole-trimethoprim','trimethoprim sulfamethoxazole':'sulfamethoxazole-trimethoprim','sulfamethoxazole,trimethoprim':'sulfamethoxazole-trimethoprim'};
 function norm(n:string){return n.toLowerCase().trim().replace(/-/g,'/').replace(/\d+(\.\d+)?\s*(mg|ml|g|mcg|ug|iu|%|units?|mmol)\b/gi,'').replace(SALT,'').replace(/\s+/g,' ').trim();}
 function keys(raw:string){const n=norm(raw),fw=n.split(/[\s/,+]+/)[0],c=[n,raw.toLowerCase().trim(),fw,...n.split(/[/,+]+/).map(p=>p.trim())].filter(Boolean);if(SYN[n])c.push(SYN[n]);if(SYN[fw])c.push(SYN[fw]);return[...new Set(c)];}
 function findInMap<T>(map:Record<string,T>,...raws:string[]):T|undefined{const mk=Object.keys(map),nm:Record<string,string>={};for(const k of mk)nm[k]=norm(k);for(const raw of raws){if(!raw)continue;const cs=keys(raw);for(const c of cs)if(map[c])return map[c];for(const c of cs){const f=mk.find(k=>nm[k]===c);if(f)return map[f];}const fw=cs[cs.length-1];if(fw&&fw.length>=4){const f=mk.find(k=>{const nk=nm[k],nf=nk.split(/[\s/,+]+/)[0];return nk.startsWith(fw)||fw.startsWith(nf);});if(f)return map[f];}}return undefined;}
 
 async function fetchRenalData(sci:string,trade?:string){if(!_renalCache){try{const r=await fetch(R2_RENAL_URL);if(r.ok)_renalCache=await r.json();else _renalCache={};}catch{_renalCache={};}}const{renalKey}=await resolveKeys(sci,trade??'');if(renalKey&&_renalCache![renalKey])return _renalCache![renalKey];return findInMap(_renalCache!,sci,trade??'')??null;}
 async function fetchFullClinical(sci:string,trade?:string){if(!_clinCache){try{const r=await fetch(R2_CLINICAL_FULL_URL);if(r.ok)_clinCache=await r.json();else _clinCache={};}catch{_clinCache={};}}const{clinKey}=await resolveKeys(sci,trade??'');if(clinKey&&_clinCache![clinKey])return _clinCache![clinKey];return findInMap(_clinCache!,sci,trade??'')??null;}
+
+// ── Category normalization ───────────────────────────────────────────────────────
+function normPregCat(raw:string):string{const r=(raw||'').replace(/[^A-Za-z]/g,'').toUpperCase();if(r==='X')return'X';if(r.startsWith('D'))return'D';if(r.startsWith('C'))return'C';if(r.startsWith('B'))return'B';if(r.startsWith('A'))return'A';return r;}
+function normLactCat(raw:string):string{const r=(raw||'').trim().toUpperCase();if(r.startsWith('S'))return'S';if(r.startsWith('NSC'))return'NSC';if(r.startsWith('NS'))return'NS';if(r==='U')return'U';return r;}
 
 // ── Category descriptions ─────────────────────────────────────────────────────
 const PREG_INFO:Record<string,{color:string;bg:string;border:string;labelEn:string;labelAr:string;descEn:string;descAr:string}>={
@@ -359,8 +363,8 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
 
   const get=(k:string):string=>{for(const src of[fullData,pregData,data]){if(!src)continue;const v=(src as any)[k];if(v&&typeof v==='string'&&v.trim())return v.trim();if(k==='interactions'){const vi=(src as any).drugInteractions;if(vi&&typeof vi==='string'&&vi.trim())return vi.trim();}}return'';};
 
-  const pregCat=(pregData?.pregnancyCategory||'').replace(/[^A-Za-z]/g,'').toUpperCase();
-  const lactCat=(pregData?.lactationCategory||'').trim().toUpperCase();
+  const pregCat=normPregCat(pregData?.pregnancyCategory||'');
+  const lactCat=normLactCat(pregData?.lactationCategory||'');
   const pi=PREG_INFO[pregCat]; const li=LACT_INFO[lactCat];
 
   const indications=get('indications'); const mechanism=get('mechanism'); const dosage=get('dosage');
