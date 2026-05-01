@@ -28,7 +28,7 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
 
   if (mode === 'tradeName' || mode === 'scientificName') {
     const field = mode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
-    if(t.length < 2) return [];
+    if(t.length < 3) return [];
     // Use sorted prefix entries for fast O(log n) prefix match
     let sw: Medicine[] = [];
     if (idx) {
