@@ -14,7 +14,7 @@ const BottomSheet: React.FC<Props> = ({ onClose, children, minH: _minH, maxH: _m
   const winH = window.innerHeight;
   const minH  = _minH  ?? Math.round(winH * 0.45);
   const maxH  = _maxH  ?? Math.round(winH * 0.92);
-  const initH = initialH ?? Math.round(winH * 0.65);
+  const initH = initialH ?? maxH;
 
   const [height, setHeight]       = useState(initH);
   const sheetRef                   = useRef<HTMLDivElement>(null);

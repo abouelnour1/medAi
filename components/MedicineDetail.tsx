@@ -1,4 +1,5 @@
 
+import ReactDOM from 'react-dom';
 import React, { useState, useEffect, memo, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { logMedicineView } from '../utils/analytics';
@@ -837,20 +838,20 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
 
 
 
-      {/* Clinical Reference Full Page — from R2 */}
-      {showClinicalRef && (clinicalRef || pregRef) && (
+      {/* Clinical Reference Full Page — rendered at body level via portal */}
+      {showClinicalRef && ReactDOM.createPortal(
         <ClinicalReferencePage
           scientificName={String(medicine['Scientific Name'] || '').split(',')[0].trim()}
           tradeName={String(medicine['Trade Name'] || '')}
           language={language}
           onClose={() => setShowClinicalRef(false)}
           medicine={medicine}
-        />
+        />,
+        document.body
       )}
 
       {/* Clinical Data Full Page */}
-      {showClinicalPage && (
-        <ClinicalDataPage
+      {showClinicalPage && ReactDOM.createPortal(<ClinicalDataPage
           registerNumber={medicine.RegisterNumber}
           tradeName={medicine['Trade Name']}
           scientificName={medicine['Scientific Name']}
@@ -858,7 +859,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
           isAdmin={user?.role === 'admin'}
           allMedicines={allMedicines}
           onClose={() => setShowClinicalPage(false)}
-        />
+        />, document.body
       )}
       {/* ── Report — آخر الكارت ── */}
       <button

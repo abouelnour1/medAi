@@ -18,7 +18,8 @@ function normStr(name: string): string {
 
 type SR = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
 
-function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins: InsuranceDrug[]): SR[] {
+interface MedsIndex { byTrade: Map<string,Medicine[]>; bySci: Map<string,Medicine[]>; bySciNorm: Map<string,Medicine[]>; }
+function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins: InsuranceDrug[], idx?: MedsIndex): SR[] {
   const t = term.toLowerCase().trim();
   if (t.replace(/\*/g,'').length < 1) return [];
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -77,12 +78,12 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
     });
     food.forEach(med => results.push({ type:'not-covered', medicine:med }));
   } else {
-    // precompute meds lookup by normalized scientific name
-    const medsMap = new Map<string, Medicine[]>();
-    meds.forEach(m => {
-      const k = normStr(m['Scientific Name']||'');
-      if (k) { if (!medsMap.has(k)) medsMap.set(k,[]); medsMap.get(k)!.push(m); }
-    });
+    // Use pre-built index if available
+    const medsMap = idx?.bySciNorm ?? (() => {
+      const m = new Map<string, Medicine[]>();
+      meds.forEach(med => { const k = normStr(med['Scientific Name']||''); if (k) { if (!m.has(k)) m.set(k,[]); m.get(k)!.push(med); } });
+      return m;
+    })();
     const field = mode === 'indication' ? 'indication' : 'icd10Code';
     const matching = ins.filter(p => (p[field as keyof InsuranceDrug]||'').toString().toLowerCase().includes(t)).slice(0,80);
     const byInd = new Map<string, InsuranceDrug[]>();
@@ -133,11 +134,16 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
     return { byTrade, bySci, bySciNorm };
   }, [allMedicines]);
   const [input, setInput] = useState(searchTerm);
-  const [results, setResults] = useState<SR[]>([]);
-  const [busy, setBusy] = useState(false);
   const [classFilter, setClassFilter] = useState<string>('');
 
   // Build unique classes from results
+  // Instant synchronous results - no loading state
+  const results = useMemo(() => {
+    if (!deferredSearch || deferredSearch.replace(/\*/g,'').length < 1) return [];
+    try { return compute(deferredSearch, searchMode, allMedicines, insuranceData, medsIndex); }
+    catch { return []; }
+  }, [deferredSearch, searchMode, allMedicines, insuranceData, medsIndex]);
+
   const availableClasses = useMemo(() => {
     const classes = new Set<string>();
     results.forEach(r => {
@@ -159,25 +165,10 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
   }, [results, classFilter]);
 
   useEffect(() => {
-    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, input.length < 2 ? 0 : 80);
+    const h = setTimeout(() => { if (input !== searchTerm) setSearchTerm(input); }, 60);
     return () => clearTimeout(h);
   }, [input]);
 
-  useEffect(() => {
-    if (!searchTerm || searchTerm.replace(/\*/g,'').length < 1) { setResults([]); setClassFilter(''); setBusy(false); return; }
-    setBusy(true);
-    // Use requestAnimationFrame to let UI update first, then compute
-    let cancelled = false;
-    const raf = requestAnimationFrame(() => {
-      const tid = setTimeout(() => {
-        if (cancelled) return;
-        try { setResults(compute(searchTerm, searchMode, allMedicines, insuranceData)); }
-        catch { setResults([]); }
-        setBusy(false);
-      }, 0);
-    });
-    return () => { cancelled = true; cancelAnimationFrame(raf); };
-  }, [searchTerm, searchMode, allMedicines, insuranceData]);
 
   const MODES = [
     { id:'tradeName' as const, label: t('tradeName')||'Trade Name' },
@@ -205,14 +196,14 @@ const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines
 
   const resultsEl = (
       <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:80, overflow:'hidden', maxWidth:'100%' }}>
-        {busy && <div style={{ textAlign:'center', padding:20, color:'var(--text-subtle)', fontSize:12 }}>Loading...</div>}
-        {!busy && results.map((r,i) => {
+        
+        {results.map((r,i) => {
           if (r.type==='covered') return <IndicationCard key={'c'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
           if (r.type==='drug-grouped') return <DrugPolicyCard key={'d'+i} group={r} t={t} onSelectInsuranceData={onSelectInsuranceData} />;
           if (r.type==='not-covered') return <NotCoveredCard key={'n'+i} medicine={r.medicine} t={t} />;
           return null;
         })}
-        {!busy && !searchTerm && (
+        {!searchTerm && (
           <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--text-subtle)' }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin:'0 auto 12px', display:'block', opacity:0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <p style={{ fontSize:13, fontWeight:600 }}>{t('insuranceSearchPlaceholder')||'Search for condition, drug, or code...'}</p>
