@@ -1067,21 +1067,35 @@ const App: React.FC = () => {
     // ── منطق خاص للـ Food ─────────────────────────────────────────────────
     if (selectedMedicine['Product type'] === 'Food') {
       // استخراج مكونات منتج غذائي من الاسم العلمي
+      const STOP = new Set(['and','or','with','plus','acid','salt','base','form','free','as','in','of','the','a']);
       const extractIngredients = (sciName: string): string[] =>
         sciName
           .split(/[,،+&\/|;]+/)
           .map(s =>
             s.toLowerCase()
               .replace(/[-_]/g, ' ')
-              .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit)?/gi, '')
+              .replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|international\s*unit|unit[s]?)?/gi, '')
               .replace(/\s+/g, ' ')
               .trim()
           )
-          .filter(s => s.length > 2);
+          .map(s => {
+            // Use full ingredient name (cleaned), not just first 2 chars
+            const words = s.split(/\s+/).filter(w => w.length >= 3 && !STOP.has(w));
+            return words.join(' ').trim();
+          })
+          .filter(s => s.length >= 4); // minimum 4 chars for a valid ingredient name
 
       const countShared = (a: string[], b: string[]): number => {
-        const setB = new Set(b);
-        return a.filter(x => setB.has(x)).length;
+        // Full ingredient name match only (both must be identical normalized strings)
+        const setB = new Set(b.map(s => s.toLowerCase().trim()));
+        return a.filter(x => setB.has(x.toLowerCase().trim())).length;
+      };
+      const isFullMatch = (a: string[], b: string[]): boolean => {
+        // 100% match: every ingredient in smaller list exists in larger list
+        const larger  = a.length >= b.length ? a : b;
+        const smaller = a.length <  b.length ? a : b;
+        const setL = new Set(larger.map(s => s.toLowerCase().trim()));
+        return smaller.every(s => setL.has(s.toLowerCase().trim()));
       };
 
       const myIngredients = extractIngredients(String(selectedMedicine['Scientific Name'] || ''));
@@ -1101,13 +1115,12 @@ const App: React.FC = () => {
         const theirIngredients = extractIngredients(String(m['Scientific Name'] || ''));
         if (theirIngredients.length === 0) continue;
         const shared = countShared(myIngredients, theirIngredients);
-        // بديل مباشر: كل مكونات المنتج الأصغر موجودة في الأكبر
-        const minCount = Math.min(myIngredients.length, theirIngredients.length);
-        if (shared >= minCount && shared > 0) {
+        // بديل مباشر: 100% تطابق كامل للمكونات (كل مكونات الأصغر موجودة في الأكبر)
+        if (isFullMatch(myIngredients, theirIngredients)) {
           directList.push({ m, shared });
           directIds.add(m.RegisterNumber);
         } else if (shared >= 2 && !directIds.has(m.RegisterNumber)) {
-          // بديل علاجي: مكونان مشتركان على الأقل
+          // بديل علاجي: مكونان مشتركان على الأقل (full word match)
           therapeuticList.push({ m, shared });
         }
       }
@@ -1121,7 +1134,51 @@ const App: React.FC = () => {
       };
     }
 
-    // ── الأدوية والمكملات (المنطق الأصلي) ──────────────────────────────────
+    // ── المكملات الغذائية - نفس منطق Food ───────────────────────────────────
+    if (selectedMedicine['Product type'] === 'Supplement') {
+      const STOP2 = new Set(['and','or','with','plus','acid','salt','base','form','free','as','in','of','the','a']);
+      const extractI = (s: string): string[] => s.split(/[,،+&\/|;]+/)
+        .map(p => p.toLowerCase().replace(/[-_]/g,' ').replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|unit[s]?)?/gi,'').replace(/\s+/g,' ').trim())
+        .map(p => p.split(/\s+/).filter(w=>w.length>=3&&!STOP2.has(w)).join(' ').trim())
+        .filter(p=>p.length>=4);
+      const myI = extractI(String(selectedMedicine['Scientific Name']||''));
+      if (!myI.length) return { direct:[], therapeutic:[] };
+      const isFullM = (a:string[],b:string[]) => { const lg=a.length>=b.length?a:b,sm=a.length<b.length?a:b,sL=new Set(lg.map(s=>s.toLowerCase().trim())); return sm.every(s=>sL.has(s.toLowerCase().trim())); };
+      const direct:Medicine[]=[],therapeutic:Medicine[]=[],dirIds=new Set<string>();
+      for(const m of medicines.filter(x=>x.RegisterNumber!==selectedMedicine.RegisterNumber&&x['Product type']==='Supplement'&&String(x['Scientific Name']||'').length>2)){
+        const thI=extractI(String(m['Scientific Name']||''));
+        if(!thI.length)continue;
+        const sh=myI.filter(x=>new Set(thI.map(s=>s.toLowerCase())).has(x.toLowerCase())).length;
+        if(isFullM(myI,thI)){ direct.push(m); dirIds.add(m.RegisterNumber); }
+        else if(sh>=2&&!dirIds.has(m.RegisterNumber)) therapeutic.push(m);
+      }
+      return { direct:direct.slice(0,20), therapeutic:therapeutic.slice(0,20) };
+    }
+
+    // ── الأدوية (المنطق الأصلي) ───────────────────────────────────────────────
+    // ── المكملات الغذائية ─────────────────────────────────────────────────────
+    if (selectedMedicine['Product type'] === 'Supplement') {
+      const STOP2 = new Set(['and','or','with','plus','acid','salt','base','form','free','as','in','of','the','a']);
+      const extractI = (s: string): string[] => s.split(/[,،+&\/|;]+/)
+        .map(p => p.toLowerCase().replace(/[-_]/g,' ').replace(/\d+(\.\d+)?\s*(mg|g|mcg|ug|µg|iu|ui|%|ml|unit[s]?)?/gi,'').replace(/\s+/g,' ').trim())
+        .map(p => p.split(/\s+/).filter((w:string)=>w.length>=3&&!STOP2.has(w)).join(' ').trim())
+        .filter((p:string)=>p.length>=4);
+      const myI = extractI(String(selectedMedicine['Scientific Name']||''));
+      if (!myI.length) return { direct:[], therapeutic:[] };
+      const isFullM = (a:string[],b:string[]) => { const lg=a.length>=b.length?a:b,sm=a.length<b.length?a:b,sL=new Set(lg.map((s:string)=>s.toLowerCase().trim())); return sm.every((s:string)=>sL.has(s.toLowerCase().trim())); };
+      const direct:Medicine[]=[],therapeutic:Medicine[]=[],dirIds=new Set<string>();
+      for(const m of medicines.filter((x:Medicine)=>x.RegisterNumber!==selectedMedicine.RegisterNumber&&x['Product type']==='Supplement'&&String(x['Scientific Name']||'').length>2)){
+        const thI=extractI(String(m['Scientific Name']||''));
+        if(!thI.length)continue;
+        const sL=new Set(thI.map((s:string)=>s.toLowerCase()));
+        const sh=myI.filter((x:string)=>sL.has(x.toLowerCase())).length;
+        if(isFullM(myI,thI)){ direct.push(m); dirIds.add(m.RegisterNumber); }
+        else if(sh>=2&&!dirIds.has(m.RegisterNumber)) therapeutic.push(m);
+      }
+      return { direct:direct.slice(0,20), therapeutic:therapeutic.slice(0,20) };
+    }
+
+    // ── الأدوية (المنطق الأصلي) ───────────────────────────────────────────────
     const sciName = String(selectedMedicine['Scientific Name']).toLowerCase();
     const strength = String(selectedMedicine.Strength).toLowerCase();
     const form = selectedMedicine.PharmaceuticalForm;

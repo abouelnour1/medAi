@@ -397,8 +397,20 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
     renal:<svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>,
   };
 
+  // Swipe down to close ClinicalReferencePage
+  const touchStartY = React.useRef(0);
+  const handlePageTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const handlePageTouchEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (dy > 80) onClose(); // swipe down 80px → close
+  };
+
   return(
-    <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-dark-bg flex flex-col" data-overlay="true" style={{direction:ar?'rtl':'ltr'}}>
+    <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-dark-bg flex flex-col" data-overlay="true"
+      style={{direction:ar?'rtl':'ltr'}}
+      onTouchStart={handlePageTouchStart}
+      onTouchEnd={handlePageTouchEnd}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
         <button onClick={onClose} className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-90 transition-transform">
@@ -411,23 +423,25 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
         <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 px-2.5 py-1 rounded-xl flex-shrink-0">{ar?'المرجع السريري':'Clinical Ref'}</span>
       </div>
 
-      {/* Category badges */}
-      {pregData&&(pregCat||lactCat)&&(
-        <div className="flex-shrink-0 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 px-4 py-2.5 flex items-center gap-2 flex-wrap">
-          {pregCat&&pi&&(
-            <button onClick={()=>setSheet('preg')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${pi.bg} ${pi.border}`}>
-              <span className={`text-[12px] font-black ${pi.color}`}>{ar?'حمل':'Preg'}: <span className="text-[15px]">{pregCat}</span></span>
-              <svg className={`w-3 h-3 ${pi.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </button>
-          )}
-          {lactCat&&li&&(
-            <button onClick={()=>setSheet('lact')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${li.bg} ${li.border}`}>
-              <span className={`text-[12px] font-black ${li.color}`}>{ar?'رضاعة':'Lact'}: <span className="text-[15px]">{lactCat}</span></span>
-              <svg className={`w-3 h-3 ${li.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </button>
-          )}
-        </div>
-      )}
+      {/* Category badges — always show */}
+      <div className="flex-shrink-0 bg-white dark:bg-dark-card border-b border-slate-100 dark:border-slate-800 px-4 py-2.5 flex items-center gap-2 flex-wrap">
+        {pregData&&pregCat&&pi&&(
+          <button onClick={()=>setSheet('preg')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${pi.bg} ${pi.border}`}>
+            <span className={`text-[12px] font-black ${pi.color}`}>{ar?'حمل':'Preg'}: <span className="text-[15px]">{pregCat}</span></span>
+            <svg className={`w-3 h-3 ${pi.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+        )}
+        {pregData&&lactCat&&li&&(
+          <button onClick={()=>setSheet('lact')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border active:scale-95 transition-all ${li.bg} ${li.border}`}>
+            <span className={`text-[12px] font-black ${li.color}`}>{ar?'رضاعة':'Lact'}: <span className="text-[15px]">{lactCat}</span></span>
+            <svg className={`w-3 h-3 ${li.color} opacity-50`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+        )}
+        <button onClick={()=>setSheet('renal')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-200 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-900/20 active:scale-95 transition-all">
+          <svg className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M8 12c-4 0-5 2-5 2s1 4 9 4 9-4 9-4-1-2-5-2"/></svg>
+          <span className="text-[12px] font-black text-cyan-600 dark:text-cyan-400">{ar?'الكلى':'Renal'}</span>
+        </button>
+      </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2" style={{paddingBottom:'calc(env(safe-area-inset-bottom)+24px)'}}>
