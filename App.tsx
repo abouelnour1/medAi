@@ -1615,7 +1615,7 @@ const App: React.FC = () => {
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> },
                           { labelAr:'الوصفات',    labelEn:'Prescription', sub_ar:'إدارة الوصفات',  sub_en:'Manage prescriptions',bg:'#f0fdf4', border:'#86efac', color:'#166534', onClick:()=>{setActiveTab('settings');setView('prescriptions');},
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
-                          { labelAr:'الجرعات السريعة',labelEn:'Quick Doses',sub_ar:'جرعات دفعة واحدة',sub_en:'Common doses at a glance',bg:'#fef3c7',border:'#fcd34d',color:'#92400e',onClick:()=>setView('quickDoses'),
+                          { labelAr:'الجرعات السريعة',labelEn:'Quick Doses',sub_ar:'جرعات دفعة واحدة',sub_en:'Common doses at a glance',bg:'#fef3c7',border:'#fcd34d',color:'#92400e',onClick:()=>{setPedCalcDrug(undefined);setPedCalcOpen(true);},
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
                         ].map((item,i) => (
                           <button key={i} onClick={item.onClick}
