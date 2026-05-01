@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense, useDeferredValue } from 'react';
 import { 
   Medicine, View, Filters, TextSearchMode, Language, TFunction, Tab, SortByOption, 
   InsuranceDrug, SelectedInsuranceData, InsuranceSearchMode, Notification as AppNotification
@@ -329,8 +329,9 @@ const App: React.FC = () => {
     try { return sessionStorage.getItem('ps_search') || ''; } catch { return ''; }
   });
   const [textSearchMode, setTextSearchMode] = useState<TextSearchMode>('tradeName');
-  // الـ debounce انتقل لـ SearchBar — searchTerm هنا بقى هو المؤجل مباشرة
-  const debouncedSearchTerm = searchTerm;
+  // useDeferredValue → non-blocking search (UI stays responsive while computing)
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const debouncedSearchTerm = deferredSearchTerm;
   const [sortBy, setSortBy] = useState<SortByOption>('relevance');
   const [filters, setFilters] = useState<Filters>({ productType: 'all', priceMin: '', priceMax: '', pharmaceuticalForm: '', manufactureName: [], marketingCompany: [], mainAgent: [], legalStatus: '' });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);

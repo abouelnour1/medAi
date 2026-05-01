@@ -67,13 +67,15 @@ const InsuranceDetailsView: React.FC<{ data: SelectedInsuranceData; t: TFunction
           <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
             {meds.map(med => (
               <div key={med.RegisterNumber} className="flex items-center justify-between px-4 py-3 gap-3">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-black text-slate-800 dark:text-white truncate">{med['Trade Name']}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{med.Strength} {med.StrengthUnit} · {med.PharmaceuticalForm}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-black text-slate-800 dark:text-white" style={{wordBreak:'break-word',overflowWrap:'anywhere'}}>{med['Trade Name']}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                    {[String(med.Strength||'').replace(/,.*$/,'').trim(), med.StrengthUnit, med.PharmaceuticalForm].filter(Boolean).join(' · ')}
+                  </p>
                 </div>
-                {!isNaN(parseFloat(med['Public price'])) && (
-                  <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 flex-shrink-0">
-                    {parseFloat(med['Public price']).toFixed(2)} ر.س
+                {!isNaN(parseFloat(String(med['Public price']||''))) && (
+                  <span className="text-[13px] font-black text-teal-600 dark:text-teal-400 flex-shrink-0 ml-2">
+                    {parseFloat(String(med['Public price'])).toFixed(2)} ر.س
                   </span>
                 )}
               </div>

@@ -117,10 +117,31 @@ function normPregCat(raw: string): string {
   if (r.startsWith('A')) return 'A';
   return r;
 }
+// Worst pregnancy category helper (A < B < C < D < X)
+const PREG_ORDER = ['A','B','C','D','X'];
+function worstPregCat(cats: string[]): string {
+  let worst = '';
+  for (const c of cats) {
+    const n = normPregCat(c);
+    if (!worst || PREG_ORDER.indexOf(n) > PREG_ORDER.indexOf(worst)) worst = n;
+  }
+  return worst;
+}
+// Worst lactation category (S < NSC < NS)
+const LACT_ORDER = ['S','U','NSC','NS'];
+function worstLactCat(cats: string[]): string {
+  let worst = '';
+  for (const c of cats) {
+    const n = normLactCat(c);
+    if (!worst || LACT_ORDER.indexOf(n) > LACT_ORDER.indexOf(worst)) worst = n;
+  }
+  return worst;
+}
+
 const PREG_LABELS_AR: Record<string, string> = { A: 'آمن', B: 'آمن', C: 'احتياط', D: 'تجنب', X: 'ممنوع' };
-const LACT_LABELS_AR: Record<string, string> = { S: 'آمن', NSC: 'احتياط', NS: 'تجنب' };
+const LACT_LABELS_AR: Record<string, string> = { S: 'آمن', NSC: 'احتياط', NS: 'تجنب', U: 'غير معروف' };
 const PREG_LABELS_EN: Record<string, string> = { A: 'Safe', B: 'Safe', C: 'Caution', D: 'Avoid', X: 'Contraind.' };
-const LACT_LABELS_EN: Record<string, string> = { S: 'Safe', NSC: 'Caution', NS: 'Avoid' };
+const LACT_LABELS_EN: Record<string, string> = { S: 'Safe', NSC: 'Caution', NS: 'Avoid', U: 'Unknown' };
 
 const SafetyBadgesCard: React.FC<{
   clinicalRef: import('../utils/dailyMedicines').ClinicalReference;
@@ -325,6 +346,7 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
   const [clinicalData, setClinicalData] = useState<ClinicalData | null>(null);
   const [clinicalRef, setClinicalRef]   = useState<ClinicalReference | null>(null);
   const [pregRef, setPregRef] = useState<PregReferenceData | null>(null);
+  const [allPregRefs, setAllPregRefs] = useState<PregReferenceData[]>([]);
   const [showClinicalRef, setShowClinicalRef] = useState(false);
   const [showClinicalPage, setShowClinicalPage] = useState(false);
 
@@ -368,9 +390,30 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       getClinicalReference(sciName, tradeName, descCode, regNum).then(ref => {
         setClinicalRef(ref);
       });
-      getPregReference(sciName, tradeName).then(pref => {
-        if (pref) setPregRef(pref);
-      });
+      // Known antibiotic combos - treat as single drug, not split
+      const KNOWN_COMBOS_MD = ['clavulanic','clavulanate','tazobactam','sulbactam','trimethoprim','sulfamethoxazole'];
+      const rawIngs = sciName.split(/[,\/+&]/).map((s: string) => s.trim()).filter(Boolean);
+      const isKnownComboPairMD = rawIngs.length === 2 && rawIngs.every((i: string) => KNOWN_COMBOS_MD.some(k => i.toLowerCase().includes(k)));
+      const ingredients = isKnownComboPairMD ? [rawIngs.join('-')] : rawIngs;
+      if (ingredients.length > 1) {
+        Promise.all(ingredients.map((ing: string) => getPregReference(ing, ''))).then(refs => {
+          const valid = refs.filter((r): r is PregReferenceData => r !== null);
+          setAllPregRefs(valid);
+          if (valid.length > 0) {
+            // Show worst-category entry as primary
+            const worst = valid.reduce((a, b) => {
+              const aP = PREG_ORDER.indexOf(normPregCat(a.pregnancyCategory||''));
+              const bP = PREG_ORDER.indexOf(normPregCat(b.pregnancyCategory||''));
+              return bP > aP ? b : a;
+            });
+            setPregRef(worst);
+          }
+        });
+      } else {
+        getPregReference(sciName, tradeName).then(pref => {
+          if (pref) { setPregRef(pref); setAllPregRefs([pref]); }
+        });
+      }
     }
   }, [medicine?.RegisterNumber]);
 
