@@ -1624,8 +1624,8 @@ const App: React.FC = () => {
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg> },
                           { labelAr:'المفضلة',    labelEn:'Favorites',    sub_ar:'العناصر المحفوظة',sub_en:'Saved items',       bg:'#fffbeb', border:'#fcd34d', color:'#b45309', onClick:()=>setView('favorites'),
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> },
-                          { labelAr:'الطلبات',    labelEn:'Orders',       sub_ar:'تتبع الطلبات',   sub_en:'Track your orders',  bg:'#eff6ff', border:'#93c5fd', color:'#1d4ed8', onClick:()=>{refreshOrderCount();setActiveTab('settings');setView('orderList');},
-                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> },
+                          ...(user?.role === 'admin' ? [{ labelAr:'الطلبات',    labelEn:'Orders',       sub_ar:'تتبع الطلبات',   sub_en:'Track your orders',  bg:'#eff6ff', border:'#93c5fd', color:'#1d4ed8', onClick:()=>{refreshOrderCount();setActiveTab('settings');setView('orderList');},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> },] : []),
                           { labelAr:'المخزون',    labelEn:'Stock',        sub_ar:'حالة المخزون',   sub_en:'Inventory status',   bg:'#f0fdf4', border:'#86efac', color:'#15803d', onClick:()=>{setActiveTab('settings');setView('stockTracker');},
                             icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg> },
                           { labelAr:'التأمين',    labelEn:'Insurance',    sub_ar:'التغطية والبوالص',sub_en:'Coverage & policies', bg:'#fff1f2', border:'#fca5a5', color:'#be123c', onClick:()=>setActiveTab('insurance'),
@@ -1729,41 +1729,7 @@ const App: React.FC = () => {
                         );
                         return null;
                       })()}
-                      {/* Recently viewed — inline chips بدل الزرار الكبير */}
-                      {(searchTerm.replace(/\s/g,"").length === 0 || searchTerm !== debouncedSearchTerm) && activeFiltersCount === 0 && recentSearches.length > 0 && (
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                              {language === 'ar' ? 'آخر المشاهدات' : 'Recently Viewed'}
-                            </span>
-                            <button
-                              onClick={() => setView('recentlyViewed')}
-                              style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
-                            >
-                              See all →
-                            </button>
-                          </div>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {recentSearches.slice(0, 6).map(med => (
-                              <button
-                                key={med.RegisterNumber}
-                                onClick={() => { setSelectedMedicine(med); setView('details'); }}
-                                style={{
-                                  padding: '5px 12px', borderRadius: 20,
-                                  background: 'var(--surface)', border: '1px solid var(--border)',
-                                  fontSize: 11, fontWeight: 700, color: 'var(--text)',
-                                  cursor: 'pointer', whiteSpace: 'nowrap',
-                                  maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis',
-                                  WebkitTapHighlightColor: 'transparent',
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                }}
-                              >
-                                {med['Trade Name']}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+}
                   </div>
 
                   {/* ── علامة تحميل في آخر الكارت ── */}

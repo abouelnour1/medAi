@@ -15,7 +15,12 @@ const BottomSheet: React.FC<Props> = ({ onClose, children }) => {
   const maxH = Math.round(winH * 0.92);
   const minH = Math.round(winH * 0.45);
 
-  const [height, setHeight]   = useState(maxH);
+  const [height, setHeight]   = useState(minH);
+  // Animate open to maxH after first render
+  React.useEffect(() => {
+    const raf = requestAnimationFrame(() => setHeight(maxH));
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const sheetRef               = useRef<HTMLDivElement>(null);
   const contentRef             = useRef<HTMLDivElement>(null);
   const isExpanded             = height > (minH + maxH) / 2;
