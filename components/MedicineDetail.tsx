@@ -393,7 +393,8 @@ const MedicineDetail: React.FC<MedicineDetailProps> = ({ medicine, insuranceData
       // Known antibiotic combos - treat as single drug, not split
       const KNOWN_COMBOS_MD = ['clavulanic','clavulanate','tazobactam','sulbactam','trimethoprim','sulfamethoxazole'];
       const rawIngs = sciName.split(/[,\/+&]/).map((s: string) => s.trim()).filter(Boolean);
-      const isKnownComboPairMD = rawIngs.length === 2 && rawIngs.every((i: string) => KNOWN_COMBOS_MD.some(k => i.toLowerCase().includes(k)));
+      // Use ANY: if any ingredient is a known combo partner, treat whole drug as combo
+      const isKnownComboPairMD = rawIngs.length >= 2 && rawIngs.some((i: string) => KNOWN_COMBOS_MD.some(k => i.toLowerCase().includes(k)));
       const ingredients = isKnownComboPairMD ? [rawIngs.join('-')] : rawIngs;
       if (ingredients.length > 1) {
         Promise.all(ingredients.map((ing: string) => getPregReference(ing, ''))).then(refs => {

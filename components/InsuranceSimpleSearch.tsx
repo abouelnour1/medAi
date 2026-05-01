@@ -18,7 +18,7 @@ function normStr(name: string): string {
 
 type SR = IndicationGroup | DrugGroup | { type: 'not-covered'; medicine: Medicine };
 
-interface MedsIndex { byTrade: Map<string,Medicine[]>; bySci: Map<string,Medicine[]>; bySciNorm: Map<string,Medicine[]>; }
+interface MedsIndex { byTrade: Map<string,Medicine[]>; bySciNorm: Map<string,Medicine[]>; tradeEntries:{key:string;med:Medicine}[]; sciEntries:{key:string;med:Medicine}[]; }
 function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins: InsuranceDrug[], idx?: MedsIndex): SR[] {
   const t = term.toLowerCase().trim();
   if (t.replace(/\*/g,'').length < 1) return [];
@@ -29,13 +29,18 @@ function compute(term: string, mode: InsuranceSearchMode, meds: Medicine[], ins:
   if (mode === 'tradeName' || mode === 'scientificName') {
     const field = mode === 'tradeName' ? 'Trade Name' : 'Scientific Name';
     if(t.length < 2) return [];
-    // Use pre-built index if available - O(1) vs O(n) scan
+    // Use sorted prefix entries for fast O(log n) prefix match
     let sw: Medicine[] = [];
     if (idx) {
-      const map = mode === 'tradeName' ? idx.byTrade : idx.bySciNorm;
-      // Find all keys starting with t
-      map.forEach((meds, key) => { if (key.startsWith(t)) sw.push(...meds); });
-      sw = sw.slice(0, MAX);
+      const entries = mode === 'tradeName' ? idx.tradeEntries : idx.sciEntries;
+      // Binary search for start of prefix range
+      let lo=0, hi=entries.length-1, start=entries.length;
+      while(lo<=hi){ const mid=(lo+hi)>>1; if(entries[mid].key>=t){start=mid;hi=mid-1;}else lo=mid+1; }
+      const seen = new Set<string>();
+      for(let i=start; i<entries.length && entries[i].key.startsWith(t); i++){
+        if(!seen.has(entries[i].med.RegisterNumber)){ seen.add(entries[i].med.RegisterNumber); sw.push(entries[i].med); }
+        if(sw.length>=MAX) break;
+      }
     } else {
       sw = meds.filter(m => String(m[field]||'').toLowerCase().startsWith(t)).slice(0,MAX);
     }
@@ -128,20 +133,32 @@ interface Props {
 const InsuranceSimpleSearch: React.FC<Props> = ({ t, insuranceData, allMedicines, onSelectInsuranceData, searchTerm, setSearchTerm, searchMode, setSearchMode, headerHeight = 97, isKeyboardOpen = false, renderPart = 'all' }) => {
   const deferredSearch = searchTerm; // direct - no defer overhead
 
-  // Pre-index for fast lookups — only recomputes when medicines change
+  // Pre-index: sorted arrays for fast binary-search-style prefix lookup
   const medsIndex = useMemo(() => {
     const byTrade   = new Map<string, Medicine[]>();
-    const bySci     = new Map<string, Medicine[]>();
     const bySciNorm = new Map<string, Medicine[]>();
+    // Also build prefix-sorted lists for fast startsWith
+    const tradeEntries: {key:string; med:Medicine}[] = [];
+    const sciEntries:   {key:string; med:Medicine}[] = [];
+
     allMedicines.forEach(m => {
-      const trade = String(m['Trade Name']   || '').toLowerCase();
-      const sci   = String(m['Scientific Name'] || '');
-      const sciN  = normStr(sci);
-      if (trade) { if (!byTrade.has(trade)) byTrade.set(trade, []); byTrade.get(trade)!.push(m); }
-      if (sci)   { if (!bySci.has(sci))     bySci.set(sci, []);     bySci.get(sci)!.push(m);    }
-      if (sciN)  { if (!bySciNorm.has(sciN)) bySciNorm.set(sciN, []); bySciNorm.get(sciN)!.push(m); }
+      const trade = String(m['Trade Name']   || '').toLowerCase().trim();
+      const sciN  = normStr(String(m['Scientific Name'] || ''));
+      if (trade) {
+        if (!byTrade.has(trade)) byTrade.set(trade, []);
+        byTrade.get(trade)!.push(m);
+        tradeEntries.push({key: trade, med: m});
+      }
+      if (sciN) {
+        if (!bySciNorm.has(sciN)) bySciNorm.set(sciN, []);
+        bySciNorm.get(sciN)!.push(m);
+        sciEntries.push({key: sciN, med: m});
+      }
     });
-    return { byTrade, bySci, bySciNorm };
+    // Sort for prefix matching
+    tradeEntries.sort((a,b) => a.key.localeCompare(b.key));
+    sciEntries.sort((a,b) => a.key.localeCompare(b.key));
+    return { byTrade, bySciNorm, tradeEntries, sciEntries };
   }, [allMedicines]);
   const [input, setInput] = useState(searchTerm);
   const [classFilter, setClassFilter] = useState<string>('');

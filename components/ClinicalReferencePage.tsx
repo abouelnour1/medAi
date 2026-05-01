@@ -447,8 +447,9 @@ const ClinicalReferencePage:React.FC<Props>=({scientificName,tradeName,language,
   const KNOWN_COMBOS = ['amoxicillin','clavulanic','clavulanate','sulfamethoxazole','trimethoprim','ticarcillin','piperacillin','tazobactam','ampicillin','sulbactam'];
   const rawIngredients = medicine ? String(medicine['Scientific Name']||'').split(',').map((s:string)=>s.trim()).filter(Boolean) : [];
   // If ingredients look like a combo antibiotic pair, keep as one
-  const isKnownComboPair = rawIngredients.length === 2 &&
-    rawIngredients.every((i:string) => KNOWN_COMBOS.some(k => i.toLowerCase().includes(k)));
+  // ANY ingredient matches → treat as known combo
+  const isKnownComboPair = rawIngredients.length >= 2 &&
+    rawIngredients.some((i:string) => KNOWN_COMBOS.some(k => i.toLowerCase().includes(k)));
   const allIngredients = isKnownComboPair ? [rawIngredients.join('-')] : rawIngredients;
   const isMulti=allIngredients.length>1;
 

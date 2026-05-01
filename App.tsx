@@ -1597,107 +1597,44 @@ const App: React.FC = () => {
                       <p className="text-[10px] font-black uppercase tracking-widest mb-3 px-1" style={{ color: '#8a938f' }}>
                         {language === 'ar' ? 'أدوات سريعة' : 'Quick Tools'}
                       </p>
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {/* Dosing */}
-                        <button onClick={() => { setPedCalcDrug(undefined); setPedCalcOpen(true); }}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#eef9f6', border: '1.5px solid #cdeee7' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="4"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'الجرعات' : 'Dosing'}</span>
-                        </button>
-                        {/* Drug Test */}
-                        <button onClick={() => { setDrugTestInitial(undefined); setDrugTestOpen(true); }}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#f5f0ff', border: '1.5px solid #e0d5ff' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 3h8M9 3v6l-5 7a2 2 0 001.66 3h12.68A2 2 0 0020 19l-5-7V3"/>
-                            <line x1="9" y1="9" x2="15" y2="9"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#6d28d9' }}>{language === 'ar' ? 'تحليل الدواء' : 'Drug Test'}</span>
-                        </button>
-                        {/* By Disease */}
-                        <button onClick={() => setView('indicationSearch')}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#f0f9ff', border: '1.5px solid #bae6fd' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#0369a1' }}>{language === 'ar' ? 'بحث بالمرض' : 'By Disease'}</span>
-                        </button>
-                        {/* Favorites */}
-                        <button onClick={() => setView('favorites')}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#fffbeb', border: '1.5px solid #fde68a' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#b45309' }}>{language === 'ar' ? 'المفضلة' : 'Favorites'}</span>
-                        </button>
-                        {/* Orders */}
-                        <button onClick={() => { refreshOrderCount(); setActiveTab('settings'); setView('orderList'); }}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <path d="M16 10a4 4 0 01-8 0"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#1d4ed8' }}>{language === 'ar' ? 'الطلبات' : 'Orders'}</span>
-                        </button>
-                        {/* Stock */}
-                        <button onClick={() => { setActiveTab('settings'); setView('stockTracker'); }}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="2" y="7" width="20" height="15" rx="2"/>
-                            <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/>
-                            <line x1="12" y1="12" x2="12" y2="17"/>
-                            <line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#15803d' }}>{language === 'ar' ? 'المخزون' : 'Stock'}</span>
-                        </button>
-                        {/* Insurance */}
-                        <button onClick={() => setActiveTab('insurance')}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: '#fff1f2', border: '1.5px solid #fecdd3' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <path d="M9 12l2 2 4-4"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#be123c' }}>{language === 'ar' ? 'التأمين' : 'Insurance'}</span>
-                        </button>
-                        {/* Prescription — admin only */}
-                        {user?.role === 'admin' && (
-                          <button onClick={() => { setActiveTab('settings'); setView('prescription'); }}
-                            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                            style={{ background: '#eef9f6', border: '1.5px solid #cdeee7' }}>
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                              <polyline points="14 2 14 8 20 8"/>
-                              <line x1="16" y1="13" x2="8" y2="13"/>
-                              <line x1="16" y1="17" x2="8" y2="17"/>
-                              <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                            <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'الوصفات' : 'Prescription'}</span>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { labelAr:'الجرعات',    labelEn:'Dosing',       sub_ar:'احسب الجرعة',   sub_en:'Calculate dose',    bg:'#eef9f6', border:'#b2e6da', color:'#006a60', onClick:()=>{setPedCalcDrug(undefined);setPedCalcOpen(true);},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> },
+                          { labelAr:'تحليل الدواء',labelEn:'Drug Test',   sub_ar:'تفاعلات وآثار', sub_en:'Interactions & effects',bg:'#f5f0ff',border:'#d4c5fc', color:'#6d28d9', onClick:()=>{setDrugTestInitial(undefined);setDrugTestOpen(true);},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3h8M9 3v6l-5 7a2 2 0 001.66 3h12.68A2 2 0 0020 19l-5-7V3"/><line x1="9" y1="9" x2="15" y2="9"/></svg> },
+                          { labelAr:'بحث بالمرض', labelEn:'By Disease',   sub_ar:'بحث بالتشخيص',  sub_en:'Find by condition',  bg:'#f0f9ff', border:'#93c5fd', color:'#0369a1', onClick:()=>setView('indicationSearch'),
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg> },
+                          { labelAr:'المفضلة',    labelEn:'Favorites',    sub_ar:'العناصر المحفوظة',sub_en:'Saved items',       bg:'#fffbeb', border:'#fcd34d', color:'#b45309', onClick:()=>setView('favorites'),
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> },
+                          { labelAr:'الطلبات',    labelEn:'Orders',       sub_ar:'تتبع الطلبات',   sub_en:'Track your orders',  bg:'#eff6ff', border:'#93c5fd', color:'#1d4ed8', onClick:()=>{refreshOrderCount();setActiveTab('settings');setView('orderList');},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> },
+                          { labelAr:'المخزون',    labelEn:'Stock',        sub_ar:'حالة المخزون',   sub_en:'Inventory status',   bg:'#f0fdf4', border:'#86efac', color:'#15803d', onClick:()=>{setActiveTab('settings');setView('stockTracker');},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg> },
+                          { labelAr:'التأمين',    labelEn:'Insurance',    sub_ar:'التغطية والبوالص',sub_en:'Coverage & policies', bg:'#fff1f2', border:'#fca5a5', color:'#be123c', onClick:()=>setActiveTab('insurance'),
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> },
+                          { labelAr:'الوصفات',    labelEn:'Prescription', sub_ar:'إدارة الوصفات',  sub_en:'Manage prescriptions',bg:'#f0fdf4', border:'#86efac', color:'#166534', onClick:()=>{setActiveTab('settings');setView('prescriptions');},
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+                          { labelAr:'الجرعات السريعة',labelEn:'Quick Doses',sub_ar:'جرعات دفعة واحدة',sub_en:'Common doses at a glance',bg:'#fef3c7',border:'#fcd34d',color:'#92400e',onClick:()=>setView('quickDoses'),
+                            icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+                        ].map((item,i) => (
+                          <button key={i} onClick={item.onClick}
+                            className="flex flex-col justify-between p-3.5 rounded-2xl active:scale-95 transition-all text-left"
+                            style={{ background: item.bg, border: `1.5px solid ${item.border}`, minHeight: 110 }}>
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2"
+                              style={{ background: `${item.color}18`, color: item.color }}>
+                              {item.icon}
+                            </div>
+                            <div>
+                              <p className="text-[12px] font-black leading-tight" style={{ color: item.color }}>
+                                {language === 'ar' ? item.labelAr : item.labelEn}
+                              </p>
+                              <p className="text-[10px] font-medium leading-tight mt-0.5" style={{ color: `${item.color}99` }}>
+                                {language === 'ar' ? item.sub_ar : item.sub_en}
+                              </p>
+                            </div>
                           </button>
-                        )}
-                        {/* Quick Doses */}
-                        <button onClick={() => setView('pedDoseHistory')}
-                          className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl active:scale-95 transition-all"
-                          style={{ background: 'linear-gradient(135deg, #eef9f6, #cdeee7)', border: '1.5px solid #7fd4c6' }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#006a60" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="8" r="4"/>
-                            <path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
-                            <line x1="12" y1="14" x2="12" y2="20"/>
-                            <line x1="9" y1="17" x2="15" y2="17"/>
-                          </svg>
-                          <span className="text-[10px] font-black" style={{ color: '#006a60' }}>{language === 'ar' ? 'جرعات سريعة' : 'Quick Doses'}</span>
-                        </button>
+                        ))}
                       </div>
                     </div>
                   )}                  <div className="mt-2">
